@@ -1,0 +1,2354 @@
+/*
+Copyright (C) 2005 Mark J Dayel
+
+You may not distribute, deploy, provide copies of, rent, loan, lease, 
+transfer, or grant any rights in the software or derivative works thereof 
+in any form to any person.  Reproduction, adaptation, or translation of 
+this program without prior written permission from the author is 
+prohibited.  Proofs of infringement of copyright violations include but 
+not limited to similar code style and structures, similar layout and 
+design, similar algorithm design, and containing parts of the original 
+software source code.  Copyright notice must remain intact and cannot be 
+removed without prior written permission from the author.
+*/
+
+#include "stdafx.h"
+#include "actin.h"
+
+actin::actin(void)
+{
+
+	opruninfo.open("comet_run_info.txt", ios::out | ios::trunc);
+	if (!opruninfo) 
+	{ cout << "Unable to open file " << "comet_run_info.txt" << " for output"; return;}
+
+	cout << endl;
+	cout << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
+	cout.flush();
+	
+	opruninfo << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
+
+	// node = new nodes[MAXNODES];
+
+	node.resize(MAXNODES);
+	donenode.resize(MAXNODES);
+	repdonenode.resize(MAXNODES);
+	nodesbygridpoint.resize(MAXNODES);
+	crosslinknodesdelay.resize(CROSSLINKDELAY);
+
+	for (int i=0; i<MAXNODES; i++)
+	{
+		node[i].nodenum=i;
+		node[i].ptheactin=this;
+		if (i<10000)
+			node[i].listoflinks.reserve(64);
+	}
+
+	cout << "GridExtent : " << GRIDBOUNDS << " uM" << endl;
+	cout << "GridResolution : " << GRIDRES << " uM" << endl;
+	cout << "TotalGridpoints : " << (GRIDSIZE*GRIDSIZE*GRIDSIZE) << endl;
+
+	cout << "Zeroing Grid...";
+	cout.flush();
+
+    nodegrid.resize(GRIDSIZE+1);
+	for (int i=0; i!=(GRIDSIZE+1); i++)  // allocate nodegrid and set nodegrid pointers to null
+	{
+		nodegrid[i].resize(GRIDSIZE+1);
+		for (int j=0; j!=(GRIDSIZE+1); j++)
+		{
+			nodegrid[i][j].resize(GRIDSIZE+1,0);
+		}
+	}
+
+	cout << "Done" << endl << endl;
+
+	nucleatorgrid.reserve(5000);
+	
+	// these are reserved 4x the NUM_THREADS because they may run concurrently 
+	// between stages and between threads inside stages
+
+	recti_near_nodes.resize(NUM_THREADS*4);
+	nodes_on_same_gridpoint.resize(NUM_THREADS*4);
+
+	for (int i = 0; i < NUM_THREADS; ++i)
+	{
+		recti_near_nodes[i].reserve(5000);
+		nodes_on_same_gridpoint[i].reserve(5000);
+	}
+
+	nodes_within_nucleator.reserve(5000);
+	linkformto.reserve(100*MAX_LINKS_PER_NODE);
+
+	/*repulsedone.resize(MAXNODES);
+	for (int i=0; i!=(MAXNODES); i++)   // this crashes:  why??
+	{
+		repulsedone[i].resize(MAXNODES);
+	}*/
+
+	cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
+
+
+	highestnodecount = 0;
+	iteration_num = 0;
+	linksformed = 0;
+	linksbroken = 0;
+	nexttocrosslink = 0;
+
+	newnodescolour.setcol(0);
+} 
+
+actin::~actin(void)
+{
+	opruninfo.close();
+	//delete [] node;
+	
+	//for (int i=0; i<GRIDSIZE; i++)  // free memory
+	//{
+	//	for (int j=0; j<GRIDSIZE; j++)
+	//	{
+	//		delete [] nodegrid[i][j];
+	//
+	//	}
+	//	delete [] nodegrid[i];
+	//}
+	//delete [] nodegrid;
+}
+
+int actin::nucleate()
+{
+	int numnewnodes;
+
+	// add new nodes
+	numnewnodes = nucleation_object->addnodes();
+	
+return numnewnodes;
+}
+
+int actin::crosslinknewnodes(int numnewnodes)
+{	
+	int threadnum = 0;
+	//nucleation_object = &nucleation_obj;
+	
+	vect nodeposvec;
+	MYDOUBLE distsqr, xdist,ydist,zdist;
+
+	if (numnewnodes == 0)
+		return 0;
+
+	// and link the new nodes...
+	for (int i=nexttocrosslink; i < (nexttocrosslink+numnewnodes); i++)
+	{
+		if (!node[i].harbinger)
+			continue;  // look for harbingers to crosslink
+
+		//cout << "linking node " << i << endl;
+		//cout << "created node at " << node[i].x << "," << node[i].y << "," << node[i].z << endl;
+
+		if (findnearbynodes(i,NODE_XLINK_GRIDSEARCH,threadnum)==0) continue;	// find nodes within grid point
+												// skip if zero
+							 
+		// of these nodes, calculate euclidian dist
+
+		nodeposvec.x = node[i].x;	// get xyz of our node
+		nodeposvec.y = node[i].y;
+		nodeposvec.z = node[i].z;
+
+		linkformto.resize(0);
+
+		for (vector <nodes*>::iterator nearnode=recti_near_nodes[threadnum].begin(); nearnode<recti_near_nodes[threadnum].end() ; nearnode++ )
+		{
+
+			if ( ((*nearnode)->harbinger) || (!(*nearnode)->polymer) )
+				continue;  // only crosslink to real nodes
+
+			xdist = (*nearnode)->x - nodeposvec.x;
+			ydist = (*nearnode)->y - nodeposvec.y;
+			zdist = (*nearnode)->z - nodeposvec.z;
+
+			distsqr = xdist*xdist + ydist*ydist + zdist*zdist;
+
+			if (distsqr < SQRT_ACCURACY_LOSS)
+				continue;
+
+			if ( distsqr < XLINK_NODE_RANGE*XLINK_NODE_RANGE)
+			{
+				linkformto.push_back(linkform( (*nearnode)->nodenum , distsqr ));
+				//(*(linkformto.end()-1)).nodenum = (*nearnode)->nodenum;
+				//(*(linkformto.end()-1)).distsqr = distsqr;
+
+				//addlinks(i,(*nearnode)->nodenum,distsqr);  // add link if within the node link range
+			}
+		}
+
+		if (XLINK_NEAREST)  // crosslink in order of distance?
+			sort(linkformto.begin(), linkformto.end(), linkform::CompareDistance);
+		else				// or in random order
+			random_shuffle(linkformto.begin(),linkformto.end());
+
+		// and crosslink:
+		for (vector <linkform>::iterator linkto=linkformto.begin(); linkto<linkformto.end() ; linkto++ )
+			{
+				//if (i%100==0)
+				//{
+				//	cout << (*linkto).distsqr << " " << node[i].listoflinks.size() 
+				//		<< " " << node[(*linkto).nodenum].listoflinks.size() << endl;
+				//}
+				if (node[i].listoflinks.size()<MAX_LINKS_PER_NODE)
+				{
+					if (node[(*linkto).nodenum].listoflinks.size()<MAX_LINKS_PER_NODE)
+					{
+						addlinks(i,(*linkto).nodenum);
+					}
+				}
+				else
+					break;
+			}
+
+		node[i].harbinger = false;  // crosslinked: now node exists
+
+	}
+
+	nexttocrosslink += numnewnodes;
+
+	return numnewnodes;
+}
+
+int actin::save(int filenum)
+{
+	char filename[255];
+	//char time[255], date[255];
+
+    //_strtime( time );
+    //_strdate( date );
+
+	sprintf ( filename , "nodes%05i.txt", filenum );
+
+	ofstream opactindata(filename, ios::out | ios::trunc);
+	if (!opactindata) 
+	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+
+	// write header
+	opactindata << "comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
+	//opactindata << "Data Output " << date << " " << time << endl;
+	opactindata << "Nodes Data Itteration Number: " << filenum << endl;
+	opactindata << "Highest Node Count: " << highestnodecount << endl;
+		opactindata << "nodenum,x,y,z,harbinger,polymer,r,g,b,creationiter,numlinks " << endl;
+	
+	nucleation_object->save(&opactindata);
+
+/*
+
+	// write nucleator grid co-ords
+	double x,y,z;
+
+	for (vector <int_vect>::iterator i=nucleatorgrid.begin(); i<nucleatorgrid.end() ; i++ )
+	{	 
+			//gridpos.x = (((int)(x / GRIDRES)) + (GRIDSIZE/2) );
+			//gridpos.y = (((int)(y / GRIDRES)) + (GRIDSIZE/2) );
+			//gridpos.z = (((int)(z / GRIDRES)) + (GRIDSIZE/2) );
+
+		x = (i->x - (GRIDSIZE/2)) * GRIDRES;
+		y = (i->y - (GRIDSIZE/2)) * GRIDRES;
+		z = (i->z - (GRIDSIZE/2)) * GRIDRES;
+
+	opactindata	<< x << "," << y << "," << z << "," << 1 << "," 
+					<< 1 << "," << 1 << "," << 1 << ","
+					<< 0;
+	opactindata << endl;
+
+	}
+*/
+
+	// write data
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if (node[i].polymer)
+		{
+			node[i].save(&opactindata);
+		}
+	}
+
+	opactindata.close();
+
+
+
+	// now save links
+
+	sprintf ( filename , "links%05i.txt", filenum );
+
+	ofstream oplinkdata(filename, ios::out | ios::trunc);
+
+	if (!oplinkdata) 
+	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+
+	// write header
+	oplinkdata << "comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
+	//oplinkdata << "Data Output " << date << " " << time << endl;
+	oplinkdata << "Links Data Itteration Number: " << filenum << endl;
+	oplinkdata << "Highest Node Count: " << highestnodecount << endl;
+	oplinkdata << "nodenum,numlinks,linknum1,linknum2,..." << endl;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if (node[i].polymer)
+		{
+			node[i].savelinks(&oplinkdata);
+		}
+	}
+	oplinkdata.close();
+
+	return 0;
+}
+
+int actin::saveinfo()
+{
+	//char filename[255];
+	MYDOUBLE minx, miny, minz;
+	MYDOUBLE maxx, maxy, maxz; 
+	//char time[255], date[255];
+
+    //_strtime( time );
+    //_strdate( date );
+
+	//sprintf ( filename , "nodes%05i.txt", filenum );
+
+
+	// write header
+	//opactindata << "Data Output " << date << " " << time << endl;
+	//opruninfo << "Nodes Data Itteration Number: " << filenum << endl;
+	opruninfo << "Highest Node Count: " << highestnodecount << endl;
+	cout << "Highest Node Count: " << highestnodecount << endl;
+	//opruninfo << "x,y,z,polymer " << endl;
+	
+	// find grid range:
+
+	minx = miny = minz =   GRIDBOUNDS;
+	maxx = maxy = maxz = - GRIDBOUNDS;
+	int existantnodes = 0;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if (node[i].polymer)
+		{
+			if (minx > node[i].x) minx = node[i].x;
+			if (miny > node[i].y) miny = node[i].y;
+			if (minz > node[i].z) minz = node[i].z;
+
+			if (maxx < node[i].x) maxx = node[i].x;
+			if (maxy < node[i].y) maxy = node[i].y;
+			if (maxz < node[i].z) maxz = node[i].z;
+
+			existantnodes++;
+		}
+	}
+
+
+	opruninfo << "Final existant nodes: " << existantnodes << endl;
+	cout << "Final existant nodes: " << existantnodes << endl;
+	// write info
+
+	opruninfo << "min x, min y, min z, max x, max y, max z" << endl;
+
+	opruninfo << minx << "," << miny << "," << minz << "," 
+					  << maxx << "," << maxy << "," << maxz << endl;
+
+
+
+	cout << "min x, min y, min z, max x, max y, max z" << endl;
+
+	cout << minx << ", " << miny << ", " << minz << ", " 
+					  << maxx << ", " << maxy << ", " << maxz << endl;
+
+	return 0;
+}
+
+int actin::savevrml(int filenum)
+{
+	char filename[255];
+	//char time[255], date[255];
+
+    //_strtime( time );
+    //_strdate( date );
+
+	sprintf ( filename , "nodes%05i.wrl", filenum );
+
+	ofstream opvrml(filename, ios::out | ios::trunc);
+	if (!opvrml) 
+	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+
+	// write header
+	opvrml << "#VRML V2.0 utf8" << endl;
+	opvrml << "#comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
+	//opactindata << "Data Output " << date << " " << time << endl;
+	opvrml << "#Nodes Data Itteration Number: " << filenum << endl;
+	opvrml << "#Highest Node Count: " << highestnodecount << endl;
+
+	opvrml << "Shape {" << endl;
+	opvrml << "    geometry PointSet {" << endl;
+	opvrml << "        coord DEF nucleator Coordinate { " << endl;
+	opvrml << "            point [ ";
+
+	nucleation_object->savevrml(&opvrml);
+
+	opvrml << "] }" << endl;
+	opvrml << "    }" << endl;
+	opvrml << "}" << endl;
+
+	opvrml << "Shape {" << endl;
+	opvrml << "    geometry PointSet {" << endl;
+	opvrml << "        coord DEF actin Coordinate { " << endl;
+	opvrml << "            point [ ";
+
+	// write data
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if ((node[i].polymer) &&			// don't plot depolymerised and
+			(!node[i].listoflinks.empty()))	// only plot nodes with links
+		{
+			if (i==0)
+				opvrml << node[i].x << "," << node[i].y << "," << node[i].z;
+			else
+				opvrml << "," << node[i].x << "," << node[i].y << "," << node[i].z;
+		}
+	}
+
+	opvrml << "] }" << endl;
+	opvrml << "        color Color { color [ ";
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+			if (i==0)
+				opvrml	<< node[i].colour.r << " " << node[i].colour.g << " " << node[i].colour.b;
+			else
+				opvrml	<< "," << node[i].colour.r << " " << node[i].colour.g << " " << node[i].colour.b;
+	}
+
+
+
+	opvrml << "] }" << endl;
+	opvrml << "    }" << endl;
+	opvrml << "}" << endl;
+
+	opvrml.close();
+
+
+
+	return 0;
+}
+
+
+int actin::iterate()  // this is the main iteration loop call
+{
+	int numnewnodes;
+
+	ejectfromnucleator();
+
+	numnewnodes = nucleate();
+	
+	// crosslink, but only after time to equilibrate position
+	// in mean time it is in limbo
+	// affected only by node collision repulsion and nucleator repulsion
+
+	crosslinknodesdelay[iteration_num%CROSSLINKDELAY] = numnewnodes;
+	crosslinknewnodes(crosslinknodesdelay[(iteration_num+1)%CROSSLINKDELAY]);
+	
+	sortnodesbygridpoint();
+	collisiondetection();	// start collision detection threads
+	linkforces(false);			// start link forces threads
+	//repulsiveforces();		// start the repulsive forces thread
+
+	//  wait 'till complete before applying forces
+	if (USE_THREADS)
+	{
+		for (int i = 0; i < NUM_THREADS; i++)
+		{
+			sem_wait(&collision_data_done[i]);
+			sem_wait(&linkforces_data_done[i]);
+			//sem_wait(&compressfiles_data_done[i]);
+		}
+	}
+	
+	//  debugging:
+	if (((iteration_num+1)%InterRecordIterations)==0)
+	{
+		savereport((iteration_num+1)/InterRecordIterations);
+	}
+ 
+
+	applyforces(); // move the nodes
+	//squash(2.4f); // squash with 'coverslip' this dist is slide-coverslip dist
+			
+	iteration_num++;
+
+	/*  debugging:
+	if ((iteration_num%5000)==0)
+	{
+		for (int i = 0; i<highestnodecount;i++)
+		{
+			node[i].depolymerize();
+		}
+	}
+  */  
+	return 0;
+}
+
+int actin::addlinks(int linknode1, int linknode2)
+{
+	// crosslink a new node
+
+	MYDOUBLE pxlink;
+
+	if (linknode1==linknode2) return 0;
+
+	if ((!node[linknode1].polymer)  || (!node[linknode2].polymer) ||
+		(!node[linknode1].harbinger))
+		return 0;
+
+	//if ((linknode1==178) || (linknode1==180) ||
+	//	(linknode2==178) || (linknode2==180) )
+	//	cout << "stop here";
+
+	MYDOUBLE dist = calcdist(node[linknode1].x-node[linknode2].x,
+							 node[linknode1].y-node[linknode2].y,
+							 node[linknode1].z-node[linknode2].z);
+	
+	// crosslink poisson distribution (max probability at XLINK_NODE_RANGE/5)
+
+	//pxlink = ((MYDOUBLE)2.7*dist/(XLINK_NODE_RANGE/(MYDOUBLE)5))
+	//						*exp(-dist/(XLINK_NODE_RANGE/(MYDOUBLE)5));
+
+	// divide by dist*dist to compensate for increase numbers of nodes at larger distances
+
+
+
+	//pxlink = ((( (MYDOUBLE) 2.7 / (XLINK_NODE_RANGE/(MYDOUBLE)5) )
+	//						*exp(-dist/(XLINK_NODE_RANGE/(MYDOUBLE)5) ) ));
+
+	// normal distrib with centre around 1/2 of XLINK_NODE_RANGE
+	// and scale magnitude by 1/(XLINK_NODE_RANGE^2) to compensate for increased
+	// number of nodes at this distance shell
+
+	//if ((node[linknode1].z <0) || (node[linknode2].z <0))
+ 	//	return 0;
+
+	// was using this one before 28 march:
+	// (poissonian with max at XLINK_NODE_RANGE/5):
+	//pxlink = ((( (MYDOUBLE) 2.7 / (XLINK_NODE_RANGE/(MYDOUBLE)5) )
+	//						*exp(-dist/(XLINK_NODE_RANGE/(MYDOUBLE)5) ) )/dist);
+
+
+	// was using this (gaussian with max at XLINK_NODE_RANGE/2) for a bit:
+	//pxlink = exp( -40*(dist-(XLINK_NODE_RANGE/2))*(dist-(XLINK_NODE_RANGE/2)))/(dist*dist*XLINK_NODE_RANGE*XLINK_NODE_RANGE);
+	
+	pxlink = 1;
+
+	if ( (P_XLINK*pxlink) > ( ((MYDOUBLE) rand()) / (MYDOUBLE)RAND_MAX ) )
+	{
+		node[linknode1].addlink(&node[linknode2],dist); 
+		node[linknode2].addlink(&node[linknode1],dist);
+        
+		//cout << "linked " << node[linknode1].nodenum << " to " << node[linknode2].nodenum  << endl;
+	}
+
+	return 0;
+}
+
+int actin::ejectfromnucleator()
+{
+	vect nodeposvec, oldnucposn, deltanucposn;
+	nodes *nodeptr, *startnodeptr;
+
+//  check node-nucleator repulsion
+// collect the nodes:
+
+	nodes_within_nucleator.resize(0);
+
+	for (vector <int_vect>::iterator i=nucleatorgrid.begin(); i<nucleatorgrid.end() ; i++ )
+	{	 
+		nodeptr=nodegrid[i->x][i->y][i->z];
+		startnodeptr=nodeptr;
+			if (nodeptr!=0) 
+			{
+				do
+				{
+					if ((nucleation_object->iswithinnucleator(nodeptr->x,nodeptr->y,nodeptr->z))
+						&& (nodeptr->polymer))
+					{	// inside nucleator
+						nodes_within_nucleator.push_back(nodeptr);						
+					}
+
+					nodeptr = nodeptr->nextnode;
+				}
+				while (nodeptr!=startnodeptr);  //until back to start
+				
+			}
+	}
+
+	oldnucposn.x = nucleation_object->position.x;  // note current nucleator pos'n
+	oldnucposn.y = nucleation_object->position.y;
+	oldnucposn.z = nucleation_object->position.z;
+
+	for (vector <nodes*>::iterator i=nodes_within_nucleator.begin(); i<nodes_within_nucleator.end() ; i++ )
+	{  //eject them
+		if (nucleation_object->collision((*i)->x,(*i)->y,(*i)->z)==0)  // ejected OK
+			(*i)->updategrid();
+		else
+			(*i)->depolymerize();  // not ejected OK, depolymerize
+	}
+
+	deltanucposn.x = nucleation_object->position.x - oldnucposn.x;  // how much did nucleator move?
+	deltanucposn.y = nucleation_object->position.y - oldnucposn.y;
+	deltanucposn.z = nucleation_object->position.z - oldnucposn.z;
+
+	for (int i = 0; i<highestnodecount; i++)
+	{
+		node[i].repulsion_displacement_vec[0].x-=deltanucposn.x;	// `move' the nucleator 
+		node[i].repulsion_displacement_vec[0].y-=deltanucposn.y;	// by moving all the nodes
+		node[i].repulsion_displacement_vec[0].z-=deltanucposn.z;	// the other way
+	}
+
+	return 0;
+}
+
+int actin::collisiondetection(void)
+{
+
+	int numthreadnodes, start, end;
+
+	numthreadnodes = highestnodecount / NUM_THREADS;
+
+// do collision detection
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		donenode[i] = false;
+	}
+
+//int numtodo = 0;
+
+	if (USE_THREADS)
+	{
+
+		for (int i = 0; i < NUM_THREADS; i++)
+		{
+			start = i * numthreadnodes;
+			end = (i+1) * numthreadnodes;
+
+			collision_thread_data_array[i].startnode = start;
+			collision_thread_data_array[i].endnode = end;
+			collision_thread_data_array[i].threadnum = i;
+
+			if (i<NUM_THREADS-1)
+			{
+				collision_thread_data_array[i].endnode = end;
+				//numtodo+=end-start;
+			}
+			else
+			{	// put remainder in last thread (cludge for now)
+				collision_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+				//numtodo+=end-start + highestnodecount % NUM_THREADS;
+			};			
+		}
+
+	// check
+		/*if (numtodo != highestnodecount)
+		{
+			cout << "numtodo not match :" << numtodo << " should be" << highestnodecount << endl;
+			for (int i = 0; i < NUM_THREADS; i++)
+			{
+				cout << "Thread " << i << " start: " << collision_thread_data_array[i].startnode
+					<< " end " << collision_thread_data_array[i].endnode << endl;
+			}
+			cout.flush();
+		}*/
+
+		// release thread blocks to start threads:
+
+	for (int i = 0; i < NUM_THREADS; i++)
+		{
+			sem_post(&collision_thread_go[i]);
+		}
+
+	}
+	else
+	{
+		collision_thread_data_array[0].startnode = 0;
+		collision_thread_data_array[0].endnode = highestnodecount;
+		collision_thread_data_array[0].threadnum = 0;
+		collisiondetectiondowork(&collision_thread_data_array[0]);
+	}
+	return 0;
+}
+
+void * actin::collisiondetectionthread(void* threadarg)
+{
+
+	struct thread_data *dat;
+	dat = (struct thread_data *) threadarg;
+
+
+while (1)
+	{	
+
+	sem_wait(&collision_thread_go[dat->threadnum]);  // go only if released by main thread
+
+	collisiondetectiondowork(dat);
+
+	sem_post(&collision_data_done[dat->threadnum]);  // release main thread block waiting for data
+
+	}  
+
+	return (void*) NULL;
+}
+
+inline void * actin::collisiondetectiondowork(thread_data* dat)
+{
+	vect nodeposvec;
+	MYDOUBLE distsqr,dist, xdist,ydist,zdist;
+	MYDOUBLE scale,force;
+	//nodes** sameGPnode;
+
+	for (int i=dat->startnode; i<dat->endnode; i++)
+	{	
+		if ((donenode[nodesbygridpoint[i]])|| (!node[nodesbygridpoint[i]].polymer))
+		{
+			continue;  // skip nodes already done
+		}
+		
+		// find nodes on same gridpoint, and nodes within repulsive range
+
+		if (findnearbynodes(nodesbygridpoint[i],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0) continue;	// find nodes within 1 grid point
+												
+		// skip if zero
+		//tmpnodeptr = &node[i];  // for debugging
+		//sameGPnode= &tmpnodeptr;
+
+		// loop over nodes on same gridpoint:
+		for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end() ; sameGPnode++ )
+		{
+
+			if (donenode[(*sameGPnode)->nodenum])
+				continue;  // skip if done
+			
+			if (( (*sameGPnode)->nodenum < dat->startnode) ||
+				( (*sameGPnode)->nodenum >= dat->endnode) )
+				 continue;    // skip if out of range of this thread
+
+			donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
+
+			// of these nodes, calculate euclidian dist
+
+			nodeposvec.x = (*sameGPnode)->x;	// get xyz of our node
+			nodeposvec.y = (*sameGPnode)->y;
+			nodeposvec.z = (*sameGPnode)->z;
+
+			for (vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); nearnode<recti_near_nodes[dat->threadnum].end() ; nearnode++ )
+			{
+				if ((*sameGPnode)==(*nearnode)) continue;  // skip if self
+				//if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
+				//	continue;  // skip if done opposite pair
+				
+				// this check should not be necessary?:
+
+				if (( (*sameGPnode)->nodenum < dat->startnode) ||
+					( (*sameGPnode)->nodenum >= dat->endnode) )
+					continue;    // skip if out of range of this thread  
+
+				xdist = (*nearnode)->x - nodeposvec.x;
+				ydist = (*nearnode)->y - nodeposvec.y;
+				zdist = (*nearnode)->z - nodeposvec.z;
+
+				distsqr = xdist*xdist + ydist*ydist + zdist*zdist;
+
+				if (distsqr < SQRT_ACCURACY_LOSS)
+				{	
+					continue;
+				}
+
+				//dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
+				
+				if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
+					{
+						// calc dist between nodes
+
+						dist = mysqrt(distsqr); 
+
+						if (dist > NODE_INCOMPRESSIBLE_RADIUS)
+						{
+							force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
+								(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * (dist-NODE_INCOMPRESSIBLE_RADIUS )) ;
+						}
+						else
+						{
+							force =  NODE_REPULSIVE_MAG ;
+						}  // fix force if below node incompressible distance
+
+						(*sameGPnode)->rep_force_vec[0].x -= force * (xdist/dist);
+						(*sameGPnode)->rep_force_vec[0].y -= force * (ydist/dist);
+						(*sameGPnode)->rep_force_vec[0].z -= force * (zdist/dist);
+
+						(*nearnode)->rep_force_vec[0].x += force * (xdist/dist);
+						(*nearnode)->rep_force_vec[0].y += force * (ydist/dist);
+						(*nearnode)->rep_force_vec[0].z += force * (zdist/dist);
+
+						if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
+						{
+                            						
+							// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
+							scale = (MYDOUBLE)NODE_INCOMPRESSIBLE_RADIUS / (MYDOUBLE)4.0*dist;  
+
+							xdist*=scale;	// these are the vector half components (in direction from i to j)
+							ydist*=scale;
+							zdist*=scale;   
+
+							(*sameGPnode)->repulsion_displacement_vec[0].x-=xdist;	// move the points
+							(*sameGPnode)->repulsion_displacement_vec[0].y-=ydist;
+							(*sameGPnode)->repulsion_displacement_vec[0].z-=zdist;
+
+							(*nearnode)->repulsion_displacement_vec[0].x+=xdist;
+							(*nearnode)->repulsion_displacement_vec[0].y+=ydist;
+							(*nearnode)->repulsion_displacement_vec[0].z+=zdist;
+
+						}
+				}
+
+			}
+		}
+	}
+return (void*) NULL;
+}
+
+int actin::findnearbynodes(int ournodenum, int adjgridpoints, int threadnum)
+{
+
+recti_near_nodes[threadnum].resize(0);
+nodes_on_same_gridpoint[threadnum].resize(0); 
+
+if (!node[ournodenum].polymer)
+		return 0;
+
+nodes *nodeptr, *startnodeptr;
+
+int gridx = node[ournodenum].gridx;
+int gridy = node[ournodenum].gridy;
+int gridz = node[ournodenum].gridz;
+
+if ((gridx < 0) || (gridx > GRIDSIZE) ||
+	(gridy < 0) || (gridy > GRIDSIZE) ||
+	(gridz < 0) || (gridz > GRIDSIZE))
+		return 0;
+
+int minx,miny,minz,maxx,maxy,maxz;
+
+minx = gridx-adjgridpoints;
+miny = gridy-adjgridpoints;
+minz = gridz-adjgridpoints;
+
+maxx = gridx+adjgridpoints;
+maxy = gridy+adjgridpoints;
+maxz = gridz+adjgridpoints;
+
+// truncate if out of grid bounds:
+
+if (minx < 0) minx = 0;
+if (miny < 0) miny = 0;
+if (minz < 0) minz = 0;
+
+if (maxx > GRIDSIZE) maxx = GRIDSIZE;
+if (maxy > GRIDSIZE) maxy = GRIDSIZE;
+if (maxz > GRIDSIZE) maxz = GRIDSIZE;
+
+// do adjgridpoints by adjgridpoints scan on grid
+
+for (int x = minx; x != maxx; x++)  
+	for (int y = miny; y != maxy; y++)
+		for (int z = minz; z != maxz; z++)
+		{
+		nodeptr=nodegrid[x][y][z];
+		startnodeptr=nodeptr;
+			if (nodeptr!=0) 
+			{
+				do
+				{
+					recti_near_nodes[threadnum].push_back(nodeptr);
+					nodeptr = nodeptr->nextnode;					
+				}
+				while (nodeptr!=startnodeptr);  //until back to start
+				
+			}
+		}
+
+	// nodes on same gridpoint:
+
+	nodeptr=nodegrid[gridx][gridy][gridz];
+	startnodeptr=nodeptr;
+	if (nodeptr!=0) 
+	{
+		do
+		{
+			nodes_on_same_gridpoint[threadnum].push_back(nodeptr);
+			nodeptr = nodeptr->nextnode;					
+		}
+		while (nodeptr!=startnodeptr);  //until back to start
+		
+	}
+
+	return (int) recti_near_nodes[threadnum].size();
+}
+
+inline int actin::dorepulsion(int node_i, int node_j, MYDOUBLE dist, int threadnum)
+{
+	if (node_i==node_j)
+		return 0;
+	
+
+	MYDOUBLE xcomp, ycomp, zcomp;
+	MYDOUBLE scale;
+
+	// node_i and node_j have come within ADJ_NODE_RANGE of one another
+	// (actually at 'dist' from one another)
+	// calculate repulsive force and exert on nodes
+
+    // eject nodes from repulsion shell
+
+	//if (distsqr > NODE_INCOMPRESSIBLE_RADIUS*NODE_INCOMPRESSIBLE_RADIUS) return 0;  // too far for repulsive force to have any effect
+
+	// MYDOUBLE dist = sqrt(distsqr);
+
+	xcomp=(node[node_j].x-node[node_i].x); 
+	ycomp=(node[node_j].y-node[node_i].y); 
+	zcomp=(node[node_j].z-node[node_i].z); 
+	
+	//dist = dist(xcomp,ycomp,zcomp);  // calc dist between nodes
+
+	// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
+	scale = (NODE_INCOMPRESSIBLE_RADIUS / 4)*dist;  
+
+	xcomp*=scale;	// these are the vector half components (in direction from i to j)
+	ycomp*=scale;
+	zcomp*=scale;   
+
+	node[node_i].repulsion_displacement_vec[threadnum].x-=xcomp;	// move the points
+	node[node_i].repulsion_displacement_vec[threadnum].y-=ycomp;
+	node[node_i].repulsion_displacement_vec[threadnum].z-=zcomp;
+
+	node[node_j].repulsion_displacement_vec[threadnum].x+=xcomp;
+	node[node_j].repulsion_displacement_vec[threadnum].y+=ycomp;
+	node[node_j].repulsion_displacement_vec[threadnum].z+=zcomp;
+
+
+	/*double a = node[node_i].repulsion_displacement_vec[threadnum].x;	// move the points
+	double b = node[node_i].repulsion_displacement_vec[threadnum].y;
+	double c = node[node_i].repulsion_displacement_vec[threadnum].z;
+
+	double d = node[node_j].repulsion_displacement_vec[threadnum].x;
+	double e = node[node_j].repulsion_displacement_vec[threadnum].y;
+	double f = node[node_j].repulsion_displacement_vec[threadnum].z;
+*/
+	//repulsedone[node_i][node_j]=true;
+
+	//cout << "repulsion called on thread "<< threadnum <<endl;
+	//cout.flush();
+
+/*
+	// force function:
+	force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_INCOMPRESSIBLE_RADIUS ) * dist;
+
+	xcomp=(node[node_i].x-node[node_j].x); 
+	ycomp=(node[node_i].y-node[node_j].y); 
+	zcomp=(node[node_i].z-node[node_j].z); 
+
+	// calculate force components
+	
+	node[node_i].rep_force_vec.x += force * xcomp;
+	node[node_i].rep_force_vec.y += force * ycomp;
+	node[node_i].rep_force_vec.z += force * zcomp;
+	//}
+*/
+	return 0;
+}
+
+int actin::applyforces(void)  // this just applys previously calculated forces (in dorepulsion())
+{
+
+	int numthreadnodes, start, end;
+
+	numthreadnodes = highestnodecount / NUM_THREADS;
+
+if (false) // (USE_THREADS)  // switch this off for now...
+	{
+		for (int i = 0; i < NUM_THREADS; i++)
+		{
+			start = i * numthreadnodes;
+			end = (i+1) * numthreadnodes;
+
+			applyforces_thread_data_array[i].startnode = start;
+			applyforces_thread_data_array[i].endnode = end;
+			applyforces_thread_data_array[i].threadnum = i;
+
+			if (i<NUM_THREADS-1)
+			{
+				applyforces_thread_data_array[i].endnode = end;
+			}
+			else
+			{	// put remainder in last thread (cludge for now)
+				applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+			};
+		}
+
+		// release thread blocks to start threads:
+	for (int i = 0; i < NUM_THREADS; i++)
+		{
+			sem_post(&applyforces_thread_go[i]);
+		}
+
+		// and wait 'till complete:
+	for (int i = 0; i < NUM_THREADS; i++)
+		{
+			sem_wait(&applyforces_data_done[i]);
+		}
+
+	}
+	else
+	{
+		for (int i=0; i<highestnodecount; i++)
+			{
+				for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
+				{
+					if (node[i].polymer)
+						node[i].applyforces(threadnum);
+				}
+			}
+	}
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+	if (node[i].polymer)
+		node[i].updategrid(); // move the point on the grid if need to
+	}
+	return 0;
+}
+
+void * actin::applyforcesthread(void* threadarg)
+{
+	struct thread_data *dat;
+	dat = (struct thread_data *) threadarg;
+
+	//cout << "Thread " << dat->threadnum << " started" << endl;
+	//cout.flush();
+
+	while (true)
+	{	
+
+		sem_wait(&applyforces_thread_go[dat->threadnum]);  // go only if released by main thread
+
+		//applyforcesdetectiondowork(dat);
+
+		// sum forces etc. over all threads
+		for (int i=dat->startnode; i<dat->endnode; i++)
+			{
+			for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
+			{
+				node[i].applyforces(threadnum);
+			}
+			//node[i].updategrid(); // move the point on the grid if need to
+		}
+
+		sem_post(&applyforces_data_done[dat->threadnum]);  // release main thread block waiting for data
+
+	}  
+
+	return (void*) NULL;
+}
+
+int actin::linkforces(bool sumforces)
+{
+	MYDOUBLE xdist, ydist, zdist, scale,dist;
+	MYDOUBLE force;
+	vect nodeposvec;
+	
+	// remove the links for ones that were broken last time
+	for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
+	{
+		linkremovefrom[i]->removelink(linkremoveto[i]);  // remove the back link
+		linkremoveto[i]->removelink(linkremovefrom[i]);  // and remove from the list
+	}
+
+	// reset the lists of broken links:
+	linkremovefrom.resize(0);
+	linkremoveto.resize(0);
+	//linkremovefrom.clear();
+	//linkremoveto.clear();
+	
+	int numthreadnodes, start, end;
+
+	numthreadnodes = highestnodecount / NUM_THREADS;
+
+if (USE_THREADS)
+	{
+		for (int i = 0; i < NUM_THREADS; i++)
+		{
+			start = i * numthreadnodes;
+			end = (i+1) * numthreadnodes;
+
+			linkforces_thread_data_array[i].startnode = start;
+			linkforces_thread_data_array[i].endnode = end;
+			linkforces_thread_data_array[i].threadnum = i;
+
+			if (i<NUM_THREADS-1)
+			{
+				linkforces_thread_data_array[i].endnode = end;
+			}
+			else
+			{	// put remainder in last thread (cludge for now)
+				linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+			};
+		}
+
+	// release thread blocks to start threads:
+	for (int i = 0; i < NUM_THREADS; i++)
+		{
+			sem_post(&linkforces_thread_go[i]);
+		}
+
+	}
+	else
+	{
+		// go through all nodes
+		for (int n=0; n<highestnodecount; n++)
+		{  	
+			if (!node[n].polymer)
+				continue;
+
+			nodeposvec.x = node[n].x;	// get xyz of our node
+			nodeposvec.y = node[n].y;
+			nodeposvec.z = node[n].z;
+
+			// go through links for each node
+			for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
+			{	 
+				if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
+				{			
+					xdist = nodeposvec.x - i->linkednodeptr->x;
+					ydist = nodeposvec.y - i->linkednodeptr->y;
+					zdist = nodeposvec.z - i->linkednodeptr->z;
+
+					dist = calcdist(xdist,ydist,zdist);
+
+					if (dist < 0)
+						continue;
+
+					force = i->getlinkforces(dist);
+
+					if (i->broken)
+					{	// broken link: store which ones to break:
+						linkremovefrom.push_back(&node[n]);
+						linkremoveto.push_back(i->linkednodeptr);
+					}
+					else
+					{
+						scale = 1/dist;
+
+						if (sumforces)
+						{ //used to calculate stored link energy
+							node[n].link_force_vec[0].x += fabs(force);
+							i->linkednodeptr->link_force_vec[0].x += fabs(force);
+						}
+						else
+						{
+						node[n].link_force_vec[0].x += force * scale * xdist;
+						node[n].link_force_vec[0].y += force * scale * ydist;
+						node[n].link_force_vec[0].z += force * scale * zdist;
+
+						i->linkednodeptr->link_force_vec[0].x -= force * scale * xdist;
+						i->linkednodeptr->link_force_vec[0].y -= force * scale * ydist;
+						i->linkednodeptr->link_force_vec[0].z -= force * scale * zdist;
+						}
+
+					}
+				}
+			}
+		}
+	}
+
+
+
+	return 0;
+}
+
+
+void * actin::linkforcesthread(void* threadarg)
+{
+	struct thread_data *dat;
+	dat = (struct thread_data *) threadarg;
+
+	MYDOUBLE xdist, ydist, zdist, dist;
+	MYDOUBLE force;
+	vect nodeposvec;
+
+	//cout << "Thread " << dat->threadnum << " started" << endl;
+	//cout.flush();
+
+	while (true)
+	{	
+
+		sem_wait(&linkforces_thread_go[dat->threadnum]);  // go only if released by main thread
+
+		for (int n=dat->startnode; n<dat->endnode; n++)
+			{  	
+				if (!node[n].polymer)
+					continue;
+				
+				nodeposvec.x = node[n].x;	// get xyz of our node
+				nodeposvec.y = node[n].y;
+				nodeposvec.z = node[n].z;
+
+				// go through links for each node
+				for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
+				{	 
+					if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
+					{			
+						xdist = nodeposvec.x - i->linkednodeptr->x;
+						ydist = nodeposvec.y - i->linkednodeptr->y;
+						zdist = nodeposvec.z - i->linkednodeptr->z;
+
+						dist = calcdist(xdist,ydist,zdist);
+
+						if (dist < 0)
+							continue;
+
+						force = i->getlinkforces(dist);
+
+						if (i->broken)
+						{	// broken link
+							pthread_mutex_lock(&linkstoremove_mutex);  // lock the mutex
+							linkremovefrom.push_back(&node[n]);
+							linkremoveto.push_back(i->linkednodeptr);
+							pthread_mutex_unlock(&linkstoremove_mutex);  //unlock
+						}
+						else
+						{
+							node[n].link_force_vec[dat->threadnum].x += force * (xdist/dist);
+							node[n].link_force_vec[dat->threadnum].y += force * (ydist/dist);
+							node[n].link_force_vec[dat->threadnum].z += force * (zdist/dist);
+						}
+					}
+				}
+			}
+
+		sem_post(&linkforces_data_done[dat->threadnum]);  // release main thread block waiting for data
+
+	}  
+
+	return (void*) NULL;
+}
+
+
+int actin::setnodecols(void)
+{
+
+	MYDOUBLE maxcol,mincol;
+	maxcol = 0;
+	mincol = 0;	
+
+	linkforces(true);
+
+	MYDOUBLE val;
+
+	maxcol = (MYDOUBLE) 0.001;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		val = mysqrt(node[i].link_force_vec[0].x);
+	
+		if ((node[i].polymer) && (!node[i].listoflinks.empty()) && (val > maxcol))
+		{
+			//maxcol = node[i].nodelinksbroken;
+			maxcol = val;
+		}
+	}
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		val = mysqrt(node[i].link_force_vec[0].x);
+		//node[i].colour.setcol((MYDOUBLE)node[i].creation_iter_num/(MYDOUBLE)TOTAL_ITERATIONS);
+		//node[i].colour.setcol(((MYDOUBLE)node[i].nodelinksbroken-mincol)/(maxcol-mincol));
+		if ((node[i].polymer)&& (!node[i].listoflinks.empty()) && val > 0.001)
+			{
+				node[i].colour.setcol((val-mincol)/(maxcol-mincol));
+			}
+		else
+		{
+			node[i].colour.setcol(0);
+		}
+		for (int threadnum=0; threadnum < NUM_THREADS; threadnum++)
+				{  // clear the dummy values
+					node[i].link_force_vec[threadnum].x = 0;
+					node[i].link_force_vec[threadnum].y = 0;
+					node[i].link_force_vec[threadnum].z = 0;
+				}
+	}
+
+
+	//for (int i=0; i<highestnodecount; i++)
+	//{
+	//node[i].colour.setcol((MYDOUBLE)node[i].creation_iter_num/(MYDOUBLE)iteration_num);
+	//}
+/*
+	MYDOUBLE maxcol,mincol;
+	maxcol = 1;
+	mincol = 0;	
+	MYDOUBLE val;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		val = (MYDOUBLE)node[i].nodelinksbroken;
+		if ((node[i].polymer) && (val > maxcol))
+		{
+			maxcol = val;
+		}
+	} 
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+	node[i].colour.setcol((MYDOUBLE)node[i].nodelinksbroken/maxcol);
+	}
+
+	for (int i=0; i<highestnodecount;i++)
+	{
+		//i = (int) ((MYDOUBLE) highestnodecount * ( (MYDOUBLE) rand()) / (MYDOUBLE)RAND_MAX);
+		if (i%300==0)
+		{
+		node[i].colour.setcol((MYDOUBLE)i/(MYDOUBLE)highestnodecount);
+		for (vector <links>::iterator l=node[i].listoflinks.begin(); l<node[i].listoflinks.end() ; l++ )
+			{	 
+				l->linkednodeptr->colour.setcol((MYDOUBLE)i/(MYDOUBLE)highestnodecount);
+			}
+		}
+		else
+		{
+		node[i].colour.r = node[i].colour.g = node[i].colour.b = (MYDOUBLE)0.4;
+		}
+	}
+*/
+	return 0;
+}
+
+int actin::savebmp(int filenum, projection proj)
+{
+
+// bitmap headers etc (see microsoft website):
+
+// define data structures for bitmap header:
+
+#ifdef _WIN32
+	#define QUADWORD __int64
+#else 
+	#define QUADWORD long long
+#endif
+
+#define DWORD unsigned int
+#define LONG unsigned int
+#define WORD unsigned short int
+#define BYTE unsigned char
+#define FOURCC unsigned int
+
+#pragma pack(push,1)  // align the structs to byte boundaries
+
+typedef struct tagRGBQUAD {
+	BYTE    rgbBlue; 
+	BYTE    rgbGreen; 
+	BYTE    rgbRed; 
+	BYTE    rgbReserved; 
+} RGBQUAD; 
+
+typedef struct tagRGB {
+	BYTE    B; 
+	BYTE    G; 
+	BYTE    R; 
+} RGB; 
+
+
+typedef struct tagBITMAPFILEHEADER { 
+	WORD    bfType; 
+	DWORD   bfSize; 
+	WORD    bfReserved1; 
+	WORD    bfReserved2; 
+	DWORD   bfOffBits; 
+} BITMAPFILEHEADER, *PBITMAPFILEHEADER; 
+
+typedef struct tagBITMAPINFOHEADER{
+	DWORD  biSize; 
+	LONG   biWidth; 
+	LONG   biHeight; 
+	WORD   biPlanes; 
+	WORD   biBitCount; 
+	DWORD  biCompression; 
+	DWORD  biSizeImage; 
+	LONG   biXPelsPerMeter; 
+	LONG   biYPelsPerMeter; 
+	DWORD  biClrUsed; 
+	DWORD  biClrImportant; 
+} BITMAPINFOHEADER, *PBITMAPINFOHEADER; 
+
+typedef struct tagBITMAPINFO { 
+  BITMAPINFOHEADER bmiHeader; 
+  RGBQUAD          bmiColors[1]; 
+} BITMAPINFO, *PBITMAPINFO; 
+
+#pragma pack(pop)
+
+
+
+	char filename[255];
+
+	if (proj == xaxis)  // choose projection
+	{
+		sprintf ( filename , "x_proj_%05i.bmp", filenum );
+	}
+	else if (proj == yaxis)
+	{
+		sprintf ( filename , "y_proj_%05i.bmp", filenum );
+	}
+	else 
+	{
+		sprintf ( filename , "z_proj_%05i.bmp", filenum );
+	}
+
+	ofstream outbmpfile(filename, ios::out | ios::binary | ios::trunc);
+	if (!outbmpfile) 
+	{ cout << "Unable to open file '" << filename << "' for output"; return 1;}
+
+	MYDOUBLE minx, miny, minz;
+	MYDOUBLE maxx, maxy, maxz; 
+	MYDOUBLE dimx, dimy, dimz;
+
+	int beadmaxx, beadmaxy;
+	int beadminx, beadminy;
+	//MYDOUBLE centerx, centery, centerz;
+	
+	int width = 800;
+	int height = 600;
+
+	int x,y;
+
+	MYDOUBLE gaussmax = (MYDOUBLE) 0.4;  // full extent of gaussian radius -  fwhm is 2/3 this
+
+	MYDOUBLE imageRmax, imageGmax, imageBmax;
+
+	imageR.resize(width);
+	imageG.resize(width);
+	imageB.resize(width);
+
+	for (x = 0; x<width; x++)
+		{
+			imageR[x].resize(height);
+			imageG[x].resize(height);
+			imageB[x].resize(height);
+
+			for (y = 0; y<height; y++)
+			{
+				imageR[x][y]=0;
+				imageG[x][y]=0;
+				imageB[x][y]=0;
+			}
+		}
+
+	minx = miny = minz = 0;
+	maxx = maxy = maxz = 0;
+
+	// determine size
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if ((node[i].polymer) && (!node[i].listoflinks.empty()))
+		{
+			if (minx > node[i].x) minx = node[i].x;
+			if (miny > node[i].y) miny = node[i].y;
+			if (minz > node[i].z) minz = node[i].z;
+
+			if (maxx < node[i].x) maxx = node[i].x;
+			if (maxy < node[i].y) maxy = node[i].y;
+			if (maxz < node[i].z) maxz = node[i].z;
+
+		}
+	} 
+
+	//dimx = mymax(((maxx - minx) + 4 * gaussmax),12);
+	//dimy = mymax(((maxy - miny) + 4 * gaussmax),12);
+	//dimz = mymax(((maxz - minz) + 4 * gaussmax),12);
+
+ 	dimx = dimy = dimz = VIEW_HEIGHT;  //these are the x,y and z scales (should be equal)
+
+
+	// choose axis
+
+	MYDOUBLE val;
+
+	MYDOUBLE meanx, meany, meanz;
+
+	Dbl1d linkforces;
+
+	linkforces.reserve(MAXNODES);
+
+	meanx = meany = meanz = 0.0;
+	
+	for (int i=0; i<highestnodecount; i++)
+	{
+		val =0;
+		for (int threadnum=0; threadnum < NUM_THREADS; threadnum++)
+		{
+			val+= sqrt(node[i].link_force_vec[threadnum].x*node[i].link_force_vec[threadnum].x +
+					node[i].link_force_vec[threadnum].y*node[i].link_force_vec[threadnum].y +
+					node[i].link_force_vec[threadnum].z*node[i].link_force_vec[threadnum].z);
+		}
+		if ((node[i].polymer) && (!node[i].listoflinks.empty()))
+		{
+			//maxcol = node[i].nodelinksbroken;
+			linkforces[i] = val;
+		}
+		meanx+= node[i].x;
+		meany+= node[i].y;
+		meanz+= node[i].z;
+	}
+
+	meanx/=highestnodecount;
+	meany/=highestnodecount;
+	meanz/=highestnodecount;
+
+	// temp: reset center:
+	meanx = -nucleation_object->position.x; 
+	meany = -nucleation_object->position.y; 
+	meanz = -nucleation_object->position.z; 
+	
+	//meanx = (maxx+minx)/2;
+	//meany = (maxy+miny)/2;
+	//meanz = (maxz+minz)/2;
+
+	// precalculate gaussian
+
+	Dbl2d GaussMat;
+
+	const int xgmax = (int)((height *( ((gaussmax)/dimy) ))-0.5);  // was width
+	const int ygmax = (int)((height *( ((gaussmax)/dimz) ))-0.5);
+
+	int xg,yg;
+
+	GaussMat.resize(2*xgmax);
+
+	for(xg = -xgmax; xg<xgmax; xg++)
+	{
+		GaussMat[xg+xgmax].resize(2*ygmax);
+		for(yg = -ygmax; yg<ygmax; yg++)
+		{
+			if ((xg*xg+yg*yg)>(xgmax*ygmax))
+				continue;  // don't do corners
+
+			GaussMat[xg+xgmax][yg+ygmax] 
+					= exp(-3*((MYDOUBLE)(xg*xg+yg*yg))/(MYDOUBLE)(xgmax*ygmax));
+		}
+	}
+
+	
+	if (proj == xaxis)  // choose projection
+		{
+			beadmaxx =(int)(((height *(((  2*RADIUS - meany)/dimy) ))-0.5) +  width/2);
+			beadmaxy =(int)(((height *(((  2*RADIUS - meanz)/dimz) ))-0.5) +  height/2);
+			beadminx =(int)(((height *(((- 2*RADIUS - meany)/dimy) ))-0.5) +  width/2);
+			beadminy =(int)(((height *(((- 2*RADIUS - meanz)/dimz) ))-0.5) +  height/2);
+		}
+		else if (proj == yaxis)
+		{
+			beadmaxx =(int)(((height *(((  2*RADIUS - meanx)/dimx) ))-0.5) +  width/2);
+			beadmaxy =(int)(((height *(((  2*RADIUS - meanz)/dimz) ))-0.5) +  height/2);
+			beadminx =(int)(((height *(((- 2*RADIUS - meanx)/dimx) ))-0.5) +  width/2);
+			beadminy =(int)(((height *(((- 2*RADIUS - meanz)/dimz) ))-0.5) +  height/2);
+		}
+		else 
+		{
+			beadmaxx =(int)(((height *(((  2*RADIUS - meanx)/dimx) ))-0.5) +  width/2);
+			beadmaxy =(int)(((height *(((  2*RADIUS - meany)/dimy) ))-0.5) +  height/2);
+			beadminx =(int)(((height *(((- 2*RADIUS - meanz)/dimx) ))-0.5) +  width/2);
+			beadminy =(int)(((height *(((- 2*RADIUS - meany)/dimy) ))-0.5) +  height/2);
+		}
+
+	int movex=0;
+	int movey=0;
+
+	if (beadmaxx>width)
+		movex=-(beadmaxx-width);
+	if (beadmaxy>height)
+		movey=-(beadmaxy-height);
+	if (beadminx<0)
+		movex=-(beadminx);
+	if (beadminy<0)
+		movey=-(beadminy);
+
+
+//int harbingers = 0;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if (!node[i].polymer)
+			continue;
+
+		if (proj == xaxis)  // choose projection
+		{
+			x = (int)(((height *(((node[i].y - meany)/dimy) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((node[i].z - meanz)/dimz) ))-0.5) + height/2);
+		}
+		else if (proj == yaxis)
+		{
+			x = (int)(((height *(((node[i].x - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((node[i].z - meanz)/dimz) ))-0.5) + height/2);
+		}
+		else 
+		{
+			x = (int)(((height *(((node[i].x - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((node[i].y - meany)/dimy) ))-0.5) + height/2);
+		}
+
+		x+=movex;  // displace to bring bead back in bounds
+		y+=movey;
+
+		if ((x<0) || (x>=width- (2*xgmax+1)) ||
+			(y<0) || (y>=height-(2*ygmax+1)))  // only plot if point in bounds
+		{
+			//cout << "point out of bounds " << x << "," << y << endl;
+		}
+		else
+		{
+			for(xg = -xgmax; xg<xgmax; xg++)
+				for(yg = -ygmax; yg<ygmax; yg++)
+				{
+					if ((xg*xg+yg*yg)>(xgmax*ygmax))
+						continue;  // don't do corners
+
+					//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
+					//	node[i].nodelinksbroken * GaussMat[xg+xgmax][yg+ygmax];
+					//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
+					//		linkforces[i] * GaussMat[xg+xgmax][yg+ygmax];
+					imageG[x+xg+xgmax][y+yg+ygmax]+=
+							1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
+					//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
+					//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
+					//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
+					//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
+				}
+		}
+//	if (node[i].harbinger)
+//		harbingers++;
+	}
+
+//cout << endl << "Harbingers:" << harbingers << endl;
+
+	// normalize image
+
+	imageRmax = imageGmax = imageBmax = 50;  // prevent over sensitivity
+	imageRmax = 1;  // max sensitivity for red channel
+
+	for (y = 0; y<height; y++)
+		{
+			for (x = 0; x<width; x++)
+			{
+				if (imageR[x][y]>imageRmax)
+						imageRmax=imageR[x][y];
+				if (imageG[x][y]>imageGmax)
+						imageGmax=imageG[x][y];
+				if (imageB[x][y]>imageBmax)
+						imageBmax=imageB[x][y];
+			}
+		}
+
+	
+	// the header for saving the bitmaps...
+
+	BITMAPFILEHEADER *fileHeader;
+	BITMAPINFO       *fileInfo;
+
+	fileHeader = (BITMAPFILEHEADER*)calloc(1, sizeof( BITMAPFILEHEADER ));
+	fileInfo = (BITMAPINFO*)calloc(1, sizeof( BITMAPINFO ) + 256 * sizeof(RGBQUAD));
+
+	fileHeader->bfType = 0x4d42;
+	fileHeader->bfSize = (DWORD)(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFO) + (width * height* 3));
+	fileHeader->bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFO) + (256*sizeof(RGBQUAD));
+
+	fileInfo->bmiHeader.biSize          = sizeof(BITMAPINFOHEADER);
+	fileInfo->bmiHeader.biWidth         = width;
+	fileInfo->bmiHeader.biHeight        = height;
+	fileInfo->bmiHeader.biPlanes        = 1;
+	//fileInfo->bmiHeader.biBitCount      = 8;
+	fileInfo->bmiHeader.biBitCount      = 24;
+	fileInfo->bmiHeader.biCompression   = 0;  // BI_RGB = 0
+	fileInfo->bmiHeader.biXPelsPerMeter = 1000;
+	fileInfo->bmiHeader.biYPelsPerMeter = 1000;
+
+	for (int i=0;i<=255;i++)
+	{ // the bitmap palette  (not used for 24 bit, of course)
+		fileInfo->bmiColors[i].rgbBlue = (BYTE) i;
+		fileInfo->bmiColors[i].rgbGreen = (BYTE) i;
+		fileInfo->bmiColors[i].rgbRed = (BYTE) i;
+		fileInfo->bmiColors[i].rgbReserved = (BYTE) 0;
+		}
+
+	// save headers
+
+	outbmpfile.write((char*)fileHeader,sizeof(BITMAPFILEHEADER));
+	outbmpfile.write((char*)fileInfo,sizeof(BITMAPINFO) + 256*sizeof(RGBQUAD));
+
+	// re-scale for byte output and save image data
+
+	RGB *line;
+	line = new RGB[width];
+
+	// write out the data, line by line (note: y is backwards)
+	for (y = (height-1); y>=0; y--)
+		{
+		//outbmpfile.write(picbuff + (width*y), width);
+		for (x = 0; x<width; x++)
+			{
+			line[x].B=(unsigned char)(255 * (MYDOUBLE)(imageB[x][y])/(MYDOUBLE)imageBmax);
+			line[x].G=(unsigned char)(255 * (MYDOUBLE)(imageG[x][y])/(MYDOUBLE)imageGmax);
+			line[x].R=(unsigned char)(255 * (MYDOUBLE)(imageR[x][y])/(MYDOUBLE)imageRmax);
+			}
+			outbmpfile.write((char*)line,width*3);
+		}
+
+	outbmpfile.close();
+
+	delete [] line;
+	free(fileHeader);
+	free(fileInfo);
+
+	char command1[2048], command2[2048];
+	
+	char drawstring[2048] = "";
+	char drawtemp[256];
+
+
+	// bead center:
+
+	int beadcenterx,beadcentery;
+
+	if (proj == xaxis)  // choose projection
+	{
+	beadcenterx = xgmax+movex + (int)(((height *(((- meany)/dimy) ))-0.5) +  width/2); // was width
+	beadcentery = xgmax+movey + (int)(((height *(((- meanz)/dimz) ))-0.5) + height/2);
+
+	x = xgmax+movex + (int)(((height *(((RADIUS - meany)/dimy) ))-0.5) +  width/2); // was width
+	y = ygmax+movey + (int)(((height *(((- meanz)/dimz) ))-0.5) + height/2);
+	}
+	else if (proj == yaxis)
+	{
+	beadcenterx = xgmax+movex + (int)(((height *(((- meanx)/dimx) ))-0.5) +  width/2); // was width
+	beadcentery = xgmax+movey + (int)(((height *(((- meanz)/dimz) ))-0.5) + height/2);
+
+	x = xgmax+movex + (int)(((height *(((RADIUS - meanx)/dimx) ))-0.5) +  width/2); // was width
+	y = ygmax+movey + (int)(((height *(((       - meanz)/dimz) ))-0.5) + height/2);
+	}
+	else 
+	{
+	beadcenterx = xgmax+movex + (int)(((height *(((- meanx)/dimx) ))-0.5) +  width/2); // was width
+	beadcentery = xgmax+movey + (int)(((height *(((- meany)/dimy) ))-0.5) + height/2);
+
+	x = xgmax+movex + (int)(((height *(((RADIUS - meanx)/dimx) ))-0.5) +  width/2); // was width
+	y = ygmax+movey + (int)(((height *(((- meany)/dimy) ))-0.5) + height/2);
+	}
+
+sprintf(drawtemp, "circle %i,%i %i,%i ",beadcenterx,beadcentery,x,beadcentery);
+strcat(drawstring,drawtemp);
+
+MYDOUBLE xscale,yscale;
+int lineoriginx,lineoriginy;
+
+MYDOUBLE radial_rep_tot_x=(MYDOUBLE) 0.01;
+MYDOUBLE radial_rep_tot_y=(MYDOUBLE) 0.01;
+MYDOUBLE radial_rep_tot_z=(MYDOUBLE) 0.01;
+
+MYDOUBLE radial_rep_mean_x,radial_rep_mean_y,radial_rep_mean_z;
+
+for (int i=0; i<RADIAL_SEGMENTS; i++)
+{
+	nucleation_object->radial_rep_distrib_x[i]/=InterRecordIterations;
+	nucleation_object->radial_rep_distrib_y[i]/=InterRecordIterations;
+	nucleation_object->radial_rep_distrib_z[i]/=InterRecordIterations;
+}
+
+for (int i=0; i<RADIAL_SEGMENTS; i++)
+{
+	radial_rep_tot_x+=nucleation_object->radial_rep_distrib_x[i];
+	radial_rep_tot_y+=nucleation_object->radial_rep_distrib_y[i];
+	radial_rep_tot_z+=nucleation_object->radial_rep_distrib_z[i];
+}
+
+radial_rep_mean_x = radial_rep_tot_x / (MYDOUBLE) RADIAL_SEGMENTS;
+radial_rep_mean_y = radial_rep_tot_y / (MYDOUBLE) RADIAL_SEGMENTS;
+radial_rep_mean_z = radial_rep_tot_z / (MYDOUBLE) RADIAL_SEGMENTS;
+
+	for (int i=0; i<RADIAL_SEGMENTS; i++)
+	{
+
+		//cout << nucleation_object->radial_rep_distrib_x[i] << " " ;
+		xscale = RADIUS * -sin((2*PI*i/(MYDOUBLE)RADIAL_SEGMENTS));
+		yscale = RADIUS *  cos((2*PI*i/(MYDOUBLE)RADIAL_SEGMENTS));
+
+		if (proj == xaxis)  // choose projection
+		{
+			lineoriginx = xgmax+movex + (int)(((height *(((xscale - meany)/dimy) ))-0.5) +  width/2); // was width
+			lineoriginy = ygmax+movey + (int)(((height *(((yscale - meanz)/dimz) ))-0.5) + height/2);
+
+			x = xgmax+movex + (int)(((height *(((((-nucleation_object->radial_rep_distrib_x[i])*100+1)* xscale - meany)/dimy) ))-0.5) +  width/2); // was width
+			y = ygmax+movey + (int)(((height *(((((-nucleation_object->radial_rep_distrib_x[i])*100+1)* yscale - meanz)/dimz) ))-0.5) + height/2);
+		}
+		else if (proj == yaxis)
+		{
+			lineoriginx = xgmax+movex + (int)(((height *(((xscale - meanx)/dimx) ))-0.5) +  width/2); // was width
+			lineoriginy = ygmax+movey + (int)(((height *(((yscale - meanz)/dimz) ))-0.5) + height/2);
+
+			x = xgmax+movex + (int)(((height *(((((-nucleation_object->radial_rep_distrib_y[i])*100+1)* xscale - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = ygmax+movey + (int)(((height *(((((-nucleation_object->radial_rep_distrib_y[i])*100+1)* yscale - meanz)/dimz) ))-0.5) + height/2);
+		}
+		else 
+		{
+			lineoriginx = xgmax+movex + (int)(((height *(((xscale - meanx)/dimx) ))-0.5) +  width/2); // was width
+			lineoriginy = ygmax+movey + (int)(((height *(((yscale - meany)/dimy) ))-0.5) + height/2);
+
+			x = xgmax+movex + (int)(((height *(((((-nucleation_object->radial_rep_distrib_z[i])*100+1)* xscale - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = ygmax+movey + (int)(((height *(((((-nucleation_object->radial_rep_distrib_z[i])*100+1)* yscale - meany)/dimy) ))-0.5) + height/2);
+		}
+
+		sprintf(drawtemp, "line %i,%i %i,%i ",lineoriginx,lineoriginy,x,y);
+		strcat(drawstring,drawtemp);
+	}
+
+	int scalebarlength;
+	scalebarlength = (int)(height * 1.0 /dimx);
+
+	if (proj == xaxis)  // call imagemagick to write text on image
+	{
+		sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
+		sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" x_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+	}
+	else if (proj == yaxis)
+	{
+		sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
+		sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" y_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+	}
+	else 
+	{
+		sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
+		sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" z_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+	}
+	
+
+	//cout << endl << command1 << endl;
+	system(command1);
+	system(command2);
+	
+	for (int i=0; i<RADIAL_SEGMENTS; i++)
+	{
+		nucleation_object->radial_rep_distrib_x[i]*=InterRecordIterations;
+		nucleation_object->radial_rep_distrib_y[i]*=InterRecordIterations;
+		nucleation_object->radial_rep_distrib_z[i]*=InterRecordIterations;
+	}
+
+	return filenum;
+}
+
+int actin::squash(MYDOUBLE thickness)
+{
+	// squash with 'coverslip'
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if (node[i].x > thickness/2)
+			node[i].x = thickness/2;
+
+		if (node[i].x < -thickness/2)
+			node[i].x = -thickness/2;
+	}
+
+	return 0;
+}
+
+int actin::repulsiveforces(void)
+{
+	MYDOUBLE xdist, ydist, zdist, dist;
+	MYDOUBLE force, distsqr;
+	vect nodeposvec;
+	
+	int numthreadnodes, start, end;
+
+	numthreadnodes = highestnodecount / NUM_THREADS;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		repdonenode[i] = false;
+	}
+
+if (USE_THREADS)
+	{
+		for (int i = 0; i < NUM_THREADS; i++)
+		{
+			start = i * numthreadnodes;
+			end = (i+1) * numthreadnodes;
+
+			collision_thread_data_array[i].startnode = start;
+			collision_thread_data_array[i].endnode = end;
+			collision_thread_data_array[i].threadnum = i;
+
+			if (i<NUM_THREADS-1)
+			{
+				collision_thread_data_array[i].endnode = end;
+			}
+			else
+			{	// put remainder in last thread (cludge for now)
+				collision_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+			}
+		}
+
+		// release thread blocks to start threads:
+	for (int i = 0; i < NUM_THREADS; i++)
+		{
+//			sem_post(&compressfiles_thread_go[i]);
+		}
+
+	}
+	else
+	{
+		// go through all nodes
+		for (int i=0; i<highestnodecount; i++)
+		{  	
+			if ((!node[i].polymer) || (node[i].harbinger))
+				continue;  // no forces act on harbingers (or depolymerized nodes)
+
+			if (findnearbynodes(nodesbygridpoint[i],NODE_REPULSIVE_RANGE_GRIDSEARCH,0)==0) continue;	// find nodes within 1 grid point
+												// skip if zero
+			//tmpnodeptr = &node[i];  // for debugging
+			//sameGPnode= &tmpnodeptr;
+
+			// loop over nodes on same gridpoint:
+			for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[0].begin(); sameGPnode<nodes_on_same_gridpoint[0].end() ; sameGPnode++ )
+			{
+				if ((!(*sameGPnode)->polymer) || ((*sameGPnode)->harbinger))
+				continue;  // no forces act on harbingers (or depolymerized nodes)
+
+				for (vector <nodes*>::iterator nearnode=recti_near_nodes[0].begin(); nearnode<recti_near_nodes[0].end() ; nearnode++ )
+				{
+					if (((*sameGPnode)==(*nearnode)) || (repdonenode[(*sameGPnode)->nodenum]==true))
+						 continue;  // skip if self or if done
+					
+					// this check should not be necessary?:
+
+					xdist = (*nearnode)->x - (*sameGPnode)->x;
+					ydist = (*nearnode)->y - (*sameGPnode)->y;
+					zdist = (*nearnode)->z - (*sameGPnode)->z;
+
+					distsqr = xdist*xdist + ydist*ydist + zdist*zdist;
+
+					if (distsqr < SQRT_ACCURACY_LOSS)
+					{	
+						repdonenode[(*sameGPnode)->nodenum] = true;  // mark node as done
+						continue;
+					}
+
+					if (( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE) &&
+						 (distsqr > NODE_INCOMPRESSIBLE_RADIUS*NODE_INCOMPRESSIBLE_RADIUS))
+								// must be between NODE_INCOMPRESSIBLE_RANGE and NODE_INCOMPRESSIBLE_RADIUS
+					{
+						dist = calcdist(xdist,ydist,zdist);  // calc dist between nodes
+
+						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
+							(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * dist) ;
+
+						(*sameGPnode)->rep_force_vec[0].x -= force * (xdist/dist);
+						(*sameGPnode)->rep_force_vec[0].y -= force * (ydist/dist);
+						(*sameGPnode)->rep_force_vec[0].z -= force * (zdist/dist);
+
+					}
+
+					repdonenode[(*sameGPnode)->nodenum] = true;  // mark node as done
+				}
+			}
+			}
+	
+	}
+	return 0;
+}
+void * actin::repulsiveforcesthread(void* threadarg)
+{
+	struct thread_data *dat;
+	dat = (struct thread_data *) threadarg;
+
+	MYDOUBLE xdist, ydist, zdist;
+	MYDOUBLE distsqr, dist, force;
+	vect nodeposvec;
+
+	//cout << "Thread " << dat->threadnum << " started" << endl;
+	//cout.flush();
+
+	while (true)
+	{	
+
+//		sem_wait(&compressfiles_thread_go[dat->threadnum]);  // go only if released by main thread
+
+		//applyforcesdetectiondowork(dat);
+
+		for (int i=dat->startnode; i<dat->endnode; i++)
+			{  	
+			if ((!node[i].polymer) || (node[i].harbinger))
+				continue;  // no forces act on harbingers (or depolymerized nodes)
+
+			if (findnearbynodes(nodesbygridpoint[i],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum+NUM_THREADS)==0) continue;	// find nodes within 1 grid point
+												// skip if zero
+			//tmpnodeptr = &node[i];  // for debugging
+			//sameGPnode= &tmpnodeptr;
+
+			// loop over nodes on same gridpoint:
+			for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum+NUM_THREADS].begin(); sameGPnode<nodes_on_same_gridpoint[dat->threadnum+NUM_THREADS].end() ; sameGPnode++ )
+			{
+				if (( (*sameGPnode)->nodenum < dat->startnode) ||
+					( (*sameGPnode)->nodenum >= dat->endnode) )
+					continue;    // skip if out of range of this thread
+
+				// of these nodes, calculate euclidian dist
+
+				nodeposvec.x = (*sameGPnode)->x;	// get xyz of our node
+				nodeposvec.y = (*sameGPnode)->y;
+				nodeposvec.z = (*sameGPnode)->z;
+
+				for (vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); nearnode<recti_near_nodes[dat->threadnum].end() ; nearnode++ )
+				{
+					if ((*sameGPnode)==(*nearnode)) continue;  // skip if self
+					//if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
+					//	continue;  // skip if done opposite pair
+					
+					// this check should not be necessary?:
+
+					if (( (*sameGPnode)->nodenum < dat->startnode) ||
+						( (*sameGPnode)->nodenum >= dat->endnode) )
+						continue;    // skip if out of range of this thread  
+
+					xdist = (*nearnode)->x - nodeposvec.x;
+					ydist = (*nearnode)->y - nodeposvec.y;
+					zdist = (*nearnode)->z - nodeposvec.z;
+
+					distsqr = xdist*xdist + ydist*ydist + zdist*zdist;
+
+					if (distsqr < SQRT_ACCURACY_LOSS)
+					{	
+						repdonenode[(*sameGPnode)->nodenum] = true;  // mark node as done
+						continue;
+					}
+
+					if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
+					{
+						dist = calcdist(xdist,ydist,zdist);  // calc dist between nodes
+
+						force =  NODE_REPULSIVE_MAG 
+						- (NODE_REPULSIVE_MAG / (NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) ) * dist;
+
+						(*sameGPnode)->rep_force_vec[dat->threadnum].x += force * (xdist/dist);
+						(*sameGPnode)->rep_force_vec[dat->threadnum].y += force * (ydist/dist);
+						(*sameGPnode)->rep_force_vec[dat->threadnum].z += force * (zdist/dist);
+
+					}
+
+					repdonenode[(*sameGPnode)->nodenum] = true;  // mark node as done
+				}
+			}
+			}
+		}
+
+//		sem_post(&compressfiles_data_done[dat->threadnum]);  // release main thread block waiting for data
+
+	  
+	return (void*) NULL;
+}
+
+int actin::sortnodesbygridpoint(void)
+{
+	nodes* nodeptr, *startnodeptr;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		donenode[i] = false;
+	}
+
+	nodesbygridpoint.resize(0);
+	//nodesbygridpoint.clear();
+
+	for (int i=0; i<highestnodecount; i++)
+	{	// collect the nodes in gridpoint order...
+
+		if ((donenode[i]) || (!node[i].polymer))
+			continue;
+
+		nodeptr=nodegrid[node[i].gridx][node[i].gridy][node[i].gridz];
+		startnodeptr=nodeptr;
+			if (nodeptr!=0) 
+			{
+				do
+				{
+					nodesbygridpoint.push_back(nodeptr->nodenum);
+					donenode[nodeptr->nodenum] = true;  // mark node as done
+					nodeptr = nodeptr->nextnode;					
+				}
+				while (nodeptr!=startnodeptr);  //until back to start
+			}
+		}
+
+
+	return 0;
+}
+
+void * actin::compressfilesthread(void* threadarg)
+{
+	struct thread_data *dat;
+	dat = (struct thread_data *) threadarg;
+
+	while (true)
+	{	
+		//sem_wait(&compressfiles_thread_go[0]);  // go only if released by main thread
+
+		pthread_mutex_lock(&filessavelock_mutex);
+		pthread_mutex_lock(&filesdonelock_mutex);
+
+		char command1[255],command2[255];
+
+		// gzip the text data:
+
+		sprintf(command1, "gzip -f -9 nodes%05i.txt",dat->startnode);
+		system(command1);
+
+		sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
+		system(command1);
+
+		sprintf(command1, "gzip -f -9 report%05i.txt",dat->startnode );
+		system(command1);
+
+		sprintf(command1 , "gzip -f -9 data%05i.txt",dat->startnode );
+		system(command1);
+
+		// gzip the wrl file:
+
+		sprintf(command1 , "gzip -f -9 nodes%05i.wrl",dat->startnode );
+		system(command1);
+
+		sprintf(command1 , "mv nodes%05i.wrl.gz nodes%05i.wrz",dat->startnode, dat->startnode );
+		system(command1);
+
+		// convert bmps to jpgs:
+			
+		sprintf(command1 , "convert -quality 75 x_proj_%05i.bmp x_proj_%05i.png", dat->startnode, dat->startnode );
+		system(command1);
+		sprintf(command1 , "convert -quality 75 y_proj_%05i.bmp y_proj_%05i.png", dat->startnode, dat->startnode );
+		system(command1);
+		sprintf(command1 , "convert -quality 75 z_proj_%05i.bmp z_proj_%05i.png", dat->startnode, dat->startnode );
+		system(command1);
+
+		sprintf(command1 , "convert -quality 75 x_forces_%05i.bmp x_forces_%05i.png", dat->startnode, dat->startnode );
+		system(command1);
+		sprintf(command1 , "convert -quality 75 y_forces_%05i.bmp y_forces_%05i.png", dat->startnode, dat->startnode );
+		system(command1);
+		sprintf(command1 , "convert -quality 75 z_forces_%05i.bmp z_forces_%05i.png", dat->startnode, dat->startnode );
+		system(command1);
+
+#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
+		sprintf(command2 , "del x_proj_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "del y_proj_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "del z_proj_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "del x_forces_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "del y_forces_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "del z_forces_%05i.bmp", dat->startnode);
+		system(command2);
+#else
+		sprintf(command2 , "rm -f x_proj_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "rm -f y_proj_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "rm -f z_proj_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "rm -f x_forces_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "rm -f y_forces_%05i.bmp", dat->startnode);
+		system(command2);
+		sprintf(command2 , "rm -f z_forces_%05i.bmp", dat->startnode);
+		system(command2);
+#endif
+	
+		pthread_mutex_unlock(&filesdonelock_mutex);
+
+		//sem_post(&compressfiles_data_done[0]);  // release main thread block waiting for data
+	}	  
+	return (void*) NULL;
+}
+
+int actin::find_centre(MYDOUBLE &centre_x, MYDOUBLE &centre_y, MYDOUBLE &centre_z)
+{
+
+	centre_x = -nucleation_object->position.x; 
+	centre_y = -nucleation_object->position.y; 
+	centre_z = -nucleation_object->position.z; 
+
+	return 0;
+}
+
+int actin::save_linkstats(int filenum)
+{
+	char filename[255];
+//	MYDOUBLE radial_force, transverse_force;
+
+	sprintf ( filename , "linkstats%05i.txt", filenum );
+
+	ofstream oplinkstats(filename, ios::out | ios::trunc);
+	if (!oplinkstats) 
+	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+
+	// write header
+	
+	oplinkstats << "Link Radius,Radial Force,Transverse Force" << endl;
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if ((node[i].polymer) && (!node[i].harbinger))
+		{
+            //link_force_vec[0].x
+		}
+	}
+
+
+	return 0;
+}
+
+void actin::savereport(int filenum)
+{
+
+	char filename[255];
+ 	MYDOUBLE dist,compx,compy,compz;
+
+	sprintf ( filename , "report%05i.txt", filenum );
+
+	ofstream opreport(filename, ios::out | ios::trunc);
+	if (!opreport) 
+	{ cout << "Unable to open file " << filename << " for output"; return;}
+
+	// write header
+	
+	opreport << "NodeRadius,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
+	for (int i=0; i<highestnodecount; i++)
+	{
+		if ((node[i].polymer) && (!node[i].harbinger))
+		{
+
+			dist = calcdist(node[i].x,node[i].y,node[i].z);
+
+			compx = node[i].x / dist;
+			compy = node[i].y / dist;
+			compz = node[i].z / dist;
+
+            opreport << dist << ",";
+
+			opreport << (node[i].rep_force_vec[0].x * compx +
+						 node[i].rep_force_vec[0].y * compy +
+						 node[i].rep_force_vec[0].z * compz ) << ",";
+
+			opreport << calcdist(node[i].rep_force_vec[0].y * compz - node[i].rep_force_vec[0].z * compy,
+								 node[i].rep_force_vec[0].z * compx - node[i].rep_force_vec[0].x * compz,
+								 node[i].rep_force_vec[0].x * compy - node[i].rep_force_vec[0].y * compx) << ",";
+
+
+			opreport << (node[i].repulsion_displacement_vec[0].x * compx +
+						 node[i].repulsion_displacement_vec[0].y * compy +
+						 node[i].repulsion_displacement_vec[0].z * compz ) << ",";
+
+			opreport << calcdist(node[i].repulsion_displacement_vec[0].y * compz - node[i].repulsion_displacement_vec[0].z * compy,
+								 node[i].repulsion_displacement_vec[0].z * compx - node[i].repulsion_displacement_vec[0].x * compz,
+								 node[i].repulsion_displacement_vec[0].x * compy - node[i].repulsion_displacement_vec[0].y * compx) << ",";
+
+			opreport << (node[i].link_force_vec[0].x * compx +
+						 node[i].link_force_vec[0].y * compy +
+						 node[i].link_force_vec[0].z * compz ) << ",";
+
+			opreport << calcdist(node[i].link_force_vec[0].y * compz - node[i].link_force_vec[0].z * compy,
+								 node[i].link_force_vec[0].z * compx - node[i].link_force_vec[0].x * compz,
+								 node[i].link_force_vec[0].x * compy - node[i].link_force_vec[0].y * compx) << endl;
+
+
+		}
+	}
+
+	opreport.close();
+
+}
+
+int actin::savedata(int filenum)
+{
+	char filename[255];
+
+	sprintf ( filename , "data%05i.txt", filenum );
+
+	ofstream opdata(filename, ios::out | ios::trunc);
+	if (!opdata) 
+	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+
+	opdata << highestnodecount << "," << iteration_num 
+		<< "," << linksbroken << "," << linksformed << endl;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		node[i].savedata(&opdata);
+	}
+
+	opdata << endl;
+	opdata << (unsigned int) crosslinknodesdelay.size();
+
+	for (vector <int>::iterator i=crosslinknodesdelay.begin(); i<crosslinknodesdelay.end() ; i++ )
+	{	 
+		opdata << "," << (*i);
+	}
+
+	return 0;
+}
+
+int actin::loaddata(int filenum)
+{
+
+	for (int i=0; i!=(GRIDSIZE+1); i++) // clear the nodegrid
+		for (int j=0; j!=(GRIDSIZE+1); j++)
+			for (int k=0; k!=(GRIDSIZE+1); k++)
+				nodegrid[i][j][k]=0;;
+
+	char filename[255];
+	char delim;
+	unsigned int numcrosslinkdelay;
+
+	sprintf ( filename , "data%05i.txt", filenum );
+
+	ifstream ipdata(filename, ios::out | ios::trunc);
+	if (!ipdata) 
+	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+
+	ipdata >> highestnodecount >> delim >> iteration_num 
+		>> delim >> linksbroken >> delim >> linksformed;
+
+	for (int i=0; i<highestnodecount; i++)
+	{
+		node[i].loaddata(&ipdata);
+	}
+
+	ipdata >> numcrosslinkdelay;
+	crosslinknodesdelay.resize(numcrosslinkdelay);
+
+	for (vector <int>::iterator i=crosslinknodesdelay.begin(); i<crosslinknodesdelay.end() ; i++ )
+	{	 
+		ipdata >> delim >> (*i);
+	}
+
+	return 0;
+}
