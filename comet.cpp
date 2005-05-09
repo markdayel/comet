@@ -52,6 +52,7 @@ int NODE_XLINK_GRIDSEARCH ;
 int NODE_REPULSIVE_RANGE_GRIDSEARCH;
 
 int RADIAL_SEGMENTS = 12;
+int NODES_TO_UPDATE = 5000;  //only update the NODES_TO_UPDATE newest nodes
 
 //MYDOUBLE DAMPING_FACTOR = 10;
 int CROSSLINKDELAY = 20;  // number of interations before crosslinking 
@@ -322,6 +323,9 @@ cout << endl;
 			   } else if (tag == "VIEW_HEIGHT") {
                        ss >> VIEW_HEIGHT;
                       continue;
+			   } else if (tag == "NODES_TO_UPDATE") {
+                       ss >> NODES_TO_UPDATE;
+                      continue;
 			   } else if (tag == "SHAPE") 
 					{
 				       ss >> buff2;
@@ -420,10 +424,10 @@ if (nucshape == nucleator::capsule)
 	theactin.newnodescolour.setcol(0);
 
 	MYDOUBLE centre_x,centre_y,centre_z;
-	//MYDOUBLE last_centre_x, last_centre_y , last_centre_z;
-	//MYDOUBLE delta_centre_x , delta_centre_y, delta_centre_z;
+	MYDOUBLE last_centre_x, last_centre_y , last_centre_z;
+	MYDOUBLE delta_centre_x , delta_centre_y, delta_centre_z;
 
-    //last_centre_x = last_centre_y = last_centre_z = 0;
+    last_centre_x = last_centre_y = last_centre_z = 0;
 	centre_x = centre_y = centre_z = 0;
 	// main iteration loop
 
@@ -455,13 +459,21 @@ if (nucshape == nucleator::capsule)
 		
 		if ((i % InterRecordIterations) == 0)
 		{
-			theactin.find_centre(centre_x,centre_y,centre_z);
-			//delta_centre_x = centre_x - last_centre_x;
-			//delta_centre_y = centre_y - last_centre_y;
-			//delta_centre_z = centre_z - last_centre_z;
-			//last_centre_x = centre_x;
-			//last_centre_y = centre_y;
-			//last_centre_z = centre_z;
+			theactin.setdontupdates();
+			theactin.find_centre(centre_x, centre_y, centre_z);
+			delta_centre_x = centre_x - last_centre_x;
+			delta_centre_y = centre_y - last_centre_y;
+			delta_centre_z = centre_z - last_centre_z;
+			last_centre_x = centre_x;
+			last_centre_y = centre_y;
+			last_centre_z = centre_z;
+
+			theactin.opvelocityinfo 
+				<< (i*DELTA_T) << "," 
+				<< centre_x << "," 
+				<< centre_y << "," 
+				<< centre_z << "," 
+				<< calcdist(delta_centre_x, delta_centre_y, delta_centre_z) << endl;
 
 			cout << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
@@ -488,7 +500,7 @@ if (nucshape == nucleator::capsule)
 			theactin.opruninfo << "|S" << setw(3) <<  (int)(i/InterRecordIterations)  
 				<< "/" << RECORDED_TIMESTEPS << endl ;
 
-			theactin.setnodecols();
+			//theactin.setnodecols();
 			theactin.save((i/InterRecordIterations));
 			theactin.savevrml((i/InterRecordIterations));
 			theactin.savedata((i/InterRecordIterations));

@@ -17,6 +17,7 @@ removed without prior written permission from the author.
 
 nodes::nodes(void)
 : harbinger(false)
+, dontupdate(false)
 {
 	nextnode = this;  // initialise to point to self
 	prevnode = this;
@@ -53,6 +54,7 @@ nodes::nodes(void)
 	creation_iter_num = 0;
 	nodelinksbroken = 0;
 	harbinger = false;
+	dontupdate = false;
 }
 
 nodes::nodes(MYDOUBLE set_x, MYDOUBLE set_y, MYDOUBLE set_z)
@@ -88,6 +90,7 @@ nodes::nodes(MYDOUBLE set_x, MYDOUBLE set_y, MYDOUBLE set_z)
 	creation_iter_num = ptheactin->iteration_num;
 	nodelinksbroken =0;
 	harbinger = false;
+	dontupdate = false;
 
 	polymerize(set_x,  set_y,  set_z);
 

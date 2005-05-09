@@ -17,6 +17,8 @@ removed without prior written permission from the author.
 
 // defines
 
+// #define FORCES_BOTH_WAYS 1
+
 #ifndef mymax
 #define mymax(a,b)            (((a) > (b)) ? (a) : (b))
 #endif
@@ -170,6 +172,7 @@ extern MYDOUBLE RAD_INCOMP; // RAD_INCOMP and SEG_INCOMP are the enlarged radius
 //extern MYDOUBLE INERTIAL_DAMPING_HALFTIME;
 //extern MYDOUBLE DAMPING_FACTOR;
 extern int CROSSLINKDELAY;
+extern int NODES_TO_UPDATE;
 
 extern MYDOUBLE NODE_REPULSIVE_MAG;
 extern MYDOUBLE NODE_REPULSIVE_RANGE;

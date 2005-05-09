@@ -22,11 +22,17 @@ actin::actin(void)
 	if (!opruninfo) 
 	{ cout << "Unable to open file " << "comet_run_info.txt" << " for output"; return;}
 
+	opruninfo << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
+
 	cout << endl;
 	cout << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
 	cout.flush();
-	
-	opruninfo << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
+
+	opvelocityinfo.open("velocities.txt", ios::out | ios::trunc);
+	if (!opvelocityinfo) 
+	{ cout << "Unable to open file " << "velocities.txt" << " for output"; return;}
+
+	opvelocityinfo << "time,dx,dy,dz,vel" << endl;
 
 	// node = new nodes[MAXNODES];
 
@@ -88,7 +94,6 @@ actin::actin(void)
 
 	cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
 
-
 	highestnodecount = 0;
 	iteration_num = 0;
 	linksformed = 0;
@@ -101,6 +106,7 @@ actin::actin(void)
 actin::~actin(void)
 {
 	opruninfo.close();
+	opvelocityinfo.close();
 	//delete [] node;
 	
 	//for (int i=0; i<GRIDSIZE; i++)  // free memory
@@ -603,9 +609,9 @@ int actin::ejectfromnucleator()
 
 	for (int i = 0; i<highestnodecount; i++)
 	{
-		node[i].repulsion_displacement_vec[0].x-=deltanucposn.x;	// `move' the nucleator 
-		node[i].repulsion_displacement_vec[0].y-=deltanucposn.y;	// by moving all the nodes
-		node[i].repulsion_displacement_vec[0].z-=deltanucposn.z;	// the other way
+		node[i].x-=deltanucposn.x;	// `move' the nucleator 
+		node[i].y-=deltanucposn.y;	// by moving all the nodes
+		node[i].z-=deltanucposn.z;	// the other way
 	}
 
 	return 0;
@@ -711,7 +717,9 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 
 	for (int i=dat->startnode; i<dat->endnode; i++)
 	{	
-		if ((donenode[nodesbygridpoint[i]])|| (!node[nodesbygridpoint[i]].polymer))
+		if ((node[nodesbygridpoint[i]].dontupdate) ||
+			(donenode[nodesbygridpoint[i]]) ||
+			(!node[nodesbygridpoint[i]].polymer))
 		{
 			continue;  // skip nodes already done
 		}
@@ -774,43 +782,52 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 
 						dist = mysqrt(distsqr); 
 
-						if (dist > NODE_INCOMPRESSIBLE_RADIUS)
-						{
-							force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
-								(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * (dist-NODE_INCOMPRESSIBLE_RADIUS )) ;
-						}
-						else
-						{
-							force =  NODE_REPULSIVE_MAG ;
-						}  // fix force if below node incompressible distance
+					if (dist > NODE_INCOMPRESSIBLE_RADIUS)
+					{
+						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
+							(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * (dist-NODE_INCOMPRESSIBLE_RADIUS )) ;
+					}
+					else
+					{
+						force =  NODE_REPULSIVE_MAG ;
+					}  // fix force if below node incompressible distance
+#ifdef FORCES_BOTH_WAYS
+					(*sameGPnode)->rep_force_vec[0].x -= force * (xdist/dist);
+					(*sameGPnode)->rep_force_vec[0].y -= force * (ydist/dist);
+					(*sameGPnode)->rep_force_vec[0].z -= force * (zdist/dist);
 
-						(*sameGPnode)->rep_force_vec[0].x -= force * (xdist/dist);
-						(*sameGPnode)->rep_force_vec[0].y -= force * (ydist/dist);
-						(*sameGPnode)->rep_force_vec[0].z -= force * (zdist/dist);
+					(*nearnode)->rep_force_vec[0].x += force * (xdist/dist);
+					(*nearnode)->rep_force_vec[0].y += force * (ydist/dist);
+					(*nearnode)->rep_force_vec[0].z += force * (zdist/dist);
+#else
+					(*sameGPnode)->rep_force_vec[0].x -= 2 * force * (xdist/dist);
+					(*sameGPnode)->rep_force_vec[0].y -= 2 * force * (ydist/dist);
+					(*sameGPnode)->rep_force_vec[0].z -= 2 * force * (zdist/dist);
+#endif
 
-						(*nearnode)->rep_force_vec[0].x += force * (xdist/dist);
-						(*nearnode)->rep_force_vec[0].y += force * (ydist/dist);
-						(*nearnode)->rep_force_vec[0].z += force * (zdist/dist);
+					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
+					{
+					                            
+						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
+						scale = (MYDOUBLE)NODE_INCOMPRESSIBLE_RADIUS / (MYDOUBLE)4.0*dist;  
 
-						if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
-						{
-                            						
-							// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
-							scale = (MYDOUBLE)NODE_INCOMPRESSIBLE_RADIUS / (MYDOUBLE)4.0*dist;  
+						xdist*=scale;	// these are the vector half components (in direction from i to j)
+						ydist*=scale;
+						zdist*=scale;   
+#ifdef FORCES_BOTH_WAYS
+						(*sameGPnode)->repulsion_displacement_vec[0].x-=xdist;	// move the points
+						(*sameGPnode)->repulsion_displacement_vec[0].y-=ydist;
+						(*sameGPnode)->repulsion_displacement_vec[0].z-=zdist;
 
-							xdist*=scale;	// these are the vector half components (in direction from i to j)
-							ydist*=scale;
-							zdist*=scale;   
-
-							(*sameGPnode)->repulsion_displacement_vec[0].x-=xdist;	// move the points
-							(*sameGPnode)->repulsion_displacement_vec[0].y-=ydist;
-							(*sameGPnode)->repulsion_displacement_vec[0].z-=zdist;
-
-							(*nearnode)->repulsion_displacement_vec[0].x+=xdist;
-							(*nearnode)->repulsion_displacement_vec[0].y+=ydist;
-							(*nearnode)->repulsion_displacement_vec[0].z+=zdist;
-
-						}
+						(*nearnode)->repulsion_displacement_vec[0].x+=xdist;
+						(*nearnode)->repulsion_displacement_vec[0].y+=ydist;
+						(*nearnode)->repulsion_displacement_vec[0].z+=zdist;
+#else
+						(*sameGPnode)->repulsion_displacement_vec[0].x-=2*xdist;	// move the points
+						(*sameGPnode)->repulsion_displacement_vec[0].y-=2*ydist;
+						(*sameGPnode)->repulsion_displacement_vec[0].z-=2*zdist;
+#endif
+					}
 				}
 
 			}
@@ -929,6 +946,7 @@ inline int actin::dorepulsion(int node_i, int node_j, MYDOUBLE dist, int threadn
 	ycomp*=scale;
 	zcomp*=scale;   
 
+#ifdef FORCES_BOTH_WAYS
 	node[node_i].repulsion_displacement_vec[threadnum].x-=xcomp;	// move the points
 	node[node_i].repulsion_displacement_vec[threadnum].y-=ycomp;
 	node[node_i].repulsion_displacement_vec[threadnum].z-=zcomp;
@@ -937,6 +955,12 @@ inline int actin::dorepulsion(int node_i, int node_j, MYDOUBLE dist, int threadn
 	node[node_j].repulsion_displacement_vec[threadnum].y+=ycomp;
 	node[node_j].repulsion_displacement_vec[threadnum].z+=zcomp;
 
+#else
+	node[node_i].repulsion_displacement_vec[threadnum].x-=2*xcomp;	// move the points
+	node[node_i].repulsion_displacement_vec[threadnum].y-=2*ycomp;
+	node[node_i].repulsion_displacement_vec[threadnum].z-=2*zcomp;
+
+#endif
 
 	/*double a = node[node_i].repulsion_displacement_vec[threadnum].x;	// move the points
 	double b = node[node_i].repulsion_displacement_vec[threadnum].y;
@@ -1016,7 +1040,7 @@ if (false) // (USE_THREADS)  // switch this off for now...
 			{
 				for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
 				{
-					if (node[i].polymer)
+					if ((!node[i].dontupdate) && node[i].polymer)
 						node[i].applyforces(threadnum);
 				}
 			}
@@ -1024,8 +1048,8 @@ if (false) // (USE_THREADS)  // switch this off for now...
 
 	for (int i=0; i<highestnodecount; i++)
 	{
-	if (node[i].polymer)
-		node[i].updategrid(); // move the point on the grid if need to
+		if ((!node[i].dontupdate) && node[i].polymer)
+			node[i].updategrid(); // move the point on the grid if need to
 	}
 	return 0;
 }
@@ -1118,7 +1142,7 @@ if (USE_THREADS)
 		// go through all nodes
 		for (int n=0; n<highestnodecount; n++)
 		{  	
-			if (!node[n].polymer)
+			if ((node[n].dontupdate && !sumforces) || (!node[n].polymer))
 				continue;
 
 			nodeposvec.x = node[n].x;	// get xyz of our node
@@ -1157,6 +1181,7 @@ if (USE_THREADS)
 						}
 						else
 						{
+#ifdef FORCES_BOTH_WAYS
 						node[n].link_force_vec[0].x += force * scale * xdist;
 						node[n].link_force_vec[0].y += force * scale * ydist;
 						node[n].link_force_vec[0].z += force * scale * zdist;
@@ -1164,6 +1189,11 @@ if (USE_THREADS)
 						i->linkednodeptr->link_force_vec[0].x -= force * scale * xdist;
 						i->linkednodeptr->link_force_vec[0].y -= force * scale * ydist;
 						i->linkednodeptr->link_force_vec[0].z -= force * scale * zdist;
+#else
+						node[n].link_force_vec[0].x += 2 * force * scale * xdist;
+						node[n].link_force_vec[0].y += 2 * force * scale * ydist;
+						node[n].link_force_vec[0].z += 2 * force * scale * zdist;
+#endif
 						}
 
 					}
@@ -1260,7 +1290,10 @@ int actin::setnodecols(void)
 
 	for (int i=0; i<highestnodecount; i++)
 	{
-		val = mysqrt(node[i].link_force_vec[0].x);
+		if (node[i].link_force_vec[0].x>0.0001)
+			val = mysqrt(node[i].link_force_vec[0].x);
+		else
+			val = 0;
 	
 		if ((node[i].polymer) && (!node[i].listoflinks.empty()) && (val > maxcol))
 		{
@@ -1271,7 +1304,10 @@ int actin::setnodecols(void)
 
 	for (int i=0; i<highestnodecount; i++)
 	{
-		val = mysqrt(node[i].link_force_vec[0].x);
+		if (node[i].link_force_vec[0].x>0.0001)
+			val = mysqrt(node[i].link_force_vec[0].x);
+		else
+			val = 0;
 		//node[i].colour.setcol((MYDOUBLE)node[i].creation_iter_num/(MYDOUBLE)TOTAL_ITERATIONS);
 		//node[i].colour.setcol(((MYDOUBLE)node[i].nodelinksbroken-mincol)/(maxcol-mincol));
 		if ((node[i].polymer)&& (!node[i].listoflinks.empty()) && val > 0.001)
@@ -1398,8 +1434,6 @@ typedef struct tagBITMAPINFO {
 } BITMAPINFO, *PBITMAPINFO; 
 
 #pragma pack(pop)
-
-
 
 	char filename[255];
 
@@ -1872,7 +1906,8 @@ int actin::squash(MYDOUBLE thickness)
 	return 0;
 }
 
-int actin::repulsiveforces(void)
+/*
+int actin::repulsiveforces(void)  // this is defunct
 {
 	MYDOUBLE xdist, ydist, zdist, dist;
 	MYDOUBLE force, distsqr;
@@ -2066,6 +2101,7 @@ void * actin::repulsiveforcesthread(void* threadarg)
 	  
 	return (void*) NULL;
 }
+*/
 
 int actin::sortnodesbygridpoint(void)
 {
@@ -2078,6 +2114,8 @@ int actin::sortnodesbygridpoint(void)
 
 	nodesbygridpoint.resize(0);
 	//nodesbygridpoint.clear();
+
+	// mark: todo: alter so that not restarting from scratch (use lowestnodeupdate)
 
 	for (int i=0; i<highestnodecount; i++)
 	{	// collect the nodes in gridpoint order...
@@ -2351,4 +2389,15 @@ int actin::loaddata(int filenum)
 	}
 
 	return 0;
+}
+
+void actin::setdontupdates(void)
+{
+	if (highestnodecount > NODES_TO_UPDATE)
+	{
+	for (int i=0; i<(highestnodecount-NODES_TO_UPDATE); i++)
+		{
+			node[i].dontupdate = true;
+		}
+	}
 }

@@ -63,6 +63,7 @@ public:
 	MYDOUBLE theta;
 	MYDOUBLE phi;
 	int savelinks(ofstream * outstream);
+	bool dontupdate;
 };
 
 #endif

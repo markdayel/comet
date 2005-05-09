@@ -24,7 +24,7 @@ nucleator::nucleator(void)
 	geometry = sphere;
 	position.x=position.y=position.z=0;
 	surf_area = 4 * PI * radius * radius;
-	movability = (MYDOUBLE) 0.05 * NODE_INCOMPRESSIBLE_RADIUS / radius;  // inverse ratio of 'viscosities' of node and bead
+	movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / radius;  // inverse ratio of 'viscosities' of node and bead
 
 	radial_rep_distrib_x.reserve(RADIAL_SEGMENTS);
 	radial_rep_distrib_y.reserve(RADIAL_SEGMENTS);
@@ -47,12 +47,12 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 	if (geometry==sphere)
 	{
 		surf_area = 4 * PI * radius * radius;
-		movability = (MYDOUBLE) 0.05 * NODE_INCOMPRESSIBLE_RADIUS / radius;
+		movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / radius;
 	}
 	else
 	{
 		surf_area = 4 * PI * radius * radius  +  2 * PI * radius * segment;
-		movability =(MYDOUBLE) 0.05 * NODE_INCOMPRESSIBLE_RADIUS / (radius + segment/4);   // what should this be??
+		movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / (radius + segment/4);   // what should this be??
 	}
 	ptheactin = actinptr;
 	ptheactin->nucleation_object = this;

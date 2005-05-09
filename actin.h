@@ -77,6 +77,7 @@ public:
 	int addlinks(int linknode1, int linknode2);
 	int savevrml(int filenum);
 	ofstream opruninfo;
+	ofstream opvelocityinfo;
 	int highestnodecount;
 	Dbl2d imageR, imageG, imageB;
 
@@ -134,7 +135,7 @@ public:
 	static void *compressfilesthread(void* threadarg);
 
 	int squash(MYDOUBLE thickness);
-	int repulsiveforces(void);
+	//int repulsiveforces(void);
 	int sortnodesbygridpoint(void);
 	int nexttocrosslink;
 	int find_centre(MYDOUBLE &centre_x, MYDOUBLE &centre_y, MYDOUBLE &centre_z);
@@ -142,6 +143,7 @@ public:
 	void savereport(int filenum);
 	int savedata(int filenum);
 	int loaddata(int filenum);
+	void setdontupdates(void);
 };
 
 #endif
