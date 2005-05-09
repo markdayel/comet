@@ -167,7 +167,6 @@ int nodes::savedata(ofstream *outputstream)
 					<< colour.r << "," << colour.g << "," << colour.b << ","
 					<< creation_iter_num << "," << (unsigned int) listoflinks.size();
 					
-
 	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
 	{	 
 		*outputstream << ",";

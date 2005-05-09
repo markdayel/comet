@@ -504,6 +504,9 @@ if (nucshape == nucleator::capsule)
 			theactin.save((i/InterRecordIterations));
 			theactin.savevrml((i/InterRecordIterations));
 			theactin.savedata((i/InterRecordIterations));
+			
+			// test the load/save of data:
+			//theactin.loaddata((i/InterRecordIterations));
 
 			theactin.savebmp((i/InterRecordIterations), actin::xaxis);
 			theactin.savebmp((i/InterRecordIterations), actin::yaxis);

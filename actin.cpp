@@ -2351,6 +2351,8 @@ int actin::savedata(int filenum)
 		opdata << "," << (*i);
 	}
 
+	opdata.close();
+
 	return 0;
 }
 
@@ -2368,7 +2370,7 @@ int actin::loaddata(int filenum)
 
 	sprintf ( filename , "data%05i.txt", filenum );
 
-	ifstream ipdata(filename, ios::out | ios::trunc);
+	ifstream ipdata(filename);
 	if (!ipdata) 
 	{ cout << "Unable to open file " << filename << " for output"; return 1;}
 
