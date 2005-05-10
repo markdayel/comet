@@ -3,6 +3,14 @@ function output = tracknodes(startfilenum, endfilenum)
 startnode = 1;
 endnode = 200;
 
+
+[filename, err] = sprintf ( 'nodes%05i.txt', 1 );
+nodes=readnodes(filename); 
+
+%get the nucleator shape
+indices = find( 0 == nodes(:,1));
+nucleator = nodes(indices,2:4);
+    
 for j=startfilenum:endfilenum
     [filename, err] = sprintf ( 'nodes%05i.txt', j );
     nodes=readnodes(filename);    
@@ -14,8 +22,10 @@ cmap = colormap(hsv((endnode-startnode)));
 
 hold on
 
+plot3(nucleator(:,1),nucleator(:,2),nucleator(:,3),'.w','MarkerSize',1);
+
 for j=1:(endnode-startnode)
-        x = output(j,1,:);
+    x = output(j,1,:);
     y = output(j,2,:);
     z = output(j,3,:);
     %scatter3(x,y,z,'.');
@@ -36,19 +46,30 @@ grid off
 
 axis off
 set(gcf,'Color','black');
- set(gcf,'Units','pixels','Position',[50 50 651 652])
+ set(gcf,'Units','pixels','Position',[50 50 452 550])
 
 
-M=moviein(90);
+M=moviein(640);
 camtarget([0 0 0]);
+set(gca,'projection','perspective')
 set(gca, 'NextPlot','replacechildren')
-for j=1:90
-view(j*4,10)
-M(:,j) = getframe;
+framecount = 1;
+for j=0:0.025:(2*3.141)
+    set(gca,'cameraposition',[20*cos(j),20*sin(j),0])
+    set(gca,'cameratarget',[0,0,0])
+    set(gca,'cameraupvector',[0 0 1])
+    set(gca,'cameraviewangle',15)
+    set(gca,'xlim',[-4 4],'ylim',[-4 4],'zlim',[-4 4])
+    box on
+    %view(j*4,10)
+M(:,framecount) = getframe(gcf);
+framecount = framecount + 1;
 end
 
-movie(M,4);
 
-%filename = ['c:\nodetracking9-' date];
-%movie2avi(M,filename,'keyframe',15,'fps',15,'compression','None')
+
+movie(M,2);
+
+filename = ['c:\nodetracking-' date];
+movie2avi(M,filename,'keyframe',15,'fps',15,'compression','None')
 
