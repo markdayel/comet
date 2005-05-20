@@ -588,3 +588,22 @@ int nucleator::clearradialsegments()
 	}
 	return 0;
 }
+
+int nucleator::save_data(ofstream &ostr) 
+{
+    ostr << position.x << ","
+	 << position.y << ","
+	 << position.z << endl;
+    
+    return 0;
+}
+
+int nucleator::load_data(ifstream &istr) 
+{
+    char ch;
+    istr >> position.x >> ch
+	 >> position.y >> ch 
+	 >> position.z;
+    
+    return 0;
+}

@@ -2393,6 +2393,160 @@ int actin::loaddata(int filenum)
 	return 0;
 }
 
+void actin::clear_nodegrid()
+{
+    // clear the nodegrid
+    for(int i=0; i<GRIDSIZE; i++)
+	for(int j=0; j<GRIDSIZE; j++)
+	    for(int k = 0; k <GRIDSIZE; k++)
+		nodegrid[i][j][k] = NULL;
+}
+
+int actin::save_data(ofstream &ofstrm)
+{
+    // keep Mark's savedata for now
+    
+    // write out all stateful information for this object    
+    // save actin
+    ofstrm << "actin: "  << endl 
+	   << highestnodecount << ","
+	   << nexttocrosslink << "," 
+	   << iteration_num << "," 
+	   << linksbroken  << "," 
+	   << linksformed << endl;
+    
+    // save nodes
+    ofstrm << "nodes-links:" << endl;
+    for(int i=0; i < highestnodecount; i++) {
+	node[i].save_data(ofstrm);
+    }
+    
+    // save linkdelays
+    ofstrm << "xlinkdelays:" << endl 
+	   << (unsigned int)crosslinknodesdelay.size() << ")";
+    
+    for(vector<int>::iterator i = crosslinknodesdelay.begin(); 
+	i < crosslinknodesdelay.end();i++) {
+	ofstrm << (*i);
+	if(i < crosslinknodesdelay.end()-1)
+	    ofstrm << ",";
+	else
+	    ofstrm << "." << endl;
+    }
+
+    // save nucleator
+    ofstrm << "nucleator:" << endl;
+    nucleation_object->save_data(ofstrm);
+    
+    return 0;
+}
+
+int actin::load_data(ifstream &ifstr)
+{
+    // clear the nodegrid
+    clear_nodegrid();
+    
+    string str;
+    char ch;
+    
+    // load actin
+    ifstr >> str;
+    
+    // ensure the identifier for the start of the actin
+    if(str.compare("actin:") !=0 ){
+	cout << "error in checkpoint file, 'actin:' expected" << endl;
+	return 1;
+    }
+    
+    ifstr >> highestnodecount >> ch
+	  >> nexttocrosslink >> ch
+	  >> iteration_num >> ch 
+	  >> linksbroken  >> ch 
+	  >> linksformed;
+    
+    // load nodes
+    ifstr >> str;
+    if(str.compare("nodes-links:") !=0 ){
+	cout << "error in data file, 'nodes-links:' expected" << endl;
+	return 1;
+    }
+    // ** Remember the node vector is preallocated to MAXNODES
+    for(int i=0; i < highestnodecount; i++) {
+	node[i].load_data(ifstr);
+	node[i].setgridcoords(); // now we are okay to do pointer
+	node[i].addtogrid();
+    }
+
+    // This is not neat, and we have a nasty reliance on the data being
+    // public all the way down to the nodes linklist link objects.
+    // When loading the link has been stored as an index, and we now
+    // convert that to a pointer.
+    // Methods is 
+    //  Run through and rebuild the node ptrs for the linkednode indices
+    //  important this is done after the full node list has been built
+    //   - iterate over nodes
+    //    - then iterate over links in the node linklist
+    for(int i=0; i < highestnodecount; i++) {
+	for(vector<links>::iterator l=node[i].listoflinks.begin(); 
+	    l<node[i].listoflinks.end(); ++l) {
+	    // if(l->linkednodenumber>=0) // ensure the indx was explicitly set
+		l->linkednodeptr = &node[l->linkednodenumber];
+	}
+    }
+
+    // check node list
+    /*
+    for(int i=0; i < highestnodecount; i++) {
+	cout << "node [" << i << ":" << &node[i] << "] " << node[i].listoflinks.size() << " ";
+	for(vector<links>::iterator l=node[i].listoflinks.begin(); 
+	    l<node[i].listoflinks.end(); ++l) {
+
+	    cout << l->linkednodenumber << ":" << l->linkednodeptr << ", ";
+
+	}
+	cout << endl;
+    }
+    */
+
+    
+    // load xlinkdelays
+    ifstr >> str;
+    if(str.compare("xlinkdelays:") !=0 ){
+	cout << "error in checkpoint file, 'xlinkdelays:' expected" 
+	     << endl;
+	return 1;
+    }
+    
+    int numcrosslinkdelay;
+    ifstr >> numcrosslinkdelay >> ch;
+    if(ch!=')' ){
+	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
+	     << endl;
+	return 1;
+    }
+    crosslinknodesdelay.clear();
+    crosslinknodesdelay.resize(numcrosslinkdelay);
+    // load each delay
+    for(vector<int>::iterator i = crosslinknodesdelay.begin(); 
+	i < crosslinknodesdelay.end(); i++) {
+	ifstr >> (*i) >> ch;
+    }
+
+    // load nucleator
+    ifstr >> str;
+    if(str.compare("nucleator:") !=0 ){
+	cout << "error in checkpoint file, 'nucleator:' expected" 
+	     << endl;
+	return 1;
+    }
+    nucleation_object->load_data(ifstr);
+    
+    
+    return 0;
+}
+
+
+
 void actin::setdontupdates(void)
 {
 	if (highestnodecount > NODES_TO_UPDATE)

@@ -19,6 +19,10 @@ MYDOUBLE TOTAL_SIMULATION_TIME = 20000;
 MYDOUBLE DELTA_T = (MYDOUBLE)0.1;				// to do include in probablility of link breakage, and probability of nucleation etc.
 int RECORDED_TIMESTEPS=200;			// number of recorded timesteps(data files)
 
+int RESTORE_FROM_ITERATION = 0; // =0 don't load a checkpoint 
+int RECORDING_INTERVAL = 0;
+int NUMBER_RECORDINGS = 0;
+
 MYDOUBLE FORCE_SCALE_FACT = (MYDOUBLE)0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
 									// this is related to effective viscosity and effective size of node
 
@@ -115,6 +119,10 @@ vector <nodes*> actin::linkremovefrom;
 vector <nodes*> actin::linkremoveto;
 
 int InterRecordIterations = 0;
+
+
+int load_data(actin &theactin, int iteration);
+int save_data(actin &theactin, int iteration);
 
 // main 
 
@@ -266,10 +274,13 @@ cout << endl;
                } else if (tag == "DELTA_T") {
                        ss >> DELTA_T;
                        continue;
-               } else if (tag == "RECORDED_TIMESTEPS") {
-                       ss >> RECORDED_TIMESTEPS;
-                       continue;
-               } else if (tag == "FORCE_SCALE_FACT") {
+	       } else if (tag == "RECORDING_INTERVAL") {
+		   ss >> RECORDING_INTERVAL;
+		   continue;
+	       } else if (tag == "RESTORE_FROM_ITERATION") {
+		   ss >> RESTORE_FROM_ITERATION;
+		   continue;
+                           } else if (tag == "FORCE_SCALE_FACT") {
                        ss >> FORCE_SCALE_FACT;
                        continue;
 			   } else if (tag == "XLINK_NODE_RANGE") {
@@ -347,9 +358,11 @@ cout << endl;
 	NODE_XLINK_GRIDSEARCH = (int) ceil(((MYDOUBLE) XLINK_NODE_RANGE )/GRIDRES) + 1;
 	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) ceil(((MYDOUBLE) NODE_REPULSIVE_RANGE )/GRIDRES) + 1;
 
-	InterRecordIterations = (int)
-			  (((MYDOUBLE)TOTAL_ITERATIONS / (MYDOUBLE) RECORDED_TIMESTEPS)+0.5 );	// loop iterations per recorded timestep
-
+	// loop iterations per recorded timestep
+	InterRecordIterations = RECORDING_INTERVAL;
+	NUMBER_RECORDINGS = int(TOTAL_ITERATIONS / RECORDING_INTERVAL);
+	// InterRecordIterations = (int)
+	// (((MYDOUBLE)TOTAL_ITERATIONS / (MYDOUBLE) RECORDED_TIMESTEPS)+0.5 );	
 	//SEG_INCOMP = SEGMENT + NODE_INCOMPRESSIBLE_RADIUS/2;
 	RAD_INCOMP = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
 
@@ -403,7 +416,7 @@ if (nucshape == nucleator::capsule)
 
 	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
 	cout << "Saving snapshot every " << InterRecordIterations  
-		<< " iterations (" << RECORDED_TIMESTEPS << " total)" << endl;
+		<< " iterations (" << NUMBER_RECORDINGS << " total)" << endl;
 
 	cout << "Starting iterations..." << endl << endl;
 
@@ -429,13 +442,27 @@ if (nucshape == nucleator::capsule)
 
     last_centre_x = last_centre_y = last_centre_z = 0;
 	centre_x = centre_y = centre_z = 0;
+
+	// - - - - - - - - - - 
 	// main iteration loop
+	// - - - - - - - - - -
+	// initialse from a checkpoint if requested
+	int starting_iter = 1;
+	if(RESTORE_FROM_ITERATION != 0){
+	    load_data(theactin, RESTORE_FROM_ITERATION);
+	    cout << "* Restored from iteration   "
+		 << RESTORE_FROM_ITERATION << endl;
+	    srand( (unsigned) 200 );
+	    //cout << "reseeded: " << rand() << endl;
 
+	    starting_iter = RESTORE_FROM_ITERATION; 
+//	starting_iter = RESTORE_FROM_ITERATION + 1; // don't overwrite
+	}
+	
 	cout << "Itternum|TotNode|NewLinks|RemLinks|Center_X|Center_Y|Center_Z|SnpshTm|SaveNum" << endl << endl;
-
-	for (int i=1;i<=TOTAL_ITERATIONS;i++)
-	{
-		nowtime = (unsigned) time( NULL );
+	
+	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++){
+	        nowtime = (unsigned) time( NULL );
 		if (nowtime > lasttime)
 		{
 			lasttime = nowtime;
@@ -486,7 +513,7 @@ if (nucshape == nucleator::capsule)
 			cout.flush();
 
 			cout << "|S " << setw(3) <<  (int)(i/InterRecordIterations)  
-				<< "/" << RECORDED_TIMESTEPS << endl ;
+				<< "/" << NUMBER_RECORDINGS << endl ;
 
 			theactin.opruninfo << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
@@ -498,7 +525,7 @@ if (nucshape == nucleator::capsule)
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
 			//<< "|H" <<  setw(6) << theactin.harbinger;
 			theactin.opruninfo << "|S" << setw(3) <<  (int)(i/InterRecordIterations)  
-				<< "/" << RECORDED_TIMESTEPS << endl ;
+				<< "/" << NUMBER_RECORDINGS << endl ;
 
 			//theactin.setnodecols();
 			theactin.save((i/InterRecordIterations));
@@ -507,6 +534,12 @@ if (nucshape == nucleator::capsule)
 			
 			// test the load/save of data:
 			//theactin.loaddata((i/InterRecordIterations));
+
+			save_data(theactin, i);
+			//load_data(theactin, i);
+			//save_data(theactin, i+1);			
+			srand( (unsigned) 200 );
+			//cout << "reseeded: " << rand() << endl;
 
 			theactin.savebmp((i/InterRecordIterations), actin::xaxis);
 			theactin.savebmp((i/InterRecordIterations), actin::yaxis);
@@ -571,6 +604,66 @@ if (nucshape == nucleator::capsule)
 	//pthread_exit (NULL);
 
 	exit(EXIT_SUCCESS);
+}
+
+
+string get_datafilename(const int iteration)
+{
+    stringstream filename;
+    filename << "data-" << iteration << ".txt";
+    return filename.str();
+    
+}
+
+int load_data(actin &theactin, int iteration)
+{
+    string filename = get_datafilename(iteration);
+    ifstream ifstrm( filename.c_str() );
+    if(!ifstrm) {
+	cout << "Unable to open file " << filename << " for input";
+	return 1;
+    }
+    
+    string str;    
+    // load header
+    ifstrm >> str;
+    // ensure the identifier for the start of the actin
+    if(str.compare("comet:") !=0 ){
+	cout << "error in checkpoint file, 'comet:' expected" << endl;
+	return 1;
+    }
+
+    int saved_iteration;
+    ifstrm >> saved_iteration;
+    theactin.load_data(ifstrm);
+
+    // check the iteration is correct
+    if( saved_iteration != iteration ){
+	cout << "error in saved file, saved iteration." << endl;
+	return 1;
+    }
+    return iteration;
+}
+
+int save_data(actin &theactin, int iteration)
+{
+    string filename = get_datafilename(iteration);
+    ofstream ofstrm( filename.c_str() );    
+    if(!ofstrm) {
+	cout << "Unable to open file " << filename;
+	return 1;
+    } 
+    
+    // write out a header  and save iteration
+    ofstrm << "comet:" << endl
+	   << iteration << endl;
+    
+    // actin does all the real work
+    theactin.save_data(ofstrm);
+    
+    ofstrm.close();
+
+    return 0;
 }
 
 /*

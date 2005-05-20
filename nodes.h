@@ -37,6 +37,8 @@ public:
 	int save(ofstream*);
 	int savedata(ofstream*);
 	int loaddata(ifstream *inputstream);
+	int save_data(ofstream &ofstr);
+	int load_data(ifstream &ifstr);
 	//int xrank;
 	//int yrank;
 	//int zrank;

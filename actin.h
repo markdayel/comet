@@ -143,6 +143,9 @@ public:
 	void savereport(int filenum);
 	int savedata(int filenum);
 	int loaddata(int filenum);
+	void clear_nodegrid();
+	int save_data(ofstream &ofstrm);
+	int load_data(ifstream &ifstrm);
 	void setdontupdates(void);
 };
 

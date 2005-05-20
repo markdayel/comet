@@ -49,7 +49,8 @@ public:
 	int savevrml(ofstream *outputstream) ;
 	int saveradialsegments(ofstream *outputstream);
 	int clearradialsegments();
-
+	int save_data(ofstream &ostr);
+	int load_data(ifstream &istr);
 
 	bool iswithinnucleator(MYDOUBLE x, MYDOUBLE y, MYDOUBLE z);
 	int collision(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z);

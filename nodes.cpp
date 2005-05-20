@@ -203,6 +203,70 @@ int nodes::loaddata(ifstream *inputstream)
 }
 
 
+int nodes::save_data(ofstream &ostr) 
+{
+    // save the nodes
+    ostr << nodenum << "," 
+	 << x << "," << y << "," << z << "," 
+	 << harbinger << "," << polymer << "," 
+	 << colour.r << "," << colour.g << "," << colour.b << ","
+	 << creation_iter_num << ":";
+    
+    // now the links
+    ostr << (unsigned int) listoflinks.size() << ")";
+    for(vector<links>::iterator l=listoflinks.begin(); l<listoflinks.end(); ++l)
+    {
+	l->save_data(ostr);
+	ostr << ".";
+    }
+    
+    // done
+    ostr << endl;
+    
+    return 0;
+}
+
+int nodes::load_data(ifstream &istrm) 
+{
+    // read in from the stream to our private data
+    char ch;    
+    istrm >> nodenum >> ch 
+	  >> x >> ch >> y >> ch >> z >> ch
+	  >> harbinger >> ch >> polymer >> ch
+	  >> colour.r >> ch >> colour.g >> ch >> colour.b >> ch
+	  >> creation_iter_num >> ch;
+    
+    // check we are ready to read links
+    if(ch!=':' ){
+	cout << "error in checkpoint file, end of node ':' expected" 
+	     << endl;
+	return 1;
+    }
+    
+    int linklistsize;
+    istrm >> linklistsize >> ch;
+    if( ch!=')' ){
+	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
+	     << endl;
+	return 1;
+    }
+  
+    listoflinks.clear(); // note doesn't free memory
+    listoflinks.resize(linklistsize);
+    for(int i=0; i<linklistsize; ++i)
+    {	 
+	// construct the links and add to vector
+	links link;
+	link.load_data(istrm);
+	listoflinks[i] = link;
+	istrm >> ch;
+    }
+    // note we don't set pointer or build the grid here
+    // because we need to be sure this is the node
+    // stored by the actin.  The actin knows that.
+    return 0;
+}
+
 int nodes::applyforces(int threadnum)
 {
 	

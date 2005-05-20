@@ -23,6 +23,7 @@ links::links(void)
 	breaklastiter = 0;
 	broken = true;
 	linkednodeptr = 0;
+	linkednodenumber = -1;
 }
 
 links::~links(void)
@@ -101,4 +102,30 @@ int links::loaddata(ifstream *inputstream)
 	orig_distsqr = orig_dist*orig_dist;
 
 	return 0;
+}
+
+int links::save_data(ofstream &ostr) 
+{
+    ostr << broken << "," 
+	 << breakcount << "," 
+	 << breaklastiter << "," 
+	 << orig_dist << ","
+	 << linkednodeptr->nodenum;
+
+    //if(linkednodeptr != NULL)
+    //	ostr << linkednodeptr->nodenum;
+    //  else
+    //ostr << -1;
+    return 0;
+}
+
+int links::load_data(ifstream &istr) 
+{
+    char ch;
+    istr >> broken >> ch
+	 >> breakcount >> ch 
+	 >> breaklastiter >> ch 
+	 >> orig_dist >> ch 
+	 >> linkednodenumber;
+    return 0;
 }
