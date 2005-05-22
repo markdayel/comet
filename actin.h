@@ -74,7 +74,7 @@ public:
 	int save(int);
 	int saveinfo(void);
 	int iterate(void);
-	int addlinks(int linknode1, int linknode2);
+	int addlinks(const int& linknode1,const int& linknode2);
 	int savevrml(int filenum);
 	ofstream opruninfo;
 	ofstream opvelocityinfo;
@@ -97,13 +97,13 @@ public:
 	int applyforces(void);
 	int savebmp(int filenum, projection proj);
 
-	inline MYDOUBLE square(MYDOUBLE& numb)
+	inline MYDOUBLE square(const MYDOUBLE& numb)
 	{
 		return numb*numb;
 	}
 
 	nucleator* nucleation_object;
-	int linkforces(bool sumforces);
+	int linkforces(const bool& sumforces);
 	Colour newnodescolour;
 	static int iteration_num;
 	int linksformed;
@@ -118,8 +118,8 @@ public:
 	static Nodes2d nodes_on_same_gridpoint;
 	static Nodes1d nodes_within_nucleator;	
 	static vector <int> nodesbygridpoint;
-	inline static int findnearbynodes(int ournodenum, int adjgridpoints, int threadnum);
-	inline static int dorepulsion(int node_i, int node_j, MYDOUBLE distsqr, int threadnum);
+	inline static int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
+	inline static int dorepulsion(const int& node_i,const int& node_j, const MYDOUBLE& distsqr, const int& threadnum);
 	static void *collisiondetectionthread(void*threadarg);
 	inline static void *collisiondetectiondowork(thread_data* dat);
 	static bool isinthread;

@@ -41,7 +41,7 @@ links::links(nodes* linknodep, MYDOUBLE dist)
 }
 
 
-MYDOUBLE links::getlinkforces(MYDOUBLE dist)
+MYDOUBLE links::getlinkforces(const MYDOUBLE& dist)
 {  // return force (nominally in pN)
 	MYDOUBLE force=0.0;
 	MYDOUBLE stress_over_breakage;

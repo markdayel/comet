@@ -32,7 +32,7 @@ public:
 	bool broken;
 	int breakcount;
 	bool breaklastiter;
-	MYDOUBLE getlinkforces(MYDOUBLE distsq);
+	MYDOUBLE getlinkforces(const MYDOUBLE& distsq);
 	MYDOUBLE theta;
 	MYDOUBLE phi;
 };

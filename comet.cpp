@@ -16,7 +16,10 @@ removed without prior written permission from the author.
 #include "comet.h"
 
 MYDOUBLE TOTAL_SIMULATION_TIME = 20000;  
-MYDOUBLE DELTA_T = (MYDOUBLE)0.1;				// to do include in probablility of link breakage, and probability of nucleation etc.
+MYDOUBLE DELTA_T = (MYDOUBLE)0.1;				
+MYDOUBLE MAX_DISP_PERDT = (MYDOUBLE)0.01;
+MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO = (MYDOUBLE)0.00707;
+
 int RECORDED_TIMESTEPS=200;			// number of recorded timesteps(data files)
 
 int RESTORE_FROM_ITERATION = 0; // =0 don't load a checkpoint 
@@ -259,6 +262,8 @@ cout << endl;
 
 	// read the parameters file:
 
+	MYDOUBLE MAX_DISP = 1;
+
 	string buffer;
        while (getline(param, buffer)) { 
                istringstream ss(buffer);
@@ -337,6 +342,9 @@ cout << endl;
 			   } else if (tag == "NODES_TO_UPDATE") {
                        ss >> NODES_TO_UPDATE;
                       continue;
+				} else if (tag == "MAX_DISP") {
+                       ss >> MAX_DISP;  // not true global, used to calc MAX_DISP_PERDT
+                      continue;
 			   } else if (tag == "SHAPE") 
 					{
 				       ss >> buff2;
@@ -366,6 +374,9 @@ cout << endl;
 	//SEG_INCOMP = SEGMENT + NODE_INCOMPRESSIBLE_RADIUS/2;
 	RAD_INCOMP = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
 
+	MAX_DISP_PERDT = MAX_DISP * DELTA_T;
+	MAX_DISP_PERDT_DIVSQRTTWO = MAX_DISP_PERDT / sqrt(2);
+
 	//DAMPING_FACTOR = (DELTA_T * INERTIAL_DAMPING_HALFTIME) / (LN_TWO * NUM_THREADS);
 
 
@@ -378,6 +389,7 @@ cout << endl;
 
 	cout << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
 	cout << "Delta_t:                    " << DELTA_T << endl;
+	cout << "MAX_DISP:                   " << MAX_DISP << endl;
 	cout << "Nucleator radius:           " << RADIUS << endl;
 if (nucshape == nucleator::capsule)
     cout << "Nucleator Segment:          " << SEGMENT << endl;
@@ -397,6 +409,7 @@ if (nucshape == nucleator::capsule)
 
 	theactin.opruninfo << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
 	theactin.opruninfo << "Delta_t:                    " << DELTA_T << endl;
+	theactin.opruninfo << "MAX_DISP:                   " << MAX_DISP << endl;
 	theactin.opruninfo << "Nucleator radius:           " << RADIUS << endl;
 if (nucshape == nucleator::capsule)
     theactin.opruninfo << "Nucleator Segment:          " << SEGMENT << endl;
@@ -413,6 +426,8 @@ if (nucshape == nucleator::capsule)
 	theactin.opruninfo << "Link breakage force:        " << LINK_BREAKAGE_FORCE << endl;
 	theactin.opruninfo << "Link force:                 " << LINK_FORCE << endl;
 	theactin.opruninfo << "P(link break):              " << P_LINK_BREAK_IF_OVER << endl << endl;
+
+	theactin.opruninfo.flush();
 
 	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
 	cout << "Saving snapshot every " << InterRecordIterations  

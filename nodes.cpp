@@ -57,7 +57,7 @@ nodes::nodes(void)
 	dontupdate = false;
 }
 
-nodes::nodes(MYDOUBLE set_x, MYDOUBLE set_y, MYDOUBLE set_z)
+nodes::nodes(const MYDOUBLE& set_x, const MYDOUBLE& set_y,const MYDOUBLE& set_z)
 {
 	gridx = gridy = gridz = -1;	
     nextnode = this;  // initialise to point to self
@@ -120,7 +120,7 @@ bool nodes::depolymerize(void)
 	return false;
 }
 
-bool nodes::polymerize(MYDOUBLE set_x, MYDOUBLE set_y, MYDOUBLE set_z)
+bool nodes::polymerize(const MYDOUBLE& set_x, const MYDOUBLE& set_y, const MYDOUBLE& set_z)
 {
 	x = set_x;
 	y = set_y;
@@ -271,15 +271,41 @@ int nodes::applyforces(int threadnum)
 {
 	
 //	MYDOUBLE delta_mom_x,delta_mom_y,delta_mom_z;
-	MYDOUBLE delta_x, delta_y, delta_z;
+	
 
-	delta_x = FORCE_SCALE_FACT * (link_force_vec[threadnum].x + rep_force_vec[threadnum].x);			
-	delta_y = FORCE_SCALE_FACT * (link_force_vec[threadnum].y + rep_force_vec[threadnum].y);			
-	delta_z = FORCE_SCALE_FACT * (link_force_vec[threadnum].z + rep_force_vec[threadnum].z); 
+	delta_x = DELTA_T * FORCE_SCALE_FACT * 
+		(link_force_vec[threadnum].x + rep_force_vec[threadnum].x)
+		+ repulsion_displacement_vec[threadnum].x;			
+	delta_y = DELTA_T * FORCE_SCALE_FACT * 
+		(link_force_vec[threadnum].y + rep_force_vec[threadnum].y)
+		+ repulsion_displacement_vec[threadnum].y;			
+	delta_z = DELTA_T * FORCE_SCALE_FACT * 
+		(link_force_vec[threadnum].z + rep_force_vec[threadnum].z)
+		+ repulsion_displacement_vec[threadnum].z; 
 
-	x+= delta_x * DELTA_T + repulsion_displacement_vec[threadnum].x;
-	y+= delta_y * DELTA_T + repulsion_displacement_vec[threadnum].y;
-	z+= delta_z * DELTA_T + repulsion_displacement_vec[threadnum].z;
+	// can we skip the displacement calc'n?
+
+	if ((delta_x > MAX_DISP_PERDT_DIVSQRTTWO) || (delta_x < -MAX_DISP_PERDT_DIVSQRTTWO) ||
+		(delta_y > MAX_DISP_PERDT_DIVSQRTTWO) || (delta_y < -MAX_DISP_PERDT_DIVSQRTTWO) ||
+		(delta_z > MAX_DISP_PERDT_DIVSQRTTWO) || (delta_z < -MAX_DISP_PERDT_DIVSQRTTWO))
+	{	// no calculate displacement
+		MYDOUBLE dist = calcdist(delta_x,delta_y,delta_z);
+		if (dist > MAX_DISP_PERDT)
+		{	// if movement displacement greater than MAX_DISP
+			// then truncate
+			MYDOUBLE ratio = MAX_DISP_PERDT / dist;
+			//cout << "Displacement truncated to " << ratio << endl;
+			delta_x *= ratio;
+			delta_y *= ratio;
+			delta_z *= ratio;
+		}
+	}
+
+	// move the node
+	
+	x+= delta_x;
+	y+= delta_y;
+	z+= delta_z;
 
 /*
 
@@ -459,7 +485,7 @@ int nodes::setgridcoords(void)
 	return 0;
 } 
 
-int nodes::addlink(nodes* linkto, MYDOUBLE dist)
+int nodes::addlink(nodes* linkto, const MYDOUBLE& dist)
 {
 
 	//if (listoflinks.size()<MAX_LINKS_PER_NODE)

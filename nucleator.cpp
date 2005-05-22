@@ -429,7 +429,7 @@ int nucleator::definenucleatorgrid(void)
 }
 
 
-bool nucleator::iswithinnucleator(MYDOUBLE x, MYDOUBLE y, MYDOUBLE z)
+bool nucleator::iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MYDOUBLE& z)
 {
 	switch (geometry)
 	{

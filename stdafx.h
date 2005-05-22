@@ -148,7 +148,9 @@ int threadnum;
 // global variables:
 
 extern MYDOUBLE TOTAL_SIMULATION_TIME;  
-extern MYDOUBLE DELTA_T;				// to do include in probablility of link breakage, and probability of nucleation etc.
+extern MYDOUBLE DELTA_T;
+extern MYDOUBLE MAX_DISP_PERDT;
+extern MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO;
 extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
 
 extern MYDOUBLE FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)

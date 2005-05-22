@@ -499,7 +499,7 @@ int actin::iterate()  // this is the main iteration loop call
 	return 0;
 }
 
-int actin::addlinks(int linknode1, int linknode2)
+int actin::addlinks(const int& linknode1,const int& linknode2)
 {
 	// crosslink a new node
 
@@ -836,7 +836,7 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 return (void*) NULL;
 }
 
-int actin::findnearbynodes(int ournodenum, int adjgridpoints, int threadnum)
+int actin::findnearbynodes(const int& ournodenum, const int& adjgridpoints, const int& threadnum)
 {
 
 recti_near_nodes[threadnum].resize(0);
@@ -914,7 +914,7 @@ for (int x = minx; x != maxx; x++)
 	return (int) recti_near_nodes[threadnum].size();
 }
 
-inline int actin::dorepulsion(int node_i, int node_j, MYDOUBLE dist, int threadnum)
+inline int actin::dorepulsion(const int& node_i,const int& node_j,const MYDOUBLE& dist,const int& threadnum)
 {
 	if (node_i==node_j)
 		return 0;
@@ -1086,7 +1086,7 @@ void * actin::applyforcesthread(void* threadarg)
 	return (void*) NULL;
 }
 
-int actin::linkforces(bool sumforces)
+int actin::linkforces(const bool& sumforces)
 {
 	MYDOUBLE xdist, ydist, zdist, scale,dist;
 	MYDOUBLE force;
