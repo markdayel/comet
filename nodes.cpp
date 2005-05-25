@@ -272,7 +272,6 @@ int nodes::applyforces(int threadnum)
 	
 //	MYDOUBLE delta_mom_x,delta_mom_y,delta_mom_z;
 	
-
 	delta_x = DELTA_T * FORCE_SCALE_FACT * 
 		(link_force_vec[threadnum].x + rep_force_vec[threadnum].x)
 		+ repulsion_displacement_vec[threadnum].x;			

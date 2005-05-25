@@ -95,6 +95,11 @@ extern pthread_mutex_t linkstoremove_mutex;
 extern pthread_mutex_t filessavelock_mutex;
 extern pthread_mutex_t filesdonelock_mutex;
 
+extern pthread_mutex_t beadmovelock_mutex;
+
+extern vector<pthread_mutex_t> collisiondetectiongolock_mutex;
+extern vector<pthread_mutex_t> collisiondetectiondonelock_mutex;
+
 struct thread_data
 {
 int startnode;

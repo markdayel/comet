@@ -103,6 +103,11 @@ pthread_mutex_t linkstoremove_mutex;
 pthread_mutex_t filessavelock_mutex;
 pthread_mutex_t filesdonelock_mutex;
 
+pthread_mutex_t beadmovelock_mutex;
+
+vector<pthread_mutex_t> collisiondetectiongolock_mutex;
+vector<pthread_mutex_t> collisiondetectiondonelock_mutex;
+
 // these variables need to be static/global for sharing across threads:
 
 Nodes3d nodegrid;
@@ -150,7 +155,7 @@ cout << endl;
 		exit(EXIT_FAILURE);
 	}
 
-	 // srand( (unsigned) 200 );
+	 //srand( (unsigned) 200 );
 
 	if (argc < 3) 
 	{
@@ -187,6 +192,9 @@ cout << endl;
 
 	threads.resize(NUM_THREADS*5);
 
+	collisiondetectiongolock_mutex.resize(NUM_THREADS*5);
+	collisiondetectiondonelock_mutex.resize(NUM_THREADS*5);
+
 	collision_thread_data_array.resize(NUM_THREADS);
 	collision_thread_go.resize(NUM_THREADS);
 	collision_data_done.resize(NUM_THREADS);
@@ -210,6 +218,8 @@ cout << endl;
 
 	pthread_mutex_init(&filessavelock_mutex,NULL);
 	pthread_mutex_init(&filesdonelock_mutex,NULL);
+
+	pthread_mutex_init(&beadmovelock_mutex,NULL);
 	
 	pthread_mutex_lock(&filessavelock_mutex);
 
@@ -217,6 +227,8 @@ cout << endl;
 
 	for (int i = 0; i < NUM_THREADS; i++)
 		{
+		
+
 			collision_thread_data_array[i].threadnum = i;
 			sem_init(&collision_thread_go[i],0,0);
 			sem_init(&collision_data_done[i],0,0);
@@ -231,15 +243,22 @@ cout << endl;
 
 			if (USE_THREADS)  // only create threads if more than one cpu
 			{
+				// initialise the mutexes
+				pthread_mutex_init(&collisiondetectiongolock_mutex[i],NULL);
+				pthread_mutex_init(&collisiondetectiondonelock_mutex[i],NULL);
+
+				// start the child threads in halted state by locking 'go' mutex:
+				pthread_mutex_lock(&collisiondetectiongolock_mutex[i]);
+
 				// start the threads
 				pthread_create(&threads[truethreadnum++], &thread_attr, actin::collisiondetectionthread, 
 									(void *) &collision_thread_data_array[i]);
 
-				pthread_create(&threads[truethreadnum++], &thread_attr, actin::linkforcesthread, 
-									(void *) &linkforces_thread_data_array[i]);
+				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::linkforcesthread, 
+				//					(void *) &linkforces_thread_data_array[i]);
 
-				pthread_create(&threads[truethreadnum++], &thread_attr, actin::applyforcesthread, 
-									(void *) &applyforces_thread_data_array[i]);
+				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::applyforcesthread, 
+				//					(void *) &applyforces_thread_data_array[i]);
 			}
 		}
 
@@ -433,7 +452,6 @@ if (nucshape == nucleator::capsule)
 	cout << "Saving snapshot every " << InterRecordIterations  
 		<< " iterations (" << NUMBER_RECORDINGS << " total)" << endl;
 
-	cout << "Starting iterations..." << endl << endl;
 
 	unsigned int starttime, endtime, lasttime ,nowtime, lastitertime;
 
@@ -464,8 +482,10 @@ if (nucshape == nucleator::capsule)
 	// initialse from a checkpoint if requested
 	int starting_iter = 1;
 	if(RESTORE_FROM_ITERATION != 0){
+		cout << "Loading data...";
+		cout.flush();
 	    load_data(theactin, RESTORE_FROM_ITERATION);
-	    cout << "* Restored from iteration   "
+	    cout << "restored from iteration "
 		 << RESTORE_FROM_ITERATION << endl;
 	    srand( (unsigned) 200 );
 	    //cout << "reseeded: " << rand() << endl;
@@ -473,7 +493,10 @@ if (nucshape == nucleator::capsule)
 	    starting_iter = RESTORE_FROM_ITERATION; 
 //	starting_iter = RESTORE_FROM_ITERATION + 1; // don't overwrite
 	}
-	
+
+
+	cout << "Starting iterations..." << endl << endl;
+
 	cout << "Itternum|TotNode|NewLinks|RemLinks|Center_X|Center_Y|Center_Z|SnpshTm|SaveNum" << endl << endl;
 	
 	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++){
@@ -499,7 +522,7 @@ if (nucshape == nucleator::capsule)
 		theactin.iterate();
 		//theactin.newnodescolour.setcol((MYDOUBLE)i/(MYDOUBLE)TOTAL_ITERATIONS);
 		
-		if ((i % InterRecordIterations) == 0)
+		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
 		{
 			theactin.setdontupdates();
 			theactin.find_centre(centre_x, centre_y, centre_z);
@@ -562,7 +585,7 @@ if (nucshape == nucleator::capsule)
 
 			nuc_object.clearradialsegments();
 
-			if ((i/InterRecordIterations)>1)
+			if ((i/InterRecordIterations)>(starting_iter/InterRecordIterations))  
 			{  // wait for last save to complete...
 				pthread_mutex_lock(&filesdonelock_mutex);
 				//sem_wait(&compressfiles_data_done[0]);  // wait for the last data write

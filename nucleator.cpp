@@ -455,6 +455,10 @@ bool nucleator::iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MY
 
 int nucleator::collision(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z)
 {
+
+if (USE_THREADS)
+	pthread_mutex_lock(&beadmovelock_mutex); // lock the beadmove mutex
+
 	// node has entered nucleator,
 	// return co-ords of node pushed to surface...
 
@@ -547,6 +551,8 @@ z -= (z - oldz) * movability;
 //y = oldy + ((y - oldy) * (1-movability));  // exactly on nucleator surface
 //z = oldz + ((z - oldz) * (1-movability));
 
+if (USE_THREADS)
+	pthread_mutex_unlock(&beadmovelock_mutex); // lock the beadmove mutex
 
 	return 0;
 }

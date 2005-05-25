@@ -464,17 +464,18 @@ int actin::iterate()  // this is the main iteration loop call
 	linkforces(false);			// start link forces threads
 	//repulsiveforces();		// start the repulsive forces thread
 
+	/*
 	//  wait 'till complete before applying forces
 	if (USE_THREADS)
 	{
 		for (int i = 0; i < NUM_THREADS; i++)
 		{
 			sem_wait(&collision_data_done[i]);
-			sem_wait(&linkforces_data_done[i]);
+			//sem_wait(&linkforces_data_done[i]);
 			//sem_wait(&compressfiles_data_done[i]);
 		}
 	}
-	
+	*/
 	//  debugging:
 	if (((iteration_num+1)%InterRecordIterations)==0)
 	{
@@ -673,12 +674,23 @@ int actin::collisiondetection(void)
 
 	for (int i = 0; i < NUM_THREADS; i++)
 		{
-			sem_post(&collision_thread_go[i]);
+			//sem_post(&collision_thread_go[i]);
+			// allow thread to grab done lock:
+			pthread_mutex_unlock(&collisiondetectiondonelock_mutex[i]);
+			// start the thread:
+			pthread_mutex_unlock(&collisiondetectiongolock_mutex[i]);
+		}
+
+	// re-sync when done:
+	for (int i = 0; i < NUM_THREADS; i++)
+		{
+			// grab done locks for all threads:
+			pthread_mutex_lock(&collisiondetectiondonelock_mutex[i]);
 		}
 
 	}
 	else
-	{
+	{  // if not using threads, do in one go:
 		collision_thread_data_array[0].startnode = 0;
 		collision_thread_data_array[0].endnode = highestnodecount;
 		collision_thread_data_array[0].threadnum = 0;
@@ -693,16 +705,14 @@ void * actin::collisiondetectionthread(void* threadarg)
 	struct thread_data *dat;
 	dat = (struct thread_data *) threadarg;
 
-
-while (1)
+	while (true)
 	{	
+		pthread_mutex_lock(&collisiondetectiongolock_mutex[dat->threadnum]);  // go only if released by main thread
+		pthread_mutex_lock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // lock main thread
 
-	sem_wait(&collision_thread_go[dat->threadnum]);  // go only if released by main thread
+		collisiondetectiondowork(dat);
 
-	collisiondetectiondowork(dat);
-
-	sem_post(&collision_data_done[dat->threadnum]);  // release main thread block waiting for data
-
+		pthread_mutex_unlock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // release main thread block waiting for data
 	}  
 
 	return (void*) NULL;
@@ -1109,7 +1119,7 @@ int actin::linkforces(const bool& sumforces)
 
 	numthreadnodes = highestnodecount / NUM_THREADS;
 
-if (USE_THREADS)
+if (false) // USE_THREADS)
 	{
 		for (int i = 0; i < NUM_THREADS; i++)
 		{
