@@ -150,7 +150,7 @@ cout << endl;
 		exit(EXIT_FAILURE);
 	}
 
-	 srand( (unsigned) 200 );
+	 // srand( (unsigned) 200 );
 
 	if (argc < 3) 
 	{
@@ -553,7 +553,7 @@ if (nucshape == nucleator::capsule)
 			save_data(theactin, i);
 			//load_data(theactin, i);
 			//save_data(theactin, i+1);			
-			srand( (unsigned) 200 );
+			//srand( (unsigned) 200 );
 			//cout << "reseeded: " << rand() << endl;
 
 			theactin.savebmp((i/InterRecordIterations), actin::xaxis);
