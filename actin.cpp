@@ -675,11 +675,10 @@ int actin::collisiondetection(void)
 	for (int i = 0; i < NUM_THREADS; i++)
 		{
 			//sem_post(&collision_thread_go[i]);
-			// allow thread to grab done lock:
-			pthread_mutex_unlock(&collisiondetectiondonelock_mutex[i]);
 			// start the thread:
 			pthread_mutex_unlock(&collisiondetectiongolock_mutex[i]);
 		}
+
 
 	// re-sync when done:
 	for (int i = 0; i < NUM_THREADS; i++)
@@ -687,6 +686,31 @@ int actin::collisiondetection(void)
 			// grab done locks for all threads:
 			pthread_mutex_lock(&collisiondetectiondonelock_mutex[i]);
 		}
+
+	// relock 'go'
+
+	for (int i = 0; i < NUM_THREADS; i++)
+		{
+			// grab done locks for all threads:
+			pthread_mutex_lock(&collisiondetectiongolock_mutex[i]);
+		}
+
+	// and let children take the 'done' locks again
+
+	for (int i = 0; i < NUM_THREADS; i++)
+		{
+			// grab done locks for all threads:
+			pthread_mutex_unlock(&collisiondetectiondonelock_mutex[i]);
+		}
+
+if (!collisionthreaddone1)
+	cout << "Thread 0 still going!" << endl;
+if (!collisionthreaddone2)
+	cout << "Thread 1 still going!" << endl;
+if (!collisionthreaddone3)
+	cout << "Thread 2 still going!" << endl;
+if (!collisionthreaddone4)
+	cout << "Thread 3 still going!" << endl;
 
 	}
 	else
@@ -705,12 +729,37 @@ void * actin::collisiondetectionthread(void* threadarg)
 	struct thread_data *dat;
 	dat = (struct thread_data *) threadarg;
 
+	cout << "Starting collision detection thread " << dat->threadnum << endl;
+
 	while (true)
 	{	
-		pthread_mutex_lock(&collisiondetectiongolock_mutex[dat->threadnum]);  // go only if released by main thread
-		pthread_mutex_lock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // lock main thread
+		pthread_mutex_lock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // go only if released by main thread
+		pthread_mutex_lock(&collisiondetectiongolock_mutex[dat->threadnum]);  // lock main thread
+		// release the go lock so can be taken by main thread again:
+		pthread_mutex_unlock(&collisiondetectiongolock_mutex[dat->threadnum]);
+
+		if (dat->threadnum == 0)
+			collisionthreaddone1 = false;
+		if (dat->threadnum == 1)
+			collisionthreaddone2 = false;
+		if (dat->threadnum == 2)
+			collisionthreaddone3 = false;
+		if (dat->threadnum == 3)
+			collisionthreaddone4 = false;
+
+//	cout << "Thread running " << dat->threadnum << endl;
 
 		collisiondetectiondowork(dat);
+
+		if (dat->threadnum == 0)
+			collisionthreaddone1 = true;
+		if (dat->threadnum == 1)
+			collisionthreaddone2 = true;
+		if (dat->threadnum == 2)
+			collisionthreaddone3 = true;
+		if (dat->threadnum == 3)
+			collisionthreaddone4 = true;
+
 
 		pthread_mutex_unlock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // release main thread block waiting for data
 	}  

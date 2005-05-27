@@ -81,6 +81,11 @@ public:
 	int highestnodecount;
 	Dbl2d imageR, imageG, imageB;
 
+	static bool collisionthreaddone1;
+	static bool collisionthreaddone2;
+	static bool collisionthreaddone3;
+	static bool collisionthreaddone4;
+
 	int crosslinknewnodes(int numnewnodes);
 
 	//links *link;

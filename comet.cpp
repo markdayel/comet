@@ -108,10 +108,16 @@ pthread_mutex_t beadmovelock_mutex;
 vector<pthread_mutex_t> collisiondetectiongolock_mutex;
 vector<pthread_mutex_t> collisiondetectiondonelock_mutex;
 
+//debug threads:
+bool actin::collisionthreaddone1;
+bool actin::collisionthreaddone2;
+bool actin::collisionthreaddone3;
+bool actin::collisionthreaddone4;
+
+
 // these variables need to be static/global for sharing across threads:
 
 Nodes3d nodegrid;
-
 vector <nodes>	actin::node;
 vector <bool>   actin::donenode;	
 vector <bool>   actin::repdonenode;	
@@ -228,7 +234,6 @@ cout << endl;
 	for (int i = 0; i < NUM_THREADS; i++)
 		{
 		
-
 			collision_thread_data_array[i].threadnum = i;
 			sem_init(&collision_thread_go[i],0,0);
 			sem_init(&collision_data_done[i],0,0);
