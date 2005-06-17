@@ -196,6 +196,11 @@ extern MYDOUBLE LINK_TAUGHT_RATIO;
 
 extern int ASYMMETRIC_NUCLEATION;
 
+extern int REPORT_AVERAGE_ITTERATIONS;
+
+const int REPORT_NUM_VARIABLES = 8;
+
+
 // compile-time options:
 
 #define GRIDBOUNDS (MYDOUBLE)40	  // size of grid in um

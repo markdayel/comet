@@ -81,6 +81,8 @@ public:
 	int highestnodecount;
 	Dbl2d imageR, imageG, imageB;
 
+	vector <Dbl2d> reportdat;
+
 	static bool collisionthreaddone1;
 	static bool collisionthreaddone2;
 	static bool collisionthreaddone3;
@@ -113,6 +115,9 @@ public:
 	static int iteration_num;
 	int linksformed;
 	int linksbroken;
+
+	int doreportiteration;
+	int doreportmaxnodes;
 	
 	int setnodecols(void);
 
@@ -145,7 +150,8 @@ public:
 	int nexttocrosslink;
 	int find_centre(MYDOUBLE &centre_x, MYDOUBLE &centre_y, MYDOUBLE &centre_z);
 	int save_linkstats(int filenum);
-	void savereport(int filenum);
+	void reportsnapshot(int filenum, int highestnode, int reportiteration);
+	void savereport(int filenum, int highestnode);
 	int savedata(int filenum);
 	int loaddata(int filenum);
 	void clear_nodegrid();

@@ -42,6 +42,15 @@ actin::actin(void)
 	nodesbygridpoint.resize(MAXNODES);
 	crosslinknodesdelay.resize(CROSSLINKDELAY);
 
+	doreportiteration = 9999999;
+
+	reportdat.resize(REPORT_NUM_VARIABLES);
+	for (int i=0; i!=REPORT_NUM_VARIABLES; i++)  
+	{
+		reportdat[i].resize(REPORT_AVERAGE_ITTERATIONS+1);
+	}
+
+
 	for (int i=0; i<MAXNODES; i++)
 	{
 		node[i].nodenum=i;
@@ -476,14 +485,36 @@ int actin::iterate()  // this is the main iteration loop call
 		}
 	}
 	*/
+
+
 	//  debugging:
 	if (((iteration_num+1)%InterRecordIterations)==0)
 	{
-		savereport((iteration_num+1)/InterRecordIterations);
+		doreportiteration = 0;
+		doreportmaxnodes = highestnodecount;
+
+		// clear the array
+		for (int i=0; i!=REPORT_NUM_VARIABLES; ++i)  
+		{
+			for (int j=0; j!=REPORT_AVERAGE_ITTERATIONS; ++j)
+			{
+				reportdat[i][j].resize(doreportmaxnodes+1,0);
+			}
+		}
 	}
- 
+
+	if (doreportiteration < REPORT_AVERAGE_ITTERATIONS)
+	{
+		reportsnapshot(iteration_num,doreportmaxnodes,doreportiteration);
+		++doreportiteration;
+
+		if (doreportiteration==REPORT_AVERAGE_ITTERATIONS)
+			savereport(iteration_num,doreportmaxnodes);
+	}
 
 	applyforces(); // move the nodes
+
+
 	//squash(2.4f); // squash with 'coverslip' this dist is slide-coverslip dist
 			
 	iteration_num++;
@@ -621,16 +652,18 @@ int actin::ejectfromnucleator()
 int actin::collisiondetection(void)
 {
 
-	int numthreadnodes, start, end;
-
-	numthreadnodes = highestnodecount / NUM_THREADS;
-
-// do collision detection
-
 	for (int i=0; i<highestnodecount; i++)
 	{
 		donenode[i] = false;
 	}
+
+	int numthreadnodes, start, end, higestorderednode;
+
+	higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
+
+	numthreadnodes = higestorderednode / NUM_THREADS;
+
+// do collision detection
 
 //int numtodo = 0;
 
@@ -653,10 +686,23 @@ int actin::collisiondetection(void)
 			}
 			else
 			{	// put remainder in last thread (cludge for now)
-				collision_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+				collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
 				//numtodo+=end-start + highestnodecount % NUM_THREADS;
 			};			
 		}
+// check
+		/*
+		if (rand() < RAND_MAX * 0.01)
+		{
+			for (int i = 0; i < NUM_THREADS; i++)
+			{
+				cout << collision_thread_data_array[i].startnode << " to " <<
+					collision_thread_data_array[i].endnode << "...";
+			}
+			cout << "higestorderednode " << higestorderednode << endl;
+		}
+*/
+
 
 	// check
 		/*if (numtodo != highestnodecount)
@@ -670,6 +716,15 @@ int actin::collisiondetection(void)
 			cout.flush();
 		}*/
 
+// thread test: call sequentially within this thread
+
+		for (int i = 0; i < NUM_THREADS; i++)
+		{
+			collisiondetectiondowork(&collision_thread_data_array[i]);
+		}
+
+
+/*
 		// release thread blocks to start threads:
 
 	for (int i = 0; i < NUM_THREADS; i++)
@@ -711,12 +766,12 @@ if (!collisionthreaddone3)
 	cout << "Thread 2 still going!" << endl;
 if (!collisionthreaddone4)
 	cout << "Thread 3 still going!" << endl;
-
+*/
 	}
 	else
 	{  // if not using threads, do in one go:
 		collision_thread_data_array[0].startnode = 0;
-		collision_thread_data_array[0].endnode = highestnodecount;
+		collision_thread_data_array[0].endnode = higestorderednode;
 		collision_thread_data_array[0].threadnum = 0;
 		collisiondetectiondowork(&collision_thread_data_array[0]);
 	}
@@ -2179,8 +2234,8 @@ int actin::sortnodesbygridpoint(void)
 	for (int i=0; i<highestnodecount; i++)
 	{	// collect the nodes in gridpoint order...
 
-		if ((donenode[i]) || (!node[i].polymer))
-			continue;
+		//if ((donenode[i]) || (!node[i].polymer))
+		//	continue;
 
 		nodeptr=nodegrid[node[i].gridx][node[i].gridy][node[i].gridz];
 		startnodeptr=nodeptr;
@@ -2222,7 +2277,7 @@ void * actin::compressfilesthread(void* threadarg)
 		sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
 		system(command1);
 
-		sprintf(command1, "gzip -f -9 report%05i.txt",dat->startnode );
+		sprintf(command1, "gzip -f -9 report*.txt" );
 		system(command1);
 
 		sprintf(command1 , "gzip -f -9 data%05i.txt",dat->startnode );
@@ -2322,12 +2377,77 @@ int actin::save_linkstats(int filenum)
 
 	return 0;
 }
+void actin::reportsnapshot(int filenum, int highestnode, int reportiteration)
+{
 
-void actin::savereport(int filenum)
+ 	MYDOUBLE dist,compx,compy,compz;
+
+	int varnum;
+
+    for (int i=0; i<highestnode; i++)
+	{
+		if ((node[i].polymer) && (!node[i].harbinger))  // is point valid?
+		{
+
+			reportdat[0][reportiteration][i]=1;  // valid point
+			
+			varnum = 0;
+
+			// calculate distance from center of bead
+			dist = calcdist(node[i].x,node[i].y,node[i].z);
+
+			// calculate components of normalized radial vector
+			compx = node[i].x / dist;
+			compy = node[i].y / dist;
+			compz = node[i].z / dist;
+
+			// distance from center of bead
+			reportdat[1][reportiteration][i]=dist;
+
+			// dot product of repulsive force vector and normalised radial vector
+			reportdat[2][reportiteration][i]=(node[i].rep_force_vec[0].x * compx +
+						node[i].rep_force_vec[0].y * compy +
+						node[i].rep_force_vec[0].z * compz );
+
+			// cross product of repulsive force vector and normalised radial vector
+			reportdat[3][reportiteration][i]=calcdist(node[i].rep_force_vec[0].y * compz - node[i].rep_force_vec[0].z * compy,
+						node[i].rep_force_vec[0].z * compx - node[i].rep_force_vec[0].x * compz,
+						node[i].rep_force_vec[0].x * compy - node[i].rep_force_vec[0].y * compx);
+
+			// dot product of repulsive displacement vector and normalised radial vector
+			reportdat[4][reportiteration][i]=(node[i].repulsion_displacement_vec[0].x * compx +
+						node[i].repulsion_displacement_vec[0].y * compy +
+						node[i].repulsion_displacement_vec[0].z * compz );
+
+			// cross product of repulsive displacement vector and normalised radial vector
+			reportdat[5][reportiteration][i]=calcdist(node[i].repulsion_displacement_vec[0].y * compz - node[i].repulsion_displacement_vec[0].z * compy,
+						node[i].repulsion_displacement_vec[0].z * compx - node[i].repulsion_displacement_vec[0].x * compz,
+						node[i].repulsion_displacement_vec[0].x * compy - node[i].repulsion_displacement_vec[0].y * compx);
+
+			// dot product of link force vector and normalised radial vector
+			reportdat[6][reportiteration][i]=(node[i].link_force_vec[0].x * compx +
+						node[i].link_force_vec[0].y * compy +
+						node[i].link_force_vec[0].z * compz );
+
+			// cross product of link force vector and normalised radial vector
+			reportdat[7][reportiteration][i]=calcdist(node[i].link_force_vec[0].y * compz - node[i].link_force_vec[0].z * compy,
+						node[i].link_force_vec[0].z * compx - node[i].link_force_vec[0].x * compz,
+						node[i].link_force_vec[0].x * compy - node[i].link_force_vec[0].y * compx);
+		}
+		else
+		{
+			reportdat[0][reportiteration][i]=-1;  // not valid point
+		}
+	}
+
+	return;
+
+}
+
+void actin::savereport(int filenum, int highestnode)
 {
 
 	char filename[255];
- 	MYDOUBLE dist,compx,compy,compz;
 
 	sprintf ( filename , "report%05i.txt", filenum );
 
@@ -2337,47 +2457,47 @@ void actin::savereport(int filenum)
 
 	// write header
 	
-	opreport << "NodeRadius,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
-	for (int i=0; i<highestnodecount; i++)
+	opreport << "Nodenum,NodeRadius,NodeRadiusSD,RepForceRadial,RepForceRadialSD,RepForceTrans,RepForceTransSD,RepDisplRadial,RepDisplRadialSD,RepDisplTrans,RepDisplTransSD,LinkForceRadial,LinkForceRadialSD,LinkForceTrans,LinkForceTransSD" << endl;
+	
+	double sum, mean, sd, varsum, count;
+
+	for(int i=1; i<highestnode; ++i)
 	{
-		if ((node[i].polymer) && (!node[i].harbinger))
+		opreport << i << ",";
+
+		for(int j=1; j<REPORT_NUM_VARIABLES; ++j)  // skip i=0 since this is the 'valid' switch
 		{
+			sum = 0;
+			varsum = 0;
+			count = 0;
 
-			dist = calcdist(node[i].x,node[i].y,node[i].z);
+			for (int k=0; k<REPORT_AVERAGE_ITTERATIONS; k++)
+			{
 
-			compx = node[i].x / dist;
-			compy = node[i].y / dist;
-			compz = node[i].z / dist;
+				if (reportdat[0][k][i] > 0)
+				{ // valid point
+					++count;
+					sum+=reportdat[j][k][i];
+				}
+			}
 
-            opreport << dist << ",";
+			mean = sum/count;
 
-			opreport << (node[i].rep_force_vec[0].x * compx +
-						 node[i].rep_force_vec[0].y * compy +
-						 node[i].rep_force_vec[0].z * compz ) << ",";
+			for (int k=0; k<REPORT_AVERAGE_ITTERATIONS; k++)
+			{
 
-			opreport << calcdist(node[i].rep_force_vec[0].y * compz - node[i].rep_force_vec[0].z * compy,
-								 node[i].rep_force_vec[0].z * compx - node[i].rep_force_vec[0].x * compz,
-								 node[i].rep_force_vec[0].x * compy - node[i].rep_force_vec[0].y * compx) << ",";
+				if (reportdat[0][k][i] > 0)
+				{ // valid point
+					varsum+=pow((mean - reportdat[j][k][i]),2);
+				}
+			}
 
+			sd = varsum/count;
 
-			opreport << (node[i].repulsion_displacement_vec[0].x * compx +
-						 node[i].repulsion_displacement_vec[0].y * compy +
-						 node[i].repulsion_displacement_vec[0].z * compz ) << ",";
-
-			opreport << calcdist(node[i].repulsion_displacement_vec[0].y * compz - node[i].repulsion_displacement_vec[0].z * compy,
-								 node[i].repulsion_displacement_vec[0].z * compx - node[i].repulsion_displacement_vec[0].x * compz,
-								 node[i].repulsion_displacement_vec[0].x * compy - node[i].repulsion_displacement_vec[0].y * compx) << ",";
-
-			opreport << (node[i].link_force_vec[0].x * compx +
-						 node[i].link_force_vec[0].y * compy +
-						 node[i].link_force_vec[0].z * compz ) << ",";
-
-			opreport << calcdist(node[i].link_force_vec[0].y * compz - node[i].link_force_vec[0].z * compy,
-								 node[i].link_force_vec[0].z * compx - node[i].link_force_vec[0].x * compz,
-								 node[i].link_force_vec[0].x * compy - node[i].link_force_vec[0].y * compx) << endl;
-
-
+			opreport << mean << "," << sd << "," ;
 		}
+
+		opreport << endl;
 	}
 
 	opreport.close();

@@ -20,6 +20,8 @@ MYDOUBLE DELTA_T = (MYDOUBLE)0.1;
 MYDOUBLE MAX_DISP_PERDT = (MYDOUBLE)0.01;
 MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO = (MYDOUBLE)0.00707;
 
+int REPORT_AVERAGE_ITTERATIONS = 50;
+
 int RECORDED_TIMESTEPS=200;			// number of recorded timesteps(data files)
 
 int RESTORE_FROM_ITERATION = 0; // =0 don't load a checkpoint 
@@ -113,7 +115,6 @@ bool actin::collisionthreaddone1;
 bool actin::collisionthreaddone2;
 bool actin::collisionthreaddone3;
 bool actin::collisionthreaddone4;
-
 
 // these variables need to be static/global for sharing across threads:
 
