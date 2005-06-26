@@ -2234,8 +2234,8 @@ int actin::sortnodesbygridpoint(void)
 	for (int i=0; i<highestnodecount; i++)
 	{	// collect the nodes in gridpoint order...
 
-		//if ((donenode[i]) || (!node[i].polymer))
-		//	continue;
+		if (donenode[i]) //|| (!node[i].polymer))
+			continue;
 
 		nodeptr=nodegrid[node[i].gridx][node[i].gridy][node[i].gridz];
 		startnodeptr=nodeptr;
