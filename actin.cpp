@@ -1832,6 +1832,26 @@ typedef struct tagBITMAPINFO {
 	fileInfo->bmiHeader.biXPelsPerMeter = 1000;
 	fileInfo->bmiHeader.biYPelsPerMeter = 1000;
 
+#ifdef __BIG_ENDIAN__
+
+#pragma pack(push,1)  // align the structs to byte boundaries
+
+endian_swap(fileHeader->bfType);
+endian_swap(fileHeader->bfSize);
+endian_swap(fileHeader->bfOffBits);
+endian_swap(fileInfo->bmiHeader.biSize);
+endian_swap(fileInfo->bmiHeader.biWidth);
+endian_swap(fileInfo->bmiHeader.biHeight);
+endian_swap(fileInfo->bmiHeader.biPlanes);
+endian_swap(fileInfo->bmiHeader.biBitCount);
+endian_swap(fileInfo->bmiHeader.biCompression);
+endian_swap(fileInfo->bmiHeader.biXPelsPerMeter);
+endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
+
+#pragma pack(pop)
+
+#endif
+
 	for (int i=0;i<=255;i++)
 	{ // the bitmap palette  (not used for 24 bit, of course)
 		fileInfo->bmiColors[i].rgbBlue = (BYTE) i;
@@ -1991,9 +2011,11 @@ radial_rep_mean_z = radial_rep_tot_z / (MYDOUBLE) RADIAL_SEGMENTS;
 	
 
 	//cout << endl << command1 << endl;
+#ifndef NO_IMAGEMAGICK
 	system(command1);
 	system(command2);
-	
+#endif
+
 	for (int i=0; i<RADIAL_SEGMENTS; i++)
 	{
 		nucleation_object->radial_rep_distrib_x[i]*=InterRecordIterations;
@@ -2292,6 +2314,7 @@ void * actin::compressfilesthread(void* threadarg)
 		system(command1);
 
 		// convert bmps to jpgs:
+#ifndef NO_IMAGEMAGICK
 			
 		sprintf(command1 , "convert -quality 75 x_proj_%05i.bmp x_proj_%05i.png", dat->startnode, dat->startnode );
 		system(command1);
@@ -2335,6 +2358,8 @@ void * actin::compressfilesthread(void* threadarg)
 		system(command2);
 #endif
 	
+#endif
+
 		pthread_mutex_unlock(&filesdonelock_mutex);
 
 		//sem_post(&compressfiles_data_done[0]);  // release main thread block waiting for data
