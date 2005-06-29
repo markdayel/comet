@@ -19,6 +19,13 @@ MYDOUBLE TOTAL_SIMULATION_TIME = 20000;
 MYDOUBLE DELTA_T = (MYDOUBLE)0.1;				
 MYDOUBLE MAX_DISP_PERDT = (MYDOUBLE)0.01;
 MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO = (MYDOUBLE)0.00707;
+MYDOUBLE GAUSSFWHM = (MYDOUBLE) 0.266;
+
+MYDOUBLE INIT_R_GAIN = 20;
+MYDOUBLE INIT_G_GAIN = 20;
+MYDOUBLE INIT_B_GAIN = 20;
+
+int SPECKLE_FACTOR = 1;
 
 int REPORT_AVERAGE_ITTERATIONS = 50;
 
@@ -62,6 +69,7 @@ int NODE_REPULSIVE_RANGE_GRIDSEARCH;
 
 int RADIAL_SEGMENTS = 12;
 int NODES_TO_UPDATE = 5000;  //only update the NODES_TO_UPDATE newest nodes
+MYDOUBLE DISTANCE_TO_UPDATE = 0;
 
 //MYDOUBLE DAMPING_FACTOR = 10;
 int CROSSLINKDELAY = 20;  // number of interations before crosslinking 
@@ -127,6 +135,7 @@ Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
 Nodes1d actin::nodes_within_nucleator;
 vector <int> actin::nodesbygridpoint;
+vector <int> actin::nodesbygridpoint_temp;
 int actin::iteration_num;
 
 bool actin::isinthread;
@@ -143,8 +152,7 @@ int save_data(actin &theactin, int iteration);
 
 int main(int argc, char* argv[])
 {
-
-cout << endl;
+	cout << endl;
 
 	if (argc < 2) 
 	{
@@ -162,11 +170,18 @@ cout << endl;
 		exit(EXIT_FAILURE);
 	}
 
+#ifdef NO_IMAGEMAGICK
+	cerr << "Warning: compiled with ImageMagick support turned off" << endl << endl;
+#else 
+	#ifdef NO_IMAGE_TEXT
+		cerr << "Warning: compiled with image text turned off" << endl << endl;
+	#endif
+#endif
 	 //srand( (unsigned) 200 );
 
 	if (argc < 3) 
 	{
-		cerr << "Static random number seed used" <<  endl;
+		cerr << "Warning: Static random number seed used" <<  endl;
 		srand( (unsigned) 200 );
 	} else
 	{
@@ -190,6 +205,7 @@ cout << endl;
 	}
 	else
 	{
+		cout << "Warning:  Multithreading does not function properly yet!" << endl;
 		if (NUM_THREADS<2)
 			cout << "Running in multithreaded mode with 1 thread per stage" << endl;
 		else
@@ -367,6 +383,24 @@ cout << endl;
 			   } else if (tag == "NODES_TO_UPDATE") {
                        ss >> NODES_TO_UPDATE;
                       continue;
+				} else if (tag == "DISTANCE_TO_UPDATE") {
+                       ss >> DISTANCE_TO_UPDATE;
+                      continue;
+				} else if (tag == "GAUSSFWHM") {
+                       ss >> GAUSSFWHM;
+                      continue;
+				} else if (tag == "SPECKLE_FACTOR") {
+                       ss >> SPECKLE_FACTOR;
+                      continue;				
+				} else if (tag == "INIT_R_GAIN") {
+                       ss >> INIT_R_GAIN;
+                      continue;
+				} else if (tag == "INIT_G_GAIN") {
+                       ss >> INIT_G_GAIN;
+                      continue;
+				} else if (tag == "INIT_B_GAIN") {
+                       ss >> INIT_B_GAIN;
+                      continue;
 				} else if (tag == "MAX_DISP") {
                        ss >> MAX_DISP;  // not true global, used to calc MAX_DISP_PERDT
                       continue;
@@ -404,20 +438,34 @@ cout << endl;
 
 	//DAMPING_FACTOR = (DELTA_T * INERTIAL_DAMPING_HALFTIME) / (LN_TWO * NUM_THREADS);
 
-
+	if (SPECKLE_FACTOR<1)
+	{
+        SPECKLE_FACTOR = 1;
+		cout << "SPECKLE_FACTOR reset to 1" << endl;
+	}
 
 	// create main objects
 
 	actin theactin;
 	nucleator nuc_object(nucshape, &theactin);
 
+	// write out parameters to screen
 
 	cout << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
 	cout << "Delta_t:                    " << DELTA_T << endl;
+	cout << "NODES_TO_UPDATE:            " << NODES_TO_UPDATE << endl;
+	cout << "DISTANCE_TO_UPDATE:         " << DISTANCE_TO_UPDATE << endl;
+	cout << "     (actual distance:      " << DISTANCE_TO_UPDATE*RADIUS << ")" << endl;
 	cout << "MAX_DISP:                   " << MAX_DISP << endl;
-	cout << "Nucleator radius:           " << RADIUS << endl;
-if (nucshape == nucleator::capsule)
-    cout << "Nucleator Segment:          " << SEGMENT << endl;
+	if (nucshape == nucleator::capsule)
+	{
+	cout << "Capsule radius:             " << RADIUS << endl;
+	cout << "Capsule segment:            " << SEGMENT << endl;
+	}
+	else
+	{
+	cout << "Sphere radius:              " << RADIUS << endl;
+	}
 	cout << "P(nuc):                     " << P_NUC << endl;
 	cout << "Force scale factor:         " << FORCE_SCALE_FACT << endl;
 	cout << "Crosslink node range:       " << XLINK_NODE_RANGE << endl;
@@ -432,9 +480,13 @@ if (nucshape == nucleator::capsule)
 	cout << "Max P(link):                " << P_XLINK << endl;
 	cout << "P(link break):              " << P_LINK_BREAK_IF_OVER << endl << endl;
 
+	// and file
+
 	theactin.opruninfo << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
 	theactin.opruninfo << "Delta_t:                    " << DELTA_T << endl;
 	theactin.opruninfo << "MAX_DISP:                   " << MAX_DISP << endl;
+	theactin.opruninfo << "NODES_TO_UPDATE:            " << NODES_TO_UPDATE << endl;
+	theactin.opruninfo << "DISTANCE_TO_UPDATE:         " << DISTANCE_TO_UPDATE << endl;
 	theactin.opruninfo << "Nucleator radius:           " << RADIUS << endl;
 if (nucshape == nucleator::capsule)
     theactin.opruninfo << "Nucleator Segment:          " << SEGMENT << endl;
@@ -454,6 +506,8 @@ if (nucshape == nucleator::capsule)
 
 	theactin.opruninfo.flush();
 
+
+
 	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
 	cout << "Saving snapshot every " << InterRecordIterations  
 		<< " iterations (" << NUMBER_RECORDINGS << " total)" << endl;
@@ -468,6 +522,8 @@ if (nucshape == nucleator::capsule)
 	int lastlinksformed = 0;
 	int lastlinksbroken = 0;
 
+	// formatting
+
 	cout.fill(' '); 
 	cout.setf(ios::fixed);
 	theactin.opruninfo.fill(' ');
@@ -478,6 +534,8 @@ if (nucshape == nucleator::capsule)
 	MYDOUBLE centre_x,centre_y,centre_z;
 	MYDOUBLE last_centre_x, last_centre_y , last_centre_z;
 	MYDOUBLE delta_centre_x , delta_centre_y, delta_centre_z;
+	MYDOUBLE distfromorigin;
+	bool DISTANCE_TO_UPDATE_reached = false;
 
     last_centre_x = last_centre_y = last_centre_z = 0;
 	centre_x = centre_y = centre_z = 0;
@@ -514,6 +572,16 @@ if (nucshape == nucleator::capsule)
 			//delta_centre_x = centre_x - last_centre_x;
 			//delta_centre_y = centre_y - last_centre_y;
 			//delta_centre_z = centre_z - last_centre_z;
+			distfromorigin = calcdist(centre_x, centre_y, centre_z);
+
+			if ((!DISTANCE_TO_UPDATE_reached) && (DISTANCE_TO_UPDATE > 0.01) 
+				&& (distfromorigin > (DISTANCE_TO_UPDATE*RADIUS)))
+			{
+				DISTANCE_TO_UPDATE_reached = true;
+				NODES_TO_UPDATE = theactin.highestnodecount;
+				cout << endl << "DISTANCE_TO_UPDATE distance reached at " << distfromorigin
+					<< " updating only newest " << NODES_TO_UPDATE << " nodes" << endl;
+			}
 
 			cout << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
@@ -661,7 +729,13 @@ string get_datafilename(const int iteration)
 
 int load_data(actin &theactin, int iteration)
 {
+
+	char command1[255];
     string filename = get_datafilename(iteration);
+
+	sprintf(command1, "gunzip %s",filename.c_str());
+	system(command1);
+
     ifstream ifstrm( filename.c_str() );
     if(!ifstrm) {
 	cout << "Unable to open file " << filename << " for input";
@@ -680,6 +754,11 @@ int load_data(actin &theactin, int iteration)
     int saved_iteration;
     ifstrm >> saved_iteration;
     theactin.load_data(ifstrm);
+	
+	ifstrm.close();
+
+	sprintf(command1, "gzip %s",filename.c_str());
+	system(command1);
 
     // check the iteration is correct
     if( saved_iteration != iteration ){

@@ -128,6 +128,7 @@ public:
 	static Nodes2d nodes_on_same_gridpoint;
 	static Nodes1d nodes_within_nucleator;	
 	static vector <int> nodesbygridpoint;
+	static vector <int> nodesbygridpoint_temp;
 	inline static int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
 	inline static int dorepulsion(const int& node_i,const int& node_j, const MYDOUBLE& distsqr, const int& threadnum);
 	static void *collisiondetectionthread(void*threadarg);

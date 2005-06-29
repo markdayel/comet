@@ -32,7 +32,7 @@ actin::actin(void)
 	if (!opvelocityinfo) 
 	{ cout << "Unable to open file " << "velocities.txt" << " for output"; return;}
 
-	opvelocityinfo << "time,dx,dy,dz,vel" << endl;
+	opvelocityinfo << "time,x,y,z,vel" << endl;
 
 	// node = new nodes[MAXNODES];
 
@@ -40,6 +40,7 @@ actin::actin(void)
 	donenode.resize(MAXNODES);
 	repdonenode.resize(MAXNODES);
 	nodesbygridpoint.resize(MAXNODES);
+	nodesbygridpoint_temp.resize(MAXNODES);
 	crosslinknodesdelay.resize(CROSSLINKDELAY);
 
 	doreportiteration = 9999999;
@@ -55,6 +56,8 @@ actin::actin(void)
 	{
 		node[i].nodenum=i;
 		node[i].ptheactin=this;
+		nodesbygridpoint[i] = i;
+		nodesbygridpoint_temp[i] = i;
 		if (i<10000)
 			node[i].listoflinks.reserve(64);
 	}
@@ -84,15 +87,15 @@ actin::actin(void)
 	// between stages and between threads inside stages
 
 	recti_near_nodes.resize(NUM_THREADS*4);
-	nodes_on_same_gridpoint.resize(NUM_THREADS*4);
+    nodes_on_same_gridpoint.resize(NUM_THREADS*4);
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
 		recti_near_nodes[i].reserve(5000);
-		nodes_on_same_gridpoint[i].reserve(5000);
+		nodes_on_same_gridpoint[i].reserve(MAXNODES);
 	}
 
-	nodes_within_nucleator.reserve(5000);
+	nodes_within_nucleator.reserve(10000);
 	linkformto.reserve(100*MAX_LINKS_PER_NODE);
 
 	/*repulsedone.resize(MAXNODES);
@@ -1581,7 +1584,7 @@ typedef struct tagBITMAPINFO {
 
 	int x,y;
 
-	MYDOUBLE gaussmax = (MYDOUBLE) 0.4;  // full extent of gaussian radius -  fwhm is 2/3 this
+	MYDOUBLE gaussmax = (MYDOUBLE) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
 
 	MYDOUBLE imageRmax, imageGmax, imageBmax;
 
@@ -1767,23 +1770,25 @@ typedef struct tagBITMAPINFO {
 		}
 		else
 		{
-			for(xg = -xgmax; xg<xgmax; xg++)
-				for(yg = -ygmax; yg<ygmax; yg++)
-				{
-					if ((xg*xg+yg*yg)>(xgmax*ygmax))
-						continue;  // don't do corners
+			if ((i%SPECKLE_FACTOR)==0)
+				for(xg = -xgmax; xg<xgmax; ++xg)
+					for(yg = -ygmax; yg<ygmax; ++yg)
+					{
+						if ((xg*xg+yg*yg)>(xgmax*ygmax))
+							continue;  // don't do corners
 
-					//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
-					//	node[i].nodelinksbroken * GaussMat[xg+xgmax][yg+ygmax];
-					//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
-					//		linkforces[i] * GaussMat[xg+xgmax][yg+ygmax];
-					imageG[x+xg+xgmax][y+yg+ygmax]+=
-							1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
-					//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
-					//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
-					//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
-					//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
-				}
+						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
+						//	node[i].nodelinksbroken * GaussMat[xg+xgmax][yg+ygmax];
+						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
+						//		linkforces[i] * GaussMat[xg+xgmax][yg+ygmax];
+						imageG[x+xg+xgmax][y+yg+ygmax]+=
+								1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
+						//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
+						//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
+						//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
+						//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
+					}
+
 		}
 //	if (node[i].harbinger)
 //		harbingers++;
@@ -1793,8 +1798,13 @@ typedef struct tagBITMAPINFO {
 
 	// normalize image
 
-	imageRmax = imageGmax = imageBmax = 50;  // prevent over sensitivity
-	imageRmax = 1;  // max sensitivity for red channel
+	
+
+	imageRmax = 1000/INIT_R_GAIN;
+	imageGmax = 1000/INIT_G_GAIN;
+	imageBmax = 1000/INIT_B_GAIN;  // prevent over sensitivity
+
+	// imageRmax = 1;  // max sensitivity for red channel
 
 	for (y = 0; y<height; y++)
 		{
@@ -1993,24 +2003,64 @@ radial_rep_mean_z = radial_rep_tot_z / (MYDOUBLE) RADIAL_SEGMENTS;
 	int scalebarlength;
 	scalebarlength = (int)(height * 1.0 /dimx);
 
+#ifdef NO_IMAGE_TEXT
+
 	if (proj == xaxis)  // call imagemagick to write text on image
 	{
-		sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
-		sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" x_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+		sprintf ( command1 , "convert -draw \"rectangle 5 576 %i 573\" -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp",scalebarlength, drawstring, filenum, filenum);
+		sprintf ( command2 , "mogrify -draw \"rectangle 5 576 %i 573\" x_proj_%05i.bmp",scalebarlength,   filenum );
 	}
 	else if (proj == yaxis)
 	{
-		sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
-		sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" y_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+		sprintf ( command1 , "convert -draw \"rectangle 5 576 %i 573\" -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp",scalebarlength, drawstring, filenum, filenum);
+		sprintf ( command2 , "mogrify -draw \"rectangle 5 576 %i 573\" y_proj_%05i.bmp",scalebarlength,   filenum );
 	}
 	else 
 	{
-		sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
-		sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" z_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+		sprintf ( command1 , "convert -draw \"rectangle 5 576 %i 573\" -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp",scalebarlength, drawstring, filenum, filenum);
+		sprintf ( command2 , "mogrify -draw \"rectangle 5 576 %i 573\" z_proj_%05i.bmp",scalebarlength,  filenum );
 	}
-	
 
-	//cout << endl << command1 << endl;
+#else
+
+	//if (proj == xaxis)  // call imagemagick to write text on image
+	//{
+	//	sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
+	//	sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" x_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+	//}
+	//else if (proj == yaxis)
+	//{
+	//	sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
+	//	sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" y_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+	//}
+	//else 
+	//{
+	//	sprintf ( command1 , "convert -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection \\nFrame % 4i\\nG-gain % 4i' \" -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
+	//	sprintf ( command2 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" z_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+	//}
+
+	//cout << endl << command1 << endl << endl << command2 << endl << endl;
+
+	if (proj == xaxis)  // call imagemagick to write text on image
+	{
+		sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" x_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+		sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp", drawstring, filenum, filenum);
+	}
+	else if (proj == yaxis)
+	{
+		sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" y_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+		sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp", drawstring, filenum, filenum);
+	}
+	else 
+	{
+		sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" z_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+		sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp", drawstring, filenum, filenum);
+	}
+
+
+#endif
+
+	//cout << endl << command1 << endl << endl << command2 << endl << endl;
 #ifndef NO_IMAGEMAGICK
 	system(command1);
 	system(command2);
@@ -2248,14 +2298,18 @@ int actin::sortnodesbygridpoint(void)
 		donenode[i] = false;
 	}
 
-	nodesbygridpoint.resize(0);
-	//nodesbygridpoint.clear();
+	//nodesbygridpoint.swap(nodesbygridpoint_temp);  // store the old order
+	//nodesbygridpoint.resize(0);	// blank the new
 
 	// mark: todo: alter so that not restarting from scratch (use lowestnodeupdate)
 
-	for (int i=0; i<highestnodecount; i++)
+	// int i;
+	int nodenumber = 0;
+
+	for (int i=0; i<highestnodecount; ++i)
 	{	// collect the nodes in gridpoint order...
 
+		//i = nodesbygridpoint_temp[j]; // get reference for old set
 		if (donenode[i]) //|| (!node[i].polymer))
 			continue;
 
@@ -2265,7 +2319,7 @@ int actin::sortnodesbygridpoint(void)
 			{
 				do
 				{
-					nodesbygridpoint.push_back(nodeptr->nodenum);
+					nodesbygridpoint[nodenumber++]=nodeptr->nodenum;
 					donenode[nodeptr->nodenum] = true;  // mark node as done
 					nodeptr = nodeptr->nextnode;					
 				}
@@ -2299,10 +2353,10 @@ void * actin::compressfilesthread(void* threadarg)
 		sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
 		system(command1);
 
-		sprintf(command1, "gzip -f -9 report*.txt" );
+		sprintf(command1, "gzip -q -f -9 report*.txt 2>/dev/null" );
 		system(command1);
 
-		sprintf(command1 , "gzip -f -9 data%05i.txt",dat->startnode );
+		sprintf(command1 , "gzip -q -f -9 data*.txt 2>/dev/null" );
 		system(command1);
 
 		// gzip the wrl file:

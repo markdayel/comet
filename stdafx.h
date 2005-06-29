@@ -170,6 +170,12 @@ extern MYDOUBLE LINK_FORCE;
 extern MYDOUBLE P_LINK_BREAK_IF_OVER;  // probablility that force will break link if over the link breakage force
 extern MYDOUBLE P_XLINK;
 extern MYDOUBLE P_NUC;
+extern MYDOUBLE GAUSSFWHM;
+extern int SPECKLE_FACTOR;
+extern MYDOUBLE INIT_R_GAIN;
+extern MYDOUBLE INIT_G_GAIN;
+extern MYDOUBLE INIT_B_GAIN;
+
 
 extern MYDOUBLE RADIUS;   // radius and segment are the true radius and segment of nucleator
 extern MYDOUBLE SEGMENT;
@@ -180,6 +186,7 @@ extern MYDOUBLE RAD_INCOMP; // RAD_INCOMP and SEG_INCOMP are the enlarged radius
 //extern MYDOUBLE DAMPING_FACTOR;
 extern int CROSSLINKDELAY;
 extern int NODES_TO_UPDATE;
+extern MYDOUBLE DISTANCE_TO_UPDATE;
 
 extern MYDOUBLE NODE_REPULSIVE_MAG;
 extern MYDOUBLE NODE_REPULSIVE_RANGE;
