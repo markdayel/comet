@@ -37,23 +37,41 @@ public:
 	actin *ptheactin;
 	vect position;
 
+	
 	vector <MYDOUBLE> radial_rep_distrib_x;
 	vector <MYDOUBLE> radial_rep_distrib_y;
 	vector <MYDOUBLE> radial_rep_distrib_z;
-	
-	int addnodes(void);
-	int addnodessphere(void);
-	int addnodescapsule(void);
-	int definenucleatorgrid(void);
-	int save(ofstream *outputstream) ;
-	int savevrml(ofstream *outputstream) ;
-	int saveradialsegments(ofstream *outputstream);
-	int clearradialsegments();
-	int save_data(ofstream &ostr);
-	int load_data(ifstream &istr);
 
+	int nbdy_segs;
+	int ncap_segs;
+
+	vector <MYDOUBLE> fbar_cap_x;
+	vector <MYDOUBLE> fbar_cap_y;
+	vector <MYDOUBLE> fbar_cap_ang;
+	vector <MYDOUBLE> fbar_bdy_x;
+	vector <MYDOUBLE> fbar_bdy_y;
+
+	int  addnodes(void);
+	int  addnodessphere(void);
+	int  addnodescapsule(void);
+	int  definenucleatorgrid(void);
+	int  save(ofstream *outputstream) ;
+	int  savevrml(ofstream *outputstream) ;
+	int  saveradialsegments(ofstream *outputstream);
+	int  clearradialsegments();
+	int  save_data(ofstream &ostr);
+	int  load_data(ifstream &istr);
+	void set_rep_bins();
+//	int  get_rep_bin(MYDOUBLE angle);
+	int  get_zbin(const MYDOUBLE x, const MYDOUBLE y);
+	int  get_angbin(const MYDOUBLE x, const MYDOUBLE y);
+//	MYDOUBLE get_rep_angle(MYDOUBLE x, MYDOUBLE y);
+	bool is_sphere();
+	bool is_capsule();
+	
 	bool iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MYDOUBLE& z);
 	int collision(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z);
+	int n_force_segments();
 };
 
 #endif
