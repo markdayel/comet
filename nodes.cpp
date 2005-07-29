@@ -23,7 +23,7 @@ nodes::nodes(void)
 	prevnode = this;
 	
 	x = y = z = 0.0;
-	lastpos.x = lastpos.y = lastpos.z = 0.0;
+	lastpos.zero();
 	gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
 	//rep_force_vec.x  = rep_force_vec.y  = rep_force_vec.z  = 0.0;
 	
@@ -34,17 +34,9 @@ nodes::nodes(void)
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
-		repulsion_displacement_vec[i].x = 0.0;
-		repulsion_displacement_vec[i].y = 0.0;
-		repulsion_displacement_vec[i].z = 0.0;
-
-		link_force_vec[i].x = 0.0;
-		link_force_vec[i].y = 0.0;
-		link_force_vec[i].z = 0.0;
-
-		rep_force_vec[i].x = 0.0;
-		rep_force_vec[i].y = 0.0;
-		rep_force_vec[i].z = 0.0;
+		repulsion_displacement_vec[i].zero();
+		link_force_vec[i].zero();
+		rep_force_vec[i].zero();
 	}
 
 	
@@ -63,7 +55,7 @@ nodes::nodes(const MYDOUBLE& set_x, const MYDOUBLE& set_y,const MYDOUBLE& set_z)
     nextnode = this;  // initialise to point to self
 	prevnode = this;
 	//rep_force_vec.x  = rep_force_vec.y  = rep_force_vec.z  = 0.0;
-	lastpos.x = lastpos.y = lastpos.z = 0.0;
+	lastpos.zero();
 	//repulsion_displacement_vec =  new vect[NUM_THREADS+1];
 
 	repulsion_displacement_vec.resize(NUM_THREADS);
@@ -72,17 +64,9 @@ nodes::nodes(const MYDOUBLE& set_x, const MYDOUBLE& set_y,const MYDOUBLE& set_z)
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
-		repulsion_displacement_vec[i].x = 0.0;
-		repulsion_displacement_vec[i].y = 0.0;
-		repulsion_displacement_vec[i].z = 0.0;
-
-		link_force_vec[i].x = 0.0;
-		link_force_vec[i].y = 0.0;
-		link_force_vec[i].z = 0.0;
-
-		rep_force_vec[i].x = 0.0;
-		rep_force_vec[i].y = 0.0;
-		rep_force_vec[i].z = 0.0;
+		repulsion_displacement_vec[i].zero();
+		link_force_vec[i].zero();
+		rep_force_vec[i].zero();
 	}
 
 //	momentum_vec.x = momentum_vec.y = momentum_vec.z = 0.0;	
@@ -270,41 +254,28 @@ int nodes::load_data(ifstream &istrm)
 int nodes::applyforces(int threadnum)
 {
 	
-//	MYDOUBLE delta_mom_x,delta_mom_y,delta_mom_z;
-	
-	delta_x = DELTA_T * FORCE_SCALE_FACT * 
-		(link_force_vec[threadnum].x + rep_force_vec[threadnum].x)
-		+ repulsion_displacement_vec[threadnum].x;			
-	delta_y = DELTA_T * FORCE_SCALE_FACT * 
-		(link_force_vec[threadnum].y + rep_force_vec[threadnum].y)
-		+ repulsion_displacement_vec[threadnum].y;			
-	delta_z = DELTA_T * FORCE_SCALE_FACT * 
-		(link_force_vec[threadnum].z + rep_force_vec[threadnum].z)
-		+ repulsion_displacement_vec[threadnum].z; 
+	delta = (link_force_vec[threadnum] + rep_force_vec[threadnum]) * DELTA_T * FORCE_SCALE_FACT;
 
 	// can we skip the displacement calc'n?
-
-	if ((delta_x > MAX_DISP_PERDT_DIVSQRTTWO) || (delta_x < -MAX_DISP_PERDT_DIVSQRTTWO) ||
-		(delta_y > MAX_DISP_PERDT_DIVSQRTTWO) || (delta_y < -MAX_DISP_PERDT_DIVSQRTTWO) ||
-		(delta_z > MAX_DISP_PERDT_DIVSQRTTWO) || (delta_z < -MAX_DISP_PERDT_DIVSQRTTWO))
+/*
+	if ((delta.x > MAX_DISP_PERDT_DIVSQRTTWO) || (delta.x < -MAX_DISP_PERDT_DIVSQRTTWO) ||
+		(delta.y > MAX_DISP_PERDT_DIVSQRTTWO) || (delta.y < -MAX_DISP_PERDT_DIVSQRTTWO) ||
+		(delta.z > MAX_DISP_PERDT_DIVSQRTTWO) || (delta.z < -MAX_DISP_PERDT_DIVSQRTTWO))
 	{	// no calculate displacement
-		MYDOUBLE dist = calcdist(delta_x,delta_y,delta_z);
+		MYDOUBLE dist = delta.mag(); //calcdist(delta_x,delta_y,delta_z);
 		if (dist > MAX_DISP_PERDT)
 		{	// if movement displacement greater than MAX_DISP
 			// then truncate
 			MYDOUBLE ratio = MAX_DISP_PERDT / dist;
 			//cout << "Displacement truncated to " << ratio << endl;
-			delta_x *= ratio;
-			delta_y *= ratio;
-			delta_z *= ratio;
+			delta *= ratio;
 		}
 	}
-
+*/
 	// move the node
 	
-	x+= delta_x;
-	y+= delta_y;
-	z+= delta_z;
+	*this+=delta;
+
 
 /*
 
@@ -343,17 +314,9 @@ int nodes::applyforces(int threadnum)
 */
 	// zero force vectors
 
-	rep_force_vec[threadnum].x =
-	rep_force_vec[threadnum].y =
-	rep_force_vec[threadnum].z  = 0.0;
-
-	link_force_vec[threadnum].x = 
-	link_force_vec[threadnum].y =
-	link_force_vec[threadnum].z = 0.0;
-
-	repulsion_displacement_vec[threadnum].x =
-	repulsion_displacement_vec[threadnum].y =
-	repulsion_displacement_vec[threadnum].z = 0.0;
+	rep_force_vec[threadnum].zero();
+	link_force_vec[threadnum].zero();
+	repulsion_displacement_vec[threadnum].zero();
 
 	return 0;
 }
