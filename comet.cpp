@@ -17,8 +17,8 @@ removed without prior written permission from the author.
 
 MYDOUBLE TOTAL_SIMULATION_TIME = 20000;  
 MYDOUBLE DELTA_T = (MYDOUBLE)0.1;				
-//MYDOUBLE MAX_DISP_PERDT = (MYDOUBLE)0.01;
-//MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO = (MYDOUBLE)0.00707;
+MYDOUBLE MAX_DISP_PERDT = (MYDOUBLE)0.01;
+MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO = (MYDOUBLE)0.00707;
 MYDOUBLE GAUSSFWHM = (MYDOUBLE) 0.266;
 
 MYDOUBLE INIT_R_GAIN = 20;
@@ -26,10 +26,6 @@ MYDOUBLE INIT_G_GAIN = 20;
 MYDOUBLE INIT_B_GAIN = 20;
 
 int SPECKLE_FACTOR = 1;
-
-bool ROTATION = true;
-
-MYDOUBLE MofI = (MYDOUBLE) 0.1;
 
 int REPORT_AVERAGE_ITTERATIONS = 50;
 
@@ -40,7 +36,8 @@ int RECORDING_INTERVAL = 0;
 int NUMBER_RECORDINGS = 0;
 
 MYDOUBLE FORCE_SCALE_FACT = (MYDOUBLE)0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
-									// this is related to effective viscosity and effective size of node
+					        // this is related to effective viscosity and effective size of node
+MYDOUBLE FORCEBAR_SCALE   = (MYDOUBLE)10;	// scale for relating force to image bar
 
 MYDOUBLE XLINK_NODE_RANGE = (MYDOUBLE) 1.0;		// Limit crosslink to within this range
 MYDOUBLE NODE_INCOMPRESSIBLE_RADIUS = (MYDOUBLE)0.2;	// repulsion is zero here
@@ -182,7 +179,6 @@ int main(int argc, char* argv[])
 	#endif
 #endif
 	 //srand( (unsigned) 200 );
-
 	if (argc < 3) 
 	{
 		cerr << "Warning: Static random number seed used" <<  endl;
@@ -330,12 +326,15 @@ int main(int argc, char* argv[])
 	       } else if (tag == "RESTORE_FROM_ITERATION") {
 		   ss >> RESTORE_FROM_ITERATION;
 		   continue;
-                           } else if (tag == "FORCE_SCALE_FACT") {
-                       ss >> FORCE_SCALE_FACT;
-                       continue;
-			   } else if (tag == "XLINK_NODE_RANGE") {
-                       ss >> XLINK_NODE_RANGE;
-                       continue;
+	       } else if (tag == "FORCE_SCALE_FACT") {
+		   ss >> FORCE_SCALE_FACT;
+		   continue;
+	       } else if (tag == "FORCEBAR_SCALE") {
+		   ss >> FORCEBAR_SCALE;
+		   continue;
+	       } else if (tag == "XLINK_NODE_RANGE") {
+		   ss >> XLINK_NODE_RANGE;
+		   continue;
                } else if (tag == "NODE_INCOMPRESSIBLE_RADIUS") {
                        ss >> NODE_INCOMPRESSIBLE_RADIUS;
                        continue;
@@ -405,15 +404,9 @@ int main(int argc, char* argv[])
 				} else if (tag == "INIT_B_GAIN") {
                        ss >> INIT_B_GAIN;
                       continue;
-				//} else if (tag == "MAX_DISP") {
-                //       ss >> MAX_DISP;  // not true global, used to calc MAX_DISP_PERDT
-                //      continue;
-				} else if (tag == "ROTATION") {
-                       ss >> ROTATION;
+				} else if (tag == "MAX_DISP") {
+                       ss >> MAX_DISP;  // not true global, used to calc MAX_DISP_PERDT
                       continue;
-				} else if (tag == "MofI") {
-                       ss >> MofI;
-                      continue;						  
 			   } else if (tag == "SHAPE") 
 					{
 				       ss >> buff2;
@@ -443,8 +436,8 @@ int main(int argc, char* argv[])
 	//SEG_INCOMP = SEGMENT + NODE_INCOMPRESSIBLE_RADIUS/2;
 	RAD_INCOMP = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
 
-	//MAX_DISP_PERDT = MAX_DISP * DELTA_T;
-	//MAX_DISP_PERDT_DIVSQRTTWO = MAX_DISP_PERDT / sqrt(2.0);
+	MAX_DISP_PERDT = MAX_DISP * DELTA_T;
+	MAX_DISP_PERDT_DIVSQRTTWO = MAX_DISP_PERDT / sqrt(2);
 
 	//DAMPING_FACTOR = (DELTA_T * INERTIAL_DAMPING_HALFTIME) / (LN_TWO * NUM_THREADS);
 
@@ -476,7 +469,6 @@ int main(int argc, char* argv[])
 	{
 	cout << "Sphere radius:              " << RADIUS << endl;
 	}
-	cout << "ROTATION:                   " << ROTATION << endl;
 	cout << "P(nuc):                     " << P_NUC << endl;
 	cout << "Force scale factor:         " << FORCE_SCALE_FACT << endl;
 	cout << "Crosslink node range:       " << XLINK_NODE_RANGE << endl;
@@ -518,6 +510,7 @@ if (nucshape == nucleator::capsule)
 	theactin.opruninfo.flush();
 
 
+
 	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
 	cout << "Saving snapshot every " << InterRecordIterations  
 		<< " iterations (" << NUMBER_RECORDINGS << " total)" << endl;
@@ -545,9 +538,6 @@ if (nucshape == nucleator::capsule)
 	MYDOUBLE last_centre_x, last_centre_y , last_centre_z;
 	MYDOUBLE delta_centre_x , delta_centre_y, delta_centre_z;
 	MYDOUBLE distfromorigin;
-
-	MYDOUBLE theta, phi, psi;
-
 	bool DISTANCE_TO_UPDATE_reached = false;
 
     last_centre_x = last_centre_y = last_centre_z = 0;
@@ -606,7 +596,6 @@ if (nucshape == nucleator::capsule)
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime) << "\r";
 			cout.flush();
 		}
-
 		theactin.iterate();
 		//theactin.newnodescolour.setcol((MYDOUBLE)i/(MYDOUBLE)TOTAL_ITERATIONS);
 		
@@ -628,10 +617,6 @@ if (nucshape == nucleator::capsule)
 				<< centre_z << "," 
 				<< calcdist(delta_centre_x, delta_centre_y, delta_centre_z) << endl;
 
-			theta = (180/PI) * atan2(nuc_object.direction.x, nuc_object.direction.y);
-			phi   = (180/PI) * atan2(nuc_object.direction.x, nuc_object.direction.z);
-			psi	  = (180/PI) * atan2(nuc_object.direction.y, nuc_object.direction.z);
-
 			cout << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
 			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
@@ -639,10 +624,7 @@ if (nucshape == nucleator::capsule)
 			<< "|x " << setw(6) << setprecision(3) << centre_x
 			<< "|y " << setw(6) << setprecision(3) << centre_y
 			<< "|z " << setw(6) << setprecision(3) << centre_z
-			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime)
-			<< "|Dir " << setw(6) << setprecision(1) << theta
-			<< "  " << setw(6) << setprecision(1) << phi
-			<< "  " << setw(6) << setprecision(1) << psi;
+			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
 			cout.flush();
 
 			cout << "|S " << setw(3) <<  (int)(i/InterRecordIterations)  
