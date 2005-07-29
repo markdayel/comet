@@ -22,10 +22,10 @@ removed without prior written permission from the author.
 class links;
 class Colour;
 
-class nodes: public vect
+class nodes
 {
 public:
-	//MYDOUBLE x , y , z ;
+	MYDOUBLE x , y , z ;
 	bool polymer;
 	nodes(void);
 	~nodes(void);
@@ -50,8 +50,7 @@ public:
 	vector <links> listoflinks;
 	int applyforces(int threadnum);
 	int gridx, gridy, gridz;
-	vect delta;
-	//MYDOUBLE delta_x, delta_y, delta_z;
+	MYDOUBLE delta_x, delta_y, delta_z;
 	int updategrid(void);
 	int removefromgrid(void);
 	int addtogrid(void);

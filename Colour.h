@@ -20,7 +20,7 @@ class Colour
 public:
 	Colour(void);
 	~Colour(void);
-	MYDOUBLE r,g,b;
+	float r,g,b;
 	MYDOUBLE mag;
 	int setcol(MYDOUBLE mag);
 };
