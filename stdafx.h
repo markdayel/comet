@@ -160,6 +160,7 @@ extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
 
 extern MYDOUBLE FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
 										// this is related to effective viscosity and effective size of node
+extern MYDOUBLE FORCEBAR_SCALE;  // scale force for bars in output
 
 extern MYDOUBLE XLINK_NODE_RANGE;	// Limit crosslink to within this range
 extern MYDOUBLE NODE_INCOMPRESSIBLE_RADIUS;// repulsion is zero here

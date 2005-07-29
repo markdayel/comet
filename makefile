@@ -8,6 +8,7 @@ LIBS =  -lm -lpthread
 #CXXFLAGS = -O5 -march=athlon-xp -mfpmath=sse -fmove-all-movables \
 #                -freduce-all-givs -Winline -Wall -g
 #CXXFLAGS = -O5 -march=athlon-xp -ffast-math -mfpmath=sse -Wall -g 
+#CXXFLAGS = -O3 -ffast-math -Wall -g -DSEED_INSIDE
 CXXFLAGS = -O3 -ffast-math -Wall -g
 #CXXFLAGS = -Wall
 CXX = c++
