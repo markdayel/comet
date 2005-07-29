@@ -14,7 +14,6 @@ removed without prior written permission from the author.
 
 #include "stdafx.h"
 #include "actin.h"
-#include "rotationmatrix.h"
 
 actin::actin(void)
 {
@@ -114,7 +113,6 @@ actin::actin(void)
 	nexttocrosslink = 0;
 
 	newnodescolour.setcol(0);
-
 } 
 
 actin::~actin(void)
@@ -599,7 +597,7 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 
 int actin::ejectfromnucleator()
 {
-	//vect nodeposvec, oldnucposn;
+	vect nodeposvec, oldnucposn, deltanucposn;
 	nodes *nodeptr, *startnodeptr;
 
 //  check node-nucleator repulsion
@@ -628,8 +626,9 @@ int actin::ejectfromnucleator()
 			}
 	}
 
-	//oldnucposn = nucleation_object->position;  // note current nucleator pos'n
-
+	oldnucposn.x = nucleation_object->position.x;  // note current nucleator pos'n
+	oldnucposn.y = nucleation_object->position.y;
+	oldnucposn.z = nucleation_object->position.z;
 
 	for (vector <nodes*>::iterator i=nodes_within_nucleator.begin(); i<nodes_within_nucleator.end() ; i++ )
 	{  //eject them
@@ -639,66 +638,16 @@ int actin::ejectfromnucleator()
 			(*i)->depolymerize();  // not ejected OK, depolymerize
 	}
 
-	// do rotation
+	deltanucposn.x = nucleation_object->position.x - oldnucposn.x;  // how much did nucleator move?
+	deltanucposn.y = nucleation_object->position.y - oldnucposn.y;
+	deltanucposn.z = nucleation_object->position.z - oldnucposn.z;
 
-
-	if (ROTATION && (nucleation_object->torque.mag() > 2*SQRT_ACCURACY_LOSS))
-	{
-
-		MYDOUBLE x_angle = nucleation_object->torque.x / 
-				nucleation_object->momentofinertia.x;
-
-		MYDOUBLE y_angle = nucleation_object->torque.y / 
-				nucleation_object->momentofinertia.y;
-
-		MYDOUBLE z_angle = nucleation_object->torque.z / 
-				nucleation_object->momentofinertia.z;
-
-		//MYDOUBLE x_angle = 0.00002;
-		//MYDOUBLE y_angle = 0.00002;
-		//MYDOUBLE z_angle = 0.00002;
-
-		rotationmatrix torque_rotate; // ( x_angle, rotationmatrix::xaxis);
-
-		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);
-
-		// x component:
-
-		for (int i=0; i<highestnodecount; ++i)
-		{
-			torque_rotate.rotate(node[i]);
-		}
-
-        // rotate the nucleator:
-
-		torque_rotate.rotate(nucleation_object->direction);  // this line is just for debugging
-
-		nucleation_object->nucleator_rotation.rotatematrix( -x_angle, -y_angle, -z_angle);
-
-		// rotate the actin background reference:
-
-		actin_rotation.rotatematrix( x_angle, y_angle, z_angle);
-
-		// clear the torque vectors:
-
-		nucleation_object->torque.zero();
-
-	}
-
-	// rotate the nucleator displacement vector:
-
-	nucleation_object->nucleator_rotation.rotate(nucleation_object->deltanucposn);
-
-	nucleation_object->position+=nucleation_object->deltanucposn;
-
-	// 'move the nucleator' by moving nodes in opposite direction:
-	
 	for (int i = 0; i<highestnodecount; i++)
 	{
-		node[i]-=nucleation_object->deltanucposn;
+		node[i].x-=deltanucposn.x;	// `move' the nucleator 
+		node[i].y-=deltanucposn.y;	// by moving all the nodes
+		node[i].z-=deltanucposn.z;	// the other way
 	}
-
-	nucleation_object->deltanucposn.zero();
 
 	return 0;
 }
@@ -711,7 +660,6 @@ int actin::collisiondetection(void)
 		donenode[i] = false;
 	}
 
-	
 	int numthreadnodes, start, end, higestorderednode;
 
 	higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
@@ -830,11 +778,6 @@ if (!collisionthreaddone4)
 		collision_thread_data_array[0].threadnum = 0;
 		collisiondetectiondowork(&collision_thread_data_array[0]);
 	}
-
-
-
-
-
 	return 0;
 }
 
@@ -1796,34 +1739,25 @@ typedef struct tagBITMAPINFO {
 
 //int harbingers = 0;
 
-MYDOUBLE xx,yy,zz;
-MYDOUBLE rotx, roty, rotz;
-
 	for (int i=0; i<highestnodecount; i++)
 	{
 		if (!node[i].polymer)
 			continue;
 
-		rotx = node[i].x;
-		roty = node[i].y;
-		rotz = node[i].z;
-
-		nucleation_object->nucleator_rotation.rotate(rotx, roty, rotz);
-
 		if (proj == xaxis)  // choose projection
 		{
-			x = (int)(((height *(((roty - meany)/dimy) ))-0.5) +  width/2); // was width
-			y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
+			x = (int)(((height *(((node[i].y - meany)/dimy) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((node[i].z - meanz)/dimz) ))-0.5) + height/2);
 		}
 		else if (proj == yaxis)
 		{
-			x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-			y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
+			x = (int)(((height *(((node[i].x - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((node[i].z - meanz)/dimz) ))-0.5) + height/2);
 		}
 		else 
 		{
-			x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-			y = (int)(((height *(((roty - meany)/dimy) ))-0.5) + height/2);
+			x = (int)(((height *(((node[i].x - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((node[i].y - meany)/dimy) ))-0.5) + height/2);
 		}
 
 		x+=movex;  // displace to bring bead back in bounds
@@ -1859,10 +1793,10 @@ MYDOUBLE rotx, roty, rotz;
 //	if (node[i].harbinger)
 //		harbingers++;
 	}
+
 //cout << endl << "Harbingers:" << harbingers << endl;
 
-
-		// normalize image
+	// normalize image
 
 	
 
@@ -1884,165 +1818,6 @@ MYDOUBLE rotx, roty, rotz;
 						imageBmax=imageB[x][y];
 			}
 		}
-
-
-// add grid for rotation check:
-
-MYDOUBLE r;
-
-//int xcoord,ycoord;
-
-
-if (nucleation_object->geometry==nucleator::sphere)
-{
-
- // sphere
-
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
-		{
-			r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
-			
-			xx = r * cos(theta);				// x and y of point
-			yy = r * sin(theta);
-			zz = z1 * RAD_INCOMP;						// z just scaled by radius
-
-			rotx = (MYDOUBLE) xx;
-			roty = (MYDOUBLE) yy;
-			rotz = (MYDOUBLE) zz;
-		
-			// rotate co-ords depending on projection
-
-			nucleation_object->nucleator_rotation.rotate(rotx, roty, rotz);
-
-			if (proj == xaxis)  // choose projection
-			{
-				x = (int)(((height *(((roty - meany)/dimy) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else if (proj == yaxis)
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else 
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((roty - meany)/dimy) ))-0.5) + height/2);
-			}
-
-			x+=movex;  // displace to bring bead back in bounds
-			y+=movey;
-
-			if (((x+xgmax)<0) || ((x+xgmax)>=width) ||
-				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
-				continue;
-			
-			imageR[x+xgmax][y+ygmax] = (imageR[x+xgmax][y+ygmax] + imageRmax / 2.0) / 2.0;
-			imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
-			imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
-
-		}
-}
-else
-{
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
-		{
-			r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
-			
-			xx = r * cos(theta);				// x and y of point
-			yy = r * sin(theta);
-			zz = z1 * RAD_INCOMP;						// z just scaled by radius
-
-			if (zz>0)
-				zz+= (nucleation_object->segment/2); 
-			else
-				zz-= (nucleation_object->segment/2);
-
-			rotx = (MYDOUBLE) xx;
-			roty = (MYDOUBLE) yy;
-			rotz = (MYDOUBLE) zz;
-		
-			// rotate co-ords depending on projection
-
-			nucleation_object->nucleator_rotation.rotate(rotx, roty, rotz);
-
-			if (proj == xaxis)  // choose projection
-			{
-				x = (int)(((height *(((roty - meany)/dimy) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else if (proj == yaxis)
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else 
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((roty - meany)/dimy) ))-0.5) + height/2);
-			}
-			
-			x+=movex;  // displace to bring bead back in bounds
-			y+=movey;
-
-			if (((x+xgmax)<0) || ((x+xgmax)>=width) ||
-				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
-				continue;
-
-			imageR[x+xgmax][y+ygmax] = (imageR[x+xgmax][y+ygmax] + imageRmax / 2.0) / 2.0;
-			imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
-			imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
-		}
-		
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<1; z1+= nucleation_object->radius/10)
-		{
-					
-			xx = RAD_INCOMP * cos(theta);				// x and y of point
-			yy = RAD_INCOMP * sin(theta);
-			zz = z1 * (nucleation_object->segment/2);						// z just scaled by radius
-
-			rotx = (MYDOUBLE) xx;
-			roty = (MYDOUBLE) yy;
-			rotz = (MYDOUBLE) zz;
-		
-			// rotate co-ords depending on projection
-
-			nucleation_object->nucleator_rotation.rotate(rotx, roty, rotz);
-
-			if (proj == xaxis)  // choose projection
-			{
-				x = (int)(((height *(((roty - meany)/dimy) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else if (proj == yaxis)
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else 
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((roty - meany)/dimy) ))-0.5) + height/2);
-			}
-
-
-			x+=movex;  // displace to bring bead back in bounds
-			y+=movey;
-
-			if (((x+xgmax)<0) || ((x+xgmax)>=width) ||
-				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
-				continue;
-
-			imageR[x+xgmax][y+ygmax] = (imageR[x+xgmax][y+ygmax] + imageRmax / 2.0) / 2.0;
-			imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
-			imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
-		}
-
-
-	}
 
 	
 	// the header for saving the bitmaps...
@@ -2290,9 +2065,6 @@ radial_rep_mean_z = radial_rep_tot_z / (MYDOUBLE) RADIAL_SEGMENTS;
 	system(command1);
 	system(command2);
 #endif
-
-
-	// put the radalsegments data back (for next time if doing multiple projections...)
 
 	for (int i=0; i<RADIAL_SEGMENTS; i++)
 	{

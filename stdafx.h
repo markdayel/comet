@@ -117,7 +117,7 @@ int threadnum;
 
 // math related:
 
-#if 0      // use fmath rather than math  _WIN32
+#if 1      // use fmath rather than math  _WIN32
 	
 	// don't use this part: 
 	// for some reason it's *much* slower than doubles (RT typecasting?)	
@@ -132,7 +132,6 @@ int threadnum;
     #define sqrt sqrtf
 	#define exp expf
 	#define fabs fabsf
-	#define atan2 atan2f
 
 	#define MYDOUBLE float	// set precision
 
@@ -141,7 +140,6 @@ int threadnum;
 #else
 
 	#define MYDOUBLE double	// set precision
-
 	#define SQRT_ACCURACY_LOSS (MYDOUBLE) 0.0000000000000000001
 
 #endif
@@ -156,8 +154,8 @@ int threadnum;
 
 extern MYDOUBLE TOTAL_SIMULATION_TIME;  
 extern MYDOUBLE DELTA_T;
-//extern MYDOUBLE MAX_DISP_PERDT;
-//extern MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO;
+extern MYDOUBLE MAX_DISP_PERDT;
+extern MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO;
 extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
 
 extern MYDOUBLE FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
@@ -172,12 +170,12 @@ extern MYDOUBLE LINK_FORCE;
 extern MYDOUBLE P_LINK_BREAK_IF_OVER;  // probablility that force will break link if over the link breakage force
 extern MYDOUBLE P_XLINK;
 extern MYDOUBLE P_NUC;
-
 extern MYDOUBLE GAUSSFWHM;
 extern int SPECKLE_FACTOR;
 extern MYDOUBLE INIT_R_GAIN;
 extern MYDOUBLE INIT_G_GAIN;
 extern MYDOUBLE INIT_B_GAIN;
+
 
 extern MYDOUBLE RADIUS;   // radius and segment are the true radius and segment of nucleator
 extern MYDOUBLE SEGMENT;
@@ -209,9 +207,6 @@ extern int REPORT_AVERAGE_ITTERATIONS;
 
 const int REPORT_NUM_VARIABLES = 8;
 
-extern bool ROTATION;
-extern MYDOUBLE MofI;
-
 
 // compile-time options:
 
@@ -235,6 +230,32 @@ const int GRIDSIZE =  (int) (GRIDBOUNDS/GRIDRES);
 const MYDOUBLE PI = (MYDOUBLE) 3.141592653589793238462643383279502884197; // Pi
 const MYDOUBLE LN_TWO = (MYDOUBLE) 0.69314718055995; // ln(2)
 
+// own headers
+#include "comet.h"
+#include "nucleator.h"
+#include "nodes.h"
+#include "links.h"
+#include "actin.h"
+
+// extern actin theactin;
+
+//extern nodes* nodegrid[GRIDSIZE+1][GRIDSIZE+1][GRIDSIZE+1];
+
+typedef vector<nodes*> Nodes1d;
+typedef vector<Nodes1d> Nodes2d;
+typedef vector<Nodes2d> Nodes3d;
+
+typedef vector<signed char> Bool1d;
+typedef vector<Bool1d> Bool2d;
+
+typedef vector<MYDOUBLE> Dbl1d;
+typedef vector<Dbl1d> Dbl2d;
+
+extern Nodes3d nodegrid;
+
+//extern inline MYDOUBLE fastsqrt(float n);
+//extern float sse_sqrt(float n);
+//extern void build_sqrt_table();
 
 /*inline float mysqrt(float x) {
   float y;
@@ -343,36 +364,6 @@ inline void endian_swap(unsigned long long& x)
 	((x>>40) & 0x000000000000FF00) |
         (x<<56);
 }*/
-
-
-
-// own headers
-#include "comet.h"
-#include "nucleator.h"
-#include "nodes.h"
-#include "links.h"
-#include "actin.h"
-
-// extern actin theactin;
-
-//extern nodes* nodegrid[GRIDSIZE+1][GRIDSIZE+1][GRIDSIZE+1];
-
-typedef vector<nodes*> Nodes1d;
-typedef vector<Nodes1d> Nodes2d;
-typedef vector<Nodes2d> Nodes3d;
-
-typedef vector<signed char> Bool1d;
-typedef vector<Bool1d> Bool2d;
-
-typedef vector<MYDOUBLE> Dbl1d;
-typedef vector<Dbl1d> Dbl2d;
-
-extern Nodes3d nodegrid;
-
-//extern inline MYDOUBLE fastsqrt(float n);
-//extern float sse_sqrt(float n);
-//extern void build_sqrt_table();
-
 
 #endif
 

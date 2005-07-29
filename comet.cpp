@@ -36,8 +36,7 @@ int RECORDING_INTERVAL = 0;
 int NUMBER_RECORDINGS = 0;
 
 MYDOUBLE FORCE_SCALE_FACT = (MYDOUBLE)0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
-					        // this is related to effective viscosity and effective size of node
-MYDOUBLE FORCEBAR_SCALE   = (MYDOUBLE)10;	// scale for relating force to image bar
+									// this is related to effective viscosity and effective size of node
 
 MYDOUBLE XLINK_NODE_RANGE = (MYDOUBLE) 1.0;		// Limit crosslink to within this range
 MYDOUBLE NODE_INCOMPRESSIBLE_RADIUS = (MYDOUBLE)0.2;	// repulsion is zero here
@@ -179,6 +178,7 @@ int main(int argc, char* argv[])
 	#endif
 #endif
 	 //srand( (unsigned) 200 );
+
 	if (argc < 3) 
 	{
 		cerr << "Warning: Static random number seed used" <<  endl;
@@ -326,15 +326,12 @@ int main(int argc, char* argv[])
 	       } else if (tag == "RESTORE_FROM_ITERATION") {
 		   ss >> RESTORE_FROM_ITERATION;
 		   continue;
-	       } else if (tag == "FORCE_SCALE_FACT") {
-		   ss >> FORCE_SCALE_FACT;
-		   continue;
-	       } else if (tag == "FORCEBAR_SCALE") {
-		   ss >> FORCEBAR_SCALE;
-		   continue;
-	       } else if (tag == "XLINK_NODE_RANGE") {
-		   ss >> XLINK_NODE_RANGE;
-		   continue;
+                           } else if (tag == "FORCE_SCALE_FACT") {
+                       ss >> FORCE_SCALE_FACT;
+                       continue;
+			   } else if (tag == "XLINK_NODE_RANGE") {
+                       ss >> XLINK_NODE_RANGE;
+                       continue;
                } else if (tag == "NODE_INCOMPRESSIBLE_RADIUS") {
                        ss >> NODE_INCOMPRESSIBLE_RADIUS;
                        continue;

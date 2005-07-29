@@ -16,7 +16,6 @@ removed without prior written permission from the author.
 #define nucleator_H
 
 #include "vect.h"
-#include "rotationmatrix.h"
 
 class nodes;
 class actin;
@@ -36,12 +35,7 @@ public:
 	MYDOUBLE surf_area;
 	MYDOUBLE movability;
 	actin *ptheactin;
-
-	vect position, deltanucposn;
-	vect direction, torque, centerofmass;
-	vect momentofinertia;
-
-	rotationmatrix nucleator_rotation;
+	vect position;
 
 	vector <MYDOUBLE> radial_rep_distrib_x;
 	vector <MYDOUBLE> radial_rep_distrib_y;

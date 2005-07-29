@@ -22,26 +22,13 @@ nucleator::nucleator(void)
 	segment = SEGMENT;
 	//P_NUC = (MYDOUBLE) 0.8 / (4*PI*radius*radius);
 	geometry = sphere;
-	position.zero();
+	position.x=position.y=position.z=0;
 	surf_area = 4 * PI * radius * radius;
 	movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / radius;  // inverse ratio of 'viscosities' of node and bead
 
 	radial_rep_distrib_x.reserve(RADIAL_SEGMENTS);
 	radial_rep_distrib_y.reserve(RADIAL_SEGMENTS);
 	radial_rep_distrib_z.reserve(RADIAL_SEGMENTS);
-
-	direction.x=direction.y=0;
-	direction.z=1;
-
-	deltanucposn.zero();
-
-	torque.zero();
-
-	centerofmass.zero();
-
-	momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
-	momentofinertia.y = 1000 * MofI;
-	momentofinertia.z = 500 * MofI;
 
 }
 
@@ -67,29 +54,14 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 		surf_area = 4 * PI * radius * radius  +  2 * PI * radius * segment;
 		movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / (radius + segment/4);   // what should this be??
 	}
-
 	ptheactin = actinptr;
 	ptheactin->nucleation_object = this;
-	position.zero();
+	position.x=position.y=position.z=0;
 	definenucleatorgrid();
-
-	direction.x=direction.y=0;
-	direction.z=1;
-
-	deltanucposn.zero();
-
-	centerofmass.zero();;
-
-	torque.zero();;
-
-	momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
-	momentofinertia.y = 1000 * MofI;
-	momentofinertia.z = 500 * MofI;
 
 	radial_rep_distrib_x.reserve(RADIAL_SEGMENTS);
 	radial_rep_distrib_y.reserve(RADIAL_SEGMENTS);
 	radial_rep_distrib_z.reserve(RADIAL_SEGMENTS);
-
 }
 
 int nucleator::addnodes(void)
@@ -143,7 +115,7 @@ int nucleator::addnodessphere(void)
 
 			if (ASYMMETRIC_NUCLEATION!=0)
 			{
-				if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
+				if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation abouve z=0
 					if (z<0) continue;
 				if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
 					if (z < (radius) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/2) - 1))
@@ -227,21 +199,6 @@ int nucleator::addnodescapsule(void)
 					continue;
 			if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
 				if (z < (segment/2 + rad) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/4) - 3))
-					continue;
-			if (ASYMMETRIC_NUCLEATION==4)  // caps only
-				if (fabs(z) < (segment/2))
-					continue;
-			if (ASYMMETRIC_NUCLEATION==5)  // half caps only
-				if ( (fabs(z) < (segment/2)) || ((x<0)&&(z>0)) || ((x>0)&&(z<0)) )
-					continue;
-			if (ASYMMETRIC_NUCLEATION==6)  // caps only
-				if (fabs(z) < 0.5 * (segment/2 + rad) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/4) - 3))
-					continue;
-			if (ASYMMETRIC_NUCLEATION==7)  // half caps one side
-				if ( (fabs(z) < (segment/2)) || ((x<0)&&(z>0)) || ((x>0)&&(z<0)) || (z>0))
-					continue;
-			if (ASYMMETRIC_NUCLEATION==8)  //  cap one side
-				if ( (fabs(z) < (segment/2)) || (z<0))
 					continue;
 		}
 
@@ -508,8 +465,6 @@ if (USE_THREADS)
 	// MYDOUBLE r2,theta,phi;
 	MYDOUBLE z2, r,scale;
 	MYDOUBLE oldx,oldy,oldz;
-	vect node_disp;
-	//vect delta_torque;
 
 	oldx = x;
 	oldy = y;
@@ -575,51 +530,29 @@ if (USE_THREADS)
 
 	}
 
-node_disp.x = x - oldx;
-node_disp.y = y - oldy;
-node_disp.z = z - oldz;
-
-if (((node_disp.x) > NODE_INCOMPRESSIBLE_RADIUS) ||
-	((node_disp.y) > NODE_INCOMPRESSIBLE_RADIUS) ||
-	((node_disp.z) > NODE_INCOMPRESSIBLE_RADIUS))
+if (((x-oldx) > NODE_INCOMPRESSIBLE_RADIUS) ||
+	((y-oldy) > NODE_INCOMPRESSIBLE_RADIUS) ||
+	((z-oldz) > NODE_INCOMPRESSIBLE_RADIUS))
 {
 	cout << "node nucleus ejection too great " <<  endl;
 	return 1;
 }
 
-deltanucposn.x -= node_disp.x * movability;  // move the nucleator
-deltanucposn.y -= node_disp.y * movability;
-deltanucposn.z -= node_disp.z * movability;
 
-x -= node_disp.x * movability;	// and move node by same amount so that
-y -= node_disp.y * movability;	// still on surface
-z -= node_disp.z * movability;
+position.x -= (x - oldx) * movability;  // move the nucleator
+position.y -= (y - oldy) * movability;
+position.z -= (z - oldz) * movability;
 
-
-
+x -= (x - oldx) * movability;	// and move node by same amount so that
+y -= (y - oldy) * movability;	// still on surface
+z -= (z - oldz) * movability;
 
 //x = oldx + ((x - oldx) * (1-movability));  // move the nodes so that
 //y = oldy + ((y - oldy) * (1-movability));  // exactly on nucleator surface
 //z = oldz + ((z - oldz) * (1-movability));
 
-// rotate the nucleator
-
-// calculate torque (as pos x disp)
-
-torque.x += ((oldy-centerofmass.y)*node_disp.z - (oldz-centerofmass.z)*node_disp.y);
-torque.y += ((oldz-centerofmass.z)*node_disp.x - (oldx-centerofmass.x)*node_disp.z);
-torque.z += ((oldx-centerofmass.x)*node_disp.y - (oldy-centerofmass.y)*node_disp.x);
-
-//torque += delta_torque;
-
-//if (ptheactin->iteration_num % 2000 == 0)
-//{
-//	cout << setprecision(20) << torque.x << " " << torque.y << " " << torque.z << endl;
-//}
-
 if (USE_THREADS)
-	pthread_mutex_unlock(&beadmovelock_mutex); // unlock the beadmove mutex
-
+	pthread_mutex_unlock(&beadmovelock_mutex); // lock the beadmove mutex
 
 	return 0;
 }
