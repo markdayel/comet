@@ -16,9 +16,9 @@ prior written permission from the author.
 #ifndef actin_H 
 #define actin_H
 
-#include <vector>
-#include <sstream>
+#include "rotationmatrix.h"
 #include "nodes.h"
+#include <vector>
 #include "nucleator.h"
 #include "Colour.h"
 //#include "stdafx.h"
@@ -77,11 +77,12 @@ public:
 	int iterate(void);
 	int addlinks(const int& linknode1,const int& linknode2);
 	int savevrml(int filenum);
-	
 	ofstream opruninfo;
 	ofstream opvelocityinfo;
 	int highestnodecount;
 	Dbl2d imageR, imageG, imageB;
+
+	rotationmatrix actin_rotation;
 
 	vector <Dbl2d> reportdat;
 
@@ -105,22 +106,7 @@ public:
 
 	int applyforces(void);
 	int savebmp(int filenum, projection proj);
-	void draw_bead_forces(int filenum, projection proj,
-			      int width, int height,
-			      int xgmax, int ygmax,
-			      int movex, int movey,
-			      MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-			      MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
-			      MYDOUBLE imageGmax);
 
-	void draw_capsule_forces(int filenum, projection proj,
-				 int width, int height,
-				 int xgmax, int ygmax,
-				 int movex, int movey,
-				 MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-				 MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
-				 MYDOUBLE imageGmax);
-	
 	inline MYDOUBLE square(const MYDOUBLE& numb)
 	{
 		return numb*numb;

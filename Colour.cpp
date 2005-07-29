@@ -29,9 +29,9 @@ int Colour::setcol(MYDOUBLE magnitude)
 	
 	mag=magnitude;
 
-	r =  (MYDOUBLE) mymin(  mymax( (4*    (mag-(MYDOUBLE)0.25) ) , 0 ), 1 );
-	b =  (MYDOUBLE) mymin(  mymax( (4*    ((MYDOUBLE)0.75-mag) ) , 0 ), 1 );
-	g =  (MYDOUBLE) mymin(  mymax( (4*fabs(mag-(MYDOUBLE)0.5)-1) , 0 ), 1 );
+	r =  (MYDOUBLE) mymin(  mymax( ((MYDOUBLE)4*    (mag-(MYDOUBLE)0.25) ) , (MYDOUBLE)0 ), (MYDOUBLE)1 );
+	b =  (MYDOUBLE) mymin(  mymax( ((MYDOUBLE)4*    ((MYDOUBLE)0.75-mag) ) , (MYDOUBLE)0 ), (MYDOUBLE)1 );
+	g =  (MYDOUBLE) mymin(  mymax( ((MYDOUBLE)4*fabs(mag-(MYDOUBLE)0.5)-1) , (MYDOUBLE)0 ), (MYDOUBLE)1 );
 
 	return 0;
 }
