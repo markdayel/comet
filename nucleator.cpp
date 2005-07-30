@@ -44,6 +44,9 @@ nucleator::nucleator(void)
 	momentofinertia.y = 1000 * MofI;
 	momentofinertia.z = 500 * MofI;
 
+    definecagepoints();
+	colour.r = colour.g = colour.b = 1.0;
+
 }
 
 nucleator::~nucleator(void)
@@ -93,6 +96,9 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 	} else {
 	    set_rep_bins();
 	}
+
+	definecagepoints();
+	colour.r = colour.g = colour.b = 1.0;
 }
 
 int nucleator::addnodes(void)
@@ -339,72 +345,18 @@ else
 int nucleator::savevrml(ofstream *outputstream) 
 {
 
-MYDOUBLE x,y,z,r;
-
 int numpoints = 0;
 
-if (geometry==sphere)
-{
+for (vector <vect>::iterator point=cagepoints.begin(); 
+	      point<cagepoints.end() ; ++point )
+	{
+		if (numpoints==0)
+			*outputstream	<< point->x << "," << point->y << "," << point->z;
+		else
+			*outputstream	<< "," << point->x << "," << point->y << "," << point->z;
 
- // sphere
-
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
-		{
-			r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
-			
-			x = r * cos(theta);				// x and y of point
-			y = r * sin(theta);
-			z = z1 * RAD_INCOMP;						// z just scaled by radius
-
-			if (numpoints==0)
-				*outputstream	<< x << "," << y << "," << z;
-			else
-				*outputstream	<< "," << x << "," << y << "," << z;
-
-			numpoints++;
-		}
-}
-else
-{
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
-		{
-			r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
-			
-			x = r * cos(theta);				// x and y of point
-			y = r * sin(theta);
-			z = z1 * RAD_INCOMP;						// z just scaled by radius
-
-			if (z>0)
-				z+= (segment/2); 
-			else
-				z-= (segment/2);
-
-			if (numpoints==0)
-				*outputstream	<< x << "," << y << "," << z;
-			else
-				*outputstream	<< "," << x << "," << y << "," << z;
-
-			numpoints++;
-		}
-		
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<1; z1+= radius/10)
-		{
-					
-			x = RAD_INCOMP * cos(theta);				// x and y of point
-			y = RAD_INCOMP * sin(theta);
-			z = z1 * (segment/2);						// z just scaled by radius
-
-			*outputstream	<< "," << x << "," << y << "," << z;
-			numpoints++;
-		}
-
-
+		numpoints++;
 	}
-
-
 
 	*outputstream << "] }" << endl;
 	*outputstream << "        color Color { color [ ";
@@ -565,15 +517,15 @@ void nucleator::set_rep_bins()
     }
     
     radial_rep_distrib_x.reserve(nbdy_segs + ncap_segs);
-    radial_rep_distrib_x.clear();
+    //radial_rep_distrib_x.clear();
     fill(radial_rep_distrib_x.begin(), radial_rep_distrib_x.end(), 0);
 
     radial_rep_distrib_y.reserve(nbdy_segs + ncap_segs);
-    radial_rep_distrib_y.clear();
+    //radial_rep_distrib_y.clear();
     fill(radial_rep_distrib_y.begin(), radial_rep_distrib_y.end(), 0);
 
     radial_rep_distrib_z.reserve(nbdy_segs + ncap_segs);
-    radial_rep_distrib_z.clear();
+    //radial_rep_distrib_z.clear();
     fill(radial_rep_distrib_z.begin(), radial_rep_distrib_z.end(), 0);
     
 }
@@ -898,4 +850,107 @@ bool nucleator::is_capsule()
 int nucleator::n_force_segments()
 {
     return nbdy_segs + ncap_segs;
+}
+
+void nucleator::definecagepoints(void)
+{
+
+	const MYDOUBLE pointdensity = 20;
+	MYDOUBLE pointspacing;
+
+	cagepoints.resize(0);
+
+	MYDOUBLE r,xx,yy,zz;
+
+	if (geometry==sphere)
+	{
+
+	// sphere
+
+		//for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
+		//	for (MYDOUBLE z1=(-1+RAD_INCOMP/(2*pointdensity)); z1<=1; z1+= RAD_INCOMP/pointdensity)
+		//	{
+		//		r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
+		//		
+		//		xx = r * cos(theta);				// x and y of point
+		//		yy = r * sin(theta);
+		//		zz = z1 * RAD_INCOMP;						// z just scaled by radius
+
+		//		cagepoints.push_back(vect(xx,yy,zz));
+		//	}
+
+		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)
+			for (MYDOUBLE phi=-PI; phi<PI; phi+=2*PI/pointdensity)
+			{
+				
+				r = RAD_INCOMP * cos(phi);		// radius of circle
+				
+				xx = r * cos(theta);				// x and y of point
+				yy = r * sin(theta);
+				zz = sin(phi) * RAD_INCOMP;						// z just scaled by radius
+
+				cagepoints.push_back(vect(xx,yy,zz));
+			}
+
+
+	}
+	else
+	{
+		// ends
+
+		//for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
+		//	for (MYDOUBLE z1=(-1+RAD_INCOMP/(2*pointdensity)); z1<=1.001; z1+= RAD_INCOMP/pointdensity)
+		//	{
+		//		r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
+		//		
+		//		xx = r * cos(theta);				// x and y of point
+		//		yy = r * sin(theta);
+		//		zz = z1 * RAD_INCOMP;						// z just scaled by radius
+
+		//		if (zz>0)
+		//			zz+= (segment/2); 
+		//		else
+		//			zz-= (segment/2);
+
+		//		cagepoints.push_back(vect(xx,yy,zz));
+		//		
+		//	}
+
+		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)
+			for (MYDOUBLE phi=-PI; phi<PI; phi+=2*PI/pointdensity)
+			{
+				
+				r = RAD_INCOMP * cos(phi);		// radius of circle
+				
+				xx = r * cos(theta);				// x and y of point
+				yy = r * sin(theta);
+				zz = sin(phi) * RAD_INCOMP;						// z just scaled by radius
+
+				if (zz>0)
+					zz+= (segment/2); 
+				else
+					zz-= (segment/2);
+
+				cagepoints.push_back(vect(xx,yy,zz));
+			}
+
+		// cylinder
+			
+//for (MYDOUBLE z1=-1; z1<1; z1+= radius/10)
+		
+		pointspacing = (RAD_INCOMP * 2 *PI) / pointdensity;
+
+		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)
+			for (MYDOUBLE z1=(-(segment/2)); z1<(0.001+segment/2); z1+= pointspacing)
+			{
+						
+				xx = RAD_INCOMP * cos(theta);				// x and y of point
+				yy = RAD_INCOMP * sin(theta);
+				zz = -z1;						// z just scaled by radius
+
+				cagepoints.push_back(vect(xx,yy,zz));
+				
+			}
+
+	}
 }

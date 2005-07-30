@@ -656,8 +656,8 @@ int actin::ejectfromnucleator()
 				nucleation_object->momentofinertia.z;
 
 		//MYDOUBLE x_angle = 0.00002;
-		//MYDOUBLE y_angle = 0.00002;
-		//MYDOUBLE z_angle = 0.00002;
+		//MYDOUBLE y_angle = 0;
+		//MYDOUBLE z_angle = 0;
 
 		rotationmatrix torque_rotate; // ( x_angle, rotationmatrix::xaxis);
 
@@ -1692,12 +1692,11 @@ typedef struct tagBITMAPINFO {
 
  	dimx = dimy = dimz = VIEW_HEIGHT;  //these are the x,y and z scales (should be equal)
 
+	MYDOUBLE meanx, meany, meanz;
 
-	// choose axis
+/*
 
 	MYDOUBLE val;
-
-	MYDOUBLE meanx, meany, meanz;
 
 	Dbl1d linkforces;
 
@@ -1724,14 +1723,20 @@ typedef struct tagBITMAPINFO {
 		meanz+= node[i].z;
 	}
 
+
+
 	meanx/=highestnodecount;
 	meany/=highestnodecount;
 	meanz/=highestnodecount;
+
+*/
 
 	// temp: reset center:
 	meanx = -nucleation_object->position.x; 
 	meany = -nucleation_object->position.y; 
 	meanz = -nucleation_object->position.z; 
+
+	nucleation_object->nucleator_rotation.rotate(meanx,meany,meanz);
 	
 	//meanx = (maxx+minx)/2;
 	//meany = (maxy+miny)/2;
@@ -1799,34 +1804,34 @@ typedef struct tagBITMAPINFO {
 
 //int harbingers = 0;
 
-MYDOUBLE xx,yy,zz;
-MYDOUBLE rotx, roty, rotz;
+//MYDOUBLE xx,yy,zz;
+//MYDOUBLE rotx, roty, rotz;
+
+vect rot;
 
 	for (int i=0; i<highestnodecount; i++)
 	{
 		if (!node[i].polymer)
 			continue;
 
-		rotx = node[i].x;
-		roty = node[i].y;
-		rotz = node[i].z;
+		rot = node[i];
 
-		nucleation_object->nucleator_rotation.rotate(rotx, roty, rotz);
+		nucleation_object->nucleator_rotation.rotate(rot);
 
 		if (proj == xaxis)  // choose projection
 		{
-			x = (int)(((height *(((roty - meany)/dimy) ))-0.5) +  width/2); // was width
-			y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
+			x = (int)(((height *(((rot.y - meany)/dimy) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((rot.z - meanz)/dimz) ))-0.5) + height/2);
 		}
 		else if (proj == yaxis)
 		{
-			x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-			y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
+			x = (int)(((height *(((rot.x - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((rot.z - meanz)/dimz) ))-0.5) + height/2);
 		}
 		else 
 		{
-			x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-			y = (int)(((height *(((roty - meany)/dimy) ))-0.5) + height/2);
+			x = (int)(((height *(((rot.x - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((rot.y - meany)/dimy) ))-0.5) + height/2);
 		}
 
 		x+=movex;  // displace to bring bead back in bounds
@@ -1889,13 +1894,49 @@ MYDOUBLE rotx, roty, rotz;
 		}
 
 
-// add grid for rotation check:
+// draw the nucleator points cage:
 
-MYDOUBLE r;
+for (vector <vect>::iterator point=nucleation_object->cagepoints.begin(); 
+	      point<nucleation_object->cagepoints.end() ; ++point )
+	{
+		// rotate point	
 
-//int xcoord,ycoord;
+		rot = *point;
+		nucleation_object->nucleator_rotation.rotate(rot);
+
+		if (proj == xaxis)  // choose projection
+		{
+			x = (int)(((height *(((rot.y - meany)/dimy) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((rot.z - meanz)/dimz) ))-0.5) + height/2);
+		}
+		else if (proj == yaxis)
+		{
+			x = (int)(((height *(((rot.x - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((rot.z - meanz)/dimz) ))-0.5) + height/2);
+		}
+		else 
+		{
+			x = (int)(((height *(((rot.x - meanx)/dimx) ))-0.5) +  width/2); // was width
+			y = (int)(((height *(((rot.y - meany)/dimy) ))-0.5) + height/2);
+		}
+
+		x+=movex;  // displace to bring bead back in bounds
+		y+=movey;
+
+		if (((x+xgmax)<0) || ((x+xgmax)>=width) ||
+			(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
+			continue;
+		
+		imageR[x+xgmax][y+ygmax] = nucleation_object->colour.r * imageRmax;
+		imageG[x+xgmax][y+ygmax] = nucleation_object->colour.g * imageGmax;
+		imageB[x+xgmax][y+ygmax] = nucleation_object->colour.b * imageBmax;
+		//imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
+		//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
+
+	}
 
 
+/*
 if (nucleation_object->geometry==nucleator::sphere)
 {
 
@@ -1941,9 +1982,11 @@ if (nucleation_object->geometry==nucleator::sphere)
 				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
 				continue;
 			
-			imageR[x+xgmax][y+ygmax] = (imageR[x+xgmax][y+ygmax] + imageRmax / 2.0) / 2.0;
-			imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
-			imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
+			imageR[x+xgmax][y+ygmax] = nucleation_object->colour.R;
+			imageG[x+xgmax][y+ygmax] = nucleation_object->colour.G;
+			imageB[x+xgmax][y+ygmax] = nucleation_object->colour.B;
+			//imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
+			//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
 
 		}
 }
@@ -1994,9 +2037,9 @@ else
 				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
 				continue;
 
-			imageR[x+xgmax][y+ygmax] = (imageR[x+xgmax][y+ygmax] + imageRmax / 2.0) / 2.0;
-			imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
-			imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
+			imageR[x+xgmax][y+ygmax] = nucleation_object->colour.R;
+			imageG[x+xgmax][y+ygmax] = nucleation_object->colour.G;
+			imageB[x+xgmax][y+ygmax] = nucleation_object->colour.B;
 		}
 		
 	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
@@ -2039,14 +2082,14 @@ else
 				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
 				continue;
 
-			imageR[x+xgmax][y+ygmax] = (imageR[x+xgmax][y+ygmax] + imageRmax / 2.0) / 2.0;
-			imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
-			imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
+			imageR[x+xgmax][y+ygmax] = nucleation_object->colour.R;
+			imageG[x+xgmax][y+ygmax] = nucleation_object->colour.G;
+			imageB[x+xgmax][y+ygmax] = nucleation_object->colour.B;
 		}
 
 
 	}
-
+*/
 /*
 for(int x = -width; xx<width; xx+=(width/4))
 	for(int y = -height; yy<height; yy+=(width/4))
@@ -2177,7 +2220,12 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 	delete [] line;
 	free(fileHeader);
 	free(fileInfo);
-	
+
+	if (FORCES_ON_SIDE)
+	{
+		movex = 50-(width/2);
+	}
+
 	if( nucleation_object->is_sphere() ) {
 	    draw_bead_forces(filenum, proj,
 			     width, height,
@@ -2986,30 +3034,30 @@ void * actin::compressfilesthread(void* threadarg)
 		system(command1);
 
 #ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
-		sprintf(command2 , "del x_proj_%05i.bmp", dat->startnode);
+		sprintf(command2 , "del x_proj_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "del y_proj_%05i.bmp", dat->startnode);
+		sprintf(command2 , "del y_proj_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "del z_proj_%05i.bmp", dat->startnode);
+		sprintf(command2 , "del z_proj_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "del x_forces_%05i.bmp", dat->startnode);
+		sprintf(command2 , "del x_forces_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "del y_forces_%05i.bmp", dat->startnode);
+		sprintf(command2 , "del y_forces_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "del z_forces_%05i.bmp", dat->startnode);
+		sprintf(command2 , "del z_forces_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
 #else
-		sprintf(command2 , "rm -f x_proj_%05i.bmp", dat->startnode);
+		sprintf(command2 , "rm -f x_proj_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "rm -f y_proj_%05i.bmp", dat->startnode);
+		sprintf(command2 , "rm -f y_proj_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "rm -f z_proj_%05i.bmp", dat->startnode);
+		sprintf(command2 , "rm -f z_proj_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "rm -f x_forces_%05i.bmp", dat->startnode);
+		sprintf(command2 , "rm -f x_forces_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "rm -f y_forces_%05i.bmp", dat->startnode);
+		sprintf(command2 , "rm -f y_forces_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
-		sprintf(command2 , "rm -f z_forces_%05i.bmp", dat->startnode);
+		sprintf(command2 , "rm -f z_forces_%05i.bmp 2>/dev/null", dat->startnode);
 		system(command2);
 #endif
 	

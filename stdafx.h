@@ -213,6 +213,8 @@ const int REPORT_NUM_VARIABLES = 8;
 extern bool ROTATION;
 extern MYDOUBLE MofI;
 
+extern bool FORCES_ON_SIDE;
+
 
 // compile-time options:
 

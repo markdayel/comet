@@ -106,3 +106,10 @@ void rotationmatrix::rotatematrix(MYDOUBLE x_angle, MYDOUBLE y_angle, MYDOUBLE z
 	rotatematrix(y_angle, yaxis);
 	rotatematrix(z_angle, zaxis);
 }
+
+void rotationmatrix::getangles(MYDOUBLE& x_angle, MYDOUBLE& y_angle, MYDOUBLE& z_angle)
+{  // todo: check these are right way around
+	y_angle = -atan2(zx,calcdist(xx,yx));
+	z_angle = atan2(yx/cos(y_angle),xx/cos(y_angle));
+	x_angle	= atan2(zy/cos(y_angle),zz/cos(y_angle));
+}

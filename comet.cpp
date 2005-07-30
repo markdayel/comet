@@ -31,6 +31,8 @@ bool ROTATION = true;
 
 MYDOUBLE MofI = (MYDOUBLE) 0.1;
 
+bool FORCES_ON_SIDE = true;
+
 int REPORT_AVERAGE_ITTERATIONS = 50;
 
 int RECORDED_TIMESTEPS=200;			// number of recorded timesteps(data files)
@@ -549,7 +551,7 @@ if (nucshape == nucleator::capsule)
 	MYDOUBLE delta_centre_x , delta_centre_y, delta_centre_z;
 	MYDOUBLE distfromorigin;
 
-	MYDOUBLE theta, phi, psi;
+	MYDOUBLE x_angle, y_angle, z_angle;
 
 	bool DISTANCE_TO_UPDATE_reached = false;
 
@@ -631,9 +633,7 @@ if (nucshape == nucleator::capsule)
 				<< centre_z << "," 
 				<< calcdist(delta_centre_x, delta_centre_y, delta_centre_z) << endl;
 
-			theta = (180/PI) * atan2(nuc_object.direction.x, nuc_object.direction.y);
-			phi   = (180/PI) * atan2(nuc_object.direction.x, nuc_object.direction.z);
-			psi	  = (180/PI) * atan2(nuc_object.direction.y, nuc_object.direction.z);
+			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
 
 			cout << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
@@ -643,9 +643,9 @@ if (nucshape == nucleator::capsule)
 			<< "|y " << setw(6) << setprecision(3) << centre_y
 			<< "|z " << setw(6) << setprecision(3) << centre_z
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime)
-			<< "|Dir " << setw(6) << setprecision(1) << theta
-			<< "  " << setw(6) << setprecision(1) << phi
-			<< "  " << setw(6) << setprecision(1) << psi;
+			<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
+			<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
+			<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle;
 			cout.flush();
 
 			cout << "|S " << setw(3) <<  (int)(i/InterRecordIterations)  

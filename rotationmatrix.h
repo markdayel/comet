@@ -45,6 +45,7 @@ public:
 		rotate(v.x,v.y,v.z);
 	}
 
+	void getangles(MYDOUBLE& x_angle, MYDOUBLE& y_angle, MYDOUBLE& z_angle);
 };
 
 #endif

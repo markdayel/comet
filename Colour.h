@@ -19,8 +19,10 @@ class Colour
 {
 public:
 	Colour(void);
+	Colour(MYDOUBLE val);
 	~Colour(void);
 	MYDOUBLE r,g,b;
+	unsigned char R,G,B;
 	MYDOUBLE mag;
 	int setcol(MYDOUBLE mag);
 };

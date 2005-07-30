@@ -17,6 +17,7 @@ removed without prior written permission from the author.
 
 #include "vect.h"
 #include "rotationmatrix.h"
+#include "Colour.h"
 
 class nodes;
 class actin;
@@ -42,6 +43,10 @@ public:
 	vect momentofinertia;
 
 	rotationmatrix nucleator_rotation;
+
+	Colour colour;
+
+	vector <vect> cagepoints;
 
 	vector <MYDOUBLE> radial_rep_distrib_x;
 	vector <MYDOUBLE> radial_rep_distrib_y;
@@ -77,6 +82,7 @@ public:
 	bool iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MYDOUBLE& z);
 	int collision(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z);
 	int n_force_segments();
+	void definecagepoints(void);
 };
 
 #endif
