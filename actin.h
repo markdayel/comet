@@ -16,6 +16,7 @@ prior written permission from the author.
 #ifndef actin_H 
 #define actin_H
 
+#include "rotationmatrix.h"
 #include <vector>
 #include <sstream>
 #include "nodes.h"
@@ -82,6 +83,8 @@ public:
 	ofstream opvelocityinfo;
 	int highestnodecount;
 	Dbl2d imageR, imageG, imageB;
+
+	rotationmatrix actin_rotation;
 
 	vector <Dbl2d> reportdat;
 

@@ -16,6 +16,7 @@ removed without prior written permission from the author.
 #define nucleator_H
 
 #include "vect.h"
+#include "rotationmatrix.h"
 
 class nodes;
 class actin;
@@ -35,13 +36,17 @@ public:
 	MYDOUBLE surf_area;
 	MYDOUBLE movability;
 	actin *ptheactin;
-	vect position;
 
-	
+	vect position, deltanucposn;
+	vect direction, torque, centerofmass;
+	vect momentofinertia;
+
+	rotationmatrix nucleator_rotation;
+
 	vector <MYDOUBLE> radial_rep_distrib_x;
 	vector <MYDOUBLE> radial_rep_distrib_y;
 	vector <MYDOUBLE> radial_rep_distrib_z;
-
+	
 	int nbdy_segs;
 	int ncap_segs;
 
@@ -51,16 +56,16 @@ public:
 	vector <MYDOUBLE> fbar_bdy_x;
 	vector <MYDOUBLE> fbar_bdy_y;
 
-	int  addnodes(void);
-	int  addnodessphere(void);
-	int  addnodescapsule(void);
-	int  definenucleatorgrid(void);
-	int  save(ofstream *outputstream) ;
-	int  savevrml(ofstream *outputstream) ;
-	int  saveradialsegments(ofstream *outputstream);
-	int  clearradialsegments();
-	int  save_data(ofstream &ostr);
-	int  load_data(ifstream &istr);
+	int addnodes(void);
+	int addnodessphere(void);
+	int addnodescapsule(void);
+	int definenucleatorgrid(void);
+	int save(ofstream *outputstream) ;
+	int savevrml(ofstream *outputstream) ;
+	int saveradialsegments(ofstream *outputstream);
+	int clearradialsegments();
+	int save_data(ofstream &ostr);
+	int load_data(ifstream &istr);
 	void set_rep_bins();
 //	int  get_rep_bin(MYDOUBLE angle);
 	int  get_zbin(const MYDOUBLE x, const MYDOUBLE y);
@@ -68,7 +73,7 @@ public:
 //	MYDOUBLE get_rep_angle(MYDOUBLE x, MYDOUBLE y);
 	bool is_sphere();
 	bool is_capsule();
-	
+
 	bool iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MYDOUBLE& z);
 	int collision(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z);
 	int n_force_segments();
