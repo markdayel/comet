@@ -468,9 +468,14 @@ void nucleator::set_rep_bins()
 		
     // bit of a guess, let's partition the samples as 1/2, 1/4, 1/4
     // body segments
-    nbdy_segs = int(0.5*RADIAL_SEGMENTS);
+
+	// try to keep equidistant:
+
+	nbdy_segs = int( (2*segment) / ( (2 * PI * radius) / RADIAL_SEGMENTS ) );
+
+    //nbdy_segs = int(0.5*RADIAL_SEGMENTS);
     if(nbdy_segs%2 != 0)
-	nbdy_segs++;
+		nbdy_segs++;
 
     // body segments
     // clear everything
@@ -498,9 +503,9 @@ void nucleator::set_rep_bins()
     fbar_cap_y.clear();
     fbar_cap_ang.clear();
     
-    ncap_segs = RADIAL_SEGMENTS - nbdy_segs;
+    ncap_segs = RADIAL_SEGMENTS;// - nbdy_segs;
     if(ncap_segs%2 != 0)
-	ncap_segs++;
+		ncap_segs++;
 
     cout << "cap_segments:" << ncap_segs << endl;
     
@@ -730,14 +735,19 @@ int nucleator::get_zbin(const MYDOUBLE x, const MYDOUBLE y)
     MYDOUBLE mindist = abs(y - fbar_bdy_y[indx]);;
     MYDOUBLE dist;
     
-    for(int i=0; i<np; i++){
-	if(x * fbar_bdy_x[i] >= 0){ // same side
-	    dist = abs(y - fbar_bdy_y[i]);
-	    if(dist < mindist){
-		mindist = dist;
-		indx = i;
-	    }
-	}
+    for(int i=0; i<np; i++)
+	{
+		if(x * fbar_bdy_x[i] >= 0)
+		{ // same side
+			
+			dist = abs(y - fbar_bdy_y[i]);
+
+			if(dist < mindist)
+			{
+				mindist = dist;
+				indx = i;
+			}
+		}
     }
     /*
     cout << "Zbin  " 

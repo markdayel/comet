@@ -2224,6 +2224,7 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 	if (FORCES_ON_SIDE)
 	{
 		movex = 50-(width/2);
+		meanx=meany=meanz=0.0;
 	}
 
 	if( nucleation_object->is_sphere() ) {
