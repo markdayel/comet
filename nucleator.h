@@ -80,7 +80,7 @@ public:
 	bool is_capsule();
 
 	bool iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MYDOUBLE& z);
-	int collision(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z);
+	bool collision(nodes &node);//(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z);
 	int n_force_segments();
 	void definecagepoints(void);
 };

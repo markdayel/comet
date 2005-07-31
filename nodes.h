@@ -48,14 +48,14 @@ public:
 	vector <vect> rep_force_vec;
 	//vect momentum_vec;
 	vector <links> listoflinks;
-	int applyforces(int threadnum);
+	
 	int gridx, gridy, gridz;
 	vect delta;
 	//MYDOUBLE delta_x, delta_y, delta_z;
-	int updategrid(void);
-	int removefromgrid(void);
-	int addtogrid(void);
-	int setgridcoords(void);
+	void updategrid(void);
+	void removefromgrid(void);
+	void addtogrid(void);
+	void setgridcoords(void);
 	int nodenum;
 	int	nodelinksbroken;
 	int addlink(nodes* linkto, const MYDOUBLE& dist);
@@ -68,6 +68,21 @@ public:
 	MYDOUBLE phi;
 	int savelinks(ofstream * outstream);
 	bool dontupdate;
+
+	//inline int applyforces(const int &threadnum);
+	inline int applyforces(const int &threadnum)
+	{
+	
+	delta = (link_force_vec[threadnum] + rep_force_vec[threadnum]) * DELTA_T * FORCE_SCALE_FACT;
+
+	*this+=delta;
+
+	rep_force_vec[threadnum].zero();
+	link_force_vec[threadnum].zero();
+	repulsion_displacement_vec[threadnum].zero();
+
+	return 0;
+}
 };
 
 #endif

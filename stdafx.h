@@ -15,6 +15,22 @@ removed without prior written permission from the author.
 #ifndef stdafx_H
 #define stdafx_H
 
+#ifdef _WIN32
+
+	#pragma warning(disable: 4511) // unable to generate copy constructor
+	#pragma warning(disable: 4512)
+
+	#pragma warning(disable: 4127)  // constant conditional expression
+
+	#pragma inline_depth( 255 )
+	#pragma inline_recursion( on )
+	#pragma auto_inline( on )
+	
+	//#define inline __forceinline
+
+#endif
+
+
 // defines
 
 // #define FORCES_BOTH_WAYS 1
@@ -107,13 +123,7 @@ int endnode;
 int threadnum;
 };
 
-#ifdef _WIN32
 
-	#pragma inline_depth( 255 )
-	#pragma inline_recursion( on )
-	#pragma auto_inline( on )
-
-#endif
 
 // math related:
 
@@ -201,8 +211,8 @@ extern int XLINK_NEAREST;
 
 extern MYDOUBLE VIEW_HEIGHT;
 
-extern MYDOUBLE LINK_TAUGHT_FORCE;
-extern MYDOUBLE LINK_TAUGHT_RATIO;
+extern MYDOUBLE LINK_TAUT_FORCE;
+extern MYDOUBLE LINK_TAUT_RATIO;
 
 extern int ASYMMETRIC_NUCLEATION;
 
@@ -288,11 +298,12 @@ static inline MYDOUBLE mysqrt(MYDOUBLE x)
 	return y;
 }
 */
+inline MYDOUBLE mysqrt(MYDOUBLE d);
 inline MYDOUBLE mysqrt(MYDOUBLE d)
 {
 	return sqrt(d);
 }
-
+inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist);
 inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist)
 {
 	MYDOUBLE sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
@@ -306,7 +317,8 @@ inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist)
 		return mysqrt(sqr);
 }
 
-inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist)
+inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist);
+inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist) 
 {
 	MYDOUBLE sqr = (xdist*xdist + ydist*ydist);
 	if (sqr < SQRT_ACCURACY_LOSS)
@@ -321,8 +333,7 @@ inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist)
 
 inline void endian_swap(unsigned short& x)
 {
-    x = (x>>8) | 
-	(x<<8);
+    x = (unsigned short)( (x>>8) | (x<<8));
 }
 
 inline void endian_swap(unsigned int& x)

@@ -53,8 +53,8 @@ MYDOUBLE LINK_BREAKAGE_FORCE = (MYDOUBLE) 100;	 // breakage force per link
 MYDOUBLE P_LINK_BREAK_IF_OVER = (MYDOUBLE) 0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NODE = 100;
 
-MYDOUBLE LINK_TAUGHT_FORCE = (MYDOUBLE) 5;
-MYDOUBLE LINK_TAUGHT_RATIO = (MYDOUBLE) 1.1;
+MYDOUBLE LINK_TAUT_FORCE = (MYDOUBLE) 5;
+MYDOUBLE LINK_TAUT_RATIO = (MYDOUBLE) 1.1;
 
 
 MYDOUBLE LINK_FORCE = (MYDOUBLE)0.1;
@@ -279,8 +279,8 @@ int main(int argc, char* argv[])
 				pthread_mutex_lock(&collisiondetectiongolock_mutex[i]);
 
 				// start the threads
-				pthread_create(&threads[truethreadnum++], &thread_attr, actin::collisiondetectionthread, 
-									(void *) &collision_thread_data_array[i]);
+				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::collisiondetectionthread, 
+				//					(void *) &collision_thread_data_array[i]);
 
 				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::linkforcesthread, 
 				//					(void *) &linkforces_thread_data_array[i]);
@@ -374,8 +374,11 @@ int main(int argc, char* argv[])
 				} else if (tag == "NODE_REPULSIVE_RANGE") {
                        ss >> NODE_REPULSIVE_RANGE;
                        continue;
-			   } else if (tag == "LINK_TAUGHT_FORCE") {
-                       ss >> LINK_TAUGHT_FORCE;
+			   } else if (tag == "LINK_TAUT_FORCE") {
+                       ss >> LINK_TAUT_FORCE;
+                      continue;
+				} else if (tag == "LINK_TAUT_RATIO") {
+                       ss >> LINK_TAUT_RATIO;
                       continue;
 			   } else if (tag == "ASYMMETRIC_NUCLEATION") {
                        ss >> ASYMMETRIC_NUCLEATION;
@@ -489,8 +492,8 @@ int main(int argc, char* argv[])
 	cout << "Node Repulsion Range:       " << NODE_REPULSIVE_RANGE << endl;
 	cout << "Node Repulsion Magnitude:   " << NODE_REPULSIVE_MAG << endl;
 	cout << "Max links per node:         " << MAX_LINKS_PER_NODE << endl;
-	cout << "Link Taught Force:          " << LINK_TAUGHT_FORCE << endl;
-	cout << "Link Taught Ratio:          " << LINK_TAUGHT_RATIO << endl;
+	cout << "Link Taut Force:          " << LINK_TAUT_FORCE << endl;
+	cout << "Link Taut Ratio:          " << LINK_TAUT_RATIO << endl;
 	cout << "Link breakage force:        " << LINK_BREAKAGE_FORCE << endl;
 	cout << "Link force:                 " << LINK_FORCE << endl;
 	cout << "Max P(link):                " << P_XLINK << endl;
@@ -513,8 +516,8 @@ if (nucshape == nucleator::capsule)
 	theactin.opruninfo << "Node Repulsion Range:       " << NODE_REPULSIVE_RANGE << endl;
 	theactin.opruninfo << "Node Repulsion Magnitude:   " << NODE_REPULSIVE_MAG << endl;	
 	theactin.opruninfo << "Max links per node:         " << MAX_LINKS_PER_NODE << endl;
-	theactin.opruninfo << "Link Taught Force:          " << LINK_TAUGHT_FORCE << endl;
-	theactin.opruninfo << "Link Taught Ratio:          " << LINK_TAUGHT_RATIO << endl;
+	theactin.opruninfo << "Link Taut Force:          " << LINK_TAUT_FORCE << endl;
+	theactin.opruninfo << "Link Taut Ratio:          " << LINK_TAUT_RATIO << endl;
 	theactin.opruninfo << "Max P(link):                " << P_XLINK << endl;
 	theactin.opruninfo << "Link breakage force:        " << LINK_BREAKAGE_FORCE << endl;
 	theactin.opruninfo << "Link force:                 " << LINK_FORCE << endl;
@@ -546,17 +549,19 @@ if (nucshape == nucleator::capsule)
 
 	theactin.newnodescolour.setcol(0);
 
-	MYDOUBLE centre_x,centre_y,centre_z;
-	MYDOUBLE last_centre_x, last_centre_y , last_centre_z;
-	MYDOUBLE delta_centre_x , delta_centre_y, delta_centre_z;
+	//MYDOUBLE center_x,center_y,center_z;
+	//MYDOUBLE last_center_x, last_center_y , last_center_z;
+	//MYDOUBLE delta_center_x , delta_center_y, delta_center_z;
 	MYDOUBLE distfromorigin;
 
 	MYDOUBLE x_angle, y_angle, z_angle;
 
 	bool DISTANCE_TO_UPDATE_reached = false;
 
-    last_centre_x = last_centre_y = last_centre_z = 0;
-	centre_x = centre_y = centre_z = 0;
+	vect last_center, center, delta_center;
+
+    //last_center_x = last_center_y = last_center_z = 0;
+	//center_x = center_y = center_z = 0;
 
 	// - - - - - - - - - - 
 	// main iteration loop
@@ -586,11 +591,11 @@ if (nucshape == nucleator::capsule)
 		if (nowtime > lasttime)
 		{
 			lasttime = nowtime;
-			theactin.find_centre(centre_x,centre_y,centre_z);
-			//delta_centre_x = centre_x - last_centre_x;
-			//delta_centre_y = centre_y - last_centre_y;
-			//delta_centre_z = centre_z - last_centre_z;
-			distfromorigin = calcdist(centre_x, centre_y, centre_z);
+			theactin.find_center(center);
+			//delta_center_x = center_x - last_center_x;
+			//delta_center_y = center_y - last_center_y;
+			//delta_center_z = center_z - last_center_z;
+			distfromorigin = center.length();
 
 			if ((!DISTANCE_TO_UPDATE_reached) && (DISTANCE_TO_UPDATE > 0.01) 
 				&& (distfromorigin > (DISTANCE_TO_UPDATE*RADIUS)))
@@ -605,9 +610,9 @@ if (nucshape == nucleator::capsule)
 			<< "|N"<< setw(6)<< theactin.highestnodecount
 			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
 			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
-			<< "|x " << setw(6) << setprecision(3) << centre_x
-			<< "|y " << setw(6) << setprecision(3) << centre_y
-			<< "|z " << setw(6) << setprecision(3) << centre_z
+			<< "|x " << setw(6) << setprecision(3) << center.x
+			<< "|y " << setw(6) << setprecision(3) << center.y
+			<< "|z " << setw(6) << setprecision(3) << center.z
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime) << "\r";
 			cout.flush();
 		}
@@ -618,20 +623,21 @@ if (nucshape == nucleator::capsule)
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
 		{
 			theactin.setdontupdates();
-			theactin.find_centre(centre_x, centre_y, centre_z);
-			delta_centre_x = centre_x - last_centre_x;
-			delta_centre_y = centre_y - last_centre_y;
-			delta_centre_z = centre_z - last_centre_z;
-			last_centre_x = centre_x;
-			last_centre_y = centre_y;
-			last_centre_z = centre_z;
+			theactin.find_center(center);
+			
+			delta_center = center - last_center;  // crashing here when both are zero
+			//delta_center_y = center_y - last_center_y;
+			//delta_center_z = center_z - last_center_z;
+			last_center = center;
+			//last_center_y = center_y;
+			//last_center_z = center_z;
 
 			theactin.opvelocityinfo 
 				<< (i*DELTA_T) << "," 
-				<< centre_x << "," 
-				<< centre_y << "," 
-				<< centre_z << "," 
-				<< calcdist(delta_centre_x, delta_centre_y, delta_centre_z) << endl;
+				<< center.x << "," 
+				<< center.y << "," 
+				<< center.z << "," 
+				<< delta_center.length() << endl;
 
 			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
 
@@ -639,9 +645,9 @@ if (nucshape == nucleator::capsule)
 			<< "|N"<< setw(6)<< theactin.highestnodecount
 			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
 			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
-			<< "|x " << setw(6) << setprecision(3) << centre_x
-			<< "|y " << setw(6) << setprecision(3) << centre_y
-			<< "|z " << setw(6) << setprecision(3) << centre_z
+			<< "|x " << setw(6) << setprecision(3) << center.x
+			<< "|y " << setw(6) << setprecision(3) << center.y
+			<< "|z " << setw(6) << setprecision(3) << center.z
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime)
 			<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
 			<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
@@ -655,9 +661,9 @@ if (nucshape == nucleator::capsule)
 			<< "|N"<< setw(6)<< theactin.highestnodecount
 			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
 			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
-			<< "|x " << setw(6) << setprecision(3) << centre_x
-			<< "|y " << setw(6) << setprecision(3) << centre_y
-			<< "|z " << setw(6) << setprecision(3) << centre_z
+			<< "|x " << setw(6) << setprecision(3) << center.x
+			<< "|y " << setw(6) << setprecision(3) << center.y
+			<< "|z " << setw(6) << setprecision(3) << center.z
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
 			//<< "|H" <<  setw(6) << theactin.harbinger;
 			theactin.opruninfo << "|S" << setw(3) <<  (int)(i/InterRecordIterations)  

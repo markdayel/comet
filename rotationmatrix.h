@@ -27,7 +27,7 @@ public:
 
 	//void rotate(vect& v);
 
-	inline void rotate(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z)
+	inline rotationmatrix rotate(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z)
 	{
 		static MYDOUBLE tmp_x, tmp_y;
 
@@ -38,11 +38,13 @@ public:
 		x = tmp_x;
 		y = tmp_y;
 
+		return *this;
+
 	}
 
-	inline void rotate(vect& v)
+	inline rotationmatrix rotate(vect& v)
 	{
-		rotate(v.x,v.y,v.z);
+		return rotate(v.x,v.y,v.z);
 	}
 
 	void getangles(MYDOUBLE& x_angle, MYDOUBLE& y_angle, MYDOUBLE& z_angle);

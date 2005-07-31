@@ -568,7 +568,7 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 	//pxlink = ((( (MYDOUBLE) 2.7 / (XLINK_NODE_RANGE/(MYDOUBLE)5) )
 	//						*exp(-dist/(XLINK_NODE_RANGE/(MYDOUBLE)5) ) ));
 
-	// normal distrib with centre around 1/2 of XLINK_NODE_RANGE
+	// normal distrib with center around 1/2 of XLINK_NODE_RANGE
 	// and scale magnitude by 1/(XLINK_NODE_RANGE^2) to compensate for increased
 	// number of nodes at this distance shell
 
@@ -628,22 +628,22 @@ int actin::ejectfromnucleator()
 			}
 	}
 
-	oldnucposn.x = nucleation_object->position.x;  // note current nucleator pos'n
-	oldnucposn.y = nucleation_object->position.y;
-	oldnucposn.z = nucleation_object->position.z;
+	oldnucposn = nucleation_object->position;
+
+	// do the ejection:
 
 	for (vector <nodes*>::iterator i=nodes_within_nucleator.begin(); i<nodes_within_nucleator.end() ; i++ )
 	{  //eject them
-		if (nucleation_object->collision((*i)->x,(*i)->y,(*i)->z)==0)  // ejected OK
-			(*i)->updategrid();
+		if (nucleation_object->collision(*(*i))) // (*i)->x,(*i)->y,(*i)->z)==0)  
+			(*i)->updategrid();  // ejected OK
 		else
 			(*i)->depolymerize();  // not ejected OK, depolymerize
 	}
 
+
 	// do rotation
 
-
-	if (ROTATION && (nucleation_object->torque.mag() > 2*SQRT_ACCURACY_LOSS))
+	if (ROTATION && (nucleation_object->torque.length() > 2*SQRT_ACCURACY_LOSS))
 	{
 
 		MYDOUBLE x_angle = nucleation_object->torque.x / 
@@ -692,6 +692,8 @@ int actin::ejectfromnucleator()
 
 	nucleation_object->position+=nucleation_object->deltanucposn;
 
+
+
 	// 'move the nucleator' by moving nodes in opposite direction:
 	
 	for (int i = 0; i<highestnodecount; i++)
@@ -700,6 +702,7 @@ int actin::ejectfromnucleator()
 	}
 
 	nucleation_object->deltanucposn.zero();
+
 
 	return 0;
 }
@@ -839,7 +842,7 @@ if (!collisionthreaddone4)
 
 	return 0;
 }
-
+/*
 void * actin::collisiondetectionthread(void* threadarg)
 {
 
@@ -883,12 +886,16 @@ void * actin::collisiondetectionthread(void* threadarg)
 
 	return (void*) NULL;
 }
+*/
 
 inline void * actin::collisiondetectiondowork(thread_data* dat)
 {
 	vect nodeposvec;
-	MYDOUBLE distsqr,dist, xdist,ydist,zdist;
-	MYDOUBLE scale,force;
+	MYDOUBLE distsqr,dist;
+	//MYDOUBLE xdist,ydist,zdist;
+	MYDOUBLE scale,force, forcescale;
+
+	vect disp;
 	//nodes** sameGPnode;
 
 	for (int i=dat->startnode; i<dat->endnode; i++)
@@ -923,9 +930,9 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 
 			// of these nodes, calculate euclidian dist
 
-			nodeposvec.x = (*sameGPnode)->x;	// get xyz of our node
-			nodeposvec.y = (*sameGPnode)->y;
-			nodeposvec.z = (*sameGPnode)->z;
+			nodeposvec = (*(*sameGPnode));	// get xyz of our node
+			//nodeposvec.y = (*sameGPnode)->y;
+			//nodeposvec.z = (*sameGPnode)->z;
 
 			for (vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); nearnode<recti_near_nodes[dat->threadnum].end() ; nearnode++ )
 			{
@@ -939,11 +946,13 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 					( (*sameGPnode)->nodenum >= dat->endnode) )
 					continue;    // skip if out of range of this thread  
 
-				xdist = (*nearnode)->x - nodeposvec.x;
-				ydist = (*nearnode)->y - nodeposvec.y;
-				zdist = (*nearnode)->z - nodeposvec.z;
+				
+				disp = (*(*nearnode)) - nodeposvec; 
+				//disp.x = (*nearnode)->x - nodeposvec.x;
+				//disp.y = (*nearnode)->y - nodeposvec.y;
+				//disp.z = (*nearnode)->z - nodeposvec.z;
 
-				distsqr = xdist*xdist + ydist*ydist + zdist*zdist;
+				distsqr = disp.sqrlength();
 
 				if (distsqr < SQRT_ACCURACY_LOSS)
 				{	
@@ -967,18 +976,26 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 					{
 						force =  NODE_REPULSIVE_MAG ;
 					}  // fix force if below node incompressible distance
-#ifdef FORCES_BOTH_WAYS
-					(*sameGPnode)->rep_force_vec[0].x -= force * (xdist/dist);
-					(*sameGPnode)->rep_force_vec[0].y -= force * (ydist/dist);
-					(*sameGPnode)->rep_force_vec[0].z -= force * (zdist/dist);
 
-					(*nearnode)->rep_force_vec[0].x += force * (xdist/dist);
-					(*nearnode)->rep_force_vec[0].y += force * (ydist/dist);
-					(*nearnode)->rep_force_vec[0].z += force * (zdist/dist);
+					forcescale = force / dist;
+					
+
+#ifdef FORCES_BOTH_WAYS
+					
+					(*sameGPnode)->rep_force_vec[0] -= disp * forcescale;
+					//(*sameGPnode)->rep_force_vec[0].x -= force * (xdist/dist);
+					//(*sameGPnode)->rep_force_vec[0].y -= force * (ydist/dist);
+					//(*sameGPnode)->rep_force_vec[0].z -= force * (zdist/dist);
+
+					(*nearnode)->rep_force_vec[0] += disp * forcescale;
+					//(*nearnode)->rep_force_vec[0].x += force * (xdist/dist);
+					//(*nearnode)->rep_force_vec[0].y += force * (ydist/dist);
+					//(*nearnode)->rep_force_vec[0].z += force * (zdist/dist);
 #else
-					(*sameGPnode)->rep_force_vec[0].x -= 2 * force * (xdist/dist);
-					(*sameGPnode)->rep_force_vec[0].y -= 2 * force * (ydist/dist);
-					(*sameGPnode)->rep_force_vec[0].z -= 2 * force * (zdist/dist);
+					(*sameGPnode)->rep_force_vec[0] -= disp * (2.0 * forcescale) ;
+					//(*sameGPnode)->rep_force_vec[0].x -= 2 * force * (xdist/dist);
+					//(*sameGPnode)->rep_force_vec[0].y -= 2 * force * (ydist/dist);
+					//(*sameGPnode)->rep_force_vec[0].z -= 2 * force * (zdist/dist);
 #endif
 
 					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
@@ -987,21 +1004,29 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
 						scale = (MYDOUBLE)NODE_INCOMPRESSIBLE_RADIUS / (MYDOUBLE)4.0*dist;  
 
-						xdist*=scale;	// these are the vector half components (in direction from i to j)
-						ydist*=scale;
-						zdist*=scale;   
+						disp*=scale;	// these are the vector half components (in direction from i to j)
+						//ydist*=scale;
+						//zdist*=scale;   
 #ifdef FORCES_BOTH_WAYS
-						(*sameGPnode)->repulsion_displacement_vec[0].x-=xdist;	// move the points
-						(*sameGPnode)->repulsion_displacement_vec[0].y-=ydist;
-						(*sameGPnode)->repulsion_displacement_vec[0].z-=zdist;
 
-						(*nearnode)->repulsion_displacement_vec[0].x+=xdist;
-						(*nearnode)->repulsion_displacement_vec[0].y+=ydist;
-						(*nearnode)->repulsion_displacement_vec[0].z+=zdist;
+
+						(*sameGPnode)->repulsion_displacement_vec[0] -= disp;
+
+						(*nearnode)->repulsion_displacement_vec[0]   += disp;
+
+						//(*sameGPnode)->repulsion_displacement_vec[0].x-=xdist;	// move the points
+						//(*sameGPnode)->repulsion_displacement_vec[0].y-=ydist;
+						//(*sameGPnode)->repulsion_displacement_vec[0].z-=zdist;
+
+						//(*nearnode)->repulsion_displacement_vec[0].x+=xdist;
+						//(*nearnode)->repulsion_displacement_vec[0].y+=ydist;
+						//(*nearnode)->repulsion_displacement_vec[0].z+=zdist;
 #else
-						(*sameGPnode)->repulsion_displacement_vec[0].x-=2*xdist;	// move the points
-						(*sameGPnode)->repulsion_displacement_vec[0].y-=2*ydist;
-						(*sameGPnode)->repulsion_displacement_vec[0].z-=2*zdist;
+						(*sameGPnode)->repulsion_displacement_vec[0] -= disp * 2;
+
+						//(*sameGPnode)->repulsion_displacement_vec[0].x-=2*xdist;	// move the points
+						//(*sameGPnode)->repulsion_displacement_vec[0].y-=2*ydist;
+						//(*sameGPnode)->repulsion_displacement_vec[0].z-=2*zdist;
 #endif
 					}
 				}
@@ -1054,9 +1079,9 @@ if (maxz > GRIDSIZE) maxz = GRIDSIZE;
 
 // do adjgridpoints by adjgridpoints scan on grid
 
-for (int x = minx; x != maxx; x++)  
-	for (int y = miny; y != maxy; y++)
-		for (int z = minz; z != maxz; z++)
+for (int x = minx; x != maxx; ++x)  
+	for (int y = miny; y != maxy; ++y)
+		for (int z = minz; z != maxz; ++z)
 		{
 		nodeptr=nodegrid[x][y][z];
 		startnodeptr=nodeptr;
@@ -1090,15 +1115,18 @@ for (int x = minx; x != maxx; x++)
 	return (int) recti_near_nodes[threadnum].size();
 }
 
-inline int actin::dorepulsion(const int& node_i,const int& node_j,const MYDOUBLE& dist,const int& threadnum)
+inline int actin::dorepulsion(const int& node_i,const int& node_j,
+							  const MYDOUBLE& dist,const int& threadnum)
 {
 	if (node_i==node_j)
 		return 0;
 	
 
-	MYDOUBLE xcomp, ycomp, zcomp;
+	//MYDOUBLE xcomp, ycomp, zcomp;
 	MYDOUBLE scale;
 
+	vect disp;
+		
 	// node_i and node_j have come within ADJ_NODE_RANGE of one another
 	// (actually at 'dist' from one another)
 	// calculate repulsive force and exert on nodes
@@ -1109,32 +1137,43 @@ inline int actin::dorepulsion(const int& node_i,const int& node_j,const MYDOUBLE
 
 	// MYDOUBLE dist = sqrt(distsqr);
 
-	xcomp=(node[node_j].x-node[node_i].x); 
-	ycomp=(node[node_j].y-node[node_i].y); 
-	zcomp=(node[node_j].z-node[node_i].z); 
+	disp = node[node_j] - node[node_i];
+
+	//xcomp=(node[node_j].x-node[node_i].x); 
+	//ycomp=(node[node_j].y-node[node_i].y); 
+	//zcomp=(node[node_j].z-node[node_i].z); 
 	
 	//dist = dist(xcomp,ycomp,zcomp);  // calc dist between nodes
 
 	// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
 	scale = (NODE_INCOMPRESSIBLE_RADIUS / 4)*dist;  
 
-	xcomp*=scale;	// these are the vector half components (in direction from i to j)
-	ycomp*=scale;
-	zcomp*=scale;   
+	disp *= scale;
+
+	//xcomp*=scale;	// these are the vector half components (in direction from i to j)
+	//ycomp*=scale;
+	//zcomp*=scale;   
 
 #ifdef FORCES_BOTH_WAYS
-	node[node_i].repulsion_displacement_vec[threadnum].x-=xcomp;	// move the points
-	node[node_i].repulsion_displacement_vec[threadnum].y-=ycomp;
-	node[node_i].repulsion_displacement_vec[threadnum].z-=zcomp;
+	node[node_i].repulsion_displacement_vec[threadnum] -= disp;
 
-	node[node_j].repulsion_displacement_vec[threadnum].x+=xcomp;
-	node[node_j].repulsion_displacement_vec[threadnum].y+=ycomp;
-	node[node_j].repulsion_displacement_vec[threadnum].z+=zcomp;
+	//node[node_i].repulsion_displacement_vec[threadnum].x-=xcomp;	// move the points
+	//node[node_i].repulsion_displacement_vec[threadnum].y-=ycomp;
+	//node[node_i].repulsion_displacement_vec[threadnum].z-=zcomp;
+
+	node[node_j].repulsion_displacement_vec[threadnum] += disp;
+
+	//node[node_j].repulsion_displacement_vec[threadnum].x+=xcomp;
+	//node[node_j].repulsion_displacement_vec[threadnum].y+=ycomp;
+	//node[node_j].repulsion_displacement_vec[threadnum].z+=zcomp;
 
 #else
-	node[node_i].repulsion_displacement_vec[threadnum].x-=2*xcomp;	// move the points
-	node[node_i].repulsion_displacement_vec[threadnum].y-=2*ycomp;
-	node[node_i].repulsion_displacement_vec[threadnum].z-=2*zcomp;
+
+	node[node_i].repulsion_displacement_vec[threadnum] -= disp*2;
+
+	//node[node_i].repulsion_displacement_vec[threadnum].x-=2*xcomp;	// move the points
+	//node[node_i].repulsion_displacement_vec[threadnum].y-=2*ycomp;
+	//node[node_i].repulsion_displacement_vec[threadnum].z-=2*zcomp;
 
 #endif
 
@@ -1265,9 +1304,10 @@ void * actin::applyforcesthread(void* threadarg)
 
 int actin::linkforces(const bool& sumforces)
 {
-	MYDOUBLE xdist, ydist, zdist, scale,dist;
+	//MYDOUBLE xdist, ydist, zdist, 
+	MYDOUBLE scale,dist;
 	MYDOUBLE force;
-	vect nodeposvec;
+	vect nodeposvec, disp;
 	
 	// remove the links for ones that were broken last time
 	for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
@@ -1322,23 +1362,25 @@ if (false) // USE_THREADS)
 			if ((node[n].dontupdate && !sumforces) || (!node[n].polymer))
 				continue;
 
-			nodeposvec.x = node[n].x;	// get xyz of our node
-			nodeposvec.y = node[n].y;
-			nodeposvec.z = node[n].z;
+			nodeposvec = node[n];
+			//nodeposvec.x = node[n].x;	// get xyz of our node
+			//nodeposvec.y = node[n].y;
+			//nodeposvec.z = node[n].z;
 
 			// go through links for each node
 			for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
 			{	 
 				if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
 				{			
-					xdist = nodeposvec.x - i->linkednodeptr->x;
-					ydist = nodeposvec.y - i->linkednodeptr->y;
-					zdist = nodeposvec.z - i->linkednodeptr->z;
+					disp = nodeposvec - *(i->linkednodeptr);
+					//disp.x = nodeposvec.x - i->linkednodeptr->x;
+					//disp.y = nodeposvec.y - i->linkednodeptr->y;
+					//disp.z = nodeposvec.z - i->linkednodeptr->z;
 
-					dist = calcdist(xdist,ydist,zdist);
+					dist = disp.length();;
 
-					if (dist < 0)
-						continue;
+					//if (dist < 0)
+					//	continue;
 
 					force = i->getlinkforces(dist);
 
@@ -1359,17 +1401,23 @@ if (false) // USE_THREADS)
 						else
 						{
 #ifdef FORCES_BOTH_WAYS
-						node[n].link_force_vec[0].x += force * scale * xdist;
-						node[n].link_force_vec[0].y += force * scale * ydist;
-						node[n].link_force_vec[0].z += force * scale * zdist;
+						node[n].link_force_vec[0] += disp * (force * scale);
 
-						i->linkednodeptr->link_force_vec[0].x -= force * scale * xdist;
-						i->linkednodeptr->link_force_vec[0].y -= force * scale * ydist;
-						i->linkednodeptr->link_force_vec[0].z -= force * scale * zdist;
+						//node[n].link_force_vec[0].x += force * scale * xdist;
+						//node[n].link_force_vec[0].y += force * scale * ydist;
+						//node[n].link_force_vec[0].z += force * scale * zdist;
+
+
+						i->linkednodeptr->link_force_vec[0] -= disp * (force * scale);
+						//i->linkednodeptr->link_force_vec[0].x -= force * scale * xdist;
+						//i->linkednodeptr->link_force_vec[0].y -= force * scale * ydist;
+						//i->linkednodeptr->link_force_vec[0].z -= force * scale * zdist;
 #else
-						node[n].link_force_vec[0].x += 2 * force * scale * xdist;
-						node[n].link_force_vec[0].y += 2 * force * scale * ydist;
-						node[n].link_force_vec[0].z += 2 * force * scale * zdist;
+						node[n].link_force_vec[0] += disp * (2 * force * scale);
+
+						//node[n].link_force_vec[0].x += 2 * force * scale * xdist;
+						//node[n].link_force_vec[0].y += 2 * force * scale * ydist;
+						//node[n].link_force_vec[0].z += 2 * force * scale * zdist;
 #endif
 						}
 
@@ -1384,7 +1432,7 @@ if (false) // USE_THREADS)
 	return 0;
 }
 
-
+/*
 void * actin::linkforcesthread(void* threadarg)
 {
 	struct thread_data *dat;
@@ -1450,7 +1498,7 @@ void * actin::linkforcesthread(void* threadarg)
 
 	return (void*) NULL;
 }
-
+*/
 
 int actin::setnodecols(void)
 {
@@ -2570,11 +2618,11 @@ void actin::draw_bead_forces(int filenum, projection proj,
     MYDOUBLE xscale,yscale;
     int lineoriginx,lineoriginy;
     
-    MYDOUBLE radial_rep_tot_x=(MYDOUBLE) 0.01;
+    MYDOUBLE radial_rep_tot_x=(MYDOUBLE) 0.01; 
     MYDOUBLE radial_rep_tot_y=(MYDOUBLE) 0.01;
     MYDOUBLE radial_rep_tot_z=(MYDOUBLE) 0.01;
     
-    MYDOUBLE radial_rep_mean_x,radial_rep_mean_y,radial_rep_mean_z;
+
     
     for (int i=0; i<RADIAL_SEGMENTS; i++)
     {
@@ -2589,10 +2637,11 @@ void actin::draw_bead_forces(int filenum, projection proj,
 	radial_rep_tot_y+=nucleation_object->radial_rep_distrib_y[i];
 	radial_rep_tot_z+=nucleation_object->radial_rep_distrib_z[i];
     }
-    
-    radial_rep_mean_x = radial_rep_tot_x / (MYDOUBLE) RADIAL_SEGMENTS;
-    radial_rep_mean_y = radial_rep_tot_y / (MYDOUBLE) RADIAL_SEGMENTS;
-    radial_rep_mean_z = radial_rep_tot_z / (MYDOUBLE) RADIAL_SEGMENTS;
+
+ //   MYDOUBLE radial_rep_mean_x,radial_rep_mean_y,radial_rep_mean_z;      
+ //   radial_rep_mean_x = radial_rep_tot_x / (MYDOUBLE) RADIAL_SEGMENTS;
+ //   radial_rep_mean_y = radial_rep_tot_y / (MYDOUBLE) RADIAL_SEGMENTS;
+ //   radial_rep_mean_z = radial_rep_tot_z / (MYDOUBLE) RADIAL_SEGMENTS;
     
     for (int i=0; i<RADIAL_SEGMENTS; i++)
     {
@@ -3071,12 +3120,9 @@ void * actin::compressfilesthread(void* threadarg)
 	return (void*) NULL;
 }
 
-int actin::find_centre(MYDOUBLE &centre_x, MYDOUBLE &centre_y, MYDOUBLE &centre_z)
+int actin::find_center(vect &center)
 {
-
-	centre_x = -nucleation_object->position.x; 
-	centre_y = -nucleation_object->position.y; 
-	centre_z = -nucleation_object->position.z; 
+	center = - nucleation_object->position;
 
 	return 0;
 }
@@ -3111,7 +3157,7 @@ void actin::reportsnapshot(int filenum, int highestnode, int reportiteration)
 
  	MYDOUBLE dist,compx,compy,compz;
 
-	int varnum;
+	//int varnum;
 
     for (int i=0; i<highestnode; i++)
 	{
@@ -3120,7 +3166,7 @@ void actin::reportsnapshot(int filenum, int highestnode, int reportiteration)
 
 			reportdat[0][reportiteration][i]=1;  // valid point
 			
-			varnum = 0;
+			//varnum = 0;
 
 			// calculate distance from center of bead
 			dist = calcdist(node[i].x,node[i].y,node[i].z);

@@ -169,7 +169,7 @@ public:
 	//int repulsiveforces(void);
 	int sortnodesbygridpoint(void);
 	int nexttocrosslink;
-	int find_centre(MYDOUBLE &centre_x, MYDOUBLE &centre_y, MYDOUBLE &centre_z);
+	int find_center(vect &center);
 	int save_linkstats(int filenum);
 	void reportsnapshot(int filenum, int highestnode, int reportiteration);
 	void savereport(int filenum, int highestnode);

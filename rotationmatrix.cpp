@@ -5,7 +5,7 @@ rotationmatrix::rotationmatrix(void)
 {
 	xx = yy = zz = 1;
 	xy = xz = yx = yz = zx = zy = 0;
-};
+}
 
 rotationmatrix::~rotationmatrix(void)
 {

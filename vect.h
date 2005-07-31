@@ -19,18 +19,18 @@ class vect
 {
 public:
 
-	vect(void)
+	inline vect(void)
 	{
 	}
 
-	vect(MYDOUBLE &a, MYDOUBLE &b, MYDOUBLE &c)
+	inline vect(MYDOUBLE &a, MYDOUBLE &b, MYDOUBLE &c) 
 	{
 		x=a;
 		y=b;
 		z=c;
 	}
 
-	~vect(void)
+	virtual ~vect(void)
 	{
 	}
 
@@ -38,7 +38,7 @@ public:
 	MYDOUBLE y;
 	MYDOUBLE z;
 
-	inline vect operator+(vect &param)
+	inline vect operator+(const vect &param)
 	{
 		vect tmp;
 
@@ -49,7 +49,30 @@ public:
 		return tmp;
 	}
 
-	inline vect operator*(MYDOUBLE &scale)
+	inline vect operator-(const vect &param)
+	{
+		vect tmp;
+
+		tmp.x = x - param.x;
+		tmp.y = y - param.y;
+		tmp.z = z - param.z;
+
+		return tmp;
+	}
+
+	inline vect operator-(void)
+	{
+		vect tmp;
+
+		tmp.x = -x;
+		tmp.y = -y;
+		tmp.z = -z;
+
+		return tmp;
+	}
+
+
+	inline vect operator*(const MYDOUBLE &scale)
 	{
 		vect tmp;
 
@@ -61,25 +84,33 @@ public:
 	}
 
 
-	inline void operator+=(vect &param)
+
+
+	inline vect operator+=(const vect &param)
 	{
 		x += param.x;
 		y += param.y;
 		z += param.z;
+
+		return *this;
 	}
 
-	inline void operator-=(vect &param)
+	inline vect operator-=(const vect &param)
 	{
 		x -= param.x;
 		y -= param.y;
 		z -= param.z;
+
+		return *this;
 	}
 
-	inline void operator*=(MYDOUBLE &scale)
+	inline vect operator*=(const MYDOUBLE &scale)
 	{
 		x *= scale;
 		y *= scale;
 		z *= scale;
+
+		return *this;
 	}
 
 	inline MYDOUBLE dot(vect &a, vect &b)
@@ -87,12 +118,12 @@ public:
 		return ((a.x * b.x) + (a.y * b.y) + (a.z * b.z));
 	}
 
-	inline MYDOUBLE mag()
+	inline MYDOUBLE length()
 	{
 		return calcdist(x,y,z);
 	}
 
-	inline vect cross(vect &a, vect &b)
+	inline vect cross(const vect &a, const vect &b)
 	{
 		vect temp;
 
@@ -103,9 +134,10 @@ public:
 		return temp;
 	}
 
-	inline void zero()
+	inline vect zero()
 	{
 		x=y=z=0;
+		return *this;
 	}
 
 	void operator <<(ostream& out)
@@ -113,6 +145,11 @@ public:
 
 	out << x << "," << y << "," << z;
 
+	}
+
+	MYDOUBLE sqrlength(void)
+	{
+		return x*x + y*y + z*z;
 	}
 };
 

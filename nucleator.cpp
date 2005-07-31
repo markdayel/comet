@@ -535,8 +535,8 @@ void nucleator::set_rep_bins()
     
 }
 
-int nucleator::collision(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z)
-{
+bool nucleator::collision(nodes &node)//(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z)
+{  // returns true if succeeds, false if fails due to too great node ejection
 
 if (USE_THREADS)
 	pthread_mutex_lock(&beadmovelock_mutex); // lock the beadmove mutex
@@ -546,13 +546,15 @@ if (USE_THREADS)
 
 	// MYDOUBLE r2,theta,phi;
     MYDOUBLE r, scale, z2;
-	MYDOUBLE oldx,oldy,oldz;
+	//MYDOUBLE oldx,oldy,oldz;
 	vect node_disp;
-	//vect delta_torque;
+	vect oldpos;
 
-	oldx = x;
-	oldy = y;
-	oldz = z;
+	oldpos = node;
+
+	//oldx = x;
+	//oldy = y;
+	//oldz = z;
 
 	MYDOUBLE rad = RAD_INCOMP * (MYDOUBLE) 1.001; // needed to prevent rounding errors putting back inside nuclator
 
@@ -561,16 +563,19 @@ if (USE_THREADS)
 	{
 	case (sphere):
 		{
-		r = calcdist(x,y,z);
+		r = node.length();;
 
 		scale = rad / r;
-		x*=scale;
-		y*=scale;
-		z*=scale;
 
-		radial_rep_distrib_z[(int)(((atan2(y,x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(z))*(rad-r);
-		radial_rep_distrib_x[(int)(((atan2(y,z)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(x))*(rad-r);
-		radial_rep_distrib_y[(int)(((atan2(z,x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(y))*(rad-r);
+		node*=scale;
+
+		//x*=scale;
+		//y*=scale;
+		//z*=scale;
+
+		radial_rep_distrib_z[(int)(((atan2(node.y,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.z))*(rad-r);
+		radial_rep_distrib_x[(int)(((atan2(node.y,node.z)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.x))*(rad-r);
+		radial_rep_distrib_y[(int)(((atan2(node.z,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.y))*(rad-r);
 
 		break;
 		}
@@ -627,44 +632,44 @@ if (USE_THREADS)
 		//}
 
 		{
-		if ((fabs(z)<(segment/2)))
+		if ((fabs(node.z)<(segment/2)))
 			{ 
 				// on the cylinder
 
-				r = calcdist(x,y);
+				r = calcdist(node.x,node.y);
 				scale = rad / r;
-				x*=scale;
-				y*=scale;
+				node.x*=scale;
+				node.y*=scale;
 
-				radial_rep_distrib_x[get_zbin(y,z)]   += (1-fabs(x/rad))*(rad-r); // scaled
-				radial_rep_distrib_y[get_zbin(x,z)]   += (1-fabs(y/rad))*(rad-r);
-				radial_rep_distrib_z[get_angbin(x,y)] += (rad-r); // not scaled
+				radial_rep_distrib_x[get_zbin(node.y,node.z)]   += (1-fabs(node.x/rad))*(rad-r); // scaled
+				radial_rep_distrib_y[get_zbin(node.x,node.z)]   += (1-fabs(node.y/rad))*(rad-r);
+				radial_rep_distrib_z[get_angbin(node.x,node.y)] += (rad-r); // not scaled
 
 			}
 			else
 			{	// on the ends
 				
-				if (z<0)  // make into a sphere again
-					z2 = z + (segment/2);
+				if (node.z<0)  // make into a sphere again
+					z2 = node.z + (segment/2);
 				else
-					z2 = z - (segment/2);
+					z2 = node.z - (segment/2);
 
 				// calculate theta, phi :
 
-				r = calcdist(x,y,z2);
+				r = calcdist(node.x,node.y,z2);
 				scale = rad / r;
-				x  *= scale;
-				y  *= scale;
+				node.x  *= scale;
+				node.y  *= scale;
 				z2 *= scale;
 
-				if (z<0)  
-					z = z2 - (segment/2);
+				if (node.z<0)  
+					node.z = z2 - (segment/2);
 				else
-					z = z2 + (segment/2);
+					node.z = z2 + (segment/2);
 			
-				radial_rep_distrib_x[nbdy_segs + get_angbin(y,z2)] += (1-fabs(x/rad))*(rad-r); // scaled
-				radial_rep_distrib_y[nbdy_segs + get_angbin(x,z2)] += (1-fabs(y/rad))*(rad-r);
-				radial_rep_distrib_z[get_angbin(x,y)]              += (1-fabs(z2/rad*scale))*(rad-r);
+				radial_rep_distrib_x[nbdy_segs + get_angbin(node.y,z2)] += (1-fabs(node.x/rad))*(rad-r); // scaled
+				radial_rep_distrib_y[nbdy_segs + get_angbin(node.x,z2)] += (1-fabs(node.y/rad))*(rad-r);
+				radial_rep_distrib_z[get_angbin(node.x,node.y)]         += (1-fabs(z2/rad*scale))*(rad-r);
 
 
 			}
@@ -674,28 +679,33 @@ if (USE_THREADS)
 
 	}
 
-node_disp.x = x - oldx;
-node_disp.y = y - oldy;
-node_disp.z = z - oldz;
+node_disp = node - oldpos;
+//node_disp.y = y - oldy;
+//node_disp.z = z - oldz;
 
 if ((fabs(node_disp.x) > NODE_INCOMPRESSIBLE_RADIUS) ||
 	(fabs(node_disp.y) > NODE_INCOMPRESSIBLE_RADIUS) ||
 	(fabs(node_disp.z) > NODE_INCOMPRESSIBLE_RADIUS))
 {
 	cout << "node nucleus ejection too great " <<  endl;
-	cout << "old (x,y,z): " <<  oldx << ", " << oldy << ", " << oldz << endl;
-	cout << "new (x,y,z): " <<  x << ", " << y << ", " << z <<  endl;
-	return 1;
+	cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
+	cout << "new (x,y,z): " <<  node.x << ", " << node.y << ", " << node.z <<  endl;
+	return false;  // failed
 }
 
 #ifndef SEED_INSIDE
-deltanucposn.x -= node_disp.x * movability;  // move the nucleator
-deltanucposn.y -= node_disp.y * movability;
-deltanucposn.z -= node_disp.z * movability;
 
-x -= node_disp.x * movability;	// and move node by same amount so that
-y -= node_disp.y * movability;	// still on surface
-z -= node_disp.z * movability;
+deltanucposn -= node_disp * movability;  // move the nucleator
+
+//deltanucposn.x -= node_disp.x * movability;  // move the nucleator
+//deltanucposn.y -= node_disp.y * movability;
+//deltanucposn.z -= node_disp.z * movability;
+
+node -= node_disp * movability;	
+
+//node.x -= node_disp.x * movability;	// and move node by same amount so that
+//node.y -= node_disp.y * movability;	// still on surface
+//node.z -= node_disp.z * movability;
 
 #endif
 
@@ -707,9 +717,12 @@ z -= node_disp.z * movability;
 
 // calculate torque (as pos x disp)
 
-torque.x += ((oldy-centerofmass.y)*node_disp.z - (oldz-centerofmass.z)*node_disp.y);
-torque.y += ((oldz-centerofmass.z)*node_disp.x - (oldx-centerofmass.x)*node_disp.z);
-torque.z += ((oldx-centerofmass.x)*node_disp.y - (oldy-centerofmass.y)*node_disp.x);
+if (ROTATION)
+{
+	torque.x += ((oldpos.y-centerofmass.y)*node_disp.z - (oldpos.z-centerofmass.z)*node_disp.y);
+	torque.y += ((oldpos.z-centerofmass.z)*node_disp.x - (oldpos.x-centerofmass.x)*node_disp.z);
+	torque.z += ((oldpos.x-centerofmass.x)*node_disp.y - (oldpos.y-centerofmass.y)*node_disp.x);
+}
 
 //torque += delta_torque;
 
@@ -721,8 +734,7 @@ torque.z += ((oldx-centerofmass.x)*node_disp.y - (oldy-centerofmass.y)*node_disp
 if (USE_THREADS)
 	pthread_mutex_unlock(&beadmovelock_mutex); // unlock the beadmove mutex
 
-
-	return 0;
+	return true; // sucessful node ejection
 }
 
 int nucleator::get_zbin(const MYDOUBLE x, const MYDOUBLE y)
@@ -732,7 +744,7 @@ int nucleator::get_zbin(const MYDOUBLE x, const MYDOUBLE y)
     // and x is moving away (ie y = z, x = x|y) this made sense at the time.
     int indx = 0;
     int np = (int)fbar_bdy_y.size();
-    MYDOUBLE mindist = abs(y - fbar_bdy_y[indx]);;
+    MYDOUBLE mindist = fabs(y - fbar_bdy_y[indx]);;
     MYDOUBLE dist;
     
     for(int i=0; i<np; i++)
@@ -740,7 +752,7 @@ int nucleator::get_zbin(const MYDOUBLE x, const MYDOUBLE y)
 		if(x * fbar_bdy_x[i] >= 0)
 		{ // same side
 			
-			dist = abs(y - fbar_bdy_y[i]);
+			dist = fabs(y - fbar_bdy_y[i]);
 
 			if(dist < mindist)
 			{
@@ -771,7 +783,7 @@ int nucleator::get_angbin(const MYDOUBLE x, const MYDOUBLE y)
 
     ang = atan2(y, x);
     for(int i=0; i<np; i++){
-	diff =  abs(ang - fbar_cap_ang[i]);
+	diff =  fabs(ang - fbar_cap_ang[i]);
 	if(diff<mindiff){
 	    mindiff = diff;
 	    indx=i;

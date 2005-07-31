@@ -110,9 +110,7 @@ bool nodes::polymerize(const MYDOUBLE& set_x, const MYDOUBLE& set_y, const MYDOU
 	y = set_y;
 	z = set_z;
 	
-	lastpos.x=x; 
-	lastpos.y=y;
-	lastpos.z=z;
+	lastpos=*this; 
 
 	polymer = true ;
 
@@ -251,33 +249,8 @@ int nodes::load_data(ifstream &istrm)
     return 0;
 }
 
-int nodes::applyforces(int threadnum)
-{
-	
-	delta = (link_force_vec[threadnum] + rep_force_vec[threadnum]) * DELTA_T * FORCE_SCALE_FACT;
 
-	// can we skip the displacement calc'n?
-/*
-	if ((delta.x > MAX_DISP_PERDT_DIVSQRTTWO) || (delta.x < -MAX_DISP_PERDT_DIVSQRTTWO) ||
-		(delta.y > MAX_DISP_PERDT_DIVSQRTTWO) || (delta.y < -MAX_DISP_PERDT_DIVSQRTTWO) ||
-		(delta.z > MAX_DISP_PERDT_DIVSQRTTWO) || (delta.z < -MAX_DISP_PERDT_DIVSQRTTWO))
-	{	// no calculate displacement
-		MYDOUBLE dist = delta.mag(); //calcdist(delta_x,delta_y,delta_z);
-		if (dist > MAX_DISP_PERDT)
-		{	// if movement displacement greater than MAX_DISP
-			// then truncate
-			MYDOUBLE ratio = MAX_DISP_PERDT / dist;
-			//cout << "Displacement truncated to " << ratio << endl;
-			delta *= ratio;
-		}
-	}
-*/
-	// move the node
-	
-	*this+=delta;
-
-
-/*
+	/*
 
 	// calculate components of momentum change due to forces:
 
@@ -311,17 +284,14 @@ int nodes::applyforces(int threadnum)
 	momentum_vec.x = (delta_mom_x * NODEMASS) / DAMPING_FACTOR; 
 	momentum_vec.y = (delta_mom_y * NODEMASS) / DAMPING_FACTOR;
 	momentum_vec.z = (delta_mom_z * NODEMASS) / DAMPING_FACTOR;
-*/
-	// zero force vectors
 
-	rep_force_vec[threadnum].zero();
-	link_force_vec[threadnum].zero();
-	repulsion_displacement_vec[threadnum].zero();
+	}
+	*/
 
-	return 0;
-}
 
-int nodes::updategrid(void)
+
+
+void nodes::updategrid(void)
 {
 	int gridtmpx, gridtmpy, gridtmpz;
 	int oldgridx = gridx;  // store old grid pos'n
@@ -347,13 +317,13 @@ int nodes::updategrid(void)
 			gridy=oldgridy;
 			gridz=oldgridz;
 			depolymerize();
-			return 0;
+			return;
 		}
 	}
 
 	else
 	{  // not moved - return
-		return 0;
+		return;
 	}
 
 
@@ -380,16 +350,14 @@ int nodes::updategrid(void)
 
 	if (polymer) 
 		addtogrid();
-
-
 			
-	return 0;
+	return;
 }
 
-int nodes::removefromgrid(void)
+void nodes::removefromgrid(void)
 {
 	// are we on the grid?
-	if (gridx==-1) return 0;  // return if now
+	if (gridx==-1) return;  // return if now
 
 	// are we the only grid node?
 		if ((nextnode==this) &&
@@ -411,10 +379,10 @@ int nodes::removefromgrid(void)
 
 		gridx=gridy=gridz=-1;
 
-	return 0;
+	return;
 }
 
-int nodes::addtogrid(void)
+void nodes::addtogrid(void)
 {
 	// are we already on the grid?
 	//if (gridx!=-1) return 0;
@@ -434,17 +402,17 @@ int nodes::addtogrid(void)
 		prevnode->nextnode = this;
 	}
 
-	return 0;
+	return;
 }
 
-int nodes::setgridcoords(void)
+void nodes::setgridcoords(void)
 {  
 
 	gridx = (((int)(x / GRIDRES)) + (GRIDSIZE/2) ); // find new grid pos'n
 	gridy = (((int)(y / GRIDRES)) + (GRIDSIZE/2) );
 	gridz = (((int)(z / GRIDRES)) + (GRIDSIZE/2) );
 
-	return 0;
+	return;
 } 
 
 int nodes::addlink(nodes* linkto, const MYDOUBLE& dist)
