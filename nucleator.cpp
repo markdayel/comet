@@ -31,8 +31,6 @@ nucleator::nucleator(void)
 	surf_area = 4 * PI * radius * radius;
     // inverse ratio of 'viscosities' of node and bead
     movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / radius;    
-	direction.x=direction.y=0;
-	direction.z=1;
 
 	deltanucposn.zero();
 
@@ -76,9 +74,6 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 	position.zero();
 	definenucleatorgrid();
 
-	direction.x=direction.y=0;
-	direction.z=1;
-
 	deltanucposn.zero();
 
 	centerofmass.zero();;
@@ -99,6 +94,7 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 
 	definecagepoints();
 	colour.r = colour.g = colour.b = 1.0;
+
 }
 
 int nucleator::addnodes(void)
@@ -153,7 +149,7 @@ int nucleator::addnodessphere(void)
 			if (ASYMMETRIC_NUCLEATION!=0)
 			{
 				if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
-					if (z<0) continue;
+					if ((y<0) || (fabs(x+z)>0.5)) continue;
 				if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
 					if (z < (radius) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/2) - 1))
 						continue;
@@ -544,17 +540,11 @@ if (USE_THREADS)
 	// node has entered nucleator,
 	// return co-ords of node pushed to surface...
 
-	// MYDOUBLE r2,theta,phi;
     MYDOUBLE r, scale, z2;
-	//MYDOUBLE oldx,oldy,oldz;
 	vect node_disp;
 	vect oldpos;
 
 	oldpos = node;
-
-	//oldx = x;
-	//oldy = y;
-	//oldz = z;
 
 	MYDOUBLE rad = RAD_INCOMP * (MYDOUBLE) 1.001; // needed to prevent rounding errors putting back inside nuclator
 
@@ -568,14 +558,13 @@ if (USE_THREADS)
 		scale = rad / r;
 
 		node*=scale;
-
-		//x*=scale;
-		//y*=scale;
-		//z*=scale;
-
-		radial_rep_distrib_z[(int)(((atan2(node.y,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.z))*(rad-r);
-		radial_rep_distrib_x[(int)(((atan2(node.y,node.z)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.x))*(rad-r);
-		radial_rep_distrib_y[(int)(((atan2(node.z,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.y))*(rad-r);
+		
+		if (NUCLEATOR_FORCES)
+		{
+			radial_rep_distrib_z[(int)(((atan2(node.y,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.z))*(rad-r);
+			radial_rep_distrib_x[(int)(((atan2(node.y,node.z)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.x))*(rad-r);
+			radial_rep_distrib_y[(int)(((atan2(node.z,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.y))*(rad-r);
+		}
 
 		break;
 		}
@@ -640,10 +629,13 @@ if (USE_THREADS)
 				scale = rad / r;
 				node.x*=scale;
 				node.y*=scale;
-
-				radial_rep_distrib_x[get_zbin(node.y,node.z)]   += (1-fabs(node.x/rad))*(rad-r); // scaled
-				radial_rep_distrib_y[get_zbin(node.x,node.z)]   += (1-fabs(node.y/rad))*(rad-r);
-				radial_rep_distrib_z[get_angbin(node.x,node.y)] += (rad-r); // not scaled
+				
+				if (NUCLEATOR_FORCES)
+				{
+					radial_rep_distrib_x[get_zbin(node.y,node.z)]   += (1-fabs(node.x/rad))*(rad-r); // scaled
+					radial_rep_distrib_y[get_zbin(node.x,node.z)]   += (1-fabs(node.y/rad))*(rad-r);
+					radial_rep_distrib_z[get_angbin(node.x,node.y)] += (rad-r); // not scaled
+				}
 
 			}
 			else
@@ -667,10 +659,13 @@ if (USE_THREADS)
 				else
 					node.z = z2 + (segment/2);
 			
-				radial_rep_distrib_x[nbdy_segs + get_angbin(node.y,z2)] += (1-fabs(node.x/rad))*(rad-r); // scaled
-				radial_rep_distrib_y[nbdy_segs + get_angbin(node.x,z2)] += (1-fabs(node.y/rad))*(rad-r);
-				radial_rep_distrib_z[get_angbin(node.x,node.y)]         += (1-fabs(z2/rad*scale))*(rad-r);
 
+				if (NUCLEATOR_FORCES)
+				{
+					radial_rep_distrib_x[nbdy_segs + get_angbin(node.y,z2)] += (1-fabs(node.x/rad))*(rad-r); // scaled
+					radial_rep_distrib_y[nbdy_segs + get_angbin(node.x,z2)] += (1-fabs(node.y/rad))*(rad-r);
+					radial_rep_distrib_z[get_angbin(node.x,node.y)]         += (1-fabs(z2/rad*scale))*(rad-r);
+				}
 
 			}
 
@@ -680,8 +675,6 @@ if (USE_THREADS)
 	}
 
 node_disp = node - oldpos;
-//node_disp.y = y - oldy;
-//node_disp.z = z - oldz;
 
 if ((fabs(node_disp.x) > NODE_INCOMPRESSIBLE_RADIUS) ||
 	(fabs(node_disp.y) > NODE_INCOMPRESSIBLE_RADIUS) ||
@@ -697,21 +690,9 @@ if ((fabs(node_disp.x) > NODE_INCOMPRESSIBLE_RADIUS) ||
 
 deltanucposn -= node_disp * movability;  // move the nucleator
 
-//deltanucposn.x -= node_disp.x * movability;  // move the nucleator
-//deltanucposn.y -= node_disp.y * movability;
-//deltanucposn.z -= node_disp.z * movability;
-
 node -= node_disp * movability;	
 
-//node.x -= node_disp.x * movability;	// and move node by same amount so that
-//node.y -= node_disp.y * movability;	// still on surface
-//node.z -= node_disp.z * movability;
-
 #endif
-
-//x = oldx + ((x - oldx) * (1-movability));  // move the nodes so that
-//y = oldy + ((y - oldy) * (1-movability));  // exactly on nucleator surface
-//z = oldz + ((z - oldz) * (1-movability));
 
 // rotate the nucleator
 
@@ -831,12 +812,25 @@ int nucleator::saveradialsegments(ofstream *outputstream)
 
 int nucleator::clearradialsegments()
 {
-	for (int i=0; i<RADIAL_SEGMENTS; i++)
-	{
-		radial_rep_distrib_x[i]=0;
-		radial_rep_distrib_y[i]=0;
-		radial_rep_distrib_z[i]=0;
+	if (geometry == sphere)
+	{	
+		for (int i=0; i<RADIAL_SEGMENTS; ++i)
+		{
+			radial_rep_distrib_x[i]=0;
+			radial_rep_distrib_y[i]=0;
+			radial_rep_distrib_z[i]=0;
+		}
 	}
+	else
+	{
+		for (int i=0; i<(nbdy_segs + ncap_segs); ++i)
+		{
+			radial_rep_distrib_x[i]=0;
+			radial_rep_distrib_y[i]=0;
+			radial_rep_distrib_z[i]=0;
+		}
+	}
+
 	return 0;
 }
 
@@ -889,18 +883,6 @@ void nucleator::definecagepoints(void)
 
 	// sphere
 
-		//for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		//	for (MYDOUBLE z1=(-1+RAD_INCOMP/(2*pointdensity)); z1<=1; z1+= RAD_INCOMP/pointdensity)
-		//	{
-		//		r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
-		//		
-		//		xx = r * cos(theta);				// x and y of point
-		//		yy = r * sin(theta);
-		//		zz = z1 * RAD_INCOMP;						// z just scaled by radius
-
-		//		cagepoints.push_back(vect(xx,yy,zz));
-		//	}
-
 		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)
 			for (MYDOUBLE phi=-PI; phi<PI; phi+=2*PI/pointdensity)
 			{
@@ -918,25 +900,7 @@ void nucleator::definecagepoints(void)
 	}
 	else
 	{
-		// ends
 
-		//for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		//	for (MYDOUBLE z1=(-1+RAD_INCOMP/(2*pointdensity)); z1<=1.001; z1+= RAD_INCOMP/pointdensity)
-		//	{
-		//		r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
-		//		
-		//		xx = r * cos(theta);				// x and y of point
-		//		yy = r * sin(theta);
-		//		zz = z1 * RAD_INCOMP;						// z just scaled by radius
-
-		//		if (zz>0)
-		//			zz+= (segment/2); 
-		//		else
-		//			zz-= (segment/2);
-
-		//		cagepoints.push_back(vect(xx,yy,zz));
-		//		
-		//	}
 
 		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)
 			for (MYDOUBLE phi=-PI; phi<PI; phi+=2*PI/pointdensity)
@@ -958,8 +922,6 @@ void nucleator::definecagepoints(void)
 
 		// cylinder
 			
-//for (MYDOUBLE z1=-1; z1<1; z1+= radius/10)
-		
 		pointspacing = (RAD_INCOMP * 2 *PI) / pointdensity;
 
 		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)

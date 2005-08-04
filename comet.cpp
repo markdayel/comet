@@ -16,10 +16,14 @@ removed without prior written permission from the author.
 #include "comet.h"
 
 MYDOUBLE TOTAL_SIMULATION_TIME = 20000;  
-MYDOUBLE DELTA_T = (MYDOUBLE)0.1;				
+MYDOUBLE DELTA_T = (MYDOUBLE)0.1;	
+MYDOUBLE MIN_TORQUE_TO_UPDATE = 0.2;
+MYDOUBLE MIN_DISPLACEMENT_TO_UPDATE = 0.001;
 //MYDOUBLE MAX_DISP_PERDT = (MYDOUBLE)0.01;
 //MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO = (MYDOUBLE)0.00707;
 MYDOUBLE GAUSSFWHM = (MYDOUBLE) 0.266;
+
+bool NUCLEATOR_FORCES = true;
 
 MYDOUBLE INIT_R_GAIN = 20;
 MYDOUBLE INIT_G_GAIN = 20;
@@ -131,6 +135,7 @@ bool actin::collisionthreaddone2;
 bool actin::collisionthreaddone3;
 bool actin::collisionthreaddone4;
 
+
 // these variables need to be static/global for sharing across threads:
 
 Nodes3d nodegrid;
@@ -159,6 +164,11 @@ int save_data(actin &theactin, int iteration);
 
 int main(int argc, char* argv[])
 {
+
+	//cout.put(33);
+	//cout << "]1;Hello";
+	//cout.put(7);
+
 	cout << endl;
 
 	if (argc < 2) 
@@ -312,7 +322,8 @@ int main(int argc, char* argv[])
 	MYDOUBLE MAX_DISP = 1;
 
 	string buffer;
-       while (getline(param, buffer)) { 
+    while (getline(param, buffer)) 
+	   { 
                istringstream ss(buffer);
                string tag, buff2;
                ss >> tag >> std::ws;
@@ -320,117 +331,195 @@ int main(int argc, char* argv[])
                        // skip empty line or comment
                        continue;
 
-               if (tag == "TOTAL_SIMULATION_TIME") {
-                       ss >> TOTAL_SIMULATION_TIME;
-                       continue;
-               } else if (tag == "DELTA_T") {
-                       ss >> DELTA_T;
-                       continue;
-	       } else if (tag == "RECORDING_INTERVAL") {
-		   ss >> RECORDING_INTERVAL;
-		   continue;
-	       } else if (tag == "RESTORE_FROM_ITERATION") {
-		   ss >> RESTORE_FROM_ITERATION;
-		   continue;
-	       } else if (tag == "FORCE_SCALE_FACT") {
-		   ss >> FORCE_SCALE_FACT;
-		   continue;
-	       } else if (tag == "FORCEBAR_SCALE") {
-		   ss >> FORCEBAR_SCALE;
-		   continue;
-	       } else if (tag == "XLINK_NODE_RANGE") {
-		   ss >> XLINK_NODE_RANGE;
-		   continue;
-               } else if (tag == "NODE_INCOMPRESSIBLE_RADIUS") {
-                       ss >> NODE_INCOMPRESSIBLE_RADIUS;
-                       continue;
-               } else if (tag == "P_XLINK") {
-                       ss >> P_XLINK;
-                       continue;
-               } else if (tag == "LINK_BREAKAGE_FORCE") {
-                       ss >> LINK_BREAKAGE_FORCE;
-                       continue;
-               } else if (tag == "P_LINK_BREAK_IF_OVER") {
-                       ss >> P_LINK_BREAK_IF_OVER;
-                       continue;
-			   } else if (tag == "LINK_FORCE") {
-                       ss >> LINK_FORCE;
-                       continue;
-				} else if (tag == "P_NUC") {
-                       ss >> P_NUC;
-                       continue;
-				} else if (tag == "RADIUS") {
-                       ss >> RADIUS;
-                       continue;
-				} else if (tag == "SEGMENT") {
-                       ss >> SEGMENT;
-                       continue;
-				} else if (tag == "MAX_LINKS_PER_NODE") {
-                       ss >> MAX_LINKS_PER_NODE;
-                       continue;
-				} else if (tag == "NODE_REPULSIVE_MAG") {
-                       ss >> NODE_REPULSIVE_MAG;
-                       continue;
-				} else if (tag == "NODE_REPULSIVE_RANGE") {
-                       ss >> NODE_REPULSIVE_RANGE;
-                       continue;
-			   } else if (tag == "LINK_TAUT_FORCE") {
-                       ss >> LINK_TAUT_FORCE;
-                      continue;
-				} else if (tag == "LINK_TAUT_RATIO") {
-                       ss >> LINK_TAUT_RATIO;
-                      continue;
-			   } else if (tag == "ASYMMETRIC_NUCLEATION") {
-                       ss >> ASYMMETRIC_NUCLEATION;
-                      continue;
-			   } else if (tag == "RADIAL_SEGMENTS") {
-                       ss >> RADIAL_SEGMENTS;
-                      continue;
-			   } else if (tag == "XLINK_NEAREST") {
-                       ss >> XLINK_NEAREST;
-                      continue;
-			   } else if (tag == "VIEW_HEIGHT") {
-                       ss >> VIEW_HEIGHT;
-                      continue;
-			   } else if (tag == "NODES_TO_UPDATE") {
-                       ss >> NODES_TO_UPDATE;
-                      continue;
-				} else if (tag == "DISTANCE_TO_UPDATE") {
-                       ss >> DISTANCE_TO_UPDATE;
-                      continue;
-				} else if (tag == "GAUSSFWHM") {
-                       ss >> GAUSSFWHM;
-                      continue;
-				} else if (tag == "SPECKLE_FACTOR") {
-                       ss >> SPECKLE_FACTOR;
-                      continue;				
-				} else if (tag == "INIT_R_GAIN") {
-                       ss >> INIT_R_GAIN;
-                      continue;
-				} else if (tag == "INIT_G_GAIN") {
-                       ss >> INIT_G_GAIN;
-                      continue;
-				} else if (tag == "INIT_B_GAIN") {
-                       ss >> INIT_B_GAIN;
-                      continue;
-				//} else if (tag == "MAX_DISP") {
-                //       ss >> MAX_DISP;  // not true global, used to calc MAX_DISP_PERDT
-                //      continue;
-				} else if (tag == "ROTATION") {
-                       ss >> ROTATION;
-                      continue;
-				} else if (tag == "MofI") {
-                       ss >> MofI;
-                      continue;						  
-			   } else if (tag == "SHAPE") 
-					{
-				       ss >> buff2;
-					   if (buff2 == "CAPSULE") 
-						   nucshape = nucleator::capsule;
-					   else
-						   nucshape = nucleator::sphere;
-                       continue;
-					}
+			if (tag == "TOTAL_SIMULATION_TIME") 
+			{
+				ss >> TOTAL_SIMULATION_TIME;
+				continue;
+			} 
+			else if (tag == "DELTA_T") 
+			{
+				ss >> DELTA_T;
+				continue;
+			} 
+			else if (tag == "MIN_TORQUE_TO_UPDATE") 
+			{
+				ss >> MIN_TORQUE_TO_UPDATE;
+				continue;
+			} 
+			else if (tag == "MIN_DISPLACEMENT_TO_UPDATE") 
+			{
+				ss >> MIN_DISPLACEMENT_TO_UPDATE;
+				continue;
+			} 
+			else if (tag == "RECORDING_INTERVAL") 
+			{
+				ss >> RECORDING_INTERVAL;
+				continue;
+			} 
+			else if (tag == "RESTORE_FROM_ITERATION") 
+			{
+				ss >> RESTORE_FROM_ITERATION;
+				continue;
+			} 
+			else if (tag == "NUCLEATOR_FORCES") 
+			{
+				ss >> NUCLEATOR_FORCES;
+				continue;
+			} 
+			else if (tag == "FORCE_SCALE_FACT") 
+			{
+				ss >> FORCE_SCALE_FACT;
+				continue;
+			} 
+			else if (tag == "FORCEBAR_SCALE") 
+			{
+				ss >> FORCEBAR_SCALE;
+				continue;
+			} 
+			else if (tag == "XLINK_NODE_RANGE") 
+			{
+				ss >> XLINK_NODE_RANGE;
+				continue;
+			} 
+			else if (tag == "NODE_INCOMPRESSIBLE_RADIUS") 
+			{
+				ss >> NODE_INCOMPRESSIBLE_RADIUS;
+				continue;
+			} 
+			else if (tag == "P_XLINK") 
+			{
+				ss >> P_XLINK;
+				continue;
+			} 
+			else if (tag == "LINK_BREAKAGE_FORCE") 
+			{
+				ss >> LINK_BREAKAGE_FORCE;
+				continue;
+			} 
+			else if (tag == "P_LINK_BREAK_IF_OVER") 
+			{
+				ss >> P_LINK_BREAK_IF_OVER;
+				continue;
+			} 
+			else if (tag == "LINK_FORCE") 
+			{
+				ss >> LINK_FORCE;
+				continue;
+			} 
+			else if (tag == "P_NUC") 
+			{
+                ss >> P_NUC;
+                continue;
+			} 
+			else if (tag == "RADIUS") 
+			{
+                ss >> RADIUS;
+                continue;
+			} 
+			else if (tag == "SEGMENT") 
+			{
+                ss >> SEGMENT;
+                continue;
+			} 
+			else if (tag == "MAX_LINKS_PER_NODE") 
+			{
+				ss >> MAX_LINKS_PER_NODE;
+				continue;
+			} 
+			else if (tag == "NODE_REPULSIVE_MAG") 
+			{
+                ss >> NODE_REPULSIVE_MAG;
+                continue;
+			} 
+			else if (tag == "NODE_REPULSIVE_RANGE") 
+			{
+                ss >> NODE_REPULSIVE_RANGE;
+                continue;
+			} 
+			else if (tag == "LINK_TAUT_FORCE") 
+			{
+                ss >> LINK_TAUT_FORCE;
+                continue;
+			} 
+			else if (tag == "LINK_TAUT_RATIO") 
+			{
+                ss >> LINK_TAUT_RATIO;
+                continue;
+			}
+			else if (tag == "ASYMMETRIC_NUCLEATION") 
+			{
+				ss >> ASYMMETRIC_NUCLEATION;
+				continue;
+			} 
+			else if (tag == "RADIAL_SEGMENTS") 
+			{
+				ss >> RADIAL_SEGMENTS;
+				continue;
+			} 
+			else if (tag == "XLINK_NEAREST") 
+			{
+				ss >> XLINK_NEAREST;
+				continue;
+			} 
+			else if (tag == "VIEW_HEIGHT") 
+			{
+				ss >> VIEW_HEIGHT;
+				continue;
+			} 
+			else if (tag == "NODES_TO_UPDATE") 
+			{
+				ss >> NODES_TO_UPDATE;
+				continue;
+			} 
+			else if (tag == "DISTANCE_TO_UPDATE") 
+			{
+				ss >> DISTANCE_TO_UPDATE;
+				continue;
+			} 
+			else if (tag == "GAUSSFWHM") 
+			{
+				ss >> GAUSSFWHM;
+				continue;
+			} 
+			else if (tag == "SPECKLE_FACTOR") 
+			{
+				ss >> SPECKLE_FACTOR;
+				continue;				
+			} 
+			else if (tag == "INIT_R_GAIN") 
+			{
+				ss >> INIT_R_GAIN;
+				continue;
+			} 
+			else if (tag == "INIT_G_GAIN") 
+			{
+				ss >> INIT_G_GAIN;
+				continue;
+			} 
+			else if (tag == "INIT_B_GAIN") 
+			{
+				ss >> INIT_B_GAIN;
+				continue;
+			} 
+			else if (tag == "ROTATION") 
+			{
+				ss >> ROTATION;
+				continue;
+			} 
+			else if (tag == "MofI") 
+			{
+				ss >> MofI;
+				continue;						  
+			} 
+			else if (tag == "SHAPE") 
+			{
+				ss >> buff2;
+				if (buff2 == "CAPSULE") 
+					nucshape = nucleator::capsule;
+				else
+					nucshape = nucleator::sphere;
+                continue;
+			}
        }
  
 	param.close();
@@ -560,6 +649,8 @@ if (nucshape == nucleator::capsule)
 
 	vect last_center, center, delta_center;
 
+	
+
     //last_center_x = last_center_y = last_center_z = 0;
 	//center_x = center_y = center_z = 0;
 
@@ -584,8 +675,8 @@ if (nucshape == nucleator::capsule)
 
 	cout << "Starting iterations..." << endl << endl;
 
-	cout << "Itternum|TotNode|NewLinks|RemLinks|Center_X|Center_Y|Center_Z|SnpshTm|SaveNum" << endl << endl;
-	
+	cout << "Itternum|TotNode|NewLinks|RemLinks|Center_X|Center_Y|Center_Z|Direction                 |SnpshTm|SaveNum" << endl << endl;
+
 	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++){
 	        nowtime = (unsigned) time( NULL );
 		if (nowtime > lasttime)
@@ -596,7 +687,7 @@ if (nucshape == nucleator::capsule)
 			//delta_center_y = center_y - last_center_y;
 			//delta_center_z = center_z - last_center_z;
 			distfromorigin = center.length();
-
+		
 			if ((!DISTANCE_TO_UPDATE_reached) && (DISTANCE_TO_UPDATE > 0.01) 
 				&& (distfromorigin > (DISTANCE_TO_UPDATE*RADIUS)))
 			{
@@ -604,7 +695,17 @@ if (nucshape == nucleator::capsule)
 				NODES_TO_UPDATE = theactin.highestnodecount;
 				cout << endl << "DISTANCE_TO_UPDATE distance reached at " << distfromorigin
 					<< " updating only newest " << NODES_TO_UPDATE << " nodes" << endl;
+
 			}
+
+			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
+
+			//if ((!theactin.brokensymmetry) && (distfromorigin > 0.1))
+			//if  (distfromorigin > 0.1)
+			//{
+			//	theactin.brokensymmetry = true;
+			//	theactin.camera_rotation = theactin.get_sym_break_axes();
+			//}  // srand(
 
 			cout << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
@@ -612,7 +713,12 @@ if (nucshape == nucleator::capsule)
 			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
 			<< "|x " << setw(6) << setprecision(3) << center.x
 			<< "|y " << setw(6) << setprecision(3) << center.y
-			<< "|z " << setw(6) << setprecision(3) << center.z
+			<< "|z " << setw(6) << setprecision(3) << center.z			
+			<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
+			<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
+			<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
+			<< "|NR " << setw(6) <<  theactin.debug_num_rotate	
+			<< "|ND " << setw(6) <<  theactin.debug_num_displace
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime) << "\r";
 			cout.flush();
 		}
@@ -632,6 +738,8 @@ if (nucshape == nucleator::capsule)
 			//last_center_y = center_y;
 			//last_center_z = center_z;
 
+			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
+
 			theactin.opvelocityinfo 
 				<< (i*DELTA_T) << "," 
 				<< center.x << "," 
@@ -639,7 +747,6 @@ if (nucshape == nucleator::capsule)
 				<< center.z << "," 
 				<< delta_center.length() << endl;
 
-			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
 
 			cout << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
@@ -647,11 +754,13 @@ if (nucshape == nucleator::capsule)
 			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
 			<< "|x " << setw(6) << setprecision(3) << center.x
 			<< "|y " << setw(6) << setprecision(3) << center.y
-			<< "|z " << setw(6) << setprecision(3) << center.z
-			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime)
+			<< "|z " << setw(6) << setprecision(3) << center.z			
 			<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
 			<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
-			<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle;
+			<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
+			<< "|NR " << setw(6) <<  theactin.debug_num_rotate	
+			<< "|ND " << setw(6) <<  theactin.debug_num_displace	
+			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
 			cout.flush();
 
 			cout << "|S " << setw(3) <<  (int)(i/InterRecordIterations)  
@@ -700,10 +809,15 @@ if (nucshape == nucleator::capsule)
 			pthread_mutex_unlock(&filesdonelock_mutex);  // allow thread to grab done lock
 			pthread_mutex_unlock(&filessavelock_mutex);  // start the thread
 
+
+
 			lastlinksformed = theactin.linksformed;
 			lastlinksbroken = theactin.linksbroken;
 
 			lastitertime = (unsigned) time( NULL );
+
+			theactin.debug_num_rotate = 0;
+			theactin.debug_num_displace = 0;
 
 			theactin.opruninfo.flush();
 		}

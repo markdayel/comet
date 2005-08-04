@@ -16,8 +16,6 @@ removed without prior written permission from the author.
 #include "nodes.h"
 
 nodes::nodes(void)
-: harbinger(false)
-, dontupdate(false)
 {
 	nextnode = this;  // initialise to point to self
 	prevnode = this;
@@ -100,7 +98,7 @@ bool nodes::depolymerize(void)
 	// and remove our own links to other nodes
 	ptheactin->linksbroken+=(int) listoflinks.size();
 	listoflinks.resize(0);
-	//listoflinks.clear();
+
 	return false;
 }
 
@@ -235,6 +233,7 @@ int nodes::load_data(ifstream &istrm)
   
     listoflinks.clear(); // note doesn't free memory
     listoflinks.resize(linklistsize);
+
     for(int i=0; i<linklistsize; ++i)
     {	 
 	// construct the links and add to vector
@@ -248,47 +247,6 @@ int nodes::load_data(ifstream &istrm)
     // stored by the actin.  The actin knows that.
     return 0;
 }
-
-
-	/*
-
-	// calculate components of momentum change due to forces:
-
-	delta_mom_x = FORCE_SCALE_FACT * (link_force_vec[threadnum].x + rep_force_vec[threadnum].x);			
-	delta_mom_y = FORCE_SCALE_FACT * (link_force_vec[threadnum].y + rep_force_vec[threadnum].y);			
-	delta_mom_z = FORCE_SCALE_FACT * (link_force_vec[threadnum].z + rep_force_vec[threadnum].z); 
-
-	// seem to need some inertia component even though low reynolds number: why?
-
-	// calculate position change (from momentum and imposed incompressibity)
-
-	delta_x = (( (delta_mom_x + momentum_vec.x)/ NODEMASS) * DELTA_T) 
-						+ repulsion_displacement_vec[threadnum].x;
-	delta_y = (( (delta_mom_y + momentum_vec.y)/ NODEMASS) * DELTA_T) 
-						+ repulsion_displacement_vec[threadnum].y;
-	delta_z = (( (delta_mom_z + momentum_vec.z)/ NODEMASS) * DELTA_T) 
-						+ repulsion_displacement_vec[threadnum].z;
-
-	//lastpos.x=x;  // store last position
-	//lastpos.y=y;
-	//lastpos.z=z;
-
-	// update positions:
-
-	x += delta_x;
-	y += delta_y;
-	z += delta_z;
-
-	// store new momentum
-
-	momentum_vec.x = (delta_mom_x * NODEMASS) / DAMPING_FACTOR; 
-	momentum_vec.y = (delta_mom_y * NODEMASS) / DAMPING_FACTOR;
-	momentum_vec.z = (delta_mom_z * NODEMASS) / DAMPING_FACTOR;
-
-	}
-	*/
-
-
 
 
 void nodes::updategrid(void)

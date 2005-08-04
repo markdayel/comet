@@ -39,12 +39,14 @@ public:
 	actin *ptheactin;
 
 	vect position, deltanucposn;
-	vect direction, torque, centerofmass;
+	vect torque, centerofmass;
 	vect momentofinertia;
 
 	rotationmatrix nucleator_rotation;
 
 	Colour colour;
+
+
 
 	vector <vect> cagepoints;
 

@@ -15,15 +15,18 @@ removed without prior written permission from the author.
 #ifndef vect_H
 #define vect_H
 
+//#include "stdafx.h"
+
 class vect
 {
 public:
 
 	inline vect(void)
 	{
+		x=y=z=0.0;
 	}
 
-	inline vect(MYDOUBLE &a, MYDOUBLE &b, MYDOUBLE &c) 
+	inline vect(const MYDOUBLE &a, const  MYDOUBLE &b, const  MYDOUBLE &c) 
 	{
 		x=a;
 		y=b;
@@ -147,7 +150,7 @@ public:
 
 	}
 
-	MYDOUBLE sqrlength(void)
+	inline MYDOUBLE sqrlength(void)
 	{
 		return x*x + y*y + z*z;
 	}

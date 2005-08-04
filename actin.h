@@ -84,7 +84,7 @@ public:
 	int highestnodecount;
 	Dbl2d imageR, imageG, imageB;
 
-	rotationmatrix actin_rotation;
+	rotationmatrix actin_rotation, camera_rotation;
 
 	vector <Dbl2d> reportdat;
 
@@ -92,6 +92,9 @@ public:
 	static bool collisionthreaddone2;
 	static bool collisionthreaddone3;
 	static bool collisionthreaddone4;
+
+	
+	int debug_num_rotate, debug_num_displace;
 
 	int crosslinknewnodes(int numnewnodes);
 
@@ -109,20 +112,22 @@ public:
 	int applyforces(void);
 	int savebmp(int filenum, projection proj);
 	void draw_bead_forces(int filenum, projection proj,
-			      int width, int height,
-			      int xgmax, int ygmax,
-			      int movex, int movey,
-			      MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-			      MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
-			      MYDOUBLE imageGmax);
+				int width, int height,
+				int xgmax, int ygmax,
+				int movex, int movey,
+				MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
+				MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
+				MYDOUBLE imageGmax, 
+				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color);
 
 	void draw_capsule_forces(int filenum, projection proj,
-				 int width, int height,
-				 int xgmax, int ygmax,
-				 int movex, int movey,
-				 MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-				 MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
-				 MYDOUBLE imageGmax);
+				int width, int height,
+				int xgmax, int ygmax,
+				int movex, int movey,
+				MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
+				MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
+				MYDOUBLE imageGmax, 
+				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color);
 	
 	inline MYDOUBLE square(const MYDOUBLE& numb)
 	{
@@ -138,6 +143,8 @@ public:
 
 	int doreportiteration;
 	int doreportmaxnodes;
+
+	bool brokensymmetry;
 	
 	int setnodecols(void);
 
@@ -179,6 +186,7 @@ public:
 	int save_data(ofstream &ofstrm);
 	int load_data(ifstream &ifstrm);
 	void setdontupdates(void);
+	rotationmatrix get_sym_break_axes(void);
 };
 
 #endif

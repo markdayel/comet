@@ -100,7 +100,7 @@ void rotationmatrix::rotatematrix(MYDOUBLE angle, axis a)
 
 }
 
-void rotationmatrix::rotatematrix(MYDOUBLE x_angle, MYDOUBLE y_angle, MYDOUBLE z_angle)
+void rotationmatrix::rotatematrix(const MYDOUBLE x_angle, const MYDOUBLE y_angle, const MYDOUBLE z_angle)
 {
 	rotatematrix(x_angle, xaxis);
 	rotatematrix(y_angle, yaxis);

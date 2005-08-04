@@ -166,9 +166,13 @@ int threadnum;
 
 extern MYDOUBLE TOTAL_SIMULATION_TIME;  
 extern MYDOUBLE DELTA_T;
+extern MYDOUBLE MIN_TORQUE_TO_UPDATE;
+extern MYDOUBLE MIN_DISPLACEMENT_TO_UPDATE;
 //extern MYDOUBLE MAX_DISP_PERDT;
 //extern MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO;
 extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
+
+extern bool NUCLEATOR_FORCES;
 
 extern MYDOUBLE FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
 										// this is related to effective viscosity and effective size of node
@@ -248,6 +252,22 @@ const int GRIDSIZE =  (int) (GRIDBOUNDS/GRIDRES);
 const MYDOUBLE PI = (MYDOUBLE) 3.141592653589793238462643383279502884197; // Pi
 const MYDOUBLE LN_TWO = (MYDOUBLE) 0.69314718055995; // ln(2)
 
+inline MYDOUBLE mysqrt(const MYDOUBLE &d);
+inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist, const MYDOUBLE & zdist);
+inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist); 
+
+inline void endian_swap(unsigned short& x);
+inline void endian_swap(unsigned int& x);
+
+// own headers
+#include "comet.h"
+#include "nucleator.h"
+#include "nodes.h"
+#include "links.h"
+#include "actin.h"
+#include "vect.h"
+
+inline MYDOUBLE calcdist(const vect & v1, const vect & v2);
 
 /*inline float mysqrt(float x) {
   float y;
@@ -298,13 +318,13 @@ static inline MYDOUBLE mysqrt(MYDOUBLE x)
 	return y;
 }
 */
-inline MYDOUBLE mysqrt(MYDOUBLE d);
-inline MYDOUBLE mysqrt(MYDOUBLE d)
+
+inline MYDOUBLE mysqrt(const MYDOUBLE &d)
 {
 	return sqrt(d);
 }
-inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist);
-inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist)
+//inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist);
+inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist, const MYDOUBLE & zdist)
 {
 	MYDOUBLE sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
 	if (sqr < SQRT_ACCURACY_LOSS)
@@ -317,8 +337,8 @@ inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist)
 		return mysqrt(sqr);
 }
 
-inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist);
-inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist) 
+//inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist);
+inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist) 
 {
 	MYDOUBLE sqr = (xdist*xdist + ydist*ydist);
 	if (sqr < SQRT_ACCURACY_LOSS)
@@ -329,6 +349,11 @@ inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist)
 	}
 	else
 		return mysqrt(sqr);
+}
+
+inline MYDOUBLE calcdist(const vect & v1, const vect & v2) 
+{
+	return calcdist(v1.x-v2.x,v1.y-v2.y,v1.z-v2.z);
 }
 
 inline void endian_swap(unsigned short& x)
@@ -360,12 +385,8 @@ inline void endian_swap(unsigned long long& x)
 
 
 
-// own headers
-#include "comet.h"
-#include "nucleator.h"
-#include "nodes.h"
-#include "links.h"
-#include "actin.h"
+
+
 
 // extern actin theactin;
 

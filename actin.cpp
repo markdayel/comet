@@ -115,24 +115,21 @@ actin::actin(void)
 
 	newnodescolour.setcol(0);
 
+	brokensymmetry = false;
+
+	//debug:
+
+	debug_num_rotate = 0;
+	debug_num_displace = 0;
+
+
 } 
 
 actin::~actin(void)
 {
 	opruninfo.close();
 	opvelocityinfo.close();
-	//delete [] node;
-	
-	//for (int i=0; i<GRIDSIZE; i++)  // free memory
-	//{
-	//	for (int j=0; j<GRIDSIZE; j++)
-	//	{
-	//		delete [] nodegrid[i][j];
-	//
-	//	}
-	//	delete [] nodegrid[i];
-	//}
-	//delete [] nodegrid;
+
 }
 
 int actin::nucleate()
@@ -148,10 +145,11 @@ return numnewnodes;
 int actin::crosslinknewnodes(int numnewnodes)
 {	
 	int threadnum = 0;
-	//nucleation_object = &nucleation_obj;
 	
 	vect nodeposvec;
-	MYDOUBLE distsqr, xdist,ydist,zdist;
+	MYDOUBLE distsqr;
+
+	vect disp;
 
 	if (numnewnodes == 0)
 		return 0;
@@ -170,9 +168,7 @@ int actin::crosslinknewnodes(int numnewnodes)
 							 
 		// of these nodes, calculate euclidian dist
 
-		nodeposvec.x = node[i].x;	// get xyz of our node
-		nodeposvec.y = node[i].y;
-		nodeposvec.z = node[i].z;
+		nodeposvec = node[i];
 
 		linkformto.resize(0);
 
@@ -182,11 +178,9 @@ int actin::crosslinknewnodes(int numnewnodes)
 			if ( ((*nearnode)->harbinger) || (!(*nearnode)->polymer) )
 				continue;  // only crosslink to real nodes
 
-			xdist = (*nearnode)->x - nodeposvec.x;
-			ydist = (*nearnode)->y - nodeposvec.y;
-			zdist = (*nearnode)->z - nodeposvec.z;
+			disp = (*(*nearnode)) - nodeposvec;
 
-			distsqr = xdist*xdist + ydist*ydist + zdist*zdist;
+			distsqr = disp.sqrlength();
 
 			if (distsqr < SQRT_ACCURACY_LOSS)
 				continue;
@@ -257,28 +251,7 @@ int actin::save(int filenum)
 	
 	nucleation_object->save(&opactindata);
 
-/*
 
-	// write nucleator grid co-ords
-	double x,y,z;
-
-	for (vector <int_vect>::iterator i=nucleatorgrid.begin(); i<nucleatorgrid.end() ; i++ )
-	{	 
-			//gridpos.x = (((int)(x / GRIDRES)) + (GRIDSIZE/2) );
-			//gridpos.y = (((int)(y / GRIDRES)) + (GRIDSIZE/2) );
-			//gridpos.z = (((int)(z / GRIDRES)) + (GRIDSIZE/2) );
-
-		x = (i->x - (GRIDSIZE/2)) * GRIDRES;
-		y = (i->y - (GRIDSIZE/2)) * GRIDRES;
-		z = (i->z - (GRIDSIZE/2)) * GRIDRES;
-
-	opactindata	<< x << "," << y << "," << z << "," << 1 << "," 
-					<< 1 << "," << 1 << "," << 1 << ","
-					<< 0;
-	opactindata << endl;
-
-	}
-*/
 
 	// write data
 	for (int i=0; i<highestnodecount; i++)
@@ -643,8 +616,14 @@ int actin::ejectfromnucleator()
 
 	// do rotation
 
-	if (ROTATION && (nucleation_object->torque.length() > 2*SQRT_ACCURACY_LOSS))
+
+
+	if (ROTATION && (nucleation_object->torque.length() > MIN_TORQUE_TO_UPDATE))
 	{
+
+		
+		debug_num_rotate++;
+
 
 		MYDOUBLE x_angle = nucleation_object->torque.x / 
 				nucleation_object->momentofinertia.x;
@@ -655,15 +634,16 @@ int actin::ejectfromnucleator()
 		MYDOUBLE z_angle = nucleation_object->torque.z / 
 				nucleation_object->momentofinertia.z;
 
-		//MYDOUBLE x_angle = 0.00002;
+		//MYDOUBLE x_angle = 0;  // for debugging
 		//MYDOUBLE y_angle = 0;
-		//MYDOUBLE z_angle = 0;
+		//MYDOUBLE z_angle = 0.00002;
 
 		rotationmatrix torque_rotate; // ( x_angle, rotationmatrix::xaxis);
 
 		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);
 
-		// x component:
+
+		// rotate the actin:
 
 		for (int i=0; i<highestnodecount; ++i)
 		{
@@ -672,13 +652,13 @@ int actin::ejectfromnucleator()
 
         // rotate the nucleator:
 
-		torque_rotate.rotate(nucleation_object->direction);  // this line is just for debugging
-
 		nucleation_object->nucleator_rotation.rotatematrix( -x_angle, -y_angle, -z_angle);
 
-		// rotate the actin background reference:
+
+		// rotate the actin reference frame:
 
 		actin_rotation.rotatematrix( x_angle, y_angle, z_angle);
+
 
 		// clear the torque vectors:
 
@@ -686,23 +666,36 @@ int actin::ejectfromnucleator()
 
 	}
 
-	// rotate the nucleator displacement vector:
 
-	nucleation_object->nucleator_rotation.rotate(nucleation_object->deltanucposn);
+// do displacment
 
-	nucleation_object->position+=nucleation_object->deltanucposn;
+if ((nucleation_object->deltanucposn.length() > MIN_DISPLACEMENT_TO_UPDATE))
+{
 
+	debug_num_displace++;
 
-
-	// 'move the nucleator' by moving nodes in opposite direction:
+	// move the nucleator by moving nodes in opposite direction
+	// note this is *before* rotating the deltanucposn vector, since the
+	// nodes are in the nucleator reference frame
 	
 	for (int i = 0; i<highestnodecount; i++)
 	{
 		node[i]-=nucleation_object->deltanucposn;
 	}
 
-	nucleation_object->deltanucposn.zero();
 
+	// rotate the nucleator displacement vector
+
+	nucleation_object->nucleator_rotation.rotate(nucleation_object->deltanucposn);
+
+	// update the nucleator position with the rotated vector
+
+	nucleation_object->position+=nucleation_object->deltanucposn;
+
+	// and zero
+
+	nucleation_object->deltanucposn.zero();
+}
 
 	return 0;
 }
@@ -892,11 +885,9 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 {
 	vect nodeposvec;
 	MYDOUBLE distsqr,dist;
-	//MYDOUBLE xdist,ydist,zdist;
 	MYDOUBLE scale,force, forcescale;
 
 	vect disp;
-	//nodes** sameGPnode;
 
 	for (int i=dat->startnode; i<dat->endnode; i++)
 	{	
@@ -912,8 +903,6 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 		if (findnearbynodes(nodesbygridpoint[i],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0) continue;	// find nodes within 1 grid point
 												
 		// skip if zero
-		//tmpnodeptr = &node[i];  // for debugging
-		//sameGPnode= &tmpnodeptr;
 
 		// loop over nodes on same gridpoint:
 		for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end() ; sameGPnode++ )
@@ -931,8 +920,6 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 			// of these nodes, calculate euclidian dist
 
 			nodeposvec = (*(*sameGPnode));	// get xyz of our node
-			//nodeposvec.y = (*sameGPnode)->y;
-			//nodeposvec.z = (*sameGPnode)->z;
 
 			for (vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); nearnode<recti_near_nodes[dat->threadnum].end() ; nearnode++ )
 			{
@@ -948,9 +935,6 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 
 				
 				disp = (*(*nearnode)) - nodeposvec; 
-				//disp.x = (*nearnode)->x - nodeposvec.x;
-				//disp.y = (*nearnode)->y - nodeposvec.y;
-				//disp.z = (*nearnode)->z - nodeposvec.z;
 
 				distsqr = disp.sqrlength();
 
@@ -983,19 +967,10 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 #ifdef FORCES_BOTH_WAYS
 					
 					(*sameGPnode)->rep_force_vec[0] -= disp * forcescale;
-					//(*sameGPnode)->rep_force_vec[0].x -= force * (xdist/dist);
-					//(*sameGPnode)->rep_force_vec[0].y -= force * (ydist/dist);
-					//(*sameGPnode)->rep_force_vec[0].z -= force * (zdist/dist);
-
 					(*nearnode)->rep_force_vec[0] += disp * forcescale;
-					//(*nearnode)->rep_force_vec[0].x += force * (xdist/dist);
-					//(*nearnode)->rep_force_vec[0].y += force * (ydist/dist);
-					//(*nearnode)->rep_force_vec[0].z += force * (zdist/dist);
+
 #else
 					(*sameGPnode)->rep_force_vec[0] -= disp * (2.0 * forcescale) ;
-					//(*sameGPnode)->rep_force_vec[0].x -= 2 * force * (xdist/dist);
-					//(*sameGPnode)->rep_force_vec[0].y -= 2 * force * (ydist/dist);
-					//(*sameGPnode)->rep_force_vec[0].z -= 2 * force * (zdist/dist);
 #endif
 
 					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
@@ -1005,28 +980,14 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 						scale = (MYDOUBLE)NODE_INCOMPRESSIBLE_RADIUS / (MYDOUBLE)4.0*dist;  
 
 						disp*=scale;	// these are the vector half components (in direction from i to j)
-						//ydist*=scale;
-						//zdist*=scale;   
+
 #ifdef FORCES_BOTH_WAYS
 
-
 						(*sameGPnode)->repulsion_displacement_vec[0] -= disp;
-
 						(*nearnode)->repulsion_displacement_vec[0]   += disp;
 
-						//(*sameGPnode)->repulsion_displacement_vec[0].x-=xdist;	// move the points
-						//(*sameGPnode)->repulsion_displacement_vec[0].y-=ydist;
-						//(*sameGPnode)->repulsion_displacement_vec[0].z-=zdist;
-
-						//(*nearnode)->repulsion_displacement_vec[0].x+=xdist;
-						//(*nearnode)->repulsion_displacement_vec[0].y+=ydist;
-						//(*nearnode)->repulsion_displacement_vec[0].z+=zdist;
 #else
 						(*sameGPnode)->repulsion_displacement_vec[0] -= disp * 2;
-
-						//(*sameGPnode)->repulsion_displacement_vec[0].x-=2*xdist;	// move the points
-						//(*sameGPnode)->repulsion_displacement_vec[0].y-=2*ydist;
-						//(*sameGPnode)->repulsion_displacement_vec[0].z-=2*zdist;
 #endif
 					}
 				}
@@ -1120,91 +1081,30 @@ inline int actin::dorepulsion(const int& node_i,const int& node_j,
 {
 	if (node_i==node_j)
 		return 0;
-	
 
-	//MYDOUBLE xcomp, ycomp, zcomp;
 	MYDOUBLE scale;
 
 	vect disp;
-		
-	// node_i and node_j have come within ADJ_NODE_RANGE of one another
-	// (actually at 'dist' from one another)
-	// calculate repulsive force and exert on nodes
-
-    // eject nodes from repulsion shell
-
-	//if (distsqr > NODE_INCOMPRESSIBLE_RADIUS*NODE_INCOMPRESSIBLE_RADIUS) return 0;  // too far for repulsive force to have any effect
-
-	// MYDOUBLE dist = sqrt(distsqr);
 
 	disp = node[node_j] - node[node_i];
 
-	//xcomp=(node[node_j].x-node[node_i].x); 
-	//ycomp=(node[node_j].y-node[node_i].y); 
-	//zcomp=(node[node_j].z-node[node_i].z); 
-	
-	//dist = dist(xcomp,ycomp,zcomp);  // calc dist between nodes
-
-	// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
 	scale = (NODE_INCOMPRESSIBLE_RADIUS / 4)*dist;  
 
 	disp *= scale;
 
-	//xcomp*=scale;	// these are the vector half components (in direction from i to j)
-	//ycomp*=scale;
-	//zcomp*=scale;   
 
 #ifdef FORCES_BOTH_WAYS
+
 	node[node_i].repulsion_displacement_vec[threadnum] -= disp;
-
-	//node[node_i].repulsion_displacement_vec[threadnum].x-=xcomp;	// move the points
-	//node[node_i].repulsion_displacement_vec[threadnum].y-=ycomp;
-	//node[node_i].repulsion_displacement_vec[threadnum].z-=zcomp;
-
 	node[node_j].repulsion_displacement_vec[threadnum] += disp;
-
-	//node[node_j].repulsion_displacement_vec[threadnum].x+=xcomp;
-	//node[node_j].repulsion_displacement_vec[threadnum].y+=ycomp;
-	//node[node_j].repulsion_displacement_vec[threadnum].z+=zcomp;
 
 #else
 
 	node[node_i].repulsion_displacement_vec[threadnum] -= disp*2;
 
-	//node[node_i].repulsion_displacement_vec[threadnum].x-=2*xcomp;	// move the points
-	//node[node_i].repulsion_displacement_vec[threadnum].y-=2*ycomp;
-	//node[node_i].repulsion_displacement_vec[threadnum].z-=2*zcomp;
-
 #endif
 
-	/*double a = node[node_i].repulsion_displacement_vec[threadnum].x;	// move the points
-	double b = node[node_i].repulsion_displacement_vec[threadnum].y;
-	double c = node[node_i].repulsion_displacement_vec[threadnum].z;
 
-	double d = node[node_j].repulsion_displacement_vec[threadnum].x;
-	double e = node[node_j].repulsion_displacement_vec[threadnum].y;
-	double f = node[node_j].repulsion_displacement_vec[threadnum].z;
-*/
-	//repulsedone[node_i][node_j]=true;
-
-	//cout << "repulsion called on thread "<< threadnum <<endl;
-	//cout.flush();
-
-/*
-	// force function:
-	force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_INCOMPRESSIBLE_RADIUS ) * dist;
-
-	xcomp=(node[node_i].x-node[node_j].x); 
-	ycomp=(node[node_i].y-node[node_j].y); 
-	zcomp=(node[node_i].z-node[node_j].z); 
-
-	// calculate force components
-	
-	node[node_i].rep_force_vec.x += force * xcomp;
-	node[node_i].rep_force_vec.y += force * ycomp;
-	node[node_i].rep_force_vec.z += force * zcomp;
-	//}
-*/
 	return 0;
 }
 
@@ -1304,7 +1204,6 @@ void * actin::applyforcesthread(void* threadarg)
 
 int actin::linkforces(const bool& sumforces)
 {
-	//MYDOUBLE xdist, ydist, zdist, 
 	MYDOUBLE scale,dist;
 	MYDOUBLE force;
 	vect nodeposvec, disp;
@@ -1319,8 +1218,6 @@ int actin::linkforces(const bool& sumforces)
 	// reset the lists of broken links:
 	linkremovefrom.resize(0);
 	linkremoveto.resize(0);
-	//linkremovefrom.clear();
-	//linkremoveto.clear();
 	
 	int numthreadnodes, start, end;
 
@@ -1363,19 +1260,14 @@ if (false) // USE_THREADS)
 				continue;
 
 			nodeposvec = node[n];
-			//nodeposvec.x = node[n].x;	// get xyz of our node
-			//nodeposvec.y = node[n].y;
-			//nodeposvec.z = node[n].z;
 
 			// go through links for each node
 			for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
 			{	 
 				if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
 				{			
+					
 					disp = nodeposvec - *(i->linkednodeptr);
-					//disp.x = nodeposvec.x - i->linkednodeptr->x;
-					//disp.y = nodeposvec.y - i->linkednodeptr->y;
-					//disp.z = nodeposvec.z - i->linkednodeptr->z;
 
 					dist = disp.length();;
 
@@ -1402,22 +1294,10 @@ if (false) // USE_THREADS)
 						{
 #ifdef FORCES_BOTH_WAYS
 						node[n].link_force_vec[0] += disp * (force * scale);
-
-						//node[n].link_force_vec[0].x += force * scale * xdist;
-						//node[n].link_force_vec[0].y += force * scale * ydist;
-						//node[n].link_force_vec[0].z += force * scale * zdist;
-
-
 						i->linkednodeptr->link_force_vec[0] -= disp * (force * scale);
-						//i->linkednodeptr->link_force_vec[0].x -= force * scale * xdist;
-						//i->linkednodeptr->link_force_vec[0].y -= force * scale * ydist;
-						//i->linkednodeptr->link_force_vec[0].z -= force * scale * zdist;
 #else
 						node[n].link_force_vec[0] += disp * (2 * force * scale);
 
-						//node[n].link_force_vec[0].x += 2 * force * scale * xdist;
-						//node[n].link_force_vec[0].y += 2 * force * scale * ydist;
-						//node[n].link_force_vec[0].z += 2 * force * scale * zdist;
 #endif
 						}
 
@@ -1597,7 +1477,7 @@ int actin::setnodecols(void)
 }
 
 int actin::savebmp(int filenum, projection proj)
-{
+{ // todo: change to do 3 axes in one go to save calculation time
 
 // bitmap headers etc (see microsoft website):
 
@@ -1785,6 +1665,7 @@ typedef struct tagBITMAPINFO {
 	meanz = -nucleation_object->position.z; 
 
 	nucleation_object->nucleator_rotation.rotate(meanx,meany,meanz);
+	camera_rotation.rotate(meanx,meany,meanz); 
 	
 	//meanx = (maxx+minx)/2;
 	//meany = (maxy+miny)/2;
@@ -1814,27 +1695,34 @@ typedef struct tagBITMAPINFO {
 		}
 	}
 
+	MYDOUBLE keep_witin_border;
+
+	if (nucleation_object->geometry == nucleator::sphere)
+		keep_witin_border = 2* RADIUS;
+	else
+		keep_witin_border = SEGMENT/2+(2*RADIUS);
+
 	
 	if (proj == xaxis)  // choose projection
 		{
-			beadmaxx =(int)(((height *(((  2*RADIUS - meany)/dimy) ))-0.5) +  width/2);
-			beadmaxy =(int)(((height *(((  2*RADIUS - meanz)/dimz) ))-0.5) +  height/2);
-			beadminx =(int)(((height *(((- 2*RADIUS - meany)/dimy) ))-0.5) +  width/2);
-			beadminy =(int)(((height *(((- 2*RADIUS - meanz)/dimz) ))-0.5) +  height/2);
+			beadmaxx =(int)(((height *(((  keep_witin_border - meany)/dimy) ))-0.5) +  width/2);
+			beadmaxy =(int)(((height *(((  keep_witin_border - meanz)/dimz) ))-0.5) +  height/2);
+			beadminx =(int)(((height *(((- keep_witin_border - meany)/dimy) ))-0.5) +  width/2);
+			beadminy =(int)(((height *(((- keep_witin_border - meanz)/dimz) ))-0.5) +  height/2);
 		}
 		else if (proj == yaxis)
 		{
-			beadmaxx =(int)(((height *(((  2*RADIUS - meanx)/dimx) ))-0.5) +  width/2);
-			beadmaxy =(int)(((height *(((  2*RADIUS - meanz)/dimz) ))-0.5) +  height/2);
-			beadminx =(int)(((height *(((- 2*RADIUS - meanx)/dimx) ))-0.5) +  width/2);
-			beadminy =(int)(((height *(((- 2*RADIUS - meanz)/dimz) ))-0.5) +  height/2);
+			beadmaxx =(int)(((height *(((  keep_witin_border - meanx)/dimx) ))-0.5) +  width/2);
+			beadmaxy =(int)(((height *(((  keep_witin_border - meanz)/dimz) ))-0.5) +  height/2);
+			beadminx =(int)(((height *(((- keep_witin_border - meanx)/dimx) ))-0.5) +  width/2);
+			beadminy =(int)(((height *(((- keep_witin_border - meanz)/dimz) ))-0.5) +  height/2);
 		}
 		else 
 		{
-			beadmaxx =(int)(((height *(((  2*RADIUS - meanx)/dimx) ))-0.5) +  width/2);
-			beadmaxy =(int)(((height *(((  2*RADIUS - meany)/dimy) ))-0.5) +  height/2);
-			beadminx =(int)(((height *(((- 2*RADIUS - meanz)/dimx) ))-0.5) +  width/2);
-			beadminy =(int)(((height *(((- 2*RADIUS - meany)/dimy) ))-0.5) +  height/2);
+			beadmaxx =(int)(((height *(((  keep_witin_border - meanx)/dimx) ))-0.5) +  width/2);
+			beadmaxy =(int)(((height *(((  keep_witin_border - meany)/dimy) ))-0.5) +  height/2);
+			beadminx =(int)(((height *(((- keep_witin_border - meanz)/dimx) ))-0.5) +  width/2);
+			beadminy =(int)(((height *(((- keep_witin_border - meany)/dimy) ))-0.5) +  height/2);
 		}
 
 	int movex=0;
@@ -1865,6 +1753,7 @@ vect rot;
 		rot = node[i];
 
 		nucleation_object->nucleator_rotation.rotate(rot);
+		camera_rotation.rotate(rot);
 
 		if (proj == xaxis)  // choose projection
 		{
@@ -1951,6 +1840,7 @@ for (vector <vect>::iterator point=nucleation_object->cagepoints.begin();
 
 		rot = *point;
 		nucleation_object->nucleator_rotation.rotate(rot);
+		camera_rotation.rotate(rot); 
 
 		if (proj == xaxis)  // choose projection
 		{
@@ -1982,214 +1872,6 @@ for (vector <vect>::iterator point=nucleation_object->cagepoints.begin();
 		//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
 
 	}
-
-
-/*
-if (nucleation_object->geometry==nucleator::sphere)
-{
-
- // sphere
-
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
-		{
-			r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
-			
-			xx = r * cos(theta);				// x and y of point
-			yy = r * sin(theta);
-			zz = z1 * RAD_INCOMP;						// z just scaled by radius
-
-			rotx = (MYDOUBLE) xx;
-			roty = (MYDOUBLE) yy;
-			rotz = (MYDOUBLE) zz;
-		
-			// rotate co-ords depending on projection
-
-			nucleation_object->nucleator_rotation.rotate(rotx, roty, rotz);
-
-			if (proj == xaxis)  // choose projection
-			{
-				x = (int)(((height *(((roty - meany)/dimy) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else if (proj == yaxis)
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else 
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((roty - meany)/dimy) ))-0.5) + height/2);
-			}
-
-			x+=movex;  // displace to bring bead back in bounds
-			y+=movey;
-
-			if (((x+xgmax)<0) || ((x+xgmax)>=width) ||
-				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
-				continue;
-			
-			imageR[x+xgmax][y+ygmax] = nucleation_object->colour.R;
-			imageG[x+xgmax][y+ygmax] = nucleation_object->colour.G;
-			imageB[x+xgmax][y+ygmax] = nucleation_object->colour.B;
-			//imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
-			//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
-
-		}
-}
-else
-{
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
-		{
-			r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
-			
-			xx = r * cos(theta);				// x and y of point
-			yy = r * sin(theta);
-			zz = z1 * RAD_INCOMP;						// z just scaled by radius
-
-			if (zz>0)
-				zz+= (nucleation_object->segment/2); 
-			else
-				zz-= (nucleation_object->segment/2);
-
-			rotx = (MYDOUBLE) xx;
-			roty = (MYDOUBLE) yy;
-			rotz = (MYDOUBLE) zz;
-		
-			// rotate co-ords depending on projection
-
-			nucleation_object->nucleator_rotation.rotate(rotx, roty, rotz);
-
-			if (proj == xaxis)  // choose projection
-			{
-				x = (int)(((height *(((roty - meany)/dimy) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else if (proj == yaxis)
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else 
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((roty - meany)/dimy) ))-0.5) + height/2);
-			}
-			
-			x+=movex;  // displace to bring bead back in bounds
-			y+=movey;
-
-			if (((x+xgmax)<0) || ((x+xgmax)>=width) ||
-				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
-				continue;
-
-			imageR[x+xgmax][y+ygmax] = nucleation_object->colour.R;
-			imageG[x+xgmax][y+ygmax] = nucleation_object->colour.G;
-			imageB[x+xgmax][y+ygmax] = nucleation_object->colour.B;
-		}
-		
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<1; z1+= nucleation_object->radius/10)
-		{
-					
-			xx = RAD_INCOMP * cos(theta);				// x and y of point
-			yy = RAD_INCOMP * sin(theta);
-			zz = z1 * (nucleation_object->segment/2);						// z just scaled by radius
-
-			rotx = (MYDOUBLE) xx;
-			roty = (MYDOUBLE) yy;
-			rotz = (MYDOUBLE) zz;
-		
-			// rotate co-ords depending on projection
-
-			nucleation_object->nucleator_rotation.rotate(rotx, roty, rotz);
-
-			if (proj == xaxis)  // choose projection
-			{
-				x = (int)(((height *(((roty - meany)/dimy) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else if (proj == yaxis)
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((rotz - meanz)/dimz) ))-0.5) + height/2);
-			}
-			else 
-			{
-				x = (int)(((height *(((rotx - meanx)/dimx) ))-0.5) +  width/2); // was width
-				y = (int)(((height *(((roty - meany)/dimy) ))-0.5) + height/2);
-			}
-
-
-			x+=movex;  // displace to bring bead back in bounds
-			y+=movey;
-
-			if (((x+xgmax)<0) || ((x+xgmax)>=width) ||
-				(((y+ygmax)<0) || ((y+ygmax)>=height)))  // only plot if point in bounds
-				continue;
-
-			imageR[x+xgmax][y+ygmax] = nucleation_object->colour.R;
-			imageG[x+xgmax][y+ygmax] = nucleation_object->colour.G;
-			imageB[x+xgmax][y+ygmax] = nucleation_object->colour.B;
-		}
-
-
-	}
-*/
-/*
-for(int x = -width; xx<width; xx+=(width/4))
-	for(int y = -height; yy<height; yy+=(width/4))
-		for(int z = -height; zz<height; zz+=(width/4))
-			{
-				rotx = (MYDOUBLE) x;
-				roty = (MYDOUBLE) y;
-				rotz = (MYDOUBLE) z;
-			
-				// rotate co-ords depending on projection
-
-				actin_rotation.rotate(rotx, roty, rotz);
-
-				if (proj == xaxis)  
-				{
-					x = (width/2)  + (int) roty;
-					y = (height/2) + (int) rotz;
-				}
-				else if (proj == yaxis)
-				{
-					x = (width/2)  + (int) rotx;
-					y = (height/2) + (int) rotz;
-				}
-				else 
-				{
-					x = (width/2)  + (int) rotx;
-					y = (height/2) + (int) roty;
-				}
-
-				if ((x<0) || (x>=width- (2*xgmax+1)) ||
-					(y<0) || (y>=height-(2*ygmax+1)))  // only plot if point in bounds
-					continue;
-
-				imageR[x][y] = 100;
-
-				//for(xg = -xgmax; xg<xgmax; ++xg)
-				//	for(yg = -ygmax; yg<ygmax; ++yg)
-				//	{
-				//		if ((xg*xg+yg*yg)>(xgmax*ygmax))
-				//			continue;  // don't do corners
-
-				//		imageR[x+xg+xgmax][y+yg+ygmax]+=
-				//				5 * GaussMat[xg+xgmax][yg+ygmax];  
-
-				//	}
-
-
-			}
-
-*/
-
-
 
 	
 	// the header for saving the bitmaps...
@@ -2275,21 +1957,88 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 		meanx=meany=meanz=0.0;
 	}
 
-	if( nucleation_object->is_sphere() ) {
+	if( nucleation_object->is_sphere() ) 
+	{
 	    draw_bead_forces(filenum, proj,
 			     width, height,
 			     xgmax, ygmax,
 			     movex, movey,
 			     meanx, meany, meanz,
-			     dimx, dimy, dimz, imageGmax);
-	} else {
+			     dimx, dimy, dimz, imageGmax,
+				 false, 1, 1, "white");
+
+		// bead overlay not implemented yet
+		//if (NUCLEATOR_FORCES)
+		//{
+		//	draw_bead_forces(filenum, proj,
+		//			width, height,
+		//			xgmax, ygmax,
+		//			movex, movey,
+		//			meanx, meany, meanz,
+		//			dimx, dimy, dimz, imageGmax,
+		//			true, 0.2, 3, "red");
+		//}
+
+	} 
+	else 
+	{
 	    draw_capsule_forces(filenum, proj,
-				width, height,
-				xgmax, ygmax,
-				movex, movey,
-				meanx, meany, meanz,
-				dimx, dimy, dimz, imageGmax);
+			     width, height,
+			     xgmax, ygmax,
+			     movex, movey,
+			     meanx, meany, meanz,
+			     dimx, dimy, dimz, imageGmax,
+				 false, 1, 1, "white");
+
+		if (NUCLEATOR_FORCES)
+		{
+			draw_capsule_forces(filenum, proj,
+					width, height,
+					xgmax, ygmax,
+					movex, movey,
+					meanx, meany, meanz,
+					dimx, dimy, dimz, imageGmax,
+					true, 0.2, 3, "red");
+		}
 	}
+
+char command2[255];
+
+#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
+
+	if (proj == xaxis)  // choose projection
+	{
+		sprintf(command2 , "del x_proj_%05i.bmp 2>/dev/null", filenum);
+	}
+	else if (proj == yaxis)
+	{
+		sprintf(command2 , "del y_proj_%05i.bmp 2>/dev/null", filenum);
+	}
+	else 
+	{
+		sprintf(command2 , "del z_proj_%05i.bmp 2>/dev/null", filenum);
+	}
+
+#else
+
+	if (proj == xaxis)  // choose projection
+	{
+		sprintf(command2 , "rm -f x_proj_%05i.bmp 2>/dev/null", filenum);
+	}
+	else if (proj == yaxis)
+	{
+		sprintf(command2 , "rm -f y_proj_%05i.bmp 2>/dev/null", filenum);
+	}
+	else 
+	{
+		sprintf(command2 , "rm -f z_proj_%05i.bmp 2>/dev/null", filenum);
+	}
+
+system(command2);		
+
+
+#endif
+
 	return filenum;
 }
 
@@ -2299,7 +2048,8 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 				int movex, int movey,
 				MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
 				MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
-				MYDOUBLE imageGmax)
+				MYDOUBLE imageGmax, 
+				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color)
 {
     // FIXME to stringstream
     char command1[2048], command2[2048];
@@ -2336,32 +2086,36 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 	c_radius  = (int)(height * ( (RADIUS)/dimx) );
 	
     }
+
+
     
-    if( (proj == xaxis) || (proj == yaxis) ) {
-	
-	drawcmd << "ellipse "
-		<< c_centerx << "," << c_centery + c_segment << " "
-		<< c_radius << "," << c_radius << " "
-		<< "0,180";
-	
-	drawcmd << " line "
-		<< c_centerx - c_radius << "," << c_centery + c_segment << " "
-		<< c_centerx - c_radius << "," << c_centery - c_segment;
-	
-	drawcmd << " line "
-		<< c_centerx + c_radius << "," << c_centery + c_segment << " "
-		<< c_centerx + c_radius << "," << c_centery - c_segment;
-	
-	drawcmd << " ellipse "
-		<< c_centerx << "," << c_centery - c_segment << " "
-		<< c_radius << "," << c_radius << " "
-		<< "180,360";
-    } else {
-	// z projection
-	drawcmd << "circle "
-		<< c_centerx << "," << c_centery
-		<< " "
-		<< c_centerx << "," << c_centery+c_radius;
+    if( (proj == xaxis) || (proj == yaxis) ) 
+	{
+		drawcmd << "ellipse "
+			<< c_centerx << "," << c_centery + c_segment << " "
+			<< c_radius << "," << c_radius << " "
+			<< "0,180";
+		
+		drawcmd << " line "
+			<< c_centerx - c_radius << "," << c_centery + c_segment << " "
+			<< c_centerx - c_radius << "," << c_centery - c_segment;
+		
+		drawcmd << " line "
+			<< c_centerx + c_radius << "," << c_centery + c_segment << " "
+			<< c_centerx + c_radius << "," << c_centery - c_segment;
+		
+		drawcmd << " ellipse "
+			<< c_centerx << "," << c_centery - c_segment << " "
+			<< c_radius << "," << c_radius << " "
+			<< "180,360";
+    } 
+	else 
+	{
+		// z projection
+		drawcmd << "circle "
+			<< c_centerx << "," << c_centery
+			<< " "
+			<< c_centerx << "," << c_centery+c_radius;
     }
     
     
@@ -2379,10 +2133,9 @@ void actin::draw_capsule_forces(int filenum, projection proj,
     // scale by the number of iterations between outputs
     for(int i=0; i<nucleation_object->n_force_segments(); i++)
     {
-	
-	nucleation_object->radial_rep_distrib_x[i]/=InterRecordIterations;
-	nucleation_object->radial_rep_distrib_y[i]/=InterRecordIterations;
-	nucleation_object->radial_rep_distrib_z[i]/=InterRecordIterations;
+		nucleation_object->radial_rep_distrib_x[i]/=InterRecordIterations;
+		nucleation_object->radial_rep_distrib_y[i]/=InterRecordIterations;
+		nucleation_object->radial_rep_distrib_z[i]/=InterRecordIterations;
     }
 
     /*
@@ -2417,8 +2170,11 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 	    lineoriginy = xgmax+movey + (int)(((height *(((nucleation_object->fbar_bdy_y[i]-meanz)/dimz) ))-0.5) + height/2);
 	    
 	    // length 0-1
-	    linescale = ((nucleation_object->radial_rep_distrib_x[i])* FORCEBAR_SCALE) + ticklength;
+	    linescale = ((nucleation_object->radial_rep_distrib_x[i])* scale * FORCEBAR_SCALE) + ticklength;
 	    
+		if (linescale > 0.9*RADIUS)
+			linescale = RADIUS;
+
 	    lineendx = int(lineoriginx - linescale*(lineoriginx - c_centerx));
 	    lineendy = int(lineoriginy);	    
 	
@@ -2432,8 +2188,11 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 	    lineoriginy = xgmax+movey + (int)(((height*(((nucleation_object->fbar_bdy_y[i]-meanz)/dimz) ))-0.5) + height/2);
 	    
 	    // length 0-1
-	    linescale = ((nucleation_object->radial_rep_distrib_y[i])* FORCEBAR_SCALE) + ticklength;
+	    linescale = ((nucleation_object->radial_rep_distrib_y[i])* scale * FORCEBAR_SCALE) + ticklength;
 	    
+		if (linescale > 0.9*RADIUS)
+			linescale = RADIUS;
+
 	    lineendx = int(lineoriginx - linescale*(lineoriginx - c_centerx));
 	    lineendy = int(lineoriginy);	    
 	
@@ -2443,6 +2202,8 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 	}
 	// do nothing additional for z
     }
+
+
     //  end caps
     for(int i=0; i< nucleation_object->ncap_segs; i++)
     {
@@ -2453,8 +2214,12 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 	    lineoriginy = xgmax+movey + (int)(((height*(((nucleation_object->fbar_cap_y[i]-meanz)/dimz) ))-0.5) + height/2);
 
 	    // length 0-1
-	    linescale = ((nucleation_object->radial_rep_distrib_x[nucleation_object->nbdy_segs + i])* FORCEBAR_SCALE) + ticklength;
-	    // cout << linescale << endl;
+	    linescale = ((nucleation_object->radial_rep_distrib_x[nucleation_object->nbdy_segs + i])* scale * FORCEBAR_SCALE) + ticklength;
+	    
+		if (linescale > 0.9*RADIUS)
+			linescale = RADIUS;
+		
+		// cout << linescale << endl;
 	    if(nucleation_object->fbar_cap_y[i]>0) {
 		// upper cap
 		lineoriginy += c_segment;
@@ -2476,8 +2241,11 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 	    lineoriginy = xgmax+movey + (int)(((height*(((nucleation_object->fbar_cap_y[i]-meanz)/dimz) ))-0.5) + height/2);
 	    
 	    // length 0-1
-	    linescale = ((nucleation_object->radial_rep_distrib_y[nucleation_object->nbdy_segs + i])* FORCEBAR_SCALE) + ticklength;
-	    //cout << "y endcap: " << linescale << endl;
+	    linescale = ((nucleation_object->radial_rep_distrib_y[nucleation_object->nbdy_segs + i])* scale * FORCEBAR_SCALE) + ticklength;
+	    if (linescale > 0.9*RADIUS)
+			linescale = RADIUS;
+		
+		//cout << "y endcap: " << linescale << endl;
 	    if(nucleation_object->fbar_cap_y[i]>0) {
 		// upper cap
 		lineoriginy += c_segment;
@@ -2499,8 +2267,10 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 	    lineoriginy = xgmax+movey + (int)(((height *(((nucleation_object->fbar_cap_y[i]-meany)/dimy) ))-0.5) + height/2);
 	    
 	    // length 0-1
-	    linescale = ((nucleation_object->radial_rep_distrib_z[i])* FORCEBAR_SCALE) + ticklength;
+	    linescale = ((nucleation_object->radial_rep_distrib_z[i])* scale * FORCEBAR_SCALE) + ticklength;
 	    // cout << linescale << endl;
+		if (linescale > 0.9*RADIUS)
+			linescale = RADIUS;
 
 	    lineendx = int(lineoriginx - linescale*(lineoriginx - c_centerx));
 	    lineendy = int(lineoriginy - linescale*(lineoriginy - c_centery));
@@ -2519,46 +2289,72 @@ void actin::draw_capsule_forces(int filenum, projection proj,
     // call imagemagick to write text on image
     if (proj == xaxis)
     {
-	sprintf(command1,
-		"convert -font helvetica -fill white -pointsize 20 -draw \
-                   \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection \\nFrame % 4i\\nG-gain % 4i' \"\
-                   -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp",
-		scalebarlength, filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), drawcmd.str().c_str(), filenum, filenum);
-	
-	sprintf(command2,
-		"mogrify -font helvetica -fill white -pointsize 20 -draw \
-                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-                 x_proj_%05i.bmp",
-		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+
+		if (nuc_forces_overlay)
+		{
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" x_forces_%05i.png x_forces_%05i.png",
+				color, drawcmd.str().c_str(), filenum, filenum);
+		}
+		else
+		{
+			sprintf(command1,
+				"convert -font helvetica -fill white -pointsize 20 -draw \
+						\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+						x_proj_%05i.bmp x_proj_%05i.png",  
+				scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
+
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" x_proj_%05i.png x_forces_%05i.png",
+				color, drawcmd.str().c_str(), filenum, filenum);
+		}
+
     }
     else if (proj == yaxis)
     {
-	sprintf(command1,
-		"convert -font helvetica -fill white -pointsize 20 -draw \
-                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
-                 -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp",
-		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawcmd.str().c_str(), filenum, filenum);
-	sprintf(command2,
-		"mogrify -font helvetica -fill white -pointsize 20 -draw \" \
-                 text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i'\" \
-                 y_proj_%05i.bmp",
-		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+
+		if (nuc_forces_overlay)
+		{
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" y_forces_%05i.png y_forces_%05i.png",
+				color, drawcmd.str().c_str(), filenum, filenum);
+		}
+		else
+		{
+			sprintf(command1,
+				"convert -font helvetica -fill white -pointsize 20 -draw \
+						\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+						y_proj_%05i.bmp y_proj_%05i.png",  
+				scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
+
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" y_proj_%05i.png y_forces_%05i.png",
+				color, drawcmd.str().c_str(), filenum, filenum);
+		}
     }
     else 
     {
-	sprintf (command1,
-		 "convert -font helvetica -fill white -pointsize 20 -draw \
-                  \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
-                  -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp",
-		 scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawcmd.str().c_str(), filenum, filenum);
-	
-	sprintf(command2,
-		"mogrify -font helvetica -fill white -pointsize 20 -draw \
-                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-                 z_proj_%05i.bmp",
-		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+
+		if (nuc_forces_overlay)
+		{
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" z_forces_%05i.png z_forces_%05i.png",
+				color, drawcmd.str().c_str(), filenum, filenum);
+		}
+		else
+		{
+			sprintf(command1,
+				"convert -font helvetica -fill white -pointsize 20 -draw \
+						\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+						z_proj_%05i.bmp z_proj_%05i.png",  
+				scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
+
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" z_proj_%05i.png z_forces_%05i.png",
+				color, drawcmd.str().c_str(), filenum, filenum);
+		}
     }
-    //cout << endl << command1 << endl;
+    //cout << endl << command1 << endl << endl << command2 << endl;
     system(command1);
     system(command2);
 
@@ -2572,13 +2368,16 @@ void actin::draw_capsule_forces(int filenum, projection proj,
 }
 
 void actin::draw_bead_forces(int filenum, projection proj,
-			     int width, int height,
-			     int xgmax, int ygmax,
-			     int movex, int movey,
-			     MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-			     MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
-			     MYDOUBLE imageGmax)
+				int width, int height,
+				int xgmax, int ygmax,
+				int movex, int movey,
+				MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
+				MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
+				MYDOUBLE imageGmax, 
+				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color)
 {
+
+
     char command1[2048], command2[2048];
     
     char drawstring[2048] = "";
@@ -2655,10 +2454,10 @@ void actin::draw_bead_forces(int filenum, projection proj,
 	    lineoriginy = ygmax+movey + (int)(((height *(((yscale - meanz)/dimz) ))-0.5) + height/2);
 	    
 	    x = xgmax+movex
-		+(int)(((height *(((((-nucleation_object->radial_rep_distrib_x[i])*100+1)* xscale - meany)/dimy) ))-0.5)
+		+(int)(((height *(((((-nucleation_object->radial_rep_distrib_x[i])*100* scale+1)* xscale - meany)/dimy) ))-0.5)
 		       + width/2); // was width
 	    y = ygmax+movey
-		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_x[i])*100+1)* yscale - meanz)/dimz) ))-0.5)
+		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_x[i])*100* scale+1)* yscale - meanz)/dimz) ))-0.5)
 			+ height/2);
 	    
 	} else if (proj == yaxis) {
@@ -2666,11 +2465,11 @@ void actin::draw_bead_forces(int filenum, projection proj,
 	    lineoriginx = xgmax+movex + (int)(((height *(((xscale - meanx)/dimx) ))-0.5) +  width/2); // was width
 	    lineoriginy = ygmax+movey + (int)(((height *(((yscale - meanz)/dimz) ))-0.5) + height/2);
 	    
-	    x = xgmax+movex
-		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_y[i])*100+1)* xscale - meanx)/dimx) ))-0.5)
+		x = xgmax+movex
+		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_y[i])*100* scale+1)* xscale - meanx)/dimx) ))-0.5)
 			+  width/2); // was width
 	    y = ygmax+movey
-		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_y[i])*100+1)* yscale - meanz)/dimz) ))-0.5)
+		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_y[i])*100* scale+1)* yscale - meanz)/dimz) ))-0.5)
 			+ height/2);
 
 	} else {
@@ -2679,10 +2478,10 @@ void actin::draw_bead_forces(int filenum, projection proj,
 	    lineoriginy = ygmax+movey + (int)(((height *(((yscale - meany)/dimy) ))-0.5) + height/2);
 	    
 	    x = xgmax+movex
-		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_z[i])*100+1)* xscale - meanx)/dimx) ))-0.5)
+		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_z[i])*100* scale+1)* xscale - meanx)/dimx) ))-0.5)
 			+  width/2); // was width
 	    y = ygmax+movey
-		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_z[i])*100+1)* yscale - meany)/dimy) ))-0.5)
+		+ (int)(((height *(((((-nucleation_object->radial_rep_distrib_z[i])*100* scale+1)* yscale - meany)/dimy) ))-0.5)
 			+ height/2);
 	}
 
@@ -2693,69 +2492,143 @@ void actin::draw_bead_forces(int filenum, projection proj,
     int scalebarlength;
     scalebarlength = (int)(height * 1.0 /dimx);
 
-// #ifdef NO_IMAGE_TEXT
-    // call imagemagick to write text on image
-    if (proj == xaxis)  // call imagemagick to write text on image
-    {
-	sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" x_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
-	sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp", drawstring, filenum, filenum);
+	//if (!nuc_forces_overlay)  // overlay not coded yet
+	//{
+	//// #ifdef NO_IMAGE_TEXT
+	//	// call imagemagick to write text on image
+	//	if (proj == xaxis)  // call imagemagick to write text on image
+	//	{
+	//	sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" x_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+	//	sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp", drawstring, filenum, filenum);
 
-    } else if (proj == yaxis) {
-	sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" y_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
-	sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp", drawstring, filenum, filenum);
+	//	} else if (proj == yaxis) {
+	//	sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" y_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+	//	sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp", drawstring, filenum, filenum);
 
-    } else {
-	
-	sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" z_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
-	sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp", drawstring, filenum, filenum);
-	
-    }
+	//	} else {
+	//	
+	//	sprintf ( command1 , "mogrify -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" z_proj_%05i.bmp",scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+	//	sprintf ( command2 , "convert -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp", drawstring, filenum, filenum);
+	//	
+	//	}
+
+	//}
 
 // #endif
 
     //cout << endl << command1 << endl << endl << command2 << endl << endl;
     
+ //   if (proj == xaxis)
+ //   {
+	//sprintf(command1,
+	//	"convert -font helvetica -fill %s -pointsize 20 -draw \
+ //                  \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection \\nFrame % 4i\\nG-gain % 4i' \"\
+ //                  -fill none -stroke %s -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp", color,
+	//	scalebarlength, filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), color, drawstring, filenum, filenum);
+	//
+	//sprintf(command2,
+	//	"mogrify -font helvetica -fill %s -pointsize 20 -draw \
+ //                \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+ //                x_proj_%05i.bmp", color,
+	//	scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+
+ //   } else if (proj == yaxis) {
+	//
+	//sprintf(command1,
+	//	"convert -font helvetica -fill %s -pointsize 20 -draw \
+ //                \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
+ //                -fill none -stroke %s -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp", color,
+	//	scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),color, drawstring, filenum, filenum);
+	//sprintf(command2,
+	//	"mogrify -font helvetica -fill %s -pointsize 20 -draw \" \
+ //                text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i'\" \
+ //                y_proj_%05i.bmp", color,
+	//	scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+
+ //   } else {
+	//sprintf (command1,
+	//	 "convert -font helvetica -fill %s -pointsize 20 -draw \
+ //                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
+ //                 -fill none -stroke %s -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp", color,
+	//	 scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),color, drawstring, filenum, filenum);
+	//
+	//sprintf(command2,
+	//	"mogrify -font helvetica -fill %s -pointsize 20 -draw \
+ //                \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+ //                z_proj_%05i.bmp", color,
+	//	scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+ //   }
+    
+    // call imagemagick to write text on image
     if (proj == xaxis)
     {
-	sprintf(command1,
-		"convert -font helvetica -fill white -pointsize 20 -draw \
-                   \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection \\nFrame % 4i\\nG-gain % 4i' \"\
-                   -fill none -stroke white -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp",
-		scalebarlength, filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), drawstring, filenum, filenum);
-	
-	sprintf(command2,
-		"mogrify -font helvetica -fill white -pointsize 20 -draw \
-                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-                 x_proj_%05i.bmp",
-		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
 
-    } else if (proj == yaxis) {
-	
-	sprintf(command1,
-		"convert -font helvetica -fill white -pointsize 20 -draw \
-                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
-                 -fill none -stroke white -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp",
-		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
-	sprintf(command2,
-		"mogrify -font helvetica -fill white -pointsize 20 -draw \" \
-                 text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i'\" \
-                 y_proj_%05i.bmp",
-		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+		if (nuc_forces_overlay)
+		{
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" x_forces_%05i.png x_forces_%05i.png",
+				color, drawstring, filenum, filenum);
+		}
+		else
+		{
+			sprintf(command1,
+				"convert -font helvetica -fill white -pointsize 20 -draw \
+						\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+						x_proj_%05i.bmp x_proj_%05i.png",  
+				scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
 
-    } else {
-	sprintf (command1,
-		 "convert -font helvetica -fill white -pointsize 20 -draw \
-                  \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
-                  -fill none -stroke white -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp",
-		 scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),drawstring, filenum, filenum);
-	
-	sprintf(command2,
-		"mogrify -font helvetica -fill white -pointsize 20 -draw \
-                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-                 z_proj_%05i.bmp",
-		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" x_proj_%05i.png x_forces_%05i.png",
+				color, drawstring, filenum, filenum);
+		}
+
     }
-    
+    else if (proj == yaxis)
+    {
+
+		if (nuc_forces_overlay)
+		{
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" y_forces_%05i.png y_forces_%05i.png",
+				color, drawstring, filenum, filenum);
+		}
+		else
+		{
+			sprintf(command1,
+				"convert -font helvetica -fill white -pointsize 20 -draw \
+						\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+						y_proj_%05i.bmp y_proj_%05i.png",  
+				scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
+
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" y_proj_%05i.png y_forces_%05i.png",
+				color, drawstring, filenum, filenum);
+		}
+    }
+    else 
+    {
+
+		if (nuc_forces_overlay)
+		{
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" z_forces_%05i.png z_forces_%05i.png",
+				color, drawstring, filenum, filenum);
+		}
+		else
+		{
+			sprintf(command1,
+				"convert -font helvetica -fill white -pointsize 20 -draw \
+						\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+						z_proj_%05i.bmp z_proj_%05i.png",  
+				scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
+
+			sprintf(command2,
+				"convert -fill none -stroke %s -draw \"%s\" z_proj_%05i.png z_forces_%05i.png",
+				color, drawstring, filenum, filenum);
+		}
+    }
+    //cout << endl << command1 << endl << endl << command2 << endl;
+
 #ifndef NO_IMAGEMAGICK
     system(command1);
     system(command2);
@@ -3066,52 +2939,52 @@ void * actin::compressfilesthread(void* threadarg)
 		sprintf(command1 , "mv nodes%05i.wrl.gz nodes%05i.wrz",dat->startnode, dat->startnode );
 		system(command1);
 
-		// convert bmps to jpgs:
-#ifndef NO_IMAGEMAGICK
-			
-		sprintf(command1 , "convert -quality 75 x_proj_%05i.bmp x_proj_%05i.png", dat->startnode, dat->startnode );
-		system(command1);
-		sprintf(command1 , "convert -quality 75 y_proj_%05i.bmp y_proj_%05i.png", dat->startnode, dat->startnode );
-		system(command1);
-		sprintf(command1 , "convert -quality 75 z_proj_%05i.bmp z_proj_%05i.png", dat->startnode, dat->startnode );
-		system(command1);
-
-		sprintf(command1 , "convert -quality 75 x_forces_%05i.bmp x_forces_%05i.png", dat->startnode, dat->startnode );
-		system(command1);
-		sprintf(command1 , "convert -quality 75 y_forces_%05i.bmp y_forces_%05i.png", dat->startnode, dat->startnode );
-		system(command1);
-		sprintf(command1 , "convert -quality 75 z_forces_%05i.bmp z_forces_%05i.png", dat->startnode, dat->startnode );
-		system(command1);
-
-#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
-		sprintf(command2 , "del x_proj_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "del y_proj_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "del z_proj_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "del x_forces_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "del y_forces_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "del z_forces_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-#else
-		sprintf(command2 , "rm -f x_proj_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "rm -f y_proj_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "rm -f z_proj_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "rm -f x_forces_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "rm -f y_forces_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-		sprintf(command2 , "rm -f z_forces_%05i.bmp 2>/dev/null", dat->startnode);
-		system(command2);
-#endif
+//		// convert bmps to jpgs:
+//#ifndef NO_IMAGEMAGICK
+//			
+//		sprintf(command1 , "convert -quality 75 x_proj_%05i.bmp x_proj_%05i.png", dat->startnode, dat->startnode );
+//		system(command1);
+//		sprintf(command1 , "convert -quality 75 y_proj_%05i.bmp y_proj_%05i.png", dat->startnode, dat->startnode );
+//		system(command1);
+//		sprintf(command1 , "convert -quality 75 z_proj_%05i.bmp z_proj_%05i.png", dat->startnode, dat->startnode );
+//		system(command1);
+//
+//		sprintf(command1 , "convert -quality 75 x_forces_%05i.bmp x_forces_%05i.png", dat->startnode, dat->startnode );
+//		system(command1);
+//		sprintf(command1 , "convert -quality 75 y_forces_%05i.bmp y_forces_%05i.png", dat->startnode, dat->startnode );
+//		system(command1);
+//		sprintf(command1 , "convert -quality 75 z_forces_%05i.bmp z_forces_%05i.png", dat->startnode, dat->startnode );
+//		system(command1);
+//
+//#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
+//		sprintf(command2 , "del x_proj_%05i.bmp 2>/dev/null", dat->startnode);
+//		system(command2);
+//		sprintf(command2 , "del y_proj_%05i.bmp 2>/dev/null", dat->startnode);
+//		system(command2);
+//		sprintf(command2 , "del z_proj_%05i.bmp 2>/dev/null", dat->startnode);
+//		system(command2);
+//		//sprintf(command2 , "del x_forces_%05i.bmp 2>/dev/null", dat->startnode);
+//		//system(command2);
+//		//sprintf(command2 , "del y_forces_%05i.bmp 2>/dev/null", dat->startnode);
+//		//system(command2);
+//		//sprintf(command2 , "del z_forces_%05i.bmp 2>/dev/null", dat->startnode);
+//		system(command2);
+//#else
+//		sprintf(command2 , "rm -f x_proj_%05i.bmp 2>/dev/null", dat->startnode);
+//		system(command2);
+//		sprintf(command2 , "rm -f y_proj_%05i.bmp 2>/dev/null", dat->startnode);
+//		system(command2);
+//		sprintf(command2 , "rm -f z_proj_%05i.bmp 2>/dev/null", dat->startnode);
+//		system(command2);
+//		//sprintf(command2 , "rm -f x_forces_%05i.bmp 2>/dev/null", dat->startnode);
+//		//system(command2);
+//		//sprintf(command2 , "rm -f y_forces_%05i.bmp 2>/dev/null", dat->startnode);
+//		//system(command2);
+//		//sprintf(command2 , "rm -f z_forces_%05i.bmp 2>/dev/null", dat->startnode);
+//		system(command2);
+//#endif
 	
-#endif
+//#endif
 
 		pthread_mutex_unlock(&filesdonelock_mutex);
 
@@ -3505,4 +3378,97 @@ void actin::setdontupdates(void)
 			node[i].dontupdate = true;
 		}
 	}
+}
+
+rotationmatrix actin::get_sym_break_axes(void)
+{
+
+	vect tmp_nodepos;
+
+	vect  CofM;
+
+	vect sym_break_direction;
+
+	rotationmatrix tmp_rotation, final_rotation;	
+
+	MYDOUBLE x_angle, y_angle, z_angle;
+
+	MYDOUBLE x_inertia = 0, y_inertia = 0;
+	
+	MYDOUBLE z_in_angle;
+
+	int numnodes;
+
+	find_center(sym_break_direction);  // which way did the bead go?
+
+	x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
+	y_angle = atan2(sym_break_direction.x,sym_break_direction.z);
+	z_angle = atan2(sym_break_direction.x,sym_break_direction.y);
+
+	// make a temp rotation matrix in that direction:
+
+	//tmp_rotation.rotatematrix(0, y_angle, 0); // just rotate y
+	tmp_rotation.rotatematrix(x_angle, y_angle, 0); // now pointing upwards
+
+	//cout << "old sym_break_direction: " 
+	//	<< sym_break_direction.x << "," 
+	//	<< sym_break_direction.y << "," 
+	//	<< sym_break_direction.z << endl;
+
+	//tmp_rotation.rotate(sym_break_direction);
+
+	//cout << "new sym_break_direction: " 
+	//	<< sym_break_direction.x << "," 
+	//	<< sym_break_direction.y << "," 
+	//	<< sym_break_direction.z << endl;
+
+
+	// find CofM
+
+	numnodes=0;
+
+	for (int i=0; i<highestnodecount; ++i)
+	{
+		if (!node[i].polymer)
+			continue;
+
+		CofM += node[i];
+
+		++numnodes;
+
+	}
+
+	CofM *= (1/ (MYDOUBLE) numnodes);
+
+	tmp_rotation.rotate(CofM);
+
+
+	for (int i=0; i<highestnodecount; ++i)
+	{
+		if (!node[i].polymer)
+			continue;
+
+		tmp_nodepos = node[i];
+		tmp_rotation.rotate(tmp_nodepos);  // rotate points to bring in line with sym break dir'n
+
+
+		// determine principal axis
+
+		x_inertia+=(tmp_nodepos.x-CofM.x)*(tmp_nodepos.x-CofM.x);
+		y_inertia+=(tmp_nodepos.y-CofM.y)*(tmp_nodepos.y-CofM.y);
+		
+	}
+
+	z_in_angle = atan2(sqrt(x_inertia),sqrt(y_inertia));
+
+	cout << "sqrt(x_inertia): " << sqrt(x_inertia) 
+		 << " sqrt(y_inertia): " << sqrt(y_inertia) 
+		 << " z_in_angle: " << 180*z_in_angle << endl; 
+
+	//final_rotation.rotatematrix(x_angle, y_angle, -z_in_angle);
+	final_rotation.rotatematrix(0, 0, z_in_angle);
+	final_rotation.rotatematrix(x_angle, y_angle, 0);
+
+	
+	return final_rotation;
 }
