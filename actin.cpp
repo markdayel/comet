@@ -163,7 +163,7 @@ int actin::crosslinknewnodes(int numnewnodes)
 		//cout << "linking node " << i << endl;
 		//cout << "created node at " << node[i].x << "," << node[i].y << "," << node[i].z << endl;
 
-		if (findnearbynodes(i,NODE_XLINK_GRIDSEARCH,threadnum)==0) continue;	// find nodes within grid point
+		if (findnearbynodes(node[i],NODE_XLINK_GRIDSEARCH,threadnum)==0) continue;	// find nodes within grid point
 												// skip if zero
 							 
 		// of these nodes, calculate euclidian dist
@@ -616,6 +616,7 @@ int actin::ejectfromnucleator()
 
 	// do rotation
 
+bool toupdategrid = false;
 
 
 	if (ROTATION && (nucleation_object->torque.length() > MIN_TORQUE_TO_UPDATE))
@@ -664,6 +665,8 @@ int actin::ejectfromnucleator()
 
 		nucleation_object->torque.zero();
 
+		toupdategrid = true;
+
 	}
 
 
@@ -695,7 +698,18 @@ if ((nucleation_object->deltanucposn.length() > MIN_DISPLACEMENT_TO_UPDATE))
 	// and zero
 
 	nucleation_object->deltanucposn.zero();
+
+	toupdategrid = true;
 }
+
+if (toupdategrid)
+{
+	for (int i = 0; i<highestnodecount; i++)
+	{
+		node[i].updategrid();
+	}
+}
+
 
 	return 0;
 }
@@ -900,7 +914,7 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 		
 		// find nodes on same gridpoint, and nodes within repulsive range
 
-		if (findnearbynodes(nodesbygridpoint[i],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0) continue;	// find nodes within 1 grid point
+		if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0) continue;	// find nodes within 1 grid point
 												
 		// skip if zero
 
@@ -944,6 +958,7 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 				}
 
 				//dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
+				//dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
 				
 				if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
 					{
@@ -971,6 +986,12 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 
 #else
 					(*sameGPnode)->rep_force_vec[0] -= disp * (2.0 * forcescale) ;
+
+					(*sameGPnode)->repforce_radial[0]     += fabs(  (*sameGPnode)->unitvec().dot(disp)  * (2 * forcescale) ) ;
+
+					(*sameGPnode)->repforce_transverse[0] += fabs( ((*sameGPnode)->unitvec().cross(disp)).length()  * (2 * forcescale));
+
+
 #endif
 
 					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
@@ -988,6 +1009,11 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 
 #else
 						(*sameGPnode)->repulsion_displacement_vec[0] -= disp * 2;
+
+						(*sameGPnode)->dispforce_radial[0]     += fabs(  (*sameGPnode)->unitvec().dot(disp)  * (2 * forcescale) ) ;
+
+						(*sameGPnode)->dispforce_transverse[0] += fabs( ((*sameGPnode)->unitvec().cross(disp)).length()  * (2 * forcescale));
+
 #endif
 					}
 				}
@@ -998,20 +1024,24 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 return (void*) NULL;
 }
 
-int actin::findnearbynodes(const int& ournodenum, const int& adjgridpoints, const int& threadnum)
+//int actin::findnearbynodes(const int& ournodenum, const int& adjgridpoints, const int& threadnum)
+inline int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
 {
 
-recti_near_nodes[threadnum].resize(0);
-nodes_on_same_gridpoint[threadnum].resize(0); 
-
-if (!node[ournodenum].polymer)
-		return 0;
+Nodes1d *p_recti_near_nodeslist = &recti_near_nodes[threadnum];
+Nodes1d *p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
 
 nodes *nodeptr, *startnodeptr;
 
-int gridx = node[ournodenum].gridx;
-int gridy = node[ournodenum].gridy;
-int gridz = node[ournodenum].gridz;
+p_recti_near_nodeslist->resize(0);
+p_nodes_on_same_gridpoint->resize(0); 
+
+if (!ournode.polymer)
+		return 0;
+
+int gridx = ournode.gridx;
+int gridy = ournode.gridy;
+int gridz = ournode.gridz;
 
 if ((gridx < 0) || (gridx > GRIDSIZE) ||
 	(gridy < 0) || (gridy > GRIDSIZE) ||
@@ -1050,7 +1080,7 @@ for (int x = minx; x != maxx; ++x)
 			{
 				do
 				{
-					recti_near_nodes[threadnum].push_back(nodeptr);
+					p_recti_near_nodeslist->push_back(nodeptr);
 					nodeptr = nodeptr->nextnode;					
 				}
 				while (nodeptr!=startnodeptr);  //until back to start
@@ -1066,47 +1096,47 @@ for (int x = minx; x != maxx; ++x)
 	{
 		do
 		{
-			nodes_on_same_gridpoint[threadnum].push_back(nodeptr);
+			p_nodes_on_same_gridpoint->push_back(nodeptr);
 			nodeptr = nodeptr->nextnode;					
 		}
 		while (nodeptr!=startnodeptr);  //until back to start
 		
 	}
 
-	return (int) recti_near_nodes[threadnum].size();
+	return (int) p_recti_near_nodeslist->size();
 }
 
-inline int actin::dorepulsion(const int& node_i,const int& node_j,
-							  const MYDOUBLE& dist,const int& threadnum)
-{
-	if (node_i==node_j)
-		return 0;
-
-	MYDOUBLE scale;
-
-	vect disp;
-
-	disp = node[node_j] - node[node_i];
-
-	scale = (NODE_INCOMPRESSIBLE_RADIUS / 4)*dist;  
-
-	disp *= scale;
-
-
-#ifdef FORCES_BOTH_WAYS
-
-	node[node_i].repulsion_displacement_vec[threadnum] -= disp;
-	node[node_j].repulsion_displacement_vec[threadnum] += disp;
-
-#else
-
-	node[node_i].repulsion_displacement_vec[threadnum] -= disp*2;
-
-#endif
-
-
-	return 0;
-}
+//inline int actin::dorepulsion(nodes& node_i,nodes& node_j,
+//							  const MYDOUBLE& dist,const int& threadnum)
+//{						// defunct, now in collisiondetectiondowork
+//	if (&node_i==&node_j)
+//		return 0;
+//
+//	MYDOUBLE scale;
+//
+//	vect disp;
+//
+//	disp = node_j - node_i;
+//
+//	scale = (NODE_INCOMPRESSIBLE_RADIUS / 4)*dist;  
+//
+//	disp *= scale;
+//
+//
+//#ifdef FORCES_BOTH_WAYS
+//
+//	node_i.repulsion_displacement_vec[threadnum] -= disp;
+//	node_j.repulsion_displacement_vec[threadnum] += disp;
+//
+//#else
+//
+//	node_i.repulsion_displacement_vec[threadnum] -= disp*2;
+//
+//#endif
+//
+//
+//	return 0;
+//}
 
 int actin::applyforces(void)  // this just applys previously calculated forces (in dorepulsion())
 {
@@ -1298,6 +1328,11 @@ if (false) // USE_THREADS)
 #else
 						node[n].link_force_vec[0] += disp * (2 * force * scale);
 
+						node[n].linkforce_radial[0]     += fabs(  node[n].unitvec().dot(disp)  * (2 * force * scale) ) ;
+
+						node[n].linkforce_transverse[0] += fabs( (node[n].unitvec().cross(disp)).length()  * (2 * force * scale));
+
+						//cout << node[n].linkforce_radial[0] << " " <<  node[n].linkforce_transverse[0] << endl;
 #endif
 						}
 
@@ -1792,6 +1827,10 @@ vect rot;
 						//	node[i].nodelinksbroken * GaussMat[xg+xgmax][yg+ygmax];
 						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
 						//		linkforces[i] * GaussMat[xg+xgmax][yg+ygmax];
+						
+						imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
+							node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
+						
 						imageG[x+xg+xgmax][y+yg+ygmax]+=
 								1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
 						//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
@@ -1799,6 +1838,8 @@ vect rot;
 						//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
 						//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
 					}
+
+
 
 		}
 //	if (node[i].harbinger)
@@ -2518,46 +2559,46 @@ void actin::draw_bead_forces(int filenum, projection proj,
 
     //cout << endl << command1 << endl << endl << command2 << endl << endl;
     
- //   if (proj == xaxis)
- //   {
-	//sprintf(command1,
-	//	"convert -font helvetica -fill %s -pointsize 20 -draw \
- //                  \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection \\nFrame % 4i\\nG-gain % 4i' \"\
- //                  -fill none -stroke %s -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp", color,
-	//	scalebarlength, filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), color, drawstring, filenum, filenum);
-	//
-	//sprintf(command2,
-	//	"mogrify -font helvetica -fill %s -pointsize 20 -draw \
- //                \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
- //                x_proj_%05i.bmp", color,
-	//	scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+    /*if (proj == xaxis)
+    {
+	sprintf(command1,
+		"convert -font helvetica -fill %s -pointsize 20 -draw \
+                   \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection \\nFrame % 4i\\nG-gain % 4i' \"\
+                   -fill none -stroke %s -draw \"%s\" x_proj_%05i.bmp x_forces_%05i.bmp", color,
+		scalebarlength, filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), color, drawstring, filenum, filenum);
+	
+	sprintf(command2,
+		"mogrify -font helvetica -fill %s -pointsize 20 -draw \
+                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+                 x_proj_%05i.bmp", color,
+		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
 
- //   } else if (proj == yaxis) {
-	//
-	//sprintf(command1,
-	//	"convert -font helvetica -fill %s -pointsize 20 -draw \
- //                \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
- //                -fill none -stroke %s -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp", color,
-	//	scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),color, drawstring, filenum, filenum);
-	//sprintf(command2,
-	//	"mogrify -font helvetica -fill %s -pointsize 20 -draw \" \
- //                text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i'\" \
- //                y_proj_%05i.bmp", color,
-	//	scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
+    } else if (proj == yaxis) {
+	
+	sprintf(command1,
+		"convert -font helvetica -fill %s -pointsize 20 -draw \
+                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
+                 -fill none -stroke %s -draw \"%s\" y_proj_%05i.bmp y_forces_%05i.bmp", color,
+		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),color, drawstring, filenum, filenum);
+	sprintf(command2,
+		"mogrify -font helvetica -fill %s -pointsize 20 -draw \" \
+                 text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection \\nFrame % 4i\\nG-gain % 4i'\" \
+                 y_proj_%05i.bmp", color,
+		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum );
 
- //   } else {
-	//sprintf (command1,
-	//	 "convert -font helvetica -fill %s -pointsize 20 -draw \
- //                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
- //                 -fill none -stroke %s -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp", color,
-	//	 scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),color, drawstring, filenum, filenum);
-	//
-	//sprintf(command2,
-	//	"mogrify -font helvetica -fill %s -pointsize 20 -draw \
- //                \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
- //                z_proj_%05i.bmp", color,
-	//	scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
- //   }
+    } else {
+	sprintf (command1,
+		 "convert -font helvetica -fill %s -pointsize 20 -draw \
+                  \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection \\nFrame % 4i\\nG-gain % 4i' \" \
+                  -fill none -stroke %s -draw \"%s\" z_proj_%05i.bmp z_forces_%05i.bmp", color,
+		 scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),color, drawstring, filenum, filenum);
+	
+	sprintf(command2,
+		"mogrify -font helvetica -fill %s -pointsize 20 -draw \
+                 \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+                 z_proj_%05i.bmp", color,
+		scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5), filenum );
+    }*/
     
     // call imagemagick to write text on image
     if (proj == xaxis)
@@ -2915,7 +2956,7 @@ void * actin::compressfilesthread(void* threadarg)
 		pthread_mutex_lock(&filessavelock_mutex);
 		pthread_mutex_lock(&filesdonelock_mutex);
 
-		char command1[255],command2[255];
+		char command1[255];//,command2[255];
 
 		// gzip the text data:
 
@@ -3471,4 +3512,16 @@ rotationmatrix actin::get_sym_break_axes(void)
 
 	
 	return final_rotation;
+}
+
+void actin::clearstats(void)
+{
+	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+	{
+		for (int i=0; i<highestnodecount; ++i)
+		{
+			node[i].clearstats(threadnum);
+		}
+	}
+
 }

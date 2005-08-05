@@ -102,8 +102,8 @@ public:
 	//vector <nodes*> nodes;
 	vector <int_vect> nucleatorgrid;
 	vector <int> crosslinknodesdelay;
-	vector <MYDOUBLE> link_radial_histogram;
-	vector <MYDOUBLE> link_transverse_histogram;
+	//vector <MYDOUBLE> link_radial_histogram;
+	//vector <MYDOUBLE> link_transverse_histogram;
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
 	int collisiondetection(void);
@@ -128,11 +128,7 @@ public:
 				MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
 				MYDOUBLE imageGmax, 
 				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color);
-	
-	inline MYDOUBLE square(const MYDOUBLE& numb)
-	{
-		return numb*numb;
-	}
+
 
 	nucleator* nucleation_object;
 	int linkforces(const bool& sumforces);
@@ -156,8 +152,11 @@ public:
 	static Nodes1d nodes_within_nucleator;	
 	static vector <int> nodesbygridpoint;
 	static vector <int> nodesbygridpoint_temp;
-	inline static int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
-	inline static int dorepulsion(const int& node_i,const int& node_j, const MYDOUBLE& distsqr, const int& threadnum);
+	//static inline int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
+	static inline int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);;
+	//inline static int dorepulsion(const int& node_i,const int& node_j, const MYDOUBLE& distsqr, const int& threadnum);
+	//static inline int dorepulsion(nodes& node_i,nodes& node_j,
+	//						  const MYDOUBLE& dist,const int& threadnum);
 	static void *collisiondetectionthread(void*threadarg);
 	inline static void *collisiondetectiondowork(thread_data* dat);
 	static bool isinthread;
@@ -187,6 +186,7 @@ public:
 	int load_data(ifstream &ifstrm);
 	void setdontupdates(void);
 	rotationmatrix get_sym_break_axes(void);
+	void clearstats(void);
 };
 
 #endif

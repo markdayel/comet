@@ -116,9 +116,14 @@ public:
 		return *this;
 	}
 
-	inline MYDOUBLE dot(vect &a, vect &b)
+	//inline MYDOUBLE dot(vect &a, vect &b)
+	//{
+	//	return ((a.x * b.x) + (a.y * b.y) + (a.z * b.z));
+	//}
+
+	inline MYDOUBLE dot(const vect &v)
 	{
-		return ((a.x * b.x) + (a.y * b.y) + (a.z * b.z));
+		return ((x * v.x) + (y * v.y) + (z * v.z));
 	}
 
 	inline MYDOUBLE length()
@@ -126,13 +131,36 @@ public:
 		return calcdist(x,y,z);
 	}
 
-	inline vect cross(const vect &a, const vect &b)
+	//inline vect cross(const vect &a, const vect &b)
+	//{
+	//	vect temp;
+
+	//	temp.x = a.y*b.z - a.z-b.y;
+	//	temp.y = a.z*b.x - a.x-b.z;
+	//	temp.z = a.x*b.y - a.y-b.x;
+
+	//	return temp;
+	//}
+
+	inline vect cross(const vect &v)
 	{
 		vect temp;
 
-		temp.x = a.y*b.z - a.z-b.y;
-		temp.y = a.z*b.x - a.x-b.z;
-		temp.z = a.x*b.y - a.y-b.x;
+		temp.x = y*v.z - z-v.y;
+		temp.y = z*v.x - x-v.z;
+		temp.z = x*v.y - y-v.x;
+
+		return temp;
+	}
+
+	inline vect unitvec()
+	{
+       	vect temp;
+		MYDOUBLE len = length();
+
+		temp.x = x/len;
+		temp.y = y/len;
+		temp.z = z/len;
 
 		return temp;
 	}

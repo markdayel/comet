@@ -43,11 +43,15 @@ public:
 	//int yrank;
 	//int zrank;
 	vect lastpos;
-	vector <vect> link_force_vec;
+	vector <vect> link_force_vec;  // index is the threadnum
 	vector <vect> repulsion_displacement_vec;
 	vector <vect> rep_force_vec;
 	//vect momentum_vec;
 	vector <links> listoflinks;
+
+	vector <MYDOUBLE> linkforce_transverse, linkforce_radial,
+			 repforce_transverse, repforce_radial,
+			 dispforce_transverse, dispforce_radial;  // index is the threadnum
 	
 	int gridx, gridy, gridz;
 	vect delta;
@@ -71,18 +75,27 @@ public:
 
 	//inline int applyforces(const int &threadnum);
 	inline int applyforces(const int &threadnum)
+	{	
+		delta = (link_force_vec[threadnum] + rep_force_vec[threadnum]) * DELTA_T * FORCE_SCALE_FACT;
+
+		*this+=delta;
+
+		rep_force_vec[threadnum].zero();
+		link_force_vec[threadnum].zero();
+		repulsion_displacement_vec[threadnum].zero();
+
+		return 0;
+	}
+
+	inline void clearstats(const int &threadnum)
 	{
-	
-	delta = (link_force_vec[threadnum] + rep_force_vec[threadnum]) * DELTA_T * FORCE_SCALE_FACT;
-
-	*this+=delta;
-
-	rep_force_vec[threadnum].zero();
-	link_force_vec[threadnum].zero();
-	repulsion_displacement_vec[threadnum].zero();
-
-	return 0;
-}
+		linkforce_transverse[threadnum] = 0;
+		linkforce_radial[threadnum]     = 0;
+		repforce_transverse[threadnum]  = 0;
+		repforce_radial[threadnum]      = 0;
+		dispforce_transverse[threadnum] = 0;
+		dispforce_radial[threadnum]     = 0;
+	}
 };
 
 #endif

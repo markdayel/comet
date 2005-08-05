@@ -26,9 +26,9 @@ nodes::nodes(void)
 	//rep_force_vec.x  = rep_force_vec.y  = rep_force_vec.z  = 0.0;
 	
 	//repulsion_displacement_vec = new vect[NUM_THREADS+1];
-	repulsion_displacement_vec.resize(NUM_THREADS);
-	link_force_vec.resize(NUM_THREADS);
-	rep_force_vec.resize(NUM_THREADS);
+	repulsion_displacement_vec.resize(NUM_THREADS+1);
+	link_force_vec.resize(NUM_THREADS+1);
+	rep_force_vec.resize(NUM_THREADS+1);
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
@@ -45,6 +45,18 @@ nodes::nodes(void)
 	nodelinksbroken = 0;
 	harbinger = false;
 	dontupdate = false;
+
+	linkforce_transverse.resize(NUM_THREADS);
+	linkforce_radial.resize(NUM_THREADS);
+	repforce_transverse.resize(NUM_THREADS);
+	repforce_radial.resize(NUM_THREADS);
+	dispforce_transverse.resize(NUM_THREADS);
+	dispforce_radial.resize(NUM_THREADS);
+
+	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+	{
+		clearstats(threadnum);
+	}
 }
 
 nodes::nodes(const MYDOUBLE& set_x, const MYDOUBLE& set_y,const MYDOUBLE& set_z)
@@ -56,15 +68,20 @@ nodes::nodes(const MYDOUBLE& set_x, const MYDOUBLE& set_y,const MYDOUBLE& set_z)
 	lastpos.zero();
 	//repulsion_displacement_vec =  new vect[NUM_THREADS+1];
 
-	repulsion_displacement_vec.resize(NUM_THREADS);
-	link_force_vec.resize(NUM_THREADS);
-	rep_force_vec.resize(NUM_THREADS);
+	repulsion_displacement_vec.resize(NUM_THREADS+1);
+	link_force_vec.resize(NUM_THREADS+1);
+	rep_force_vec.resize(NUM_THREADS+1);
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
 		repulsion_displacement_vec[i].zero();
 		link_force_vec[i].zero();
 		rep_force_vec[i].zero();
+	}
+
+	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+	{
+		clearstats(threadnum);
 	}
 
 //	momentum_vec.x = momentum_vec.y = momentum_vec.z = 0.0;	

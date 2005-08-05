@@ -234,21 +234,21 @@ int main(int argc, char* argv[])
 	collisiondetectiongolock_mutex.resize(NUM_THREADS*5);
 	collisiondetectiondonelock_mutex.resize(NUM_THREADS*5);
 
-	collision_thread_data_array.resize(NUM_THREADS);
-	collision_thread_go.resize(NUM_THREADS);
-	collision_data_done.resize(NUM_THREADS);
+	collision_thread_data_array.resize(NUM_THREADS+1);
+	collision_thread_go.resize(NUM_THREADS+1);
+	collision_data_done.resize(NUM_THREADS+1);
 
-	linkforces_thread_data_array.resize(NUM_THREADS);
-	linkforces_thread_go.resize(NUM_THREADS);
-	linkforces_data_done.resize(NUM_THREADS);
+	linkforces_thread_data_array.resize(NUM_THREADS+1);
+	linkforces_thread_go.resize(NUM_THREADS+1);
+	linkforces_data_done.resize(NUM_THREADS+1);
 
-	applyforces_thread_data_array.resize(NUM_THREADS);
-	applyforces_thread_go.resize(NUM_THREADS);
-	applyforces_data_done.resize(NUM_THREADS);
+	applyforces_thread_data_array.resize(NUM_THREADS+1);
+	applyforces_thread_go.resize(NUM_THREADS+1);
+	applyforces_data_done.resize(NUM_THREADS+1);
 
-	compressfiles_thread_data_array.resize(NUM_THREADS);
-//	compressfiles_thread_go.resize(NUM_THREADS);
-//	compressfiles_data_done.resize(NUM_THREADS);
+	compressfiles_thread_data_array.resize(NUM_THREADS+1);
+//	compressfiles_thread_go.resize(NUM_THREADS+1);
+//	compressfiles_data_done.resize(NUM_THREADS+1);
 
 	pthread_attr_init(&thread_attr);
 	pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
@@ -797,6 +797,7 @@ if (nucshape == nucleator::capsule)
 			theactin.savebmp((i/InterRecordIterations), actin::zaxis);
 
 			nuc_object.clearradialsegments();
+			theactin.clearstats();
 
 			if ((i/InterRecordIterations)>(starting_iter/InterRecordIterations))  
 			{  // wait for last save to complete...
