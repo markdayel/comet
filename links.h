@@ -29,6 +29,8 @@ public:
 	int linkednodenumber;
 	MYDOUBLE orig_distsqr;
 	MYDOUBLE orig_dist;
+	MYDOUBLE orig_dist_recip;
+
 	bool broken;
 	int breakcount;
 	bool breaklastiter;
@@ -36,9 +38,9 @@ public:
 	MYDOUBLE theta;
 	MYDOUBLE phi;
 
-	inline MYDOUBLE getlinkforces(const MYDOUBLE& dist)
+	inline const MYDOUBLE getlinkforces(const MYDOUBLE& dist) 
 	{  // return force (nominally in pN)
-		MYDOUBLE force=0.0;
+		MYDOUBLE force;//=0.0;
 		MYDOUBLE stress_over_breakage;
 		// is link loose or taut?
 
@@ -47,7 +49,7 @@ public:
 
 			force =		- ( LINK_FORCE * (dist - orig_dist) +
 					LINK_TAUT_FORCE * (dist - (orig_dist*LINK_TAUT_RATIO)))
-							/ orig_dist;
+							* orig_dist_recip;
 
 			if ((-force) > LINK_BREAKAGE_FORCE)
 			{
@@ -72,7 +74,7 @@ public:
 		else
 		{  // loose: entropic spring
 
-			force = - LINK_FORCE * (dist - orig_dist) / orig_dist;
+			force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
 
 		}
 

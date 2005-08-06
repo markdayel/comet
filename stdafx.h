@@ -34,6 +34,7 @@ removed without prior written permission from the author.
 // defines
 
 // #define FORCES_BOTH_WAYS 1
+// #define NO_CALC_STATS 1
 
 #ifndef mymax
 #define mymax(a,b)            (((a) > (b)) ? (a) : (b))
@@ -252,7 +253,7 @@ const int GRIDSIZE =  (int) (GRIDBOUNDS/GRIDRES);
 const MYDOUBLE PI = (MYDOUBLE) 3.141592653589793238462643383279502884197; // Pi
 const MYDOUBLE LN_TWO = (MYDOUBLE) 0.69314718055995; // ln(2)
 
-inline MYDOUBLE mysqrt(const MYDOUBLE &d);
+//inline MYDOUBLE sqrt(const MYDOUBLE &d);
 inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist, const MYDOUBLE & zdist);
 inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist); 
 
@@ -269,7 +270,7 @@ inline void endian_swap(unsigned int& x);
 
 inline MYDOUBLE calcdist(const vect & v1, const vect & v2);
 
-/*inline float mysqrt(float x) {
+/*inline float sqrt(float x) {
   float y;
   _asm {
     mov ecx, x
@@ -291,7 +292,7 @@ inline MYDOUBLE calcdist(const vect & v1, const vect & v2);
 }  */
 
 
-/*inline MYDOUBLE mysqrt(MYDOUBLE d)
+/*inline MYDOUBLE sqrt(MYDOUBLE d)
 {
 	MYDOUBLE x,y, deltax;
 	x = 1/d;
@@ -305,7 +306,7 @@ inline MYDOUBLE calcdist(const vect & v1, const vect & v2);
 	return (1/x);
 }*/
 /*
-static inline MYDOUBLE mysqrt(MYDOUBLE x)
+static inline MYDOUBLE sqrt(MYDOUBLE x)
 {
 	// "delta" is the acceptable error bound
 	MYDOUBLE delta = x/100;
@@ -319,10 +320,11 @@ static inline MYDOUBLE mysqrt(MYDOUBLE x)
 }
 */
 
-inline MYDOUBLE mysqrt(const MYDOUBLE &d)
-{
-	return sqrt(d);
-}
+//inline MYDOUBLE sqrt(const MYDOUBLE &d)
+//{
+//	return sqrt(d);
+//}
+
 //inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist);
 inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist, const MYDOUBLE & zdist)
 {
@@ -334,7 +336,7 @@ inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist, const M
 		return SQRT_ACCURACY_LOSS;
 	}
 	else
-		return mysqrt(sqr);
+		return sqrt(sqr);
 }
 
 //inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist);
@@ -348,7 +350,7 @@ inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist)
 		return SQRT_ACCURACY_LOSS;
 	}
 	else
-		return mysqrt(sqr);
+		return sqrt(sqr);
 }
 
 inline MYDOUBLE calcdist(const vect & v1, const vect & v2) 

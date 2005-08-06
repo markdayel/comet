@@ -107,7 +107,8 @@ public:
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
 	int collisiondetection(void);
-	int ejectfromnucleator(void);
+	void ejectfromnucleator(void);
+	void move_and_rotate(void);
 
 	int applyforces(void);
 	int savebmp(int filenum, projection proj);
@@ -153,12 +154,12 @@ public:
 	static vector <int> nodesbygridpoint;
 	static vector <int> nodesbygridpoint_temp;
 	//static inline int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
-	static inline int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
+	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
 	//inline static int dorepulsion(const int& node_i,const int& node_j, const MYDOUBLE& distsqr, const int& threadnum);
 	//static inline int dorepulsion(nodes& node_i,nodes& node_j,
 	//						  const MYDOUBLE& dist,const int& threadnum);
 	static void *collisiondetectionthread(void*threadarg);
-	inline static void *collisiondetectiondowork(thread_data* dat);
+	static void *collisiondetectiondowork(thread_data* dat);
 	static bool isinthread;
 	//static Bool2d repulsedone;
 

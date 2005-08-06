@@ -135,7 +135,7 @@ int nucleator::addnodessphere(void)
 			
 			if (z*z<1) // avoid floating exception due to rounding errors causing -ve sqrt
 			{
-				r = radius * mysqrt(1 - z*z);		// radius of circle
+				r = radius * sqrt(1 - z*z);		// radius of circle
 			}
 			else
 			{
@@ -213,7 +213,7 @@ int nucleator::addnodescapsule(void)
 		{
 			if (z*z<1) // avoid floating exception due to rounding errors causing -ve sqrt
 			{
-				r = rad * mysqrt(1 - z*z);		// radius of circle
+				r = rad * sqrt(1 - z*z);		// radius of circle
 			}
 			else
 			{
@@ -280,7 +280,7 @@ if (geometry==sphere)
 	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
 		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
 		{
-			r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
+			r = RAD_INCOMP * sqrt(1 - z1*z1);		// radius of circle
 			
 			x = r * cos(theta);				// x and y of point
 			y = r * sin(theta);
@@ -298,7 +298,7 @@ else
 	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
 		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
 		{
-			r = RAD_INCOMP * mysqrt(1 - z1*z1);		// radius of circle
+			r = RAD_INCOMP * sqrt(1 - z1*z1);		// radius of circle
 			
 			x = r * cos(theta);				// x and y of point
 			y = r * sin(theta);

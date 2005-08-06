@@ -34,6 +34,7 @@ links::links(nodes* linknodep, MYDOUBLE dist)
 {
 	orig_distsqr = dist*dist;
 	orig_dist = dist;
+	orig_dist_recip = 1/dist;
 	broken = false;
 	breakcount = 0;
 	breaklastiter = 0;
@@ -59,6 +60,7 @@ int links::loaddata(ifstream *inputstream)
 		>> delim >> orig_dist >> delim >>  linkednodeptr->nodenum;
 
 	orig_distsqr = orig_dist*orig_dist;
+	orig_dist_recip = 1/orig_dist;
 
 	return 0;
 }

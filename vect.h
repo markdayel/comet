@@ -41,7 +41,7 @@ public:
 	MYDOUBLE y;
 	MYDOUBLE z;
 
-	inline vect operator+(const vect &param)
+	inline vect operator+(const vect &param) const
 	{
 		vect tmp;
 
@@ -52,7 +52,7 @@ public:
 		return tmp;
 	}
 
-	inline vect operator-(const vect &param)
+	inline vect operator-(const vect &param) const
 	{
 		vect tmp;
 
@@ -63,7 +63,7 @@ public:
 		return tmp;
 	}
 
-	inline vect operator-(void)
+	inline vect operator-(void) const
 	{
 		vect tmp;
 
@@ -75,7 +75,7 @@ public:
 	}
 
 
-	inline vect operator*(const MYDOUBLE &scale)
+	inline vect operator*(const MYDOUBLE &scale) const
 	{
 		vect tmp;
 
@@ -85,8 +85,6 @@ public:
 
 		return tmp;
 	}
-
-
 
 
 	inline vect operator+=(const vect &param)
@@ -121,12 +119,12 @@ public:
 	//	return ((a.x * b.x) + (a.y * b.y) + (a.z * b.z));
 	//}
 
-	inline MYDOUBLE dot(const vect &v)
+	const inline MYDOUBLE dot(const vect &v) const
 	{
 		return ((x * v.x) + (y * v.y) + (z * v.z));
 	}
 
-	inline MYDOUBLE length()
+	const inline MYDOUBLE length() const
 	{
 		return calcdist(x,y,z);
 	}
@@ -142,7 +140,7 @@ public:
 	//	return temp;
 	//}
 
-	inline vect cross(const vect &v)
+	const inline vect cross(const vect &v) const
 	{
 		vect temp;
 
@@ -153,7 +151,7 @@ public:
 		return temp;
 	}
 
-	inline vect unitvec()
+	const inline vect unitvec() const
 	{
        	vect temp;
 		MYDOUBLE len = length();
@@ -178,7 +176,7 @@ public:
 
 	}
 
-	inline MYDOUBLE sqrlength(void)
+	const inline MYDOUBLE sqrlength(void) const
 	{
 		return x*x + y*y + z*z;
 	}

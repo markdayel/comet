@@ -75,7 +75,7 @@ public:
 	bool dontupdate;
 
 	//inline int applyforces(const int &threadnum);
-	inline int applyforces(const int &threadnum)
+	inline void applyforces(const int &threadnum)
 	{	
 		delta = (link_force_vec[threadnum] + rep_force_vec[threadnum]) * DELTA_T * FORCE_SCALE_FACT;
 
@@ -85,28 +85,30 @@ public:
 		link_force_vec[threadnum].zero();
 		repulsion_displacement_vec[threadnum].zero();
 
-		return 0;
+		//return 0;
 	}
 
-	inline void getdirectionalmags(vect &displacement, MYDOUBLE &dotmag, MYDOUBLE &crossmag)
+	inline void getdirectionalmags(const vect &displacement, MYDOUBLE &dotmag, MYDOUBLE &crossmag)
 	{
 		dotmag = fabs(unit_vec_posn.dot(displacement));
 		crossmag = displacement.length() - dotmag;
 	}
 
-	inline void adddirectionalmags(vect &displacement, MYDOUBLE &dotmag, MYDOUBLE &crossmag)
-	{
-		dotmag += fabs(unit_vec_posn.dot(displacement));
-		crossmag += displacement.length() - dotmag;
+	inline void adddirectionalmags(const vect &displacement, MYDOUBLE &dotmag, MYDOUBLE &crossmag)
+	{  
+		MYDOUBLE tmp_dotmag = fabs(unit_vec_posn.dot(displacement));
+
+		dotmag += tmp_dotmag;
+		crossmag += displacement.length() - tmp_dotmag;
 	}
 
 	inline void clearstats(const int &threadnum)
 	{
-		linkforce_transverse[threadnum] = 0;
-		linkforce_radial[threadnum]     = 0;
-		repforce_transverse[threadnum]  = 0;
-		repforce_radial[threadnum]      = 0;
-		dispforce_transverse[threadnum] = 0;
+		linkforce_transverse[threadnum] = 
+		linkforce_radial[threadnum]     = 
+		repforce_transverse[threadnum]  = 
+		repforce_radial[threadnum]      = 
+		dispforce_transverse[threadnum] = 
 		dispforce_radial[threadnum]     = 0;
 	}
 };
