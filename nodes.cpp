@@ -37,6 +37,8 @@ nodes::nodes(void)
 		rep_force_vec[i].zero();
 	}
 
+	unit_vec_posn.zero();
+
 	
 //	momentum_vec.x = momentum_vec.y = momentum_vec.z = 0.0;	
 	polymer = false;
@@ -92,7 +94,7 @@ nodes::nodes(const MYDOUBLE& set_x, const MYDOUBLE& set_y,const MYDOUBLE& set_z)
 	dontupdate = false;
 
 	polymerize(set_x,  set_y,  set_z);
-
+	
 }
 
 nodes::~nodes(void)
@@ -134,6 +136,7 @@ bool nodes::polymerize(const MYDOUBLE& set_x, const MYDOUBLE& set_y, const MYDOU
 
 	setgridcoords(); // set grid by x,y,z
 	addtogrid();     // add node to the grid
+	unit_vec_posn=this->unitvec();
 
 	colour=ptheactin->newnodescolour;
 
@@ -274,6 +277,7 @@ void nodes::updategrid(void)
 	int oldgridz = gridz;
 
 	setgridcoords();  // set gridx,y,z by x,y,z position
+	unit_vec_posn=this->unitvec();  //set unit vector position
 
 	if	(((gridx!=oldgridx) ||     // has the node moved gridpoints?
 		  (gridy!=oldgridy) || 

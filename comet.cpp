@@ -37,7 +37,7 @@ MYDOUBLE MofI = (MYDOUBLE) 0.1;
 
 bool FORCES_ON_SIDE = true;
 
-int REPORT_AVERAGE_ITTERATIONS = 50;
+//int REPORT_AVERAGE_ITTERATIONS = 50;
 
 int RECORDED_TIMESTEPS=200;			// number of recorded timesteps(data files)
 

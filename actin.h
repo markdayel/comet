@@ -131,7 +131,7 @@ public:
 
 
 	nucleator* nucleation_object;
-	int linkforces(const bool& sumforces);
+	int linkforces();
 	Colour newnodescolour;
 	static int iteration_num;
 	int linksformed;
@@ -153,7 +153,7 @@ public:
 	static vector <int> nodesbygridpoint;
 	static vector <int> nodesbygridpoint_temp;
 	//static inline int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
-	static inline int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);;
+	static inline int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
 	//inline static int dorepulsion(const int& node_i,const int& node_j, const MYDOUBLE& distsqr, const int& threadnum);
 	//static inline int dorepulsion(nodes& node_i,nodes& node_j,
 	//						  const MYDOUBLE& dist,const int& threadnum);
@@ -178,7 +178,7 @@ public:
 	int find_center(vect &center);
 	int save_linkstats(int filenum);
 	void reportsnapshot(int filenum, int highestnode, int reportiteration);
-	void savereport(int filenum, int highestnode);
+	//void savereport(int filenum, int highestnode);
 	int savedata(int filenum);
 	int loaddata(int filenum);
 	void clear_nodegrid();

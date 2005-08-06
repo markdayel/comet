@@ -46,11 +46,11 @@ actin::actin(void)
 
 	doreportiteration = 9999999;
 
-	reportdat.resize(REPORT_NUM_VARIABLES);
-	for (int i=0; i!=REPORT_NUM_VARIABLES; i++)  
-	{
-		reportdat[i].resize(REPORT_AVERAGE_ITTERATIONS+1);
-	}
+	//reportdat.resize(REPORT_NUM_VARIABLES);
+	//for (int i=0; i!=REPORT_NUM_VARIABLES; i++)  
+	//{
+	//	reportdat[i].resize(REPORT_AVERAGE_ITTERATIONS+1);
+	//}
 
 
 	for (int i=0; i<MAXNODES; i++)
@@ -448,7 +448,7 @@ int actin::iterate()  // this is the main iteration loop call
 	
 	sortnodesbygridpoint();
 	collisiondetection();	// start collision detection threads
-	linkforces(false);			// start link forces threads
+	linkforces();			// start link forces threads
 	//repulsiveforces();		// start the repulsive forces thread
 
 	/*
@@ -466,29 +466,29 @@ int actin::iterate()  // this is the main iteration loop call
 
 
 	//  debugging:
-	if (((iteration_num+1)%InterRecordIterations)==0)
-	{
-		doreportiteration = 0;
-		doreportmaxnodes = highestnodecount;
+	//if (((iteration_num+1)%InterRecordIterations)==0)
+	//{
+	//	doreportiteration = 0;
+	//	doreportmaxnodes = highestnodecount;
 
-		// clear the array
-		for (int i=0; i!=REPORT_NUM_VARIABLES; ++i)  
-		{
-			for (int j=0; j!=REPORT_AVERAGE_ITTERATIONS; ++j)
-			{
-				reportdat[i][j].resize(doreportmaxnodes+1,0);
-			}
-		}
-	}
+	//	// clear the array
+	//	for (int i=0; i!=REPORT_NUM_VARIABLES; ++i)  
+	//	{
+	//		for (int j=0; j!=REPORT_AVERAGE_ITTERATIONS; ++j)
+	//		{
+	//			reportdat[i][j].resize(doreportmaxnodes+1,0);
+	//		}
+	//	}
+	//}
 
-	if (doreportiteration < REPORT_AVERAGE_ITTERATIONS)
-	{
-		reportsnapshot(iteration_num,doreportmaxnodes,doreportiteration);
-		++doreportiteration;
+	//if (doreportiteration < REPORT_AVERAGE_ITTERATIONS)
+	//{
+	//	reportsnapshot(iteration_num,doreportmaxnodes,doreportiteration);
+	//	++doreportiteration;
 
-		if (doreportiteration==REPORT_AVERAGE_ITTERATIONS)
-			savereport(iteration_num,doreportmaxnodes);
-	}
+	//	if (doreportiteration==REPORT_AVERAGE_ITTERATIONS)
+	//		savereport(iteration_num,doreportmaxnodes);
+	//}
 
 	applyforces(); // move the nodes
 
@@ -899,7 +899,8 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 {
 	vect nodeposvec;
 	MYDOUBLE distsqr,dist;
-	MYDOUBLE scale,force, forcescale;
+	MYDOUBLE scale,force;
+	vect tomove;
 
 	vect disp;
 
@@ -976,20 +977,22 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 						force =  NODE_REPULSIVE_MAG ;
 					}  // fix force if below node incompressible distance
 
-					forcescale = force / dist;
+					tomove = disp * ( 2 * force / dist);
 					
 
 #ifdef FORCES_BOTH_WAYS
 					
-					(*sameGPnode)->rep_force_vec[0] -= disp * forcescale;
-					(*nearnode)->rep_force_vec[0] += disp * forcescale;
+					(*sameGPnode)->rep_force_vec[0] -= tomove/2;
+					(*nearnode)->rep_force_vec[0] += tomove/2;
 
 #else
-					(*sameGPnode)->rep_force_vec[0] -= disp * (2.0 * forcescale) ;
+					(*sameGPnode)->rep_force_vec[0] -= tomove ;
 
-					(*sameGPnode)->repforce_radial[0]     += fabs(  (*sameGPnode)->unitvec().dot(disp)  * (2 * forcescale) ) ;
+					(*sameGPnode)->adddirectionalmags(tomove , (*sameGPnode)->repforce_radial[0], (*sameGPnode)->repforce_transverse[0]);
 
-					(*sameGPnode)->repforce_transverse[0] += fabs( ((*sameGPnode)->unitvec().cross(disp)).length()  * (2 * forcescale));
+					//(*sameGPnode)->repforce_radial[0]     += fabs(  (*sameGPnode)->unit_vec_posn.dot(disp)  * (2 * forcescale) ) ;
+
+					//(*sameGPnode)->repforce_transverse[0] += fabs( ((*sameGPnode)->unit_vec_posn.cross(disp)).length()  * (2 * forcescale));
 
 
 #endif
@@ -1000,19 +1003,21 @@ inline void * actin::collisiondetectiondowork(thread_data* dat)
 						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
 						scale = (MYDOUBLE)NODE_INCOMPRESSIBLE_RADIUS / (MYDOUBLE)4.0*dist;  
 
-						disp*=scale;	// these are the vector half components (in direction from i to j)
+						disp*=2*scale;	// these are the vector half components (in direction from i to j)
 
 #ifdef FORCES_BOTH_WAYS
 
-						(*sameGPnode)->repulsion_displacement_vec[0] -= disp;
-						(*nearnode)->repulsion_displacement_vec[0]   += disp;
+						(*sameGPnode)->repulsion_displacement_vec[0] -= disp/2;
+						(*nearnode)->repulsion_displacement_vec[0]   += disp/2;
 
 #else
-						(*sameGPnode)->repulsion_displacement_vec[0] -= disp * 2;
+						(*sameGPnode)->repulsion_displacement_vec[0] -= disp;
 
-						(*sameGPnode)->dispforce_radial[0]     += fabs(  (*sameGPnode)->unitvec().dot(disp)  * (2 * forcescale) ) ;
+						(*sameGPnode)->adddirectionalmags(disp, (*sameGPnode)->dispforce_radial[0], (*sameGPnode)->dispforce_transverse[0]);
 
-						(*sameGPnode)->dispforce_transverse[0] += fabs( ((*sameGPnode)->unitvec().cross(disp)).length()  * (2 * forcescale));
+						//(*sameGPnode)->dispforce_radial[0]     += fabs(  (*sameGPnode)->unit_vec_posn.dot(disp)  ) ;
+
+						//(*sameGPnode)->dispforce_transverse[0] += fabs( ((*sameGPnode)->unit_vec_posn.cross(disp)).length() );
 
 #endif
 					}
@@ -1195,6 +1200,7 @@ if (false) // (USE_THREADS)  // switch this off for now...
 	{
 		if ((!node[i].dontupdate) && node[i].polymer)
 			node[i].updategrid(); // move the point on the grid if need to
+								  // and update the unit vector position
 	}
 #endif
 	return 0;
@@ -1232,11 +1238,12 @@ void * actin::applyforcesthread(void* threadarg)
 	return (void*) NULL;
 }
 
-int actin::linkforces(const bool& sumforces)
+int actin::linkforces()
 {
-	MYDOUBLE scale,dist;
+	MYDOUBLE dist;
 	MYDOUBLE force;
 	vect nodeposvec, disp;
+	vect tomove;
 	
 	// remove the links for ones that were broken last time
 	for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
@@ -1286,7 +1293,7 @@ if (false) // USE_THREADS)
 		// go through all nodes
 		for (int n=0; n<highestnodecount; n++)
 		{  	
-			if ((node[n].dontupdate && !sumforces) || (!node[n].polymer))
+			if ((node[n].dontupdate) || (!node[n].polymer))
 				continue;
 
 			nodeposvec = node[n];
@@ -1313,28 +1320,27 @@ if (false) // USE_THREADS)
 					}
 					else
 					{
-						scale = 1/dist;
+						tomove = disp * (2* force/dist);  
+												  // we're scaling the force by vector disp
+												  // to get the direction, so we need to
+												  // divide by the length of disp (i.e. dist)
+												  // to prevent the length amplifying the force
 
-						if (sumforces)
-						{ //used to calculate stored link energy
-							node[n].link_force_vec[0].x += fabs(force);
-							i->linkednodeptr->link_force_vec[0].x += fabs(force);
-						}
-						else
-						{
 #ifdef FORCES_BOTH_WAYS
-						node[n].link_force_vec[0] += disp * (force * scale);
-						i->linkednodeptr->link_force_vec[0] -= disp * (force * scale);
+						node[n].link_force_vec[0] += tomove/2;
+						i->linkednodeptr->link_force_vec[0] -= tomove/2;
 #else
-						node[n].link_force_vec[0] += disp * (2 * force * scale);
+						node[n].link_force_vec[0] += tomove;
 
-						node[n].linkforce_radial[0]     += fabs(  node[n].unitvec().dot(disp)  * (2 * force * scale) ) ;
+						node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
 
-						node[n].linkforce_transverse[0] += fabs( (node[n].unitvec().cross(disp)).length()  * (2 * force * scale));
+						//node[n].linkforce_radial[0]     += fabs(  node[n].unit_vec_posn.dot(disp)  * (2 * force * scale) ) ;
+
+						//node[n].linkforce_transverse[0] += fabs( (node[n].unit_vec_posn.cross(disp)).length()  * (2 * force * scale));
 
 						//cout << node[n].linkforce_radial[0] << " " <<  node[n].linkforce_transverse[0] << endl;
 #endif
-						}
+						
 
 					}
 				}
@@ -1422,8 +1428,6 @@ int actin::setnodecols(void)
 	maxcol = 0;
 	mincol = 0;	
 
-	linkforces(true);
-
 	MYDOUBLE val;
 
 	maxcol = (MYDOUBLE) 0.001;
@@ -1431,7 +1435,7 @@ int actin::setnodecols(void)
 	for (int i=0; i<highestnodecount; i++)
 	{
 		if (node[i].link_force_vec[0].x>0.0001)
-			val = mysqrt(node[i].link_force_vec[0].x);
+			val = mysqrt(node[i].linkforce_transverse[0]);
 		else
 			val = 0;
 	
@@ -1445,7 +1449,7 @@ int actin::setnodecols(void)
 	for (int i=0; i<highestnodecount; i++)
 	{
 		if (node[i].link_force_vec[0].x>0.0001)
-			val = mysqrt(node[i].link_force_vec[0].x);
+			val = mysqrt(node[i].linkforce_transverse[0]);
 		else
 			val = 0;
 		//node[i].colour.setcol((MYDOUBLE)node[i].creation_iter_num/(MYDOUBLE)TOTAL_ITERATIONS);
@@ -1458,12 +1462,6 @@ int actin::setnodecols(void)
 		{
 			node[i].colour.setcol(0);
 		}
-		for (int threadnum=0; threadnum < NUM_THREADS; threadnum++)
-				{  // clear the dummy values
-					node[i].link_force_vec[threadnum].x = 0;
-					node[i].link_force_vec[threadnum].y = 0;
-					node[i].link_force_vec[threadnum].z = 0;
-				}
 	}
 
 
@@ -3132,6 +3130,7 @@ void actin::reportsnapshot(int filenum, int highestnode, int reportiteration)
 	return;
 
 }
+/*
 
 void actin::savereport(int filenum, int highestnode)
 {
@@ -3192,6 +3191,7 @@ void actin::savereport(int filenum, int highestnode)
 	opreport.close();
 
 }
+*/
 
 int actin::savedata(int filenum)
 {
@@ -3520,7 +3520,8 @@ void actin::clearstats(void)
 	{
 		for (int i=0; i<highestnodecount; ++i)
 		{
-			node[i].clearstats(threadnum);
+			if (!node[i].dontupdate)
+				node[i].clearstats(threadnum);
 		}
 	}
 

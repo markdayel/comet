@@ -43,6 +43,7 @@ public:
 	//int yrank;
 	//int zrank;
 	vect lastpos;
+	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
 	vector <vect> link_force_vec;  // index is the threadnum
 	vector <vect> repulsion_displacement_vec;
 	vector <vect> rep_force_vec;
@@ -85,6 +86,18 @@ public:
 		repulsion_displacement_vec[threadnum].zero();
 
 		return 0;
+	}
+
+	inline void getdirectionalmags(vect &displacement, MYDOUBLE &dotmag, MYDOUBLE &crossmag)
+	{
+		dotmag = fabs(unit_vec_posn.dot(displacement));
+		crossmag = displacement.length() - dotmag;
+	}
+
+	inline void adddirectionalmags(vect &displacement, MYDOUBLE &dotmag, MYDOUBLE &crossmag)
+	{
+		dotmag += fabs(unit_vec_posn.dot(displacement));
+		crossmag += displacement.length() - dotmag;
 	}
 
 	inline void clearstats(const int &threadnum)
