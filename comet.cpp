@@ -156,32 +156,41 @@ vector <nodes*> actin::linkremoveto;
 
 int InterRecordIterations = 0;
 
-
 int load_data(actin &theactin, int iteration);
 int save_data(actin &theactin, int iteration);
+void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations);
+void postprocess(actin &theactin, vector<int> &postprocess_iterations);
 
 // main 
 
 int main(int argc, char* argv[])
 {
-
-	//cout.put(33);
-	//cout << "]1;Hello";
-	//cout.put(7);
-
-	cout << endl;
-
-	if (argc < 2) 
+        if(argc < 2 || argc > 3) 
 	{
-		cerr << "Usage:" << endl << endl << argv[0] << " numThreads [R]" << endl << endl;
-		cerr << "where numThreads is the number of threads to use per calculation stage" << endl;
-		cerr << "Set numThreads to 0 to run in single threaded mode" << endl;
-		cerr << "and 'R' sets use of time-based random number seed" << endl << endl;
+	    cerr << "Usage:" << endl << endl << argv[0] << " numThreads [R]" << endl << endl;
+	    cerr << "where numThreads is the number of threads to use per calculation stage" << endl;
+	    cerr << "Set numThreads to 0 to run in single threaded mode" << endl;
+	    cerr << "and 'R' sets use of time-based random number seed" << endl << endl;
 	    exit(EXIT_FAILURE);
 	}
 
+	vector<int> postprocess_iterations;
+	postprocess_iterations.clear();
+	if(argc > 2 &&  strcasecmp(argv[1], "post") == 0 ) {
+	    cout << "Postprocessing iterations: ";
+	    get_postprocess_iterations(argv[2], postprocess_iterations);
+	    //vector<int>::iterator ppiter;
+	    //for(ppiter = postprocess_iterations.begin(); ppiter != postprocess_iterations.end(); ++ppiter){
+	    //	cout << *ppiter << " ";
+	    //}
+	    //cout << endl;
+
+            // REVISIT: continue to setup using the cometparams.ini file
+	    // or perhaps breakout here? (ML)
+	}
+	
 	ifstream param("cometparams.ini"); 
-	if (!param) 
+	if(!param) 
 	{
 		cerr << "Cannot open cometparams.ini" << endl << endl;
 		exit(EXIT_FAILURE);
@@ -194,7 +203,7 @@ int main(int argc, char* argv[])
 		cerr << "Warning: compiled with image text turned off" << endl << endl;
 	#endif
 #endif
-	 //srand( (unsigned) 200 );
+
 	if (argc < 3) 
 	{
 		cerr << "Warning: Static random number seed used" <<  endl;
@@ -204,6 +213,7 @@ int main(int argc, char* argv[])
 		cerr << "Time-based random number seed used" << endl;
 		srand( (unsigned)time( NULL ) );
 	}
+
 
 #ifndef _WIN32
 	nice(10);
@@ -649,7 +659,11 @@ if (nucshape == nucleator::capsule)
 
 	vect last_center, center, delta_center;
 
-	
+	// Breakout if we are post processing
+	if( !postprocess_iterations.empty() ){
+	    postprocess(theactin, postprocess_iterations );
+	    exit(EXIT_SUCCESS); // FIXME: early finish, move to two fcns (ML)
+	}
 
     //last_center_x = last_center_y = last_center_z = 0;
 	//center_x = center_y = center_z = 0;
@@ -665,8 +679,9 @@ if (nucshape == nucleator::capsule)
 	    load_data(theactin, RESTORE_FROM_ITERATION);
 	    cout << "restored from iteration "
 		 << RESTORE_FROM_ITERATION << endl;
-	    srand( (unsigned) 200 );
-	    //cout << "reseeded: " << rand() << endl;
+
+            // srand( (unsigned) 200 );
+	    // cout << "reseeded: " << rand() << endl;
 
 	    starting_iter = RESTORE_FROM_ITERATION; 
 //	starting_iter = RESTORE_FROM_ITERATION + 1; // don't overwrite
@@ -875,12 +890,12 @@ string get_datafilename(const int iteration)
 int load_data(actin &theactin, int iteration)
 {
 
-	char command1[255];
+    char command1[255];
     string filename = get_datafilename(iteration);
-
-	sprintf(command1, "gunzip %s",filename.c_str());
-	system(command1);
-
+    
+    sprintf(command1, "gunzip %s",filename.c_str());
+    system(command1);
+    
     ifstream ifstrm( filename.c_str() );
     if(!ifstrm) {
 	cout << "Unable to open file " << filename << " for input";
@@ -895,16 +910,16 @@ int load_data(actin &theactin, int iteration)
 	cout << "error in checkpoint file, 'comet:' expected" << endl;
 	return 1;
     }
-
+    
     int saved_iteration;
     ifstrm >> saved_iteration;
     theactin.load_data(ifstrm);
-	
-	ifstrm.close();
-
-	sprintf(command1, "gzip %s",filename.c_str());
-	system(command1);
-
+    
+    ifstrm.close();
+    
+    sprintf(command1, "gzip %s",filename.c_str());
+    system(command1);
+    
     // check the iteration is correct
     if( saved_iteration != iteration ){
 	cout << "error in saved file, saved iteration." << endl;
@@ -930,8 +945,76 @@ int save_data(actin &theactin, int iteration)
     theactin.save_data(ofstrm);
     
     ofstrm.close();
-
+    
     return 0;
+}
+
+void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations)
+{
+    // allow either:
+    //  a single value        '12'
+    //  a matlab style vector '1,2,3,4,5' | '0:5:50'
+    char numbers[]    = "1234567890";
+    char alldelim[]  = ",:"; // make big enough for the strcat (sorry)
+    char rangedelim[] = ":";
+    
+    // Good old fashioned string handling...
+    // why didn't I use std::string? (ML)
+    
+    // tokenise the description
+    char* tokch = (char*) malloc(sizeof(char) * ( strlen(iterdesc)+1 ));
+    strcpy(tokch, iterdesc);
+    char* chptr = strtok(tokch, alldelim);
+    while(chptr != NULL) {
+	// ensure ints, no rubbish
+	if(strspn(chptr, numbers) != strlen(chptr))
+	{
+	    cout << "Post processing iteration description not recognised (must be +ve int): "
+		 << chptr << endl;
+	    exit(EXIT_FAILURE);
+	}
+	postprocess_iterations.push_back( atoi(chptr) );
+	chptr = strtok(NULL, alldelim);
+    }
+    free(tokch);
+    
+    // build the range if needed
+    if(strcspn(iterdesc, rangedelim) != strlen(iterdesc) ){
+	// : range
+	int start = 0, step = 0, end = 0;
+	if(postprocess_iterations.size() == 1) {
+	    cerr << "ERROR: too few values in range request (2 min):" << iterdesc << endl;
+	    exit(EXIT_FAILURE);
+	} else if(postprocess_iterations.size() == 2) {
+	    start = postprocess_iterations[0];
+	    step = 1;
+	    end = postprocess_iterations[1];
+	} else if(postprocess_iterations.size() == 3) {
+	    start = postprocess_iterations[0];
+	    step = postprocess_iterations[1];
+	    end = postprocess_iterations[2];	    
+	} else if(postprocess_iterations.size() > 3) {
+	    cerr << "ERROR: too many values in range request (3 max):" << iterdesc << endl;
+	    exit(EXIT_FAILURE);
+	}
+	
+	postprocess_iterations.clear();
+	for(int i= start; i<=end; i+=step){
+	    postprocess_iterations.push_back(i);
+	}
+    } 
+}
+
+void postprocess(actin &theactin, vector<int> &postprocess_iterations)
+{
+    vector<int>::iterator iteration;
+    for(iteration = postprocess_iterations.begin(); iteration != postprocess_iterations.end(); ++iteration){
+	cout << " post processing iteration:" << *iteration << endl;
+	load_data(theactin, *iteration);
+	theactin.savebmp((*iteration/InterRecordIterations), actin::xaxis);
+	theactin.savebmp((*iteration/InterRecordIterations), actin::yaxis);
+	theactin.savebmp((*iteration/InterRecordIterations), actin::zaxis);
+    }
 }
 
 /*

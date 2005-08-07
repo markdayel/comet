@@ -31,7 +31,10 @@ actin::actin(void)
 
 	opvelocityinfo.open("velocities.txt", ios::out | ios::trunc);
 	if (!opvelocityinfo) 
-	{ cout << "Unable to open file " << "velocities.txt" << " for output"; return;}
+	{
+	    cout << "Unable to open file " << "velocities.txt" << " for output";
+	    return;
+	}
 
 	opvelocityinfo << "time,x,y,z,vel" << endl;
 
@@ -3245,7 +3248,9 @@ int actin::save_data(ofstream &ofstrm)
 	   << nexttocrosslink << "," 
 	   << iteration_num << "," 
 	   << linksbroken  << "," 
-	   << linksformed << endl;
+	   << linksformed << endl
+    	   << actin_rotation << ","
+	   << camera_rotation << endl;
     
     // save nodes
     ofstrm << "nodes-links:" << endl;
@@ -3283,7 +3288,6 @@ int actin::load_data(ifstream &ifstr)
     
     // load actin
     ifstr >> str;
-    
     // ensure the identifier for the start of the actin
     if(str.compare("actin:") !=0 ){
 	cout << "error in checkpoint file, 'actin:' expected" << endl;
@@ -3291,15 +3295,18 @@ int actin::load_data(ifstream &ifstr)
     }
     
     ifstr >> highestnodecount >> ch
-	  >> nexttocrosslink >> ch
-	  >> iteration_num >> ch 
-	  >> linksbroken  >> ch 
-	  >> linksformed;
-    
-    // load nodes
+	  >> nexttocrosslink  >> ch
+	  >> iteration_num    >> ch 
+	  >> linksbroken      >> ch 
+	  >> linksformed      
+	  >> actin_rotation   >> ch
+	  >> camera_rotation;
+
     ifstr >> str;
+    // load nodes
     if(str.compare("nodes-links:") !=0 ){
 	cout << "error in data file, 'nodes-links:' expected" << endl;
+	cout << "'" << str <<"' last read." << endl;
 	return 1;
     }
     // ** Remember the node vector is preallocated to MAXNODES

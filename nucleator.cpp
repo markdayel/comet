@@ -836,19 +836,57 @@ int nucleator::clearradialsegments()
 
 int nucleator::save_data(ofstream &ostr) 
 {
+    ostr << geometry << endl;
+    ostr << radius << endl;
+    ostr << segment << endl;
+    ostr << surf_area << endl;
+    ostr << movability << endl;
+    ostr << position << endl;
+    ostr << deltanucposn << endl;
+    ostr << torque << endl;
+    ostr << centerofmass << endl;
+    ostr << momentofinertia << endl;
+    ostr << nucleator_rotation << endl;
+    // omitting
+    //  colour
+    //  cagepoints
+    //  radial_rep_distrib_x
+    //  radial_rep_distrib_y
+    //  radial_rep_distrib_z
+    //  nbdy_segs
+    //  ncap_segs
+    //  fbar_cap_x;
+    //  fbar_cap_y;
+    //  fbar_cap_ang;
+    //  fbar_bdy_x;
+    //  fbar_bdy_y;
+    
+    /*
     ostr << position.x << ","
 	 << position.y << ","
 	 << position.z << endl;
-    
+    */
     return 0;
 }
 
 int nucleator::load_data(ifstream &istr) 
 {
-    char ch;
-    istr >> position.x >> ch
-	 >> position.y >> ch 
-	 >> position.z;
+    int geom;
+    istr >> geom;
+    if(geom == 0)
+	geometry= sphere;
+    else
+	geometry = capsule;
+    istr >> radius;
+    istr >> segment;
+    istr >> surf_area;
+    istr >> movability;
+    istr >> position;
+    istr >> deltanucposn;
+    istr >> torque;
+    istr >> centerofmass;
+    istr >> momentofinertia;
+    istr >> nucleator_rotation;
     
     return 0;
 }

@@ -46,8 +46,6 @@ public:
 
 	Colour colour;
 
-
-
 	vector <vect> cagepoints;
 
 	vector <MYDOUBLE> radial_rep_distrib_x;

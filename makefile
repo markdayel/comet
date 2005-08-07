@@ -1,5 +1,5 @@
 PROG = comet
-SRCS = actin.cpp Colour.cpp comet.cpp links.cpp nodes.cpp nucleator.cpp stdafx.cpp 
+SRCS = actin.cpp Colour.cpp comet.cpp links.cpp nodes.cpp nucleator.cpp stdafx.cpp rotationmatrix.cpp
 OBJS = $(SRCS:.cpp=.o)
 LIBS =  -lm -lpthread
 #CXXFLAGS = -O5 -ffast-math -fsingle-precision-constant -march=athlon-xp -mfpmath=sse -fomit-frame-pointer -malign-double -fprefetch-loop-arrays
