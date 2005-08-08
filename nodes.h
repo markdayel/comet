@@ -25,15 +25,15 @@ class Colour;
 class nodes: public vect
 {
 public:
-	//MYDOUBLE x , y , z ;
+	//double x , y , z ;
 	bool polymer;
 	nodes(void);
 	~nodes(void);
-	nodes(const MYDOUBLE& set_x,const MYDOUBLE& set_y,const MYDOUBLE& set_z);
+	nodes(const double& set_x,const double& set_y,const double& set_z);
 	nodes* nextnode;
 	nodes* prevnode;
 	bool depolymerize(void);
-	bool polymerize(const MYDOUBLE& set_x, const MYDOUBLE& set_y, const MYDOUBLE& set_z);
+	bool polymerize(const double& set_x, const double& set_y, const double& set_z);
 	int save(ofstream*);
 	int savedata(ofstream*);
 	int loaddata(ifstream *inputstream);
@@ -50,27 +50,27 @@ public:
 	//vect momentum_vec;
 	vector <links> listoflinks;
 
-	vector <MYDOUBLE> linkforce_transverse, linkforce_radial,
+	vector <double> linkforce_transverse, linkforce_radial,
 			 repforce_transverse, repforce_radial,
 			 dispforce_transverse, dispforce_radial;  // index is the threadnum
 	
 	int gridx, gridy, gridz;
 	vect delta;
-	//MYDOUBLE delta_x, delta_y, delta_z;
+	//double delta_x, delta_y, delta_z;
 	void updategrid(void);
 	void removefromgrid(void);
 	void addtogrid(void);
 	void setgridcoords(void);
 	int nodenum;
 	int	nodelinksbroken;
-	int addlink(nodes* linkto, const MYDOUBLE& dist);
+	int addlink(nodes* linkto, const double& dist);
 	int removelink(nodes* link);
 	Colour colour;
 	actin *ptheactin;
 	int creation_iter_num;
 	bool harbinger;
-	MYDOUBLE theta;
-	MYDOUBLE phi;
+	double theta;
+	double phi;
 	int savelinks(ofstream * outstream);
 	bool dontupdate;
 
@@ -88,15 +88,15 @@ public:
 		//return 0;
 	}
 
-	inline void getdirectionalmags(const vect &displacement, MYDOUBLE &dotmag, MYDOUBLE &crossmag)
+	inline void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
 	{
 		dotmag = fabs(unit_vec_posn.dot(displacement));
 		crossmag = displacement.length() - dotmag;
 	}
 
-	inline void adddirectionalmags(const vect &displacement, MYDOUBLE &dotmag, MYDOUBLE &crossmag)
+	inline void adddirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
 	{  
-		MYDOUBLE tmp_dotmag = fabs(unit_vec_posn.dot(displacement));
+		double tmp_dotmag = fabs(unit_vec_posn.dot(displacement));
 
 		dotmag += tmp_dotmag;
 		crossmag += displacement.length() - tmp_dotmag;

@@ -1,10 +1,24 @@
+/*
+Copyright (C) 2005 Mark J Dayel
+
+You may not distribute, deploy, provide copies of, rent, loan, lease, 
+transfer, or grant any rights in the software or derivative works thereof 
+in any form to any person.  Reproduction, adaptation, or translation of 
+this program without prior written permission from the author is 
+prohibited.  Proofs of infringement of copyright violations include but 
+not limited to similar code style and structures, similar layout and 
+design, similar algorithm design, and containing parts of the original 
+software source code.  Copyright notice must remain intact and cannot be 
+removed without prior written permission from the author.
+*/
+
 #ifndef segments_H 
 #define segments_H
 
 //#include "stdafx.h"
 //#include "nucleator.h"
 
-typedef vector<MYDOUBLE> Dbl1d;
+typedef vector<double> Dbl1d;
 typedef vector<Dbl1d> Dbl2d;
 typedef vector<Dbl2d> Dbl3d;
 
@@ -22,13 +36,20 @@ public:
 	void setupsegments(nucleator *pn, actin * pactin);
 
 	void drawoutline(ostream& out, const int& axis) const;
-	void drawsurfaceimpacts(ostream& out, const int& axis, const MYDOUBLE scale) const;
+	void drawsurfaceimpacts(ostream& out, const int& axis, const double scale) const;
+	void drawnodestats(ostream& drawcmd, const int& axis) const;
 
 	void addnode(const nodes& node);
-	void addsurfaceimpact(const nodes& node, const MYDOUBLE& mag);
+	void addallnodes();
+	void addsurfaceimpact(const nodes& node, const double& mag);
 
 	void getsegmentnum(const nodes& node, int& xseg, int& yseg, int& zseg) const;
-	int getcapsuleseg(const MYDOUBLE & x, const MYDOUBLE & y) const;
+	int  getcapsuleseg(const double & x, const double & y) const;
+	void getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const;
+
+	int  dist_to_seg(const double dist) const;
+
+	void savereport(const int& filenum) const;
 
 	void clearsurfaceimpacts(void);
 	void clearnodes(void);
@@ -42,18 +63,25 @@ public:
 	int num_dist_segs;				// number of segs going outwards from nuc
 	
 
-	MYDOUBLE curved_length;			// length of *one* cap
-	MYDOUBLE straight_length;		// length of *one* side
+	double curved_length;			// length of *one* cap
+	double straight_length;		// length of *one* side
 
-	MYDOUBLE straight_seg_len;		// distance between transverse segs on straight part of nuc
-	MYDOUBLE cap_seg_len;			// distance between transverse segs on caps of nuc
-	MYDOUBLE dist_step;				// distance between outward segs
+	double straight_seg_len;		// distance between transverse segs on straight part of nuc
+	double cap_seg_len;			// distance between transverse segs on caps of nuc
+	double dist_step;				// distance between outward segs
 
 
-	vector <MYDOUBLE> linestartx;	// x position of force line origin
-	vector <MYDOUBLE> linestarty;	// y position of force line origin
-	vector <MYDOUBLE> lineunitvecx;	// unit vector of force line x 
-	vector <MYDOUBLE> lineunitvecy;	// unit vector of force line y
+	//vector <double> linestartx;	// x position of force line origin
+	//vector <double> linestarty;	// y position of force line origin
+	//vector <double> lineunitvecx;	// unit vector of force line x 
+	//vector <double> lineunitvecy;	// unit vector of force line y
+	
+	// for position vectors, first index is axis num
+
+	Dbl2d linestartx;	// x position of force line origin
+	Dbl2d linestarty;	// y position of force line origin
+	Dbl2d lineunitvecx;	// unit vector of force line x 
+	Dbl2d lineunitvecy;	// unit vector of force line y
 
 									// for axes, 0=x, 1=y, 2=z
 
@@ -68,6 +96,8 @@ public:
 		link_transverse,
 		disp_radial,
 		disp_transverse;
+
+
 
 };
 

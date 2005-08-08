@@ -19,7 +19,7 @@ class links
 {
 public:
 	links(void);
-	links(nodes* linknodep, MYDOUBLE dist);
+	links(nodes* linknodep, double dist);
 	 ~links(void);
 	int savedata(ofstream *outputstream);
 	int loaddata(ifstream *inputstream);
@@ -27,21 +27,21 @@ public:
 	int load_data(ifstream &istr);
 	nodes* linkednodeptr;
 	int linkednodenumber;
-	MYDOUBLE orig_distsqr;
-	MYDOUBLE orig_dist;
-	MYDOUBLE orig_dist_recip;
+	double orig_distsqr;
+	double orig_dist;
+	double orig_dist_recip;
 
 	bool broken;
 	int breakcount;
 	bool breaklastiter;
-	//inline MYDOUBLE getlinkforces(const MYDOUBLE& distsq);
-	MYDOUBLE theta;
-	MYDOUBLE phi;
+	//inline double getlinkforces(const double& distsq);
+	double theta;
+	double phi;
 
-	inline const MYDOUBLE getlinkforces(const MYDOUBLE& dist) 
+	inline const double getlinkforces(const double& dist) 
 	{  // return force (nominally in pN)
-		MYDOUBLE force;//=0.0;
-		MYDOUBLE stress_over_breakage;
+		double force;//=0.0;
+		double stress_over_breakage;
 		// is link loose or taut?
 
 		if (dist > (orig_dist*LINK_TAUT_RATIO))
@@ -57,7 +57,7 @@ public:
 				breakcount++;
 
 				if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) > 
-						( ((MYDOUBLE) rand()) / (MYDOUBLE)(RAND_MAX) ) )
+						( ((double) rand()) / (double)(RAND_MAX) ) )
 				//if ((++breakcount>MAX_LINK_BREAKCOUNT) && breaklastiter)
 				{
 					broken = true;

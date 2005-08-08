@@ -156,7 +156,7 @@ int actin::crosslinknewnodes(int numnewnodes)
 	int threadnum = 0;
 	
 	vect nodeposvec;
-	MYDOUBLE distsqr;
+	double distsqr;
 
 	vect disp;
 
@@ -306,8 +306,8 @@ int actin::save(int filenum)
 int actin::saveinfo()
 {
 	//char filename[255];
-	MYDOUBLE minx, miny, minz;
-	MYDOUBLE maxx, maxy, maxz; 
+	double minx, miny, minz;
+	double maxx, maxy, maxz; 
 	//char time[255], date[255];
 
     //_strtime( time );
@@ -477,7 +477,7 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 	// crosslink a new node
 	// returns 1 if link added, 0 if not
 
-	MYDOUBLE pxlink;
+	double pxlink;
 
 	if (linknode1==linknode2) return 0;
 
@@ -489,23 +489,23 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 	//	(linknode2==178) || (linknode2==180) )
 	//	cout << "stop here";
 
-	//MYDOUBLE dist = calcdist(node[linknode1].x-node[linknode2].x,
+	//double dist = calcdist(node[linknode1].x-node[linknode2].x,
 	//						 node[linknode1].y-node[linknode2].y,
 	//						 node[linknode1].z-node[linknode2].z);
 
-	MYDOUBLE dist = calcdist(node[linknode1],node[linknode2]);
+	double dist = calcdist(node[linknode1],node[linknode2]);
 
 	// crosslink poisson distribution (max probability at XLINK_NODE_RANGE/5)
 
-	//pxlink = ((MYDOUBLE)2.7*dist/(XLINK_NODE_RANGE/(MYDOUBLE)5))
-	//						*exp(-dist/(XLINK_NODE_RANGE/(MYDOUBLE)5));
+	//pxlink = ((double)2.7*dist/(XLINK_NODE_RANGE/(double)5))
+	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5));
 
 	// divide by dist*dist to compensate for increase numbers of nodes at larger distances
 
 
 
-	//pxlink = ((( (MYDOUBLE) 2.7 / (XLINK_NODE_RANGE/(MYDOUBLE)5) )
-	//						*exp(-dist/(XLINK_NODE_RANGE/(MYDOUBLE)5) ) ));
+	//pxlink = ((( (double) 2.7 / (XLINK_NODE_RANGE/(double)5) )
+	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5) ) ));
 
 	// normal distrib with center around 1/2 of XLINK_NODE_RANGE
 	// and scale magnitude by 1/(XLINK_NODE_RANGE^2) to compensate for increased
@@ -516,8 +516,8 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 
 	// was using this one before 28 march:
 	// (poissonian with max at XLINK_NODE_RANGE/5):
-	//pxlink = ((( (MYDOUBLE) 2.7 / (XLINK_NODE_RANGE/(MYDOUBLE)5) )
-	//						*exp(-dist/(XLINK_NODE_RANGE/(MYDOUBLE)5) ) )/dist);
+	//pxlink = ((( (double) 2.7 / (XLINK_NODE_RANGE/(double)5) )
+	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5) ) )/dist);
 
 
 	// was using this (gaussian with max at XLINK_NODE_RANGE/2) for a bit:
@@ -525,7 +525,7 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 	
 	pxlink = 1;
 
-	if ( (P_XLINK*pxlink) > ( ((MYDOUBLE) rand()) / (MYDOUBLE)RAND_MAX ) )
+	if ( (P_XLINK*pxlink) > ( ((double) rand()) / (double)RAND_MAX ) )
 	{
 		node[linknode1].addlink(&node[linknode2],dist); 
 		node[linknode2].addlink(&node[linknode1],dist);
@@ -597,18 +597,18 @@ void actin::move_and_rotate()
 		
 		debug_num_rotate++;
 
-		MYDOUBLE x_angle = p_nuc->torque.x / 
+		double x_angle = p_nuc->torque.x / 
 				p_nuc->momentofinertia.x;
 
-		MYDOUBLE y_angle = p_nuc->torque.y / 
+		double y_angle = p_nuc->torque.y / 
 				p_nuc->momentofinertia.y;
 
-		MYDOUBLE z_angle = p_nuc->torque.z / 
+		double z_angle = p_nuc->torque.z / 
 				p_nuc->momentofinertia.z;
 
-		//MYDOUBLE x_angle = 0;  // for debugging
-		//MYDOUBLE y_angle = 0;
-		//MYDOUBLE z_angle = 0.00002;
+		//double x_angle = 0;  // for debugging
+		//double y_angle = 0;
+		//double z_angle = 0.00002;
 
 		rotationmatrix torque_rotate; // ( x_angle, rotationmatrix::xaxis);
 
@@ -871,8 +871,8 @@ void * actin::collisiondetectionthread(void* threadarg)
 void * actin::collisiondetectiondowork(thread_data* dat)
 {
 	vect nodeposvec;
-	MYDOUBLE distsqr,dist;
-	MYDOUBLE scale,force;
+	double distsqr,dist;
+	double scale,force;
 	vect tomove;
 
 	vect disp;
@@ -976,7 +976,7 @@ void * actin::collisiondetectiondowork(thread_data* dat)
 					{
 					                            
 						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
-						scale = (MYDOUBLE)NODE_INCOMPRESSIBLE_RADIUS / (MYDOUBLE)4.0*dist;  
+						scale = (double)NODE_INCOMPRESSIBLE_RADIUS / (double)4.0*dist;  
 
 						tomove = disp * (2*scale);	// these are the vector half components (in direction from i to j)
 
@@ -1096,12 +1096,12 @@ for (int x = minx; x != maxx; ++x)
 }
 
 //inline int actin::dorepulsion(nodes& node_i,nodes& node_j,
-//							  const MYDOUBLE& dist,const int& threadnum)
+//							  const double& dist,const int& threadnum)
 //{						// defunct, now in collisiondetectiondowork
 //	if (&node_i==&node_j)
 //		return 0;
 //
-//	MYDOUBLE scale;
+//	double scale;
 //
 //	vect disp;
 //
@@ -1224,8 +1224,8 @@ void * actin::applyforcesthread(void* threadarg)
 
 int actin::linkforces()
 {
-	MYDOUBLE dist;
-	MYDOUBLE force;
+	double dist;
+	double force;
 	vect nodeposvec, disp;
 	vect tomove;
 	
@@ -1345,8 +1345,8 @@ void * actin::linkforcesthread(void* threadarg)
 	struct thread_data *dat;
 	dat = (struct thread_data *) threadarg;
 
-	MYDOUBLE xdist, ydist, zdist, dist;
-	MYDOUBLE force;
+	double xdist, ydist, zdist, dist;
+	double force;
 	vect nodeposvec;
 
 	//cout << "Thread " << dat->threadnum << " started" << endl;
@@ -1410,13 +1410,13 @@ void * actin::linkforcesthread(void* threadarg)
 int actin::setnodecols(void)
 {
 
-	MYDOUBLE maxcol,mincol;
+	double maxcol,mincol;
 	maxcol = 0;
 	mincol = 0;	
 
-	MYDOUBLE val;
+	double val;
 
-	maxcol = (MYDOUBLE) 0.001;
+	maxcol = (double) 0.001;
 
 	for (int i=0; i<highestnodecount; i++)
 	{
@@ -1438,8 +1438,8 @@ int actin::setnodecols(void)
 			val = sqrt(node[i].linkforce_transverse[0]);
 		else
 			val = 0;
-		//node[i].colour.setcol((MYDOUBLE)node[i].creation_iter_num/(MYDOUBLE)TOTAL_ITERATIONS);
-		//node[i].colour.setcol(((MYDOUBLE)node[i].nodelinksbroken-mincol)/(maxcol-mincol));
+		//node[i].colour.setcol((double)node[i].creation_iter_num/(double)TOTAL_ITERATIONS);
+		//node[i].colour.setcol(((double)node[i].nodelinksbroken-mincol)/(maxcol-mincol));
 		if ((node[i].polymer)&& (!node[i].listoflinks.empty()) && val > 0.001)
 			{
 				node[i].colour.setcol((val-mincol)/(maxcol-mincol));
@@ -1453,17 +1453,17 @@ int actin::setnodecols(void)
 
 	//for (int i=0; i<highestnodecount; i++)
 	//{
-	//node[i].colour.setcol((MYDOUBLE)node[i].creation_iter_num/(MYDOUBLE)iteration_num);
+	//node[i].colour.setcol((double)node[i].creation_iter_num/(double)iteration_num);
 	//}
 /*
-	MYDOUBLE maxcol,mincol;
+	double maxcol,mincol;
 	maxcol = 1;
 	mincol = 0;	
-	MYDOUBLE val;
+	double val;
 
 	for (int i=0; i<highestnodecount; i++)
 	{
-		val = (MYDOUBLE)node[i].nodelinksbroken;
+		val = (double)node[i].nodelinksbroken;
 		if ((node[i].polymer) && (val > maxcol))
 		{
 			maxcol = val;
@@ -1472,23 +1472,23 @@ int actin::setnodecols(void)
 
 	for (int i=0; i<highestnodecount; i++)
 	{
-	node[i].colour.setcol((MYDOUBLE)node[i].nodelinksbroken/maxcol);
+	node[i].colour.setcol((double)node[i].nodelinksbroken/maxcol);
 	}
 
 	for (int i=0; i<highestnodecount;i++)
 	{
-		//i = (int) ((MYDOUBLE) highestnodecount * ( (MYDOUBLE) rand()) / (MYDOUBLE)RAND_MAX);
+		//i = (int) ((double) highestnodecount * ( (double) rand()) / (double)RAND_MAX);
 		if (i%300==0)
 		{
-		node[i].colour.setcol((MYDOUBLE)i/(MYDOUBLE)highestnodecount);
+		node[i].colour.setcol((double)i/(double)highestnodecount);
 		for (vector <links>::iterator l=node[i].listoflinks.begin(); l<node[i].listoflinks.end() ; l++ )
 			{	 
-				l->linkednodeptr->colour.setcol((MYDOUBLE)i/(MYDOUBLE)highestnodecount);
+				l->linkednodeptr->colour.setcol((double)i/(double)highestnodecount);
 			}
 		}
 		else
 		{
-		node[i].colour.r = node[i].colour.g = node[i].colour.b = (MYDOUBLE)0.4;
+		node[i].colour.r = node[i].colour.g = node[i].colour.b = (double)0.4;
 		}
 	}
 */
@@ -1578,21 +1578,21 @@ typedef struct tagBITMAPINFO {
 	if (!outbmpfile) 
 	{ cout << "Unable to open file '" << filename << "' for output"; return 1;}
 
-	MYDOUBLE minx, miny, minz;
-	MYDOUBLE maxx, maxy, maxz; 
-	//MYDOUBLE VIEW_HEIGHT, VIEW_HEIGHT, VIEW_HEIGHT;
+	double minx, miny, minz;
+	double maxx, maxy, maxz; 
+	//double VIEW_HEIGHT, VIEW_HEIGHT, VIEW_HEIGHT;
 
 	int beadmaxx, beadmaxy;
 	int beadminx, beadminy;
-	//MYDOUBLE centerx, centery, centerz;
+	//double centerx, centery, centerz;
 	
 
 
 	int x,y;
 
-	MYDOUBLE gaussmax = (MYDOUBLE) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
+	double gaussmax = (double) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
 
-	MYDOUBLE imageRmax, imageGmax, imageBmax;
+	double imageRmax, imageGmax, imageBmax;
 
 	imageR.resize(BMP_WIDTH);
 	imageG.resize(BMP_WIDTH);
@@ -1638,7 +1638,7 @@ typedef struct tagBITMAPINFO {
 
  	// VIEW_HEIGHT = VIEW_HEIGHT = VIEW_HEIGHT = VIEW_HEIGHT;  //these are the x,y and z scales (should be equal)
 
-	MYDOUBLE meanx, meany, meanz;
+	double meanx, meany, meanz;
 
 
 	// temp: reset center:
@@ -1673,11 +1673,11 @@ typedef struct tagBITMAPINFO {
 				continue;  // don't do corners
 
 			GaussMat[xg+xgmax][yg+ygmax] 
-					= exp(-3*((MYDOUBLE)(xg*xg+yg*yg))/(MYDOUBLE)(xgmax*ygmax));
+					= exp(-3*((double)(xg*xg+yg*yg))/(double)(xgmax*ygmax));
 		}
 	}
 
-	MYDOUBLE  keep_within_border;
+	double  keep_within_border;
 
 	if (p_nuc->geometry == nucleator::sphere)
 		 keep_within_border = 2* RADIUS;
@@ -1722,8 +1722,8 @@ typedef struct tagBITMAPINFO {
 
 //int harbingers = 0;
 
-//MYDOUBLE xx,yy,zz;
-//MYDOUBLE rotx, roty, rotz;
+//double xx,yy,zz;
+//double rotx, roty, rotz;
 
 vect rot;
 
@@ -1926,9 +1926,9 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 		//outbmpfile.write(picbuff + (BMP_WIDTH*y), BMP_WIDTH);
 		for (x = 0; x<BMP_WIDTH; x++)
 			{
-			line[x].B=(unsigned char)(255 * (MYDOUBLE)(imageB[x][y])/(MYDOUBLE)imageBmax);
-			line[x].G=(unsigned char)(255 * (MYDOUBLE)(imageG[x][y])/(MYDOUBLE)imageGmax);
-			line[x].R=(unsigned char)(255 * (MYDOUBLE)(imageR[x][y])/(MYDOUBLE)imageRmax);
+			line[x].B=(unsigned char)(255 * (double)(imageB[x][y])/(double)imageBmax);
+			line[x].G=(unsigned char)(255 * (double)(imageG[x][y])/(double)imageGmax);
+			line[x].R=(unsigned char)(255 * (double)(imageR[x][y])/(double)imageRmax);
 			}
 			outbmpfile.write((char*)line,BMP_WIDTH*3);
 		}
@@ -1973,7 +1973,7 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 			"convert -font helvetica -fill white -pointsize 20 -draw \
 					\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
 					x_proj_%05i.bmp x_proj_%05i.png",  
-			scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
+			scalebarlength,filenum,(int)((1000/(double)imageGmax)+0.5),  filenum, filenum );
 
 		sprintf(command2,
 			"convert %s x_proj_%05i.png x_forces_%05i.png",
@@ -1987,7 +1987,7 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 			"convert -font helvetica -fill white -pointsize 20 -draw \
 					\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
 					y_proj_%05i.bmp y_proj_%05i.png",  
-			scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
+			scalebarlength,filenum,(int)((1000/(double)imageGmax)+0.5),  filenum, filenum );
 
 		sprintf(command2,
 			"convert %s y_proj_%05i.png y_forces_%05i.png",
@@ -2000,7 +2000,7 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 			"convert -font helvetica -fill white -pointsize 20 -draw \
 					\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
 					z_proj_%05i.bmp z_proj_%05i.png",  
-			scalebarlength,filenum,(int)((1000/(MYDOUBLE)imageGmax)+0.5),  filenum, filenum );
+			scalebarlength,filenum,(int)((1000/(double)imageGmax)+0.5),  filenum, filenum );
 
 		sprintf(command2,
 			"convert %s z_proj_%05i.png z_forces_%05i.png",
@@ -2040,7 +2040,7 @@ system(command2);
 }
 
 
-int actin::squash(MYDOUBLE thickness)
+int actin::squash(double thickness)
 {
 	// squash with 'coverslip'
 
@@ -2059,8 +2059,8 @@ int actin::squash(MYDOUBLE thickness)
 /*
 int actin::repulsiveforces(void)  // this is defunct
 {
-	MYDOUBLE xdist, ydist, zdist, dist;
-	MYDOUBLE force, distsqr;
+	double xdist, ydist, zdist, dist;
+	double force, distsqr;
 	vect nodeposvec;
 	
 	int numthreadnodes, start, end;
@@ -2166,8 +2166,8 @@ void * actin::repulsiveforcesthread(void* threadarg)
 	struct thread_data *dat;
 	dat = (struct thread_data *) threadarg;
 
-	MYDOUBLE xdist, ydist, zdist;
-	MYDOUBLE distsqr, dist, force;
+	double xdist, ydist, zdist;
+	double distsqr, dist, force;
 	vect nodeposvec;
 
 	//cout << "Thread " << dat->threadnum << " started" << endl;
@@ -2395,7 +2395,7 @@ int actin::find_center(vect &center)
 int actin::save_linkstats(int filenum)
 {
 	char filename[255];
-//	MYDOUBLE radial_force, transverse_force;
+//	double radial_force, transverse_force;
 
 	sprintf ( filename , "linkstats%05i.txt", filenum );
 
@@ -2419,72 +2419,7 @@ int actin::save_linkstats(int filenum)
 }
 
 
-void actin::reportsnapshot(int filenum, int highestnode, int reportiteration)
-{
 
- 	MYDOUBLE dist,compx,compy,compz;
-
-	//int varnum;
-
-    for (int i=0; i<highestnode; i++)
-	{
-		if ((node[i].polymer) && (!node[i].harbinger))  // is point valid?
-		{
-
-			reportdat[0][reportiteration][i]=1;  // valid point
-			
-			//varnum = 0;
-
-			// calculate distance from center of bead
-			dist = calcdist(node[i].x,node[i].y,node[i].z);
-
-			// calculate components of normalized radial vector
-			compx = node[i].x / dist;
-			compy = node[i].y / dist;
-			compz = node[i].z / dist;
-
-			// distance from center of bead
-			reportdat[1][reportiteration][i]=dist;
-
-			// dot product of repulsive force vector and normalised radial vector
-			reportdat[2][reportiteration][i]=(node[i].rep_force_vec[0].x * compx +
-						node[i].rep_force_vec[0].y * compy +
-						node[i].rep_force_vec[0].z * compz );
-
-			// cross product of repulsive force vector and normalised radial vector
-			reportdat[3][reportiteration][i]=calcdist(node[i].rep_force_vec[0].y * compz - node[i].rep_force_vec[0].z * compy,
-						node[i].rep_force_vec[0].z * compx - node[i].rep_force_vec[0].x * compz,
-						node[i].rep_force_vec[0].x * compy - node[i].rep_force_vec[0].y * compx);
-
-			// dot product of repulsive displacement vector and normalised radial vector
-			reportdat[4][reportiteration][i]=(node[i].repulsion_displacement_vec[0].x * compx +
-						node[i].repulsion_displacement_vec[0].y * compy +
-						node[i].repulsion_displacement_vec[0].z * compz );
-
-			// cross product of repulsive displacement vector and normalised radial vector
-			reportdat[5][reportiteration][i]=calcdist(node[i].repulsion_displacement_vec[0].y * compz - node[i].repulsion_displacement_vec[0].z * compy,
-						node[i].repulsion_displacement_vec[0].z * compx - node[i].repulsion_displacement_vec[0].x * compz,
-						node[i].repulsion_displacement_vec[0].x * compy - node[i].repulsion_displacement_vec[0].y * compx);
-
-			// dot product of link force vector and normalised radial vector
-			reportdat[6][reportiteration][i]=(node[i].link_force_vec[0].x * compx +
-						node[i].link_force_vec[0].y * compy +
-						node[i].link_force_vec[0].z * compz );
-
-			// cross product of link force vector and normalised radial vector
-			reportdat[7][reportiteration][i]=calcdist(node[i].link_force_vec[0].y * compz - node[i].link_force_vec[0].z * compy,
-						node[i].link_force_vec[0].z * compx - node[i].link_force_vec[0].x * compz,
-						node[i].link_force_vec[0].x * compy - node[i].link_force_vec[0].y * compx);
-		}
-		else
-		{
-			reportdat[0][reportiteration][i]=-1;  // not valid point
-		}
-	}
-
-	return;
-
-}
 /*
 
 void actin::savereport(int filenum, int highestnode)
@@ -2791,11 +2726,11 @@ rotationmatrix actin::get_sym_break_axes(void)
 
 	rotationmatrix tmp_rotation, final_rotation;	
 
-	MYDOUBLE x_angle, y_angle, z_angle;
+	double x_angle, y_angle, z_angle;
 
-	MYDOUBLE x_inertia = 0, y_inertia = 0;
+	double x_inertia = 0, y_inertia = 0;
 	
-	MYDOUBLE z_in_angle;
+	double z_in_angle;
 
 	int numnodes;
 
@@ -2838,7 +2773,7 @@ rotationmatrix actin::get_sym_break_axes(void)
 
 	}
 
-	CofM *= (1/ (MYDOUBLE) numnodes);
+	CofM *= (1/ (double) numnodes);
 
 	tmp_rotation.rotate(CofM);
 

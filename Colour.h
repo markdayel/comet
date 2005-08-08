@@ -19,12 +19,12 @@ class Colour
 {
 public:
 	Colour(void);
-	Colour(MYDOUBLE val);
+	Colour(double val);
 	~Colour(void);
-	MYDOUBLE r,g,b;
+	double r,g,b;
 	unsigned char R,G,B;
-	MYDOUBLE mag;
-	int setcol(MYDOUBLE mag);
+	double mag;
+	int setcol(double mag);
 };
 
 #endif

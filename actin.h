@@ -31,7 +31,7 @@ typedef vector<Nodes2d> Nodes3d;
 //typedef vector<signed char> Bool1d;
 //typedef vector<Bool1d> Bool2d;
 
-typedef vector<MYDOUBLE> Dbl1d;
+typedef vector<double> Dbl1d;
 typedef vector<Dbl1d> Dbl2d;
 
 class nodes;
@@ -46,7 +46,7 @@ class linkform
 {
 public:
 	linkform(){};
-	linkform(int nn, MYDOUBLE dsqr)
+	linkform(int nn, double dsqr)
 	{
 		nodenum = nn;
 		distsqr = dsqr;
@@ -58,7 +58,7 @@ public:
 	}
 
 	int nodenum;
-	MYDOUBLE distsqr;
+	double distsqr;
 };
 
 class actin
@@ -103,8 +103,8 @@ public:
 	//vector <nodes*> nodes;
 	vector <int_vect> nucleatorgrid;
 	vector <int> crosslinknodesdelay;
-	//vector <MYDOUBLE> link_radial_histogram;
-	//vector <MYDOUBLE> link_transverse_histogram;
+	//vector <double> link_radial_histogram;
+	//vector <double> link_transverse_histogram;
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
 	int collisiondetection(void);
@@ -117,17 +117,17 @@ public:
 				int BMP_WIDTH, int BMP_HEIGHT,
 				int xgmax, int ygmax,
 				int movex, int movey,
-				MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-				MYDOUBLE imageGmax, 
-				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color);
+				double meanx, double meany, double meanz,
+				double imageGmax, 
+				bool nuc_forces_overlay, double scale, double thickness,  char*  color);
 
 	void draw_capsule_forces(int filenum, projection proj,
 				int BMP_WIDTH, int BMP_HEIGHT,
 				int xgmax, int ygmax,
 				int movex, int movey,
-				MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-				MYDOUBLE imageGmax, 
-				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color);
+				double meanx, double meany, double meanz,
+				double imageGmax, 
+				bool nuc_forces_overlay, double scale, double thickness,  char*  color);
 
 
 	segments segs;
@@ -156,9 +156,9 @@ public:
 	static vector <int> nodesbygridpoint_temp;
 	//static inline int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
 	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
-	//inline static int dorepulsion(const int& node_i,const int& node_j, const MYDOUBLE& distsqr, const int& threadnum);
+	//inline static int dorepulsion(const int& node_i,const int& node_j, const double& distsqr, const int& threadnum);
 	//static inline int dorepulsion(nodes& node_i,nodes& node_j,
-	//						  const MYDOUBLE& dist,const int& threadnum);
+	//						  const double& dist,const int& threadnum);
 	static void *collisiondetectionthread(void*threadarg);
 	static void *collisiondetectiondowork(thread_data* dat);
 	static bool isinthread;
@@ -173,13 +173,13 @@ public:
 	static void *repulsiveforcesthread(void* threadarg);
 	static void *compressfilesthread(void* threadarg);
 
-	int squash(MYDOUBLE thickness);
+	int squash(double thickness);
 	//int repulsiveforces(void);
 	int sortnodesbygridpoint(void);
 	int nexttocrosslink;
 	int find_center(vect &center);
 	int save_linkstats(int filenum);
-	void reportsnapshot(int filenum, int highestnode, int reportiteration);
+	//void reportsnapshot(int filenum, int highestnode, int reportiteration);
 	//void savereport(int filenum, int highestnode);
 	int savedata(int filenum);
 	int loaddata(int filenum);
@@ -190,9 +190,9 @@ public:
 	rotationmatrix get_sym_break_axes(void);
 	void clearstats(void);
 
-	inline int pixels(const MYDOUBLE & coord) const
+	inline int pixels(const double & coord) const
 	{  // convert simulation distance into pixel distance
-		return (int)((MYDOUBLE) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
+		return (int)((double) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
 	}
 };
 

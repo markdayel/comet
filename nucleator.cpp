@@ -16,9 +16,9 @@ removed without prior written permission from the author.
 #include "nucleator.h"
 
 #ifdef SEED_INSIDE			
-MYDOUBLE NUCPOINT_SCALE = 0.9;
+double NUCPOINT_SCALE = 0.9;
 #else
-MYDOUBLE NUCPOINT_SCALE = 1.001;
+double NUCPOINT_SCALE = 1.001;
 #endif
 			
 nucleator::nucleator(void)
@@ -27,7 +27,7 @@ nucleator::nucleator(void)
 
 	//radius = RADIUS;
 	//segment = 2*CAPSULE_HALF_LINEAR;
-	////P_NUC = (MYDOUBLE) 0.8 / (4*PI*radius*radius);
+	////P_NUC = (double) 0.8 / (4*PI*radius*radius);
 	//geometry = sphere;
 	//position.zero();
 	//surf_area = 4 * PI * radius * radius;
@@ -57,7 +57,7 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 {
 	radius = RADIUS;
 	//segment = 2*CAPSULE_HALF_LINEAR;
-	//P_NUC = (MYDOUBLE)0.8 / (4*PI*radius*radius);
+	//P_NUC = (double)0.8 / (4*PI*radius*radius);
 	geometry = set_geometry;
 
 	if (geometry==sphere)
@@ -124,19 +124,19 @@ int nucleator::addnodes(void)
 int nucleator::addnodessphere(void)
 {
 	int nodesadded = 0;
-	MYDOUBLE x,y,z,r,theta;
+	double x,y,z,r,theta;
 	
-	MYDOUBLE floatingnodestoadd = DELTA_T * P_NUC * surf_area;  // number of nodes to add
+	double floatingnodestoadd = DELTA_T * P_NUC * surf_area;  // number of nodes to add
 
 	int nodestoadd = (int) floatingnodestoadd;
 
-	if (( floatingnodestoadd - nodestoadd ) > ( (MYDOUBLE) rand()) / (MYDOUBLE)RAND_MAX)
+	if (( floatingnodestoadd - nodestoadd ) > ( (double) rand()) / (double)RAND_MAX)
 		nodestoadd++;
 
 	for (int i=0; i< nodestoadd; i++)
 	{
-			z = (((MYDOUBLE) rand()) / (MYDOUBLE)(RAND_MAX/2)) - 1 ;		// random number -1 to 1
-			theta = (2 * PI * ((MYDOUBLE) rand()) / (MYDOUBLE)(RAND_MAX));  // circle vector
+			z = (((double) rand()) / (double)(RAND_MAX/2)) - 1 ;		// random number -1 to 1
+			theta = (2 * PI * ((double) rand()) / (double)(RAND_MAX));  // circle vector
 			
 			if (z*z<1) // avoid floating exception due to rounding errors causing -ve sqrt
 			{
@@ -156,15 +156,15 @@ int nucleator::addnodessphere(void)
 				if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
 					if ((y<0) || (fabs(x+z)>0.5)) continue;
 				if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
-					if (z < (radius) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/2) - 1))
+					if (z < (radius) *( (double) rand() / (double)(RAND_MAX/2) - 1))
 						continue;
 				if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
-					if (z < (radius) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/4) - 3))
+					if (z < (radius) *( (double) rand() / (double)(RAND_MAX/4) - 3))
 						continue;
 			    if (ASYMMETRIC_NUCLEATION==4) { // fixed random location
-				static MYDOUBLE fixed_x = x;
-				static MYDOUBLE fixed_y = y;
-				static MYDOUBLE fixed_z = z;
+				static double fixed_x = x;
+				static double fixed_y = y;
+				static double fixed_z = z;
 				x = fixed_x;
 				y = fixed_y;
 				z = fixed_z;				
@@ -183,16 +183,16 @@ int nucleator::addnodessphere(void)
 int nucleator::addnodescapsule(void)
 {
 	int nodesadded = 0;
-	MYDOUBLE x,y,z,r,theta;
+	double x,y,z,r,theta;
 	bool onseg;
 
-	MYDOUBLE rad = radius * NUCPOINT_SCALE;
+	double rad = radius * NUCPOINT_SCALE;
 
-	MYDOUBLE floatingnodestoadd = DELTA_T * P_NUC * surf_area;  // number of nodes to add
+	double floatingnodestoadd = DELTA_T * P_NUC * surf_area;  // number of nodes to add
 
 	int nodestoadd = (int) floatingnodestoadd;
 
-	if (( floatingnodestoadd - nodestoadd ) > ( (MYDOUBLE) rand()) / (MYDOUBLE)RAND_MAX)
+	if (( floatingnodestoadd - nodestoadd ) > ( (double) rand()) / (double)RAND_MAX)
 		nodestoadd++;
 
 	for (int i=0; i< nodestoadd; i++)
@@ -205,12 +205,12 @@ int nucleator::addnodescapsule(void)
 		//           = r/(r+2h)
 
 
-		//onseg = (((2 * rad)/(2 * rad + 3 * segment)) < (((MYDOUBLE) rand()) / (MYDOUBLE)(RAND_MAX)));
+		//onseg = (((2 * rad)/(2 * rad + 3 * segment)) < (((double) rand()) / (double)(RAND_MAX)));
 
-		z = (((MYDOUBLE) rand()) / (MYDOUBLE)(RAND_MAX/2)) - 1 ;  // random number -1 to 1
-		theta = (2 * PI * ((MYDOUBLE) rand()) / (MYDOUBLE)(RAND_MAX));  // circle vector
+		z = (((double) rand()) / (double)(RAND_MAX/2)) - 1 ;  // random number -1 to 1
+		theta = (2 * PI * ((double) rand()) / (double)(RAND_MAX));  // circle vector
 		
-		onseg = ( (CAPSULE_HALF_LINEAR /(radius+CAPSULE_HALF_LINEAR)) > ( ((MYDOUBLE) rand()) / (MYDOUBLE)(RAND_MAX) ) ); // on ends or on segment?
+		onseg = ( (CAPSULE_HALF_LINEAR /(radius+CAPSULE_HALF_LINEAR)) > ( ((double) rand()) / (double)(RAND_MAX) ) ); // on ends or on segment?
 		
 		if (onseg)
 		{
@@ -244,10 +244,10 @@ int nucleator::addnodescapsule(void)
 			if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
 				if (z<0) continue;
 			if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
-				if (z < (CAPSULE_HALF_LINEAR + rad) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/2) - 1))
+				if (z < (CAPSULE_HALF_LINEAR + rad) *( (double) rand() / (double)(RAND_MAX/2) - 1))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
-				if (z < (CAPSULE_HALF_LINEAR + rad) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/4) - 3))
+				if (z < (CAPSULE_HALF_LINEAR + rad) *( (double) rand() / (double)(RAND_MAX/4) - 3))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==4)  // caps only
 				if (fabs(z) < (CAPSULE_HALF_LINEAR))
@@ -256,7 +256,7 @@ int nucleator::addnodescapsule(void)
 				if ( (fabs(z) < (CAPSULE_HALF_LINEAR)) || ((x<0)&&(z>0)) || ((x>0)&&(z<0)) )
 					continue;
 			if (ASYMMETRIC_NUCLEATION==6)  // caps only
-				if (fabs(z) < 0.5 * (CAPSULE_HALF_LINEAR + rad) *( (MYDOUBLE) rand() / (MYDOUBLE)(RAND_MAX/4) - 3))
+				if (fabs(z) < 0.5 * (CAPSULE_HALF_LINEAR + rad) *( (double) rand() / (double)(RAND_MAX/4) - 3))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==7)  // half caps one side
 				if ( (fabs(z) < (0.7*CAPSULE_HALF_LINEAR)) || ((x>0)&&(z>0)) || ((x<0)&&(z<0)) || (z>0))
@@ -279,15 +279,15 @@ int nucleator::addnodescapsule(void)
 int nucleator::save(ofstream *outputstream) 
 {
 
-MYDOUBLE x,y,z,r;
+double x,y,z,r;
 
 if (geometry==sphere)
 {
 
  // sphere
 
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
+	for (double theta=-PI; theta<PI; theta+=2*PI/20)
+		for (double z1=-1; z1<=1; z1+= RAD_INCOMP/10)
 		{
 			r = RAD_INCOMP * sqrt(1 - z1*z1);		// radius of circle
 			
@@ -304,8 +304,8 @@ if (geometry==sphere)
 }
 else
 {
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
+	for (double theta=-PI; theta<PI; theta+=2*PI/20)
+		for (double z1=-1; z1<=1; z1+= RAD_INCOMP/10)
 		{
 			r = RAD_INCOMP * sqrt(1 - z1*z1);		// radius of circle
 			
@@ -326,8 +326,8 @@ else
 
 		}
 		
-	for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/20)
-		for (MYDOUBLE z1=-1; z1<=1; z1+= RAD_INCOMP/10)
+	for (double theta=-PI; theta<PI; theta+=2*PI/20)
+		for (double z1=-1; z1<=1; z1+= RAD_INCOMP/10)
 		{
 					
 			x = RAD_INCOMP * cos(theta);				// x and y of point
@@ -387,7 +387,7 @@ int nucleator::definenucleatorgrid(void)
 
 	// traverse cuboid around shape, and add to nucleatorgrid
 
-	MYDOUBLE scalefacrad = ((MYDOUBLE)1 + ((MYDOUBLE)2)*(MYDOUBLE)GRIDRES/RAD_INCOMP);
+	double scalefacrad = ((double)1 + ((double)2)*(double)GRIDRES/RAD_INCOMP);
 
 	cout << "Defining nucleator grid for ";
 	if (geometry==capsule)
@@ -396,9 +396,9 @@ int nucleator::definenucleatorgrid(void)
 		cout << "sphere...";
 	cout.flush();
 
-	for (MYDOUBLE x=-(MYDOUBLE)1.2*(RAD_INCOMP+GRIDRES); x<(MYDOUBLE)1.2*(RAD_INCOMP+GRIDRES); x+=GRIDRES/10)
-		for (MYDOUBLE y=-(MYDOUBLE)1.2*(RAD_INCOMP+GRIDRES); y<(MYDOUBLE)1.2*(RAD_INCOMP+GRIDRES); y+=GRIDRES/10)
-			for (MYDOUBLE z=-(MYDOUBLE)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES); z<(MYDOUBLE)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES);z+=GRIDRES/10)
+	for (double x=-(double)1.2*(RAD_INCOMP+GRIDRES); x<(double)1.2*(RAD_INCOMP+GRIDRES); x+=GRIDRES/10)
+		for (double y=-(double)1.2*(RAD_INCOMP+GRIDRES); y<(double)1.2*(RAD_INCOMP+GRIDRES); y+=GRIDRES/10)
+			for (double z=-(double)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES); z<(double)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES);z+=GRIDRES/10)
 				{
 					gridpos.x = (((int)(x / GRIDRES)) + (GRIDSIZE/2) );
 					gridpos.y = (((int)(y / GRIDRES)) + (GRIDSIZE/2) );
@@ -442,7 +442,7 @@ int nucleator::definenucleatorgrid(void)
 }
 
 
-bool nucleator::iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MYDOUBLE& z)
+bool nucleator::iswithinnucleator(const double& x, const double& y, const double& z)
 {
 	switch (geometry)
 	{
@@ -468,8 +468,8 @@ bool nucleator::iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MY
 
 //void nucleator::set_rep_bins()
 //{
-//    // vector<MYDOUBLE> radial_rep_bin_x;
-//    // vector<MYDOUBLE> radial_rep_bin_y;
+//    // vector<double> radial_rep_bin_x;
+//    // vector<double> radial_rep_bin_y;
 //		
 //    // bit of a guess, let's partition the samples as 1/2, 1/4, 1/4
 //    // body segments
@@ -487,9 +487,9 @@ bool nucleator::iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MY
 //    fbar_bdy_x.clear();
 //    fbar_bdy_y.clear();
 //    
-//    MYDOUBLE seg_length = 2*CAPSULE_HALF_LINEAR / (nbdy_segs/2.0 - 1);
+//    double seg_length = 2*CAPSULE_HALF_LINEAR / (nbdy_segs/2.0 - 1);
 //
-//    MYDOUBLE x,y;
+//    double x,y;
 //    cout << "body_segments:" << nbdy_segs << endl;
 //    
 //    // partition points on the capsule body
@@ -514,8 +514,8 @@ bool nucleator::iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MY
 //
 //    cout << "cap_segments:" << ncap_segs << endl;
 //    
-//    MYDOUBLE seg_angle = PI/(ncap_segs/2.0);
-//    MYDOUBLE angle;
+//    double seg_angle = PI/(ncap_segs/2.0);
+//    double angle;
 //    
 //    for(int i=0; i<(ncap_segs); i++){
 //	angle = i*seg_angle + seg_angle/2.0;
@@ -540,7 +540,7 @@ bool nucleator::iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MY
 //    
 //}
 
-bool nucleator::collision(nodes &node)//(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z)
+bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 {  // returns true if succeeds, false if fails due to too great node ejection
 
 if (USE_THREADS)
@@ -549,13 +549,13 @@ if (USE_THREADS)
 	// node has entered nucleator,
 	// return co-ords of node pushed to surface...
 
-    MYDOUBLE r, scale, z2;
+    double r, scale, z2;
 	vect node_disp;
 	vect oldpos;
 
 	oldpos = node;
 
-	MYDOUBLE rad = RAD_INCOMP * (MYDOUBLE) 1.001; // needed to prevent rounding errors putting back inside nuclator
+	double rad = RAD_INCOMP * (double) 1.001; // needed to prevent rounding errors putting back inside nuclator
 
     // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
 	switch (geometry)
@@ -606,7 +606,7 @@ if (USE_THREADS)
 		//// on the endcaps
 		//// treat locally as a sphere
   //              // move back to the surface of the nucleator
-		//MYDOUBLE lz = 0;
+		//double lz = 0;
 		//lz = (z>0)?(z-CAPSULE_HALF_LINEAR.0):(lz+CAPSULE_HALF_LINEAR.0);		
 
 		//r = calcdist(x,y,lz);
@@ -734,15 +734,15 @@ if (USE_THREADS)
 	return true; // sucessful node ejection
 }
 //
-//int nucleator::get_zbin(const MYDOUBLE x, const MYDOUBLE y)
+//int nucleator::get_zbin(const double x, const double y)
 //{
 //    // FIXME:
 //    // Confusingly this is x,y where y is moving up capsule
 //    // and x is moving away (ie y = z, x = x|y) this made sense at the time.
 //    int indx = 0;
 //    int np = (int)fbar_bdy_y.size();
-//    MYDOUBLE mindist = fabs(y - fbar_bdy_y[indx]);;
-//    MYDOUBLE dist;
+//    double mindist = fabs(y - fbar_bdy_y[indx]);;
+//    double dist;
 //    
 //    for(int i=0; i<np; i++)
 //	{
@@ -769,14 +769,14 @@ if (USE_THREADS)
 //    return indx;
 //}
 // 
-//int nucleator::get_angbin(const MYDOUBLE x, const MYDOUBLE y)
+//int nucleator::get_angbin(const double x, const double y)
 //{
 //    // angular bin, assumed to be on a circle
 //    int indx = -1;
 //    int np = (int)fbar_cap_ang.size();
-//    MYDOUBLE ang;
-//    MYDOUBLE mindiff = 2*PI;
-//    MYDOUBLE diff;
+//    double ang;
+//    double mindiff = 2*PI;
+//    double diff;
 //
 //    ang = atan2(y, x);
 //    for(int i=0; i<np; i++){
@@ -925,20 +925,20 @@ int nucleator::load_data(ifstream &istr)
 void nucleator::definecagepoints(void)
 {
 
-	const MYDOUBLE pointdensity = 20;
-	MYDOUBLE pointspacing;
+	const double pointdensity = 20;
+	double pointspacing;
 
 	cagepoints.resize(0);
 
-	MYDOUBLE r,xx,yy,zz;
+	double r,xx,yy,zz;
 
 	if (geometry==sphere)
 	{
 
 	// sphere
 
-		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)
-			for (MYDOUBLE phi=-PI; phi<PI; phi+=2*PI/pointdensity)
+		for (double theta=-PI; theta<PI; theta+=2*PI/pointdensity)
+			for (double phi=-PI; phi<PI; phi+=2*PI/pointdensity)
 			{
 				
 				r = RAD_INCOMP * cos(phi);		// radius of circle
@@ -956,8 +956,8 @@ void nucleator::definecagepoints(void)
 	{
 
 
-		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)
-			for (MYDOUBLE phi=-PI; phi<PI; phi+=2*PI/pointdensity)
+		for (double theta=-PI; theta<PI; theta+=2*PI/pointdensity)
+			for (double phi=-PI; phi<PI; phi+=2*PI/pointdensity)
 			{
 				
 				r = RAD_INCOMP * cos(phi);		// radius of circle
@@ -978,8 +978,8 @@ void nucleator::definecagepoints(void)
 			
 		pointspacing = (RAD_INCOMP * 2 *PI) / pointdensity;
 
-		for (MYDOUBLE theta=-PI; theta<PI; theta+=2*PI/pointdensity)
-			for (MYDOUBLE z1=(-(CAPSULE_HALF_LINEAR)); z1<(0.001+CAPSULE_HALF_LINEAR); z1+= pointspacing)
+		for (double theta=-PI; theta<PI; theta+=2*PI/pointdensity)
+			for (double z1=(-(CAPSULE_HALF_LINEAR)); z1<(0.001+CAPSULE_HALF_LINEAR); z1+= pointspacing)
 			{
 						
 				xx = RAD_INCOMP * cos(theta);				// x and y of point

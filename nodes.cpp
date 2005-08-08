@@ -61,7 +61,7 @@ nodes::nodes(void)
 	}
 }
 
-nodes::nodes(const MYDOUBLE& set_x, const MYDOUBLE& set_y,const MYDOUBLE& set_z)
+nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 {
 	gridx = gridy = gridz = -1;	
     nextnode = this;  // initialise to point to self
@@ -121,7 +121,7 @@ bool nodes::depolymerize(void)
 	return false;
 }
 
-bool nodes::polymerize(const MYDOUBLE& set_x, const MYDOUBLE& set_y, const MYDOUBLE& set_z)
+bool nodes::polymerize(const double& set_x, const double& set_y, const double& set_z)
 {
 	x = set_x;
 	y = set_y;
@@ -394,7 +394,7 @@ void nodes::setgridcoords(void)
 	return;
 } 
 
-int nodes::addlink(nodes* linkto, const MYDOUBLE& dist)
+int nodes::addlink(nodes* linkto, const double& dist)
 {
 
 	//if (listoflinks.size()<MAX_LINKS_PER_NODE)

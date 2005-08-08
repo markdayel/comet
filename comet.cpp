@@ -16,28 +16,28 @@ removed without prior written permission from the author.
 #include "comet.h"
 // #include "string.h"
 
-MYDOUBLE TOTAL_SIMULATION_TIME = 20000;  
-MYDOUBLE DELTA_T = (MYDOUBLE)0.1;	
-MYDOUBLE MIN_TORQUE_TO_UPDATE = 0.2;
-MYDOUBLE MIN_DISPLACEMENT_TO_UPDATE = 0.001;
-//MYDOUBLE MAX_DISP_PERDT = (MYDOUBLE)0.01;
-//MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO = (MYDOUBLE)0.00707;
-MYDOUBLE GAUSSFWHM = (MYDOUBLE) 0.266;
+double TOTAL_SIMULATION_TIME = 20000;  
+double DELTA_T = (double)0.1;	
+double MIN_TORQUE_TO_UPDATE = 0.2;
+double MIN_DISPLACEMENT_TO_UPDATE = 0.001;
+//double MAX_DISP_PERDT = (double)0.01;
+//double MAX_DISP_PERDT_DIVSQRTTWO = (double)0.00707;
+double GAUSSFWHM = (double) 0.266;
 
 bool NUCLEATOR_FORCES = true;
 
 int BMP_WIDTH = 800;
 int BMP_HEIGHT = 600;
 
-MYDOUBLE INIT_R_GAIN = 20;
-MYDOUBLE INIT_G_GAIN = 20;
-MYDOUBLE INIT_B_GAIN = 20;
+double INIT_R_GAIN = 20;
+double INIT_G_GAIN = 20;
+double INIT_B_GAIN = 20;
 
 int SPECKLE_FACTOR = 1;
 
 bool ROTATION = true;
 
-MYDOUBLE MofI = (MYDOUBLE) 0.1;
+double MofI = (double) 0.1;
 
 bool FORCES_ON_SIDE = true;
 
@@ -49,33 +49,33 @@ int RESTORE_FROM_ITERATION = 0; // =0 don't load a checkpoint
 int RECORDING_INTERVAL = 0;
 int NUMBER_RECORDINGS = 0;
 
-MYDOUBLE FORCE_SCALE_FACT = (MYDOUBLE)0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
+double FORCE_SCALE_FACT = (double)0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
 					        // this is related to effective viscosity and effective size of node
-MYDOUBLE FORCEBAR_SCALE   = (MYDOUBLE)10;	// scale for relating force to image bar
+double FORCEBAR_SCALE   = (double)10;	// scale for relating force to image bar
 
-MYDOUBLE XLINK_NODE_RANGE = (MYDOUBLE) 1.0;		// Limit crosslink to within this range
-MYDOUBLE NODE_INCOMPRESSIBLE_RADIUS = (MYDOUBLE)0.2;	// repulsion is zero here
-// MYDOUBLE NODE_REPULSIVE_MAG = 1000;   // max repulsion (at dist=0)
+double XLINK_NODE_RANGE = (double) 1.0;		// Limit crosslink to within this range
+double NODE_INCOMPRESSIBLE_RADIUS = (double)0.2;	// repulsion is zero here
+// double NODE_REPULSIVE_MAG = 1000;   // max repulsion (at dist=0)
 
-MYDOUBLE LINK_BREAKAGE_FORCE = (MYDOUBLE) 100;	 // breakage force per link
-MYDOUBLE P_LINK_BREAK_IF_OVER = (MYDOUBLE) 0.25;  // probablility that force will break link if over the link breakage force
+double LINK_BREAKAGE_FORCE = (double) 100;	 // breakage force per link
+double P_LINK_BREAK_IF_OVER = (double) 0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NODE = 100;
 
-MYDOUBLE LINK_TAUT_FORCE = (MYDOUBLE) 5;
-MYDOUBLE LINK_TAUT_RATIO = (MYDOUBLE) 1.1;
+double LINK_TAUT_FORCE = (double) 5;
+double LINK_TAUT_RATIO = (double) 1.1;
 
 
-MYDOUBLE LINK_FORCE = (MYDOUBLE)0.1;
-MYDOUBLE P_XLINK = (MYDOUBLE) 0.5;
-MYDOUBLE P_NUC = (MYDOUBLE) 0.08;
-MYDOUBLE RADIUS = (MYDOUBLE) 1.0;
-MYDOUBLE CAPSULE_HALF_LINEAR = (MYDOUBLE) 6.0;
+double LINK_FORCE = (double)0.1;
+double P_XLINK = (double) 0.5;
+double P_NUC = (double) 0.08;
+double RADIUS = (double) 1.0;
+double CAPSULE_HALF_LINEAR = (double) 6.0;
 
-//MYDOUBLE SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
-MYDOUBLE RAD_INCOMP = RADIUS;// + NODE_INCOMPRESSIBLE_RADIUS/2;
+//double SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
+double RAD_INCOMP = RADIUS;// + NODE_INCOMPRESSIBLE_RADIUS/2;
 
-//MYDOUBLE NODEMASS = 1.0;
-//MYDOUBLE INERTIAL_DAMPING_HALFTIME = 50;
+//double NODEMASS = 1.0;
+//double INERTIAL_DAMPING_HALFTIME = 50;
 
 int TOTAL_ITERATIONS ;
 int NODE_REPULSIVE_GRIDSEARCH ;
@@ -84,21 +84,21 @@ int NODE_REPULSIVE_RANGE_GRIDSEARCH;
 
 int RADIAL_SEGMENTS = 12;
 int NODES_TO_UPDATE = 5000;  //only update the NODES_TO_UPDATE newest nodes
-MYDOUBLE DISTANCE_TO_UPDATE = 0;
+double DISTANCE_TO_UPDATE = 0;
 
-//MYDOUBLE DAMPING_FACTOR = 10;
+//double DAMPING_FACTOR = 10;
 int CROSSLINKDELAY = 20;  // number of interations before crosslinking 
 						 //  (to allow position to be equilibrated to something
 						 //       reasonable before locking node in place)
 
-MYDOUBLE NODE_REPULSIVE_MAG = (MYDOUBLE) 0.00000001;
-MYDOUBLE NODE_REPULSIVE_RANGE = NODE_INCOMPRESSIBLE_RADIUS*2;
+double NODE_REPULSIVE_MAG = (double) 0.00000001;
+double NODE_REPULSIVE_RANGE = NODE_INCOMPRESSIBLE_RADIUS*2;
 
 int ASYMMETRIC_NUCLEATION = 0;
 
 int XLINK_NEAREST = 1;
 
-MYDOUBLE VIEW_HEIGHT = 12;
+double VIEW_HEIGHT = 12;
 
 bool USE_THREADS;
 
@@ -333,7 +333,7 @@ int main(int argc, char* argv[])
 
 	// read the parameters file:
 
-	MYDOUBLE MAX_DISP = 1;
+	double MAX_DISP = 1;
 
 	string buffer;
     while (getline(param, buffer)) 
@@ -540,17 +540,17 @@ int main(int argc, char* argv[])
 
 	// calculate commonly used constant's from parameters:
 
-	TOTAL_ITERATIONS = (int) (((MYDOUBLE)TOTAL_SIMULATION_TIME / (MYDOUBLE)DELTA_T)+0.5);
+	TOTAL_ITERATIONS = (int) (((double)TOTAL_SIMULATION_TIME / (double)DELTA_T)+0.5);
 
-	NODE_REPULSIVE_GRIDSEARCH = (int) ceil(((MYDOUBLE) NODE_INCOMPRESSIBLE_RADIUS )/GRIDRES) + 1;
-	NODE_XLINK_GRIDSEARCH = (int) ceil(((MYDOUBLE) XLINK_NODE_RANGE )/GRIDRES) + 1;
-	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) ceil(((MYDOUBLE) NODE_REPULSIVE_RANGE )/GRIDRES) + 1;
+	NODE_REPULSIVE_GRIDSEARCH = (int) ceil(((double) NODE_INCOMPRESSIBLE_RADIUS )/GRIDRES) + 1;
+	NODE_XLINK_GRIDSEARCH = (int) ceil(((double) XLINK_NODE_RANGE )/GRIDRES) + 1;
+	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) ceil(((double) NODE_REPULSIVE_RANGE )/GRIDRES) + 1;
 
 	// loop iterations per recorded timestep
 	InterRecordIterations = RECORDING_INTERVAL;
 	NUMBER_RECORDINGS = int(TOTAL_ITERATIONS / RECORDING_INTERVAL);
 	// InterRecordIterations = (int)
-	// (((MYDOUBLE)TOTAL_ITERATIONS / (MYDOUBLE) RECORDED_TIMESTEPS)+0.5 );	
+	// (((double)TOTAL_ITERATIONS / (double) RECORDED_TIMESTEPS)+0.5 );	
 	//SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
 	RAD_INCOMP = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
 
@@ -652,12 +652,12 @@ if (nucshape == nucleator::capsule)
 
 	theactin.newnodescolour.setcol(0);
 
-	//MYDOUBLE center_x,center_y,center_z;
-	//MYDOUBLE last_center_x, last_center_y , last_center_z;
-	//MYDOUBLE delta_center_x , delta_center_y, delta_center_z;
-	MYDOUBLE distfromorigin;
+	//double center_x,center_y,center_z;
+	//double last_center_x, last_center_y , last_center_z;
+	//double delta_center_x , delta_center_y, delta_center_z;
+	double distfromorigin;
 
-	MYDOUBLE x_angle, y_angle, z_angle;
+	double x_angle, y_angle, z_angle;
 
 	bool DISTANCE_TO_UPDATE_reached = false;
 
@@ -743,7 +743,7 @@ if (nucshape == nucleator::capsule)
 		}
 
 		theactin.iterate();
-		//theactin.newnodescolour.setcol((MYDOUBLE)i/(MYDOUBLE)TOTAL_ITERATIONS);
+		//theactin.newnodescolour.setcol((double)i/(double)TOTAL_ITERATIONS);
 		
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
 		{
@@ -1072,7 +1072,7 @@ void build_sqrt_table()
 }
 
 
-inline MYDOUBLE fastsqrt(float n)
+inline double fastsqrt(float n)
 {
   if (FP_BITS(n) == 0)
     return 0.0;                 // check for square root of 0

@@ -1,4 +1,16 @@
+/*
+Copyright (C) 2005 Mark J Dayel
 
+You may not distribute, deploy, provide copies of, rent, loan, lease, 
+transfer, or grant any rights in the software or derivative works thereof 
+in any form to any person.  Reproduction, adaptation, or translation of 
+this program without prior written permission from the author is 
+prohibited.  Proofs of infringement of copyright violations include but 
+not limited to similar code style and structures, similar layout and 
+design, similar algorithm design, and containing parts of the original 
+software source code.  Copyright notice must remain intact and cannot be 
+removed without prior written permission from the author.
+*/
 
 #include "stdafx.h"
 #include "nucleator.h"
@@ -10,6 +22,14 @@
 //	// it can't be done here because we need the nucleator pointer
 //  // and I can't get it to work in the constructor (not possible?)
 //}
+
+segments::segments(void)
+{
+}
+
+segments::~segments(void)
+{
+}
 
 void segments::setupsegments(nucleator *pnuc, actin * pactin)
 {
@@ -26,7 +46,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	straight_length = 2*CAPSULE_HALF_LINEAR;		// one side
 
 	num_cap_segs = (int) (RADIAL_SEGMENTS/2);
-	cap_seg_len = curved_length / (MYDOUBLE) num_cap_segs;
+	cap_seg_len = curved_length / (double) num_cap_segs;
 
 
 
@@ -64,134 +84,157 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 	// allocate and zero the 2d vectors
 
-	numnodes.resize(3);			
-	rep_radial.resize(3);
-	rep_transverse.resize(3);
-	link_radial.resize(3);
+	       numnodes.resize(3);			
+	     rep_radial.resize(3);
+	 rep_transverse.resize(3);
+	    link_radial.resize(3);
 	link_transverse.resize(3);
-	disp_radial.resize(3);
+	    disp_radial.resize(3);
 	disp_transverse.resize(3);
 
 	for (int axis = 0; axis < 3; ++axis)
 	{
-		numnodes[axis].resize(num_segs);			
-		rep_radial[axis].resize(num_segs);
-		rep_transverse[axis].resize(num_segs);
-		link_radial[axis].resize(num_segs);
+		       numnodes[axis].resize(num_segs);			
+		     rep_radial[axis].resize(num_segs);
+		 rep_transverse[axis].resize(num_segs);
+		    link_radial[axis].resize(num_segs);
 		link_transverse[axis].resize(num_segs);
-		disp_radial[axis].resize(num_segs);
+		    disp_radial[axis].resize(num_segs);
 		disp_transverse[axis].resize(num_segs);
 
 		for(int i = 0; i<num_segs; ++i)
 		{
-			numnodes[axis][i].resize(num_dist_segs);
-			rep_radial[axis][i].resize(num_dist_segs);
-			rep_transverse[axis][i].resize(num_dist_segs);
-			link_radial[axis][i].resize(num_dist_segs);
+			       numnodes[axis][i].resize(num_dist_segs);
+			     rep_radial[axis][i].resize(num_dist_segs);
+			 rep_transverse[axis][i].resize(num_dist_segs);
+			    link_radial[axis][i].resize(num_dist_segs);
 			link_transverse[axis][i].resize(num_dist_segs);
-			disp_radial[axis][i].resize(num_dist_segs);
+			    disp_radial[axis][i].resize(num_dist_segs);
 			disp_transverse[axis][i].resize(num_dist_segs);
 		}
 	}
 
 	clearnodes();
 
-	// define forces lines co-ords
+	// define force lines co-ords
 
-	linestartx.resize(num_segs);
-	linestarty.resize(num_segs);
+	linestartx.resize(3);
+	linestarty.resize(3);
 
-	lineunitvecx.resize(num_segs);
-	lineunitvecy.resize(num_segs);
+	lineunitvecx.resize(3);
+	lineunitvecy.resize(3);
 
-	MYDOUBLE startx,starty, theta;
-	MYDOUBLE dist;
-
-	// top cap
-	
-	for(int i = 0; i< num_cap_segs; ++i)
+	for (int axis = 0; axis < 2; ++axis)
 	{
-		//       offset     segnum                      angle of 1 seg
-		theta = (0.5 + (MYDOUBLE) i) * (PI / (MYDOUBLE) num_cap_segs);
+		linestartx[axis].resize(num_segs);
+		linestarty[axis].resize(num_segs);
 
-		startx = - cos (theta);  // unit components
-		starty =   sin (theta);
-
-		linestartx[i] = startx * RADIUS;	// line start
-		linestarty[i] = starty * RADIUS;
-        
-		lineunitvecx[i] = - startx * FORCEBAR_SCALE;
-		lineunitvecy[i] = - starty * FORCEBAR_SCALE;
-
-		if (p_nuc->geometry == nucleator::capsule)
-		{
-			linestarty[i] += CAPSULE_HALF_LINEAR;
-		}
+		lineunitvecx[axis].resize(num_segs);
+		lineunitvecy[axis].resize(num_segs);
 	}
 
-	// bottom cap
 
-	for(int i = num_cap_segs; i< (2 *num_cap_segs); ++i)
+	double startx,starty, theta;
+	double dist;
+
+	for (int axis = 0; axis < 3; ++axis)
 	{
-		//       offset     segnum                      angle of 1 seg
-		theta = (0.5 + (MYDOUBLE) i) * (PI / (MYDOUBLE) num_cap_segs);
+		// top cap
 
-		startx = - cos (theta);  // unit components
-		starty =   sin (theta);
-
-		linestartx[i+num_straight_segs] = startx * RADIUS;  // line start
-		linestarty[i+num_straight_segs] = starty * RADIUS;
-        
-		lineunitvecx[i+num_straight_segs] = - startx * FORCEBAR_SCALE;
-		lineunitvecy[i+num_straight_segs] = - starty * FORCEBAR_SCALE;
-
-		if (p_nuc->geometry == nucleator::capsule)
+		for(int i = 0; i< num_cap_segs; ++i)
 		{
-			linestarty[i+num_straight_segs] -= CAPSULE_HALF_LINEAR;
-		}
-	}
+			//       offset     segnum        angle of 1 seg
+			theta = (0.5 + (double) i) * (PI / (double) num_cap_segs);
 
-	// sides
+			startx = - cos (theta);  // unit components
+			starty =   sin (theta);
 
-	if (p_nuc->geometry == nucleator::capsule)
-	{
-		
-		for(int i = 0; i< num_straight_segs; ++i)
-		{
-
-			dist = (0.5 + (MYDOUBLE) i) * straight_seg_len;
-
-			startx = 1;  // unit components
-			starty = CAPSULE_HALF_LINEAR - dist ;
-
-			linestartx[i+num_cap_segs] = startx * RADIUS;
-			linestarty[i+num_cap_segs] = starty;
-
-			// N.B. this is scaled by (cap_seg_len/straight_seg_len) to compenate for 
-			// difference in segments lengths
-	       
-			lineunitvecx[i+num_cap_segs] = - startx * FORCEBAR_SCALE * (cap_seg_len/straight_seg_len);
-			lineunitvecy[i+num_cap_segs] = 0;
-		}
-
-		for(int i = 0; i< num_straight_segs; ++i)
-		{
-
-			dist = (0.5 + (MYDOUBLE) i) * straight_seg_len;
-
-			startx = - 1;  // unit components
-			starty = dist - CAPSULE_HALF_LINEAR ;
-
-			linestartx[i+2*num_cap_segs+num_straight_segs] = startx * RADIUS;
-			linestarty[i+2*num_cap_segs+num_straight_segs] = starty;
-
-			// N.B. this is scaled by (cap_seg_len/straight_seg_len) to compenate for 
-			// difference in segments lengths
+			linestartx[axis][i] = startx * RADIUS;	// line start
 	        
-			lineunitvecx[i+2*num_cap_segs+num_straight_segs] = - startx * FORCEBAR_SCALE * (cap_seg_len/straight_seg_len);
-			lineunitvecy[i+2*num_cap_segs+num_straight_segs] = 0;
+			if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+			{	// sphere or capsule z
+				linestarty[axis][i] = starty * RADIUS;
+			}
+			else
+			{
+				linestarty[axis][i] = starty * RADIUS + CAPSULE_HALF_LINEAR;
+			}
+
+			lineunitvecx[axis][i] = - startx * FORCEBAR_SCALE;
+			lineunitvecy[axis][i] = - starty * FORCEBAR_SCALE;
 		}
-		
+
+		// bottom cap
+
+		for(int i = num_cap_segs; i< (2 *num_cap_segs); ++i)
+		{
+			//       offset     segnum                      angle of 1 seg
+			theta = (0.5 + (double) i) * (PI / (double) num_cap_segs);
+
+			startx = - cos (theta);  // unit components
+			starty =   sin (theta);
+
+			if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+			{	// sphere or capsule z
+				linestartx[axis][i] = startx * RADIUS;  // line start
+				linestarty[axis][i] = starty * RADIUS;
+		        
+				lineunitvecx[axis][i] = - startx * FORCEBAR_SCALE;
+				lineunitvecy[axis][i] = - starty * FORCEBAR_SCALE;
+			}
+			else
+			{	
+				// capsule x or y
+				linestartx[axis][i+num_straight_segs] = startx * RADIUS;  // line start
+				linestarty[axis][i+num_straight_segs] = starty * RADIUS - CAPSULE_HALF_LINEAR;
+		        
+				lineunitvecx[axis][i+num_straight_segs] = - startx * FORCEBAR_SCALE;
+				lineunitvecy[axis][i+num_straight_segs] = - starty * FORCEBAR_SCALE;
+			}
+		}
+
+		// sides
+
+		if  ((p_nuc->geometry == nucleator::capsule) && (axis != 2))
+		{
+			
+			for(int i = 0; i< num_straight_segs; ++i)
+			{
+
+				dist = (0.5 + (double) i) * straight_seg_len;
+
+				startx = 1;  // unit components
+				starty = CAPSULE_HALF_LINEAR - dist ;
+
+				linestartx[axis][i+num_cap_segs] = startx * RADIUS;
+				linestarty[axis][i+num_cap_segs] = starty;
+
+				// N.B. this is scaled by (cap_seg_len/straight_seg_len) to compenate for 
+				// difference in segments lengths
+		       
+				lineunitvecx[axis][i+num_cap_segs] = - startx * FORCEBAR_SCALE * (cap_seg_len/straight_seg_len);
+				lineunitvecy[axis][i+num_cap_segs] = 0;
+			}
+
+			for(int i = 0; i< num_straight_segs; ++i)
+			{
+
+				dist = (0.5 + (double) i) * straight_seg_len;
+
+				startx = - 1;  // unit components
+				starty = dist - CAPSULE_HALF_LINEAR ;
+
+				linestartx[axis][i+2*num_cap_segs+num_straight_segs] = startx * RADIUS;
+				linestarty[axis][i+2*num_cap_segs+num_straight_segs] = starty;
+
+				// N.B. this is scaled by (cap_seg_len/straight_seg_len) to compenate for 
+				// difference in segments lengths
+		        
+				lineunitvecx[axis][i+2*num_cap_segs+num_straight_segs] = - startx * FORCEBAR_SCALE * (cap_seg_len/straight_seg_len);
+				lineunitvecy[axis][i+2*num_cap_segs+num_straight_segs] = 0;
+			}
+			
+		}
 	}
 
 }
@@ -202,9 +245,9 @@ void segments::getsegmentnum(const nodes& node, int& xseg, int& yseg, int& zseg)
 	if (p_nuc->geometry == nucleator::sphere)
 	{	// sphere
 
-		xseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-node.z,node.y) / PI)) );
-		yseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-node.z,node.x) / PI)) );
-		zseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI)) );
+		xseg = (int)((double)num_cap_segs * (1+ (atan2(-node.z,node.y) / PI)) );
+		yseg = (int)((double)num_cap_segs * (1+ (atan2(-node.z,node.x) / PI)) );
+		zseg = (int)((double)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI)) );
 		
 		return;
 	}
@@ -213,12 +256,12 @@ void segments::getsegmentnum(const nodes& node, int& xseg, int& yseg, int& zseg)
 	
 		xseg = getcapsuleseg(node.y,node.z);
 		yseg = getcapsuleseg(node.x,node.z);
-		zseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI)) );
+		zseg = (int)((double)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI)) );
 	}
 
 }
 
-int segments::getcapsuleseg(const MYDOUBLE & x, const MYDOUBLE & y) const
+int segments::getcapsuleseg(const double & x, const double & y) const
 {	// get the segment num for the capsule
 	// segments are numbered clockwise
 	// starting at upper cap on left most edge
@@ -239,33 +282,129 @@ int segments::getcapsuleseg(const MYDOUBLE & x, const MYDOUBLE & y) const
 	else if (y > 0)
 	{	// top cap
 
-		return (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-(y - (CAPSULE_HALF_LINEAR)),x) / PI)) );
+		return (int)((double)num_cap_segs * (1+ (atan2(-(y - (CAPSULE_HALF_LINEAR)),x) / PI)) );
 
 	}
 	else	//  (y < CAPSULE_HALF_LINEAR)
 	{	// bottom cap
 
 		return num_cap_segs + num_straight_segs
-			+ (int)((MYDOUBLE)num_cap_segs * (1+ (atan2((y + (CAPSULE_HALF_LINEAR)),-x) / PI)) );
+			+ (int)((double)num_cap_segs * (1+ (atan2((y + (CAPSULE_HALF_LINEAR)),-x) / PI)) );
 		
 	}
 
 }
 
-segments::segments(void)
+void segments::getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const
 {
+	
+	if (p_nuc->geometry == nucleator::sphere)
+	{	// sphere
+
+		xdist = dist_to_seg(calcdist(node.y, node.z) - RADIUS); 
+		ydist = dist_to_seg(calcdist(node.x, node.z) - RADIUS); 
+		zdist = dist_to_seg(calcdist(node.x, node.y) - RADIUS); 
+		return;
+	}
+	else
+	{	// capsule
+
+		zdist = dist_to_seg(calcdist(node.x, node.y) - RADIUS); 
+
+		if ((node.z <= CAPSULE_HALF_LINEAR) && (node.z >= -CAPSULE_HALF_LINEAR))
+		{	// on cylinder
+
+			xdist = dist_to_seg(fabs(node.y) - RADIUS); 
+			ydist = dist_to_seg(fabs(node.x) - RADIUS); 
+		
+		} 
+		else if (node.z > 0)
+		{	// top cap
+	
+			xdist = dist_to_seg(calcdist(node.y, node.z - CAPSULE_HALF_LINEAR) - RADIUS); 
+			ydist = dist_to_seg(calcdist(node.x, node.z - CAPSULE_HALF_LINEAR) - RADIUS); 
+
+		}
+		else	//  (y < CAPSULE_HALF_LINEAR)
+		{	// bottom cap
+
+			xdist = dist_to_seg(calcdist(node.y, node.z + CAPSULE_HALF_LINEAR) - RADIUS); 
+			ydist = dist_to_seg(calcdist(node.x, node.z + CAPSULE_HALF_LINEAR) - RADIUS); 
+			
+		}
+
+	}
+
 }
 
-segments::~segments(void)
-{
+
+int segments::dist_to_seg(const double dist) const
+{	// convert distance to seg num, and return -1 if out of range
+	int dist_seg = (int) (dist / dist_step);
+
+	return ((dist_seg>num_dist_segs)||(dist_seg < 0))?(-1):(dist_seg);
 }
+
+
 
 void segments::addnode(const nodes& node)
 {	// add the node's data to the segments
+    
+	int xseg, yseg, zseg;
+	int xdist, ydist, zdist;
 
+	getsegmentnum(node, xseg, yseg, zseg);
+	getsegmentdist(node, xdist, ydist, zdist);
+
+	if (xdist!=-1)
+		numnodes[2][zseg][zdist] ++;
+
+	if (ydist!=-1)	
+		numnodes[1][yseg][ydist] ++;
+
+	if (zdist!=-1)
+		numnodes[0][xseg][xdist] ++;
+	
+	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+	{
+		if (xdist!=-1)
+		{
+
+			 rep_radial[0][xseg][xdist] += node.repforce_radial[threadnum];
+		 rep_transverse[0][xseg][xdist] += node.repforce_transverse[threadnum];
+			link_radial[0][xseg][xdist] += node.linkforce_radial[threadnum];
+		link_transverse[0][xseg][xdist] += node.linkforce_transverse[threadnum];
+			disp_radial[0][xseg][xdist] += node.dispforce_radial[threadnum];
+		disp_transverse[0][xseg][xdist] += node.dispforce_transverse[threadnum];
+		}
+
+
+		if (ydist!=-1)
+		{
+			 rep_radial[1][yseg][ydist] += node.repforce_radial[threadnum];
+		 rep_transverse[1][yseg][ydist] += node.repforce_transverse[threadnum];
+			link_radial[1][yseg][ydist] += node.linkforce_radial[threadnum];
+		link_transverse[1][yseg][ydist] += node.linkforce_transverse[threadnum];
+			disp_radial[1][yseg][ydist] += node.dispforce_radial[threadnum];
+		disp_transverse[1][yseg][ydist] += node.dispforce_transverse[threadnum];
+		}
+
+
+		if (zdist!=-1)
+		{
+			 rep_radial[2][zseg][zdist] += node.repforce_radial[threadnum];
+		 rep_transverse[2][zseg][zdist] += node.repforce_transverse[threadnum];
+			link_radial[2][zseg][zdist] += node.linkforce_radial[threadnum];
+		link_transverse[2][zseg][zdist] += node.linkforce_transverse[threadnum];
+			disp_radial[2][zseg][zdist] += node.dispforce_radial[threadnum];
+		disp_transverse[2][zseg][zdist] += node.dispforce_transverse[threadnum];
+		}
+
+
+	}
 }
 
-void segments::addsurfaceimpact(const nodes& node, const MYDOUBLE& mag)
+void segments::addsurfaceimpact(const nodes& node, const double& mag)
 {	// add a surface impact
 	
     int xseg,yseg,zseg;
@@ -321,13 +460,13 @@ void segments::clearnodes(void)
 		{
 			for(int j = 0; j<num_dist_segs; ++j)
 			{
-				numnodes[axis][i][j]=0;
-				rep_radial[axis][i][j]=0;
-				rep_transverse[axis][i][j]=0;
-				link_radial[axis][i][j]=0;
+				       numnodes[axis][i][j]=0;
+				     rep_radial[axis][i][j]=0;
+				 rep_transverse[axis][i][j]=0;
+				    link_radial[axis][i][j]=0;
 				link_transverse[axis][i][j]=0;
-				disp_radial[axis][i][j]=0;
-				disp_transverse[axis][i][j]=0;
+				    disp_radial[axis][i][j]=0;
+			    disp_transverse[axis][i][j]=0;
 			}
 		}
 	}
@@ -387,7 +526,7 @@ void segments::drawoutline(ostream& drawcmd, const int& axis) const
 
 }
 
-void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const MYDOUBLE scale) const
+void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double scale) const
 {
 
 	int centerx, centery;
@@ -400,44 +539,24 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const MYDOU
 	radius  = p_actin->pixels(RADIUS); 
 	segment = p_actin->pixels(CAPSULE_HALF_LINEAR);
 
-	MYDOUBLE linelen, linex, liney;
-	MYDOUBLE startx, starty;
+	double linelen, linex, liney;
+	double startx, starty;
 
-	int segstodraw;
+	int segstodraw = num_segs;
 
-	if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
-	{
+	if ((p_nuc->geometry == nucleator::capsule) && (axis == 2))
+	{	// capsule z axis, no linear section to plot
 		segstodraw = 2 * num_cap_segs;
-	}
-	else
-	{
-		segstodraw = 2 * num_cap_segs + 2 * num_straight_segs;
 	}
 
 	for (int i=0; i<segstodraw; ++i)
 	{
 
-		startx = linestartx[i];
-		starty = linestarty[i];
+		startx = linestartx[axis][i];
+		starty = linestarty[axis][i];
 	
-		linex = scale*surfaceimpacts[axis][i]*lineunitvecx[i];
-		liney = scale*surfaceimpacts[axis][i]*lineunitvecy[i];
-
-		if ((p_nuc->geometry == nucleator::capsule) && (axis == 2))
-		{	// capsule z axis, do ends only and bring them to center
-			if (i>=num_cap_segs)
-			{
-				starty = linestarty[i+num_straight_segs] + CAPSULE_HALF_LINEAR;
-				startx = linestartx[i+num_straight_segs];
-
-				linex = scale*surfaceimpacts[axis][i]*lineunitvecx[i+num_straight_segs];
-				liney = scale*surfaceimpacts[axis][i]*lineunitvecy[i+num_straight_segs];
-			}
-			else
-			{
-				starty = linestarty[i] - CAPSULE_HALF_LINEAR;
-			}
-		}
+		linex = scale*surfaceimpacts[axis][i]*lineunitvecx[axis][i];
+		liney = scale*surfaceimpacts[axis][i]*lineunitvecy[axis][i];
 
 		linelen = calcdist(linex,liney);
 
@@ -459,4 +578,84 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const MYDOU
 
 	}
 
+}
+
+void segments::addallnodes()
+{
+	for (int i=0; i<p_actin->highestnodecount; i++)
+	{
+		if ((p_actin->node[i].polymer) && (!p_actin->node[i].harbinger))  // is point valid?
+		{
+			addnode(p_actin->node[i]);
+		}
+	}
+
+}
+
+void segments::drawnodestats(ostream& drawcmd, const int& axis) const
+{
+
+}
+
+void segments::savereport(const int& filenum) const
+{
+
+	char filename[255];
+
+	double x,y,z;
+
+	sprintf ( filename , "report%05i.txt", filenum );
+
+	ofstream opreport(filename, ios::out | ios::trunc);
+	if (!opreport) 
+	{ cout << "Unable to open file " << filename << " for output"; return;}
+
+	// write header
+	
+	opreport << "Axis,segment,distseg,x,y,z,NodeRadius,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
+	
+	for (int axis = 0; axis < 3; ++axis)
+	{
+		for(int seg = 0; seg<num_segs; ++seg)
+		{
+			if ((axis == 2) && (seg >= 2 * num_cap_segs))
+				continue;  // no linear segment on z axis
+
+			if (axis == 0)
+			{
+                x = 0;
+				y = linestartx[axis][seg];
+				z = linestarty[axis][seg];
+			}
+			else if (axis == 1)
+			{
+				x = linestartx[axis][seg];
+				y = 0;
+				z = linestarty[axis][seg];
+			}
+			else
+			{
+				x = linestartx[axis][seg];
+				y = linestarty[axis][seg];
+				z = 0;
+			}
+
+			for(int dist = 0; dist<num_dist_segs; ++dist)
+			{
+				opreport 
+					<< axis << ","
+					<< seg << ","
+					<< dist << ",";
+					 
+
+			}
+		}
+	}
+
+
+
+
+	opreport << endl;
+
+	opreport.close();
 }

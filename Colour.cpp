@@ -20,7 +20,7 @@ Colour::Colour(void)
 	setcol(0.0);
 }
 
-Colour::Colour(MYDOUBLE val)
+Colour::Colour(double val)
 {
 	setcol(val);
 }
@@ -29,14 +29,14 @@ Colour::~Colour(void)
 {
 }
 
-int Colour::setcol(MYDOUBLE magnitude)
+int Colour::setcol(double magnitude)
 {  // colour scale 0--1
 	
 	mag=magnitude;
 
-	r =  (MYDOUBLE) mymin(  mymax( ((MYDOUBLE)4*    (mag-(MYDOUBLE)0.25) ) , (MYDOUBLE)0 ), (MYDOUBLE)1 );
-	b =  (MYDOUBLE) mymin(  mymax( ((MYDOUBLE)4*    ((MYDOUBLE)0.75-mag) ) , (MYDOUBLE)0 ), (MYDOUBLE)1 );
-	g =  (MYDOUBLE) mymin(  mymax( ((MYDOUBLE)4*fabs(mag-(MYDOUBLE)0.5)-1) , (MYDOUBLE)0 ), (MYDOUBLE)1 );
+	r =  (double) mymin(  mymax( ((double)4*    (mag-(double)0.25) ) , (double)0 ), (double)1 );
+	b =  (double) mymin(  mymax( ((double)4*    ((double)0.75-mag) ) , (double)0 ), (double)1 );
+	g =  (double) mymin(  mymax( ((double)4*fabs(mag-(double)0.5)-1) , (double)0 ), (double)1 );
 
 	R = (unsigned char) (r*255);
 	G = (unsigned char) (G*255);

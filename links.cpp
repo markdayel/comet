@@ -30,7 +30,7 @@ links::~links(void)
 {
 }
 
-links::links(nodes* linknodep, MYDOUBLE dist)
+links::links(nodes* linknodep, double dist)
 {
 	orig_distsqr = dist*dist;
 	orig_dist = dist;

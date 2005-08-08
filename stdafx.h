@@ -146,15 +146,15 @@ int threadnum;
 	#define fabs fabsf
 	#define atan2 atan2f
 
-	#define MYDOUBLE float	// set precision
+	//#define MYDOUBLE float	// set precision
 
-	#define SQRT_ACCURACY_LOSS (MYDOUBLE) 0.000000000001
+	#define SQRT_ACCURACY_LOSS (double) 0.000000000001
 
 #else
 
-	#define MYDOUBLE double	// set precision
+	//#define MYDOUBLE double	// set precision
 
-	#define SQRT_ACCURACY_LOSS (MYDOUBLE) 0.0000000000000000001
+	#define SQRT_ACCURACY_LOSS (double) 0.0000000000000000001
 
 #endif
 
@@ -166,61 +166,61 @@ int threadnum;
 
 // global variables:
 
-extern MYDOUBLE TOTAL_SIMULATION_TIME;  
-extern MYDOUBLE DELTA_T;
-extern MYDOUBLE MIN_TORQUE_TO_UPDATE;
-extern MYDOUBLE MIN_DISPLACEMENT_TO_UPDATE;
-//extern MYDOUBLE MAX_DISP_PERDT;
-//extern MYDOUBLE MAX_DISP_PERDT_DIVSQRTTWO;
+extern double TOTAL_SIMULATION_TIME;  
+extern double DELTA_T;
+extern double MIN_TORQUE_TO_UPDATE;
+extern double MIN_DISPLACEMENT_TO_UPDATE;
+//extern double MAX_DISP_PERDT;
+//extern double MAX_DISP_PERDT_DIVSQRTTWO;
 extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
 
 extern bool NUCLEATOR_FORCES;
 
-extern MYDOUBLE FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
+extern double FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
 										// this is related to effective viscosity and effective size of node
-extern MYDOUBLE FORCEBAR_SCALE;  // scale force for bars in output
+extern double FORCEBAR_SCALE;  // scale force for bars in output
 
-extern MYDOUBLE XLINK_NODE_RANGE;	// Limit crosslink to within this range
-extern MYDOUBLE NODE_INCOMPRESSIBLE_RADIUS;// repulsion is zero here
-//extern MYDOUBLE NODE_REPULSIVE_MAG;   // max repulsion (at dist=0)
+extern double XLINK_NODE_RANGE;	// Limit crosslink to within this range
+extern double NODE_INCOMPRESSIBLE_RADIUS;// repulsion is zero here
+//extern double NODE_REPULSIVE_MAG;   // max repulsion (at dist=0)
 
-extern MYDOUBLE LINK_BREAKAGE_FORCE;  // breakage force per link
-extern MYDOUBLE LINK_FORCE;
-extern MYDOUBLE P_LINK_BREAK_IF_OVER;  // probablility that force will break link if over the link breakage force
-extern MYDOUBLE P_XLINK;
-extern MYDOUBLE P_NUC;
+extern double LINK_BREAKAGE_FORCE;  // breakage force per link
+extern double LINK_FORCE;
+extern double P_LINK_BREAK_IF_OVER;  // probablility that force will break link if over the link breakage force
+extern double P_XLINK;
+extern double P_NUC;
 
 extern int BMP_WIDTH,BMP_HEIGHT;
 
-extern MYDOUBLE GAUSSFWHM;
+extern double GAUSSFWHM;
 extern int SPECKLE_FACTOR;
-extern MYDOUBLE INIT_R_GAIN;
-extern MYDOUBLE INIT_G_GAIN;
-extern MYDOUBLE INIT_B_GAIN;
+extern double INIT_R_GAIN;
+extern double INIT_G_GAIN;
+extern double INIT_B_GAIN;
 
-extern MYDOUBLE RADIUS;   // radius and segment are the true radius and segment of nucleator
-extern MYDOUBLE CAPSULE_HALF_LINEAR;
-extern MYDOUBLE RAD_INCOMP; // RAD_INCOMP and SEG_INCOMP are the enlarged radius and segments
-//extern MYDOUBLE SEG_INCOMP; // to prevent putting nodes within the node NODE_INCOMPRESSIBLE_RADIUS of the nucleator
-//extern MYDOUBLE NODEMASS;
-//extern MYDOUBLE INERTIAL_DAMPING_HALFTIME;
-//extern MYDOUBLE DAMPING_FACTOR;
+extern double RADIUS;   // radius and segment are the true radius and segment of nucleator
+extern double CAPSULE_HALF_LINEAR;
+extern double RAD_INCOMP; // RAD_INCOMP and SEG_INCOMP are the enlarged radius and segments
+//extern double SEG_INCOMP; // to prevent putting nodes within the node NODE_INCOMPRESSIBLE_RADIUS of the nucleator
+//extern double NODEMASS;
+//extern double INERTIAL_DAMPING_HALFTIME;
+//extern double DAMPING_FACTOR;
 extern int CROSSLINKDELAY;
 extern int NODES_TO_UPDATE;
-extern MYDOUBLE DISTANCE_TO_UPDATE;
+extern double DISTANCE_TO_UPDATE;
 
-extern MYDOUBLE NODE_REPULSIVE_MAG;
-extern MYDOUBLE NODE_REPULSIVE_RANGE;
+extern double NODE_REPULSIVE_MAG;
+extern double NODE_REPULSIVE_RANGE;
 extern int InterRecordIterations;
 extern unsigned int MAX_LINKS_PER_NODE;
 
 extern int RADIAL_SEGMENTS;
 extern int XLINK_NEAREST;
 
-extern MYDOUBLE VIEW_HEIGHT;
+extern double VIEW_HEIGHT;
 
-extern MYDOUBLE LINK_TAUT_FORCE;
-extern MYDOUBLE LINK_TAUT_RATIO;
+extern double LINK_TAUT_FORCE;
+extern double LINK_TAUT_RATIO;
 
 extern int ASYMMETRIC_NUCLEATION;
 
@@ -229,18 +229,18 @@ extern int ASYMMETRIC_NUCLEATION;
 const int REPORT_NUM_VARIABLES = 8;
 
 extern bool ROTATION;
-extern MYDOUBLE MofI;
+extern double MofI;
 
 extern bool FORCES_ON_SIDE;
 
 
 // compile-time options:
 
-#define GRIDBOUNDS (MYDOUBLE)40	  // size of grid in um
-#define GRIDRES (MYDOUBLE)0.2	  // low res grid range
+#define GRIDBOUNDS (double)40	  // size of grid in um
+#define GRIDRES (double)0.2	  // low res grid range
 
 const int MAXNODES = 50000;			// max nodes
-//const MYDOUBLE GLOBAL_DAMPING = 
+//const double GLOBAL_DAMPING = 
 
 #define HIST_MIN 1.0
 #define HIST_MAX 3.0
@@ -253,12 +253,12 @@ extern int NODE_XLINK_GRIDSEARCH;
 //extern int GRIDSIZE;
 const int GRIDSIZE =  (int) (GRIDBOUNDS/GRIDRES);
 
-const MYDOUBLE PI = (MYDOUBLE) 3.141592653589793238462643383279502884197; // Pi
-const MYDOUBLE LN_TWO = (MYDOUBLE) 0.69314718055995; // ln(2)
+const double PI = (double) 3.141592653589793238462643383279502884197; // Pi
+const double LN_TWO = (double) 0.69314718055995; // ln(2)
 
-//inline MYDOUBLE sqrt(const MYDOUBLE &d);
-inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist, const MYDOUBLE & zdist);
-inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist); 
+//inline double sqrt(const double &d);
+inline double calcdist(const double & xdist, const double & ydist, const double & zdist);
+inline double calcdist(const double & xdist, const double & ydist); 
 
 inline void endian_swap(unsigned short& x);
 inline void endian_swap(unsigned int& x);
@@ -271,7 +271,7 @@ inline void endian_swap(unsigned int& x);
 #include "actin.h"
 #include "vect.h"
 
-inline MYDOUBLE calcdist(const vect & v1, const vect & v2);
+inline double calcdist(const vect & v1, const vect & v2);
 
 /*inline float sqrt(float x) {
   float y;
@@ -295,9 +295,9 @@ inline MYDOUBLE calcdist(const vect & v1, const vect & v2);
 }  */
 
 
-/*inline MYDOUBLE sqrt(MYDOUBLE d)
+/*inline double sqrt(double d)
 {
-	MYDOUBLE x,y, deltax;
+	double x,y, deltax;
 	x = 1/d;
 	do
 	{
@@ -309,11 +309,11 @@ inline MYDOUBLE calcdist(const vect & v1, const vect & v2);
 	return (1/x);
 }*/
 /*
-static inline MYDOUBLE sqrt(MYDOUBLE x)
+static inline double sqrt(double x)
 {
 	// "delta" is the acceptable error bound
-	MYDOUBLE delta = x/100;
-	MYDOUBLE y = (1+x)*.5,oldy;
+	double delta = x/100;
+	double y = (1+x)*.5,oldy;
 	do {
 		oldy = y;
 		y = (x/y+y)*.5;
@@ -323,15 +323,15 @@ static inline MYDOUBLE sqrt(MYDOUBLE x)
 }
 */
 
-//inline MYDOUBLE sqrt(const MYDOUBLE &d)
+//inline double sqrt(const double &d)
 //{
 //	return sqrt(d);
 //}
 
-//inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist, MYDOUBLE zdist);
-inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist, const MYDOUBLE & zdist)
+//inline double calcdist(double xdist, double ydist, double zdist);
+inline double calcdist(const double & xdist, const double & ydist, const double & zdist)
 {
-	MYDOUBLE sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
+	double sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
 	if (sqr < SQRT_ACCURACY_LOSS)
 	{
 		//cout << "Accuracy loss: 3D dist close to zero. Increase math accuracy or reduce DELTA_T" << endl;
@@ -342,10 +342,10 @@ inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist, const M
 		return sqrt(sqr);
 }
 
-//inline MYDOUBLE calcdist(MYDOUBLE xdist, MYDOUBLE ydist);
-inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist) 
+//inline double calcdist(double xdist, double ydist);
+inline double calcdist(const double & xdist, const double & ydist) 
 {
-	MYDOUBLE sqr = (xdist*xdist + ydist*ydist);
+	double sqr = (xdist*xdist + ydist*ydist);
 	if (sqr < SQRT_ACCURACY_LOSS)
 	{
 		//cout << "Accuracy loss: 2D dist close to zero. Increase math accuracy or reduce DELTA_T" << endl;
@@ -356,7 +356,7 @@ inline MYDOUBLE calcdist(const MYDOUBLE & xdist, const MYDOUBLE & ydist)
 		return sqrt(sqr);
 }
 
-inline MYDOUBLE calcdist(const vect & v1, const vect & v2) 
+inline double calcdist(const vect & v1, const vect & v2) 
 {
 	return calcdist(v1.x-v2.x,v1.y-v2.y,v1.z-v2.z);
 }
@@ -404,12 +404,12 @@ typedef vector<Nodes2d> Nodes3d;
 typedef vector<signed char> Bool1d;
 typedef vector<Bool1d> Bool2d;
 
-typedef vector<MYDOUBLE> Dbl1d;
+typedef vector<double> Dbl1d;
 typedef vector<Dbl1d> Dbl2d;
 
 extern Nodes3d nodegrid;
 
-//extern inline MYDOUBLE fastsqrt(float n);
+//extern inline double fastsqrt(float n);
 //extern float sse_sqrt(float n);
 //extern void build_sqrt_table();
 

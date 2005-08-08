@@ -11,7 +11,7 @@ rotationmatrix::~rotationmatrix(void)
 {
 }
 
-rotationmatrix::rotationmatrix(MYDOUBLE angle, axis a)
+rotationmatrix::rotationmatrix(double angle, axis a)
 {
     switch (a)
     {
@@ -38,15 +38,15 @@ rotationmatrix::rotationmatrix(MYDOUBLE angle, axis a)
     }
 }
 
-void rotationmatrix::rotatematrix(MYDOUBLE angle, axis a)
+void rotationmatrix::rotatematrix(double angle, axis a)
 {
-    MYDOUBLE tmp_xx,tmp_xy,tmp_xz;
-    MYDOUBLE tmp_yx,tmp_yy,tmp_yz;
-    MYDOUBLE tmp_zx,tmp_zy,tmp_zz;
+    double tmp_xx,tmp_xy,tmp_xz;
+    double tmp_yx,tmp_yy,tmp_yz;
+    double tmp_zx,tmp_zy,tmp_zz;
     
-    MYDOUBLE tmp2_xx,tmp2_xy,tmp2_xz;
-    MYDOUBLE tmp2_yx,tmp2_yy,tmp2_yz;
-    MYDOUBLE tmp2_zx,tmp2_zy,tmp2_zz;
+    double tmp2_xx,tmp2_xy,tmp2_xz;
+    double tmp2_yx,tmp2_yy,tmp2_yz;
+    double tmp2_zx,tmp2_zy,tmp2_zz;
     
     switch (a)
     {
@@ -100,14 +100,14 @@ void rotationmatrix::rotatematrix(MYDOUBLE angle, axis a)
     
 }
 
-void rotationmatrix::rotatematrix(const MYDOUBLE x_angle, const MYDOUBLE y_angle, const MYDOUBLE z_angle)
+void rotationmatrix::rotatematrix(const double x_angle, const double y_angle, const double z_angle)
 {
     rotatematrix(x_angle, xaxis);
     rotatematrix(y_angle, yaxis);
     rotatematrix(z_angle, zaxis);
 }
 
-void rotationmatrix::getangles(MYDOUBLE& x_angle, MYDOUBLE& y_angle, MYDOUBLE& z_angle)
+void rotationmatrix::getangles(double& x_angle, double& y_angle, double& z_angle)
 {  // todo: check these are right way around
     y_angle = -atan2(zx,calcdist(xx,yx));
     z_angle = atan2(yx/cos(y_angle),xx/cos(y_angle));

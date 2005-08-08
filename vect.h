@@ -20,17 +20,17 @@ removed without prior written permission from the author.
 class vect
 {
  public:
-    // FIXME: dependence on MYDOUBLE being defined before the include
-    MYDOUBLE x;
-    MYDOUBLE y;
-    MYDOUBLE z;
+
+	double x;
+    double y;
+    double z;
     
     inline vect(void)
 	{
 	    x=y=z=0.0;
 	}
     
-    inline vect(const MYDOUBLE &a, const  MYDOUBLE &b, const  MYDOUBLE &c) 
+    inline vect(const double &a, const  double &b, const  double &c) 
 	{
 	    x=a;
 	    y=b;
@@ -75,7 +75,7 @@ class vect
 	}
     
     
-    inline vect operator*(const MYDOUBLE &scale) const
+    inline vect operator*(const double &scale) const
 	{
 	    vect tmp;
 	    
@@ -105,7 +105,7 @@ class vect
 	    return *this;
 	}
     
-    inline vect operator*=(const MYDOUBLE &scale)
+    inline vect operator*=(const double &scale)
 	{
 	    x *= scale;
 	    y *= scale;
@@ -114,17 +114,17 @@ class vect
 	    return *this;
 	}
     
-    //inline MYDOUBLE dot(vect &a, vect &b)
+    //inline double dot(vect &a, vect &b)
     //{
     //	return ((a.x * b.x) + (a.y * b.y) + (a.z * b.z));
     //}
     
-    const inline MYDOUBLE dot(const vect &v) const
+    const inline double dot(const vect &v) const
 	{
 	    return ((x * v.x) + (y * v.y) + (z * v.z));
 	}
     
-    const inline MYDOUBLE length() const
+    const inline double length() const
 	{
 	    return calcdist(x,y,z);
 	}
@@ -154,7 +154,7 @@ class vect
     const inline vect unitvec() const
 	{
 	    vect temp;
-	    MYDOUBLE len = length();
+	    double len = length();
 	    
 	    temp.x = x/len;
 	    temp.y = y/len;
@@ -176,7 +176,7 @@ class vect
       
       }
 */  
-    const inline MYDOUBLE sqrlength(void) const
+    const inline double sqrlength(void) const
 	{
 	    return x*x + y*y + z*z;
 	}

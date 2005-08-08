@@ -33,10 +33,10 @@ public:
 	~nucleator(void);
 	nucleator(shape set_geometry, actin *ptheactin);
 	shape geometry;
-	MYDOUBLE radius;
-	//MYDOUBLE segment;
-	MYDOUBLE surf_area;
-	MYDOUBLE movability;
+	double radius;
+	//double segment;
+	double surf_area;
+	double movability;
 	actin *ptheactin;
 
 	segments segs;
@@ -51,18 +51,18 @@ public:
 
 	vector <vect> cagepoints;
 
-	//vector <MYDOUBLE> radial_rep_distrib_x;
-	//vector <MYDOUBLE> radial_rep_distrib_y;
-	//vector <MYDOUBLE> radial_rep_distrib_z;
+	//vector <double> radial_rep_distrib_x;
+	//vector <double> radial_rep_distrib_y;
+	//vector <double> radial_rep_distrib_z;
 	
 	//int nbdy_segs;
 	//int ncap_segs;
 
-	//vector <MYDOUBLE> fbar_cap_x;
-	//vector <MYDOUBLE> fbar_cap_y;
-	//vector <MYDOUBLE> fbar_cap_ang;
-	//vector <MYDOUBLE> fbar_bdy_x;
-	//vector <MYDOUBLE> fbar_bdy_y;
+	//vector <double> fbar_cap_x;
+	//vector <double> fbar_cap_y;
+	//vector <double> fbar_cap_ang;
+	//vector <double> fbar_bdy_x;
+	//vector <double> fbar_bdy_y;
 
 	int addnodes(void);
 	int addnodessphere(void);
@@ -75,15 +75,15 @@ public:
 	int save_data(ofstream &ostr);
 	int load_data(ifstream &istr);
 	//void set_rep_bins();
-	//int  get_rep_bin(MYDOUBLE angle);
-	//int  get_zbin(const MYDOUBLE x, const MYDOUBLE y);
-	//int  get_angbin(const MYDOUBLE x, const MYDOUBLE y);
-	//MYDOUBLE get_rep_angle(MYDOUBLE x, MYDOUBLE y);
+	//int  get_rep_bin(double angle);
+	//int  get_zbin(const double x, const double y);
+	//int  get_angbin(const double x, const double y);
+	//double get_rep_angle(double x, double y);
 	//bool is_sphere();
 	//bool is_capsule();
 
-	bool iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MYDOUBLE& z);
-	bool collision(nodes &node);//(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z);
+	bool iswithinnucleator(const double& x, const double& y, const double& z);
+	bool collision(nodes &node);//(double &x, double &y, double &z);
 	//int n_force_segments();
 	void definecagepoints(void);
 };
