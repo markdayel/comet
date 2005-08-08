@@ -14,6 +14,7 @@ removed without prior written permission from the author.
 
 #include "stdafx.h"
 #include "comet.h"
+// #include "string.h"
 
 MYDOUBLE TOTAL_SIMULATION_TIME = 20000;  
 MYDOUBLE DELTA_T = (MYDOUBLE)0.1;	
@@ -68,9 +69,9 @@ MYDOUBLE LINK_FORCE = (MYDOUBLE)0.1;
 MYDOUBLE P_XLINK = (MYDOUBLE) 0.5;
 MYDOUBLE P_NUC = (MYDOUBLE) 0.08;
 MYDOUBLE RADIUS = (MYDOUBLE) 1.0;
-MYDOUBLE SEGMENT = (MYDOUBLE) 3.0;
+MYDOUBLE CAPSULE_HALF_LINEAR = (MYDOUBLE) 6.0;
 
-//MYDOUBLE SEG_INCOMP = SEGMENT + NODE_INCOMPRESSIBLE_RADIUS/2;
+//MYDOUBLE SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
 MYDOUBLE RAD_INCOMP = RADIUS;// + NODE_INCOMPRESSIBLE_RADIUS/2;
 
 //MYDOUBLE NODEMASS = 1.0;
@@ -179,10 +180,10 @@ int main(int argc, char* argv[])
 
 	vector<int> postprocess_iterations;
 	postprocess_iterations.clear();
-	if(argc > 2 &&  strcasecmp(argv[1], "post") == 0 ) {
-	    cout << "Postprocessing iterations: ";
-	    get_postprocess_iterations(argv[2], postprocess_iterations);
-	    //vector<int>::iterator ppiter;
+	//if(argc > 2 &&  strcasecmp(argv[1], "post") == 0 ) {
+	//    cout << "Postprocessing iterations: ";
+	//    get_postprocess_iterations(argv[2], postprocess_iterations);
+	//    //vector<int>::iterator ppiter;
 	    //for(ppiter = postprocess_iterations.begin(); ppiter != postprocess_iterations.end(); ++ppiter){
 	    //	cout << *ppiter << " ";
 	    //}
@@ -190,7 +191,7 @@ int main(int argc, char* argv[])
 
             // REVISIT: continue to setup using the cometparams.ini file
 	    // or perhaps breakout here? (ML)
-	}
+	//}
 	
 	ifstream param("cometparams.ini"); 
 	if(!param) 
@@ -429,9 +430,9 @@ int main(int argc, char* argv[])
                 ss >> RADIUS;
                 continue;
 			} 
-			else if (tag == "SEGMENT") 
+			else if (tag == "CAPSULE_HALF_LINEAR") 
 			{
-                ss >> SEGMENT;
+                ss >> CAPSULE_HALF_LINEAR;
                 continue;
 			} 
 			else if (tag == "MAX_LINKS_PER_NODE") 
@@ -550,7 +551,7 @@ int main(int argc, char* argv[])
 	NUMBER_RECORDINGS = int(TOTAL_ITERATIONS / RECORDING_INTERVAL);
 	// InterRecordIterations = (int)
 	// (((MYDOUBLE)TOTAL_ITERATIONS / (MYDOUBLE) RECORDED_TIMESTEPS)+0.5 );	
-	//SEG_INCOMP = SEGMENT + NODE_INCOMPRESSIBLE_RADIUS/2;
+	//SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
 	RAD_INCOMP = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
 
 	//MAX_DISP_PERDT = MAX_DISP * DELTA_T;
@@ -580,7 +581,7 @@ int main(int argc, char* argv[])
 	if (nucshape == nucleator::capsule)
 	{
 	cout << "Capsule radius:             " << RADIUS << endl;
-	cout << "Capsule segment:            " << SEGMENT << endl;
+	cout << "CAPSULE_HALF_LINEAR:        " << CAPSULE_HALF_LINEAR << endl;
 	}
 	else
 	{
@@ -610,7 +611,7 @@ int main(int argc, char* argv[])
 	theactin.opruninfo << "DISTANCE_TO_UPDATE:         " << DISTANCE_TO_UPDATE << endl;
 	theactin.opruninfo << "Nucleator radius:           " << RADIUS << endl;
 if (nucshape == nucleator::capsule)
-    theactin.opruninfo << "Nucleator Segment:          " << SEGMENT << endl;
+    theactin.opruninfo << "Nucleator Segment:          " << 2*CAPSULE_HALF_LINEAR << endl;
 	theactin.opruninfo << "P(nuc):                     " << P_NUC << endl;
 	theactin.opruninfo << "Force scale factor:         " << FORCE_SCALE_FACT << endl;
 	theactin.opruninfo << "Crosslink node range:       " << XLINK_NODE_RANGE << endl;

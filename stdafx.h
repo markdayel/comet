@@ -199,7 +199,7 @@ extern MYDOUBLE INIT_G_GAIN;
 extern MYDOUBLE INIT_B_GAIN;
 
 extern MYDOUBLE RADIUS;   // radius and segment are the true radius and segment of nucleator
-extern MYDOUBLE SEGMENT;
+extern MYDOUBLE CAPSULE_HALF_LINEAR;
 extern MYDOUBLE RAD_INCOMP; // RAD_INCOMP and SEG_INCOMP are the enlarged radius and segments
 //extern MYDOUBLE SEG_INCOMP; // to prevent putting nodes within the node NODE_INCOMPRESSIBLE_RADIUS of the nucleator
 //extern MYDOUBLE NODEMASS;

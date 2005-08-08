@@ -34,7 +34,7 @@ public:
 	nucleator(shape set_geometry, actin *ptheactin);
 	shape geometry;
 	MYDOUBLE radius;
-	MYDOUBLE segment;
+	//MYDOUBLE segment;
 	MYDOUBLE surf_area;
 	MYDOUBLE movability;
 	actin *ptheactin;

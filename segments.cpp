@@ -23,7 +23,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	// calc segment lengths etc.
 
 	curved_length = PI * RADIUS;	// one cap
-	straight_length = SEGMENT;		// one side
+	straight_length = 2*CAPSULE_HALF_LINEAR;		// one side
 
 	num_cap_segs = (int) (RADIAL_SEGMENTS/2);
 	cap_seg_len = curved_length / (MYDOUBLE) num_cap_segs;
@@ -125,7 +125,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 		if (p_nuc->geometry == nucleator::capsule)
 		{
-			linestarty[i] += (SEGMENT/2.0);
+			linestarty[i] += CAPSULE_HALF_LINEAR;
 		}
 	}
 
@@ -147,7 +147,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 		if (p_nuc->geometry == nucleator::capsule)
 		{
-			linestarty[i+num_straight_segs] -= (SEGMENT/2.0);
+			linestarty[i+num_straight_segs] -= CAPSULE_HALF_LINEAR;
 		}
 	}
 
@@ -162,7 +162,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			dist = (0.5 + (MYDOUBLE) i) * straight_seg_len;
 
 			startx = 1;  // unit components
-			starty = (SEGMENT/2.0) - dist ;
+			starty = CAPSULE_HALF_LINEAR - dist ;
 
 			linestartx[i+num_cap_segs] = startx * RADIUS;
 			linestarty[i+num_cap_segs] = starty;
@@ -180,7 +180,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			dist = (0.5 + (MYDOUBLE) i) * straight_seg_len;
 
 			startx = - 1;  // unit components
-			starty = dist - (SEGMENT/2.0) ;
+			starty = dist - CAPSULE_HALF_LINEAR ;
 
 			linestartx[i+2*num_cap_segs+num_straight_segs] = startx * RADIUS;
 			linestarty[i+2*num_cap_segs+num_straight_segs] = starty;
@@ -202,9 +202,9 @@ void segments::getsegmentnum(const nodes& node, int& xseg, int& yseg, int& zseg)
 	if (p_nuc->geometry == nucleator::sphere)
 	{	// sphere
 
-		xseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(node.y,-node.z) / PI)) );
-		yseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(node.x,-node.z) / PI)) );
-		zseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(node.x,-node.y) / PI)) );
+		xseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-node.z,node.y) / PI)) );
+		yseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-node.z,node.x) / PI)) );
+		zseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI)) );
 		
 		return;
 	}
@@ -213,7 +213,7 @@ void segments::getsegmentnum(const nodes& node, int& xseg, int& yseg, int& zseg)
 	
 		xseg = getcapsuleseg(node.y,node.z);
 		yseg = getcapsuleseg(node.x,node.z);
-		zseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(node.x,-node.y) / PI)) );
+		zseg = (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI)) );
 	}
 
 }
@@ -223,30 +223,30 @@ int segments::getcapsuleseg(const MYDOUBLE & x, const MYDOUBLE & y) const
 	// segments are numbered clockwise
 	// starting at upper cap on left most edge
 	
-	if ((y <= SEGMENT/2) && (y >= -SEGMENT/2))
+	if ((y <= CAPSULE_HALF_LINEAR) && (y >= -CAPSULE_HALF_LINEAR))
 	{	// on cylinder
 
 		if (x>0)	// RHS
 		{
-			return num_cap_segs + (int) (((SEGMENT/2) - y)/straight_seg_len);
+			return num_cap_segs + (int) (((CAPSULE_HALF_LINEAR) - y)/straight_seg_len);
 		}
 		else		// LHS
 		{
 			return 2 * num_cap_segs + num_straight_segs 
-						        + (int) ((y + (SEGMENT/2))/straight_seg_len);
+						        + (int) ((y + (CAPSULE_HALF_LINEAR))/straight_seg_len);
 		}
 	} 
 	else if (y > 0)
 	{	// top cap
 
-		return (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-(y - (SEGMENT/2)),x) / PI)) );
+		return (int)((MYDOUBLE)num_cap_segs * (1+ (atan2(-(y - (CAPSULE_HALF_LINEAR)),x) / PI)) );
 
 	}
-	else	//  (y < SEGMENT/2)
+	else	//  (y < CAPSULE_HALF_LINEAR)
 	{	// bottom cap
 
 		return num_cap_segs + num_straight_segs
-			+ (int)((MYDOUBLE)num_cap_segs * (1+ (atan2((y + (SEGMENT/2)),-x) / PI)) );
+			+ (int)((MYDOUBLE)num_cap_segs * (1+ (atan2((y + (CAPSULE_HALF_LINEAR)),-x) / PI)) );
 		
 	}
 
@@ -281,7 +281,7 @@ void segments::addsurfaceimpact(const nodes& node, const MYDOUBLE& mag)
 	}
 	else
 	{
-		if ((node.z < SEGMENT/2) && (node.z > -SEGMENT/2))
+		if ((node.z < CAPSULE_HALF_LINEAR) && (node.z > -CAPSULE_HALF_LINEAR))
 		{  // on cylinder, don't scale by z component
 			surfaceimpacts[2][zseg]+= mag;
 		}
@@ -289,11 +289,11 @@ void segments::addsurfaceimpact(const nodes& node, const MYDOUBLE& mag)
 		{	// on ends
 			if (node.z > 0)
 			{
-				surfaceimpacts[2][zseg]+= mag * fabs(RADIUS - (node.z-SEGMENT/2));	
+				surfaceimpacts[2][zseg]+= mag * fabs(RADIUS - (node.z-CAPSULE_HALF_LINEAR));	
 			}
 			else
 			{
-				surfaceimpacts[2][zseg]+= mag * fabs(RADIUS - (node.z+SEGMENT/2));
+				surfaceimpacts[2][zseg]+= mag * fabs(RADIUS - (node.z+CAPSULE_HALF_LINEAR));
 			}
 
 		}
@@ -344,7 +344,7 @@ void segments::drawoutline(ostream& drawcmd, const int& axis) const
 	centery = BMP_HEIGHT / 2;
 	
 	radius  = p_actin->pixels(RADIUS); 
-	segment = p_actin->pixels(SEGMENT/2.0);
+	segment = p_actin->pixels(CAPSULE_HALF_LINEAR);
 	
 	// draw outline
 
@@ -398,7 +398,7 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const MYDOU
 	centery = BMP_HEIGHT / 2;
 	
 	radius  = p_actin->pixels(RADIUS); 
-	segment = p_actin->pixels(SEGMENT/2.0);
+	segment = p_actin->pixels(CAPSULE_HALF_LINEAR);
 
 	MYDOUBLE linelen, linex, liney;
 	MYDOUBLE startx, starty;
@@ -427,7 +427,7 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const MYDOU
 		{	// capsule z axis, do ends only and bring them to center
 			if (i>=num_cap_segs)
 			{
-				starty = linestarty[i+num_straight_segs] + SEGMENT/2;
+				starty = linestarty[i+num_straight_segs] + CAPSULE_HALF_LINEAR;
 				startx = linestartx[i+num_straight_segs];
 
 				linex = scale*surfaceimpacts[axis][i]*lineunitvecx[i+num_straight_segs];
@@ -435,7 +435,7 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const MYDOU
 			}
 			else
 			{
-				starty = linestarty[i] - SEGMENT/2;
+				starty = linestarty[i] - CAPSULE_HALF_LINEAR;
 			}
 		}
 

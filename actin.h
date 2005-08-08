@@ -190,8 +190,8 @@ public:
 	rotationmatrix get_sym_break_axes(void);
 	void clearstats(void);
 
-	int pixels(const MYDOUBLE & coord)
-	{
+	inline int pixels(const MYDOUBLE & coord) const
+	{  // convert simulation distance into pixel distance
 		return (int)((MYDOUBLE) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
 	}
 };
