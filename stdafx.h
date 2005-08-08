@@ -35,6 +35,7 @@ removed without prior written permission from the author.
 
 // #define FORCES_BOTH_WAYS 1
 // #define NO_CALC_STATS 1
+//#define NON_RANDOM 1 // keep nucleating from same places
 
 #ifndef mymax
 #define mymax(a,b)            (((a) > (b)) ? (a) : (b))
@@ -188,6 +189,8 @@ extern MYDOUBLE LINK_FORCE;
 extern MYDOUBLE P_LINK_BREAK_IF_OVER;  // probablility that force will break link if over the link breakage force
 extern MYDOUBLE P_XLINK;
 extern MYDOUBLE P_NUC;
+
+extern int BMP_WIDTH,BMP_HEIGHT;
 
 extern MYDOUBLE GAUSSFWHM;
 extern int SPECKLE_FACTOR;

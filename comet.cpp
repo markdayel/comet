@@ -25,6 +25,9 @@ MYDOUBLE GAUSSFWHM = (MYDOUBLE) 0.266;
 
 bool NUCLEATOR_FORCES = true;
 
+int BMP_WIDTH = 800;
+int BMP_HEIGHT = 600;
+
 MYDOUBLE INIT_R_GAIN = 20;
 MYDOUBLE INIT_G_GAIN = 20;
 MYDOUBLE INIT_B_GAIN = 20;
@@ -743,6 +746,12 @@ if (nucshape == nucleator::capsule)
 		
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
 		{
+
+#ifdef NON_RANDOM
+
+srand( (unsigned) 200 );
+
+#endif
 			theactin.setdontupdates();
 			theactin.find_center(center);
 			
@@ -811,7 +820,9 @@ if (nucshape == nucleator::capsule)
 			theactin.savebmp((i/InterRecordIterations), actin::yaxis);
 			theactin.savebmp((i/InterRecordIterations), actin::zaxis);
 
-			nuc_object.clearradialsegments();
+			//nuc_object.clearradialsegments();
+			nuc_object.segs.clearsurfaceimpacts();
+			nuc_object.segs.clearnodes();
 			theactin.clearstats();
 
 			if ((i/InterRecordIterations)>(starting_iter/InterRecordIterations))  

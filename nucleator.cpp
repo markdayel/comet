@@ -22,28 +22,30 @@ MYDOUBLE NUCPOINT_SCALE = 1.001;
 #endif
 			
 nucleator::nucleator(void)
-{
-	radius = RADIUS;
-	segment = SEGMENT;
-	//P_NUC = (MYDOUBLE) 0.8 / (4*PI*radius*radius);
-	geometry = sphere;
-	position.zero();
-	surf_area = 4 * PI * radius * radius;
-    // inverse ratio of 'viscosities' of node and bead
-    movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / radius;    
+{  
+	// this should never be called anyhow.  Needs pointer to actin
 
-	deltanucposn.zero();
+	//radius = RADIUS;
+	//segment = SEGMENT;
+	////P_NUC = (MYDOUBLE) 0.8 / (4*PI*radius*radius);
+	//geometry = sphere;
+	//position.zero();
+	//surf_area = 4 * PI * radius * radius;
+ //   // inverse ratio of 'viscosities' of node and bead
+ //   movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / radius;    
 
-	torque.zero();
+	//deltanucposn.zero();
 
-	centerofmass.zero();
+	//torque.zero();
 
-	momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
-	momentofinertia.y = 1000 * MofI;
-	momentofinertia.z = 500 * MofI;
+	//centerofmass.zero();
 
-    definecagepoints();
-	colour.r = colour.g = colour.b = 1.0;
+	//momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
+	//momentofinertia.y = 1000 * MofI;
+	//momentofinertia.z = 500 * MofI;
+
+ //   definecagepoints();
+	//colour.r = colour.g = colour.b = 1.0;
 
 }
 
@@ -70,7 +72,8 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 	}
 
 	ptheactin = actinptr;
-	ptheactin->nucleation_object = this;
+	ptheactin->p_nuc = this;
+
 	position.zero();
 	definenucleatorgrid();
 
@@ -84,16 +87,18 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 	momentofinertia.y = 1000 * MofI;
 	momentofinertia.z = 500 * MofI;
 
-	if( geometry==sphere ){
-	radial_rep_distrib_x.reserve(RADIAL_SEGMENTS);
-	radial_rep_distrib_y.reserve(RADIAL_SEGMENTS);
-	radial_rep_distrib_z.reserve(RADIAL_SEGMENTS);
-	} else {
-	    set_rep_bins();
-	}
+	//if( geometry==sphere ){
+	//radial_rep_distrib_x.reserve(RADIAL_SEGMENTS);
+	//radial_rep_distrib_y.reserve(RADIAL_SEGMENTS);
+	//radial_rep_distrib_z.reserve(RADIAL_SEGMENTS);
+	//} else {
+	//    set_rep_bins();
+	//}
 
 	definecagepoints();
 	colour.r = colour.g = colour.b = 1.0;
+
+	segs.setupsegments(this, ptheactin);
 
 }
 
@@ -260,6 +265,7 @@ int nucleator::addnodescapsule(void)
 
 		//}
 
+		
 		ptheactin->node[ptheactin->highestnodecount++].polymerize(x,y,z);
 		nodesadded++;
 
@@ -457,79 +463,79 @@ bool nucleator::iswithinnucleator(const MYDOUBLE& x, const MYDOUBLE& y, const MY
 	return false;
 }
 
-void nucleator::set_rep_bins()
-{
-    // vector<MYDOUBLE> radial_rep_bin_x;
-    // vector<MYDOUBLE> radial_rep_bin_y;
-		
-    // bit of a guess, let's partition the samples as 1/2, 1/4, 1/4
-    // body segments
-
-	// try to keep equidistant:
-
-	nbdy_segs = int( (2*segment) / ( (2 * PI * radius) / RADIAL_SEGMENTS ) );
-
-    //nbdy_segs = int(0.5*RADIAL_SEGMENTS);
-    if(nbdy_segs%2 != 0)
-		nbdy_segs++;
-
-    // body segments
-    // clear everything
-    fbar_bdy_x.clear();
-    fbar_bdy_y.clear();
-    
-    MYDOUBLE seg_length = SEGMENT / (nbdy_segs/2.0 - 1);
-
-    MYDOUBLE x,y;
-    cout << "body_segments:" << nbdy_segs << endl;
-    
-    // partition points on the capsule body
-    for(int i=0; i<(nbdy_segs/2.0); i++){
-	fbar_bdy_x.push_back( -RADIUS );
-	fbar_bdy_y.push_back( -SEGMENT/2.0 + i*seg_length );
-    }
-    for(int i=0; i<(nbdy_segs/2.0); i++){
-	fbar_bdy_x.push_back( +RADIUS );
-	fbar_bdy_y.push_back( -SEGMENT/2.0 + i*seg_length );
-    }
-    
-    // cap segments
-    // clear everything
-    fbar_cap_x.clear();
-    fbar_cap_y.clear();
-    fbar_cap_ang.clear();
-    
-    ncap_segs = RADIAL_SEGMENTS;// - nbdy_segs;
-    if(ncap_segs%2 != 0)
-		ncap_segs++;
-
-    cout << "cap_segments:" << ncap_segs << endl;
-    
-    MYDOUBLE seg_angle = PI/(ncap_segs/2.0);
-    MYDOUBLE angle;
-    
-    for(int i=0; i<(ncap_segs); i++){
-	angle = i*seg_angle + seg_angle/2.0;
-	x = RADIUS * cos(angle);
-	y = RADIUS * sin(angle);
-	fbar_cap_x.push_back( x );
-	fbar_cap_y.push_back( y );
-	fbar_cap_ang.push_back( atan2(y, x) );	
-    }
-    
-    radial_rep_distrib_x.reserve(nbdy_segs + ncap_segs);
-    //radial_rep_distrib_x.clear();
-    fill(radial_rep_distrib_x.begin(), radial_rep_distrib_x.end(), 0);
-
-    radial_rep_distrib_y.reserve(nbdy_segs + ncap_segs);
-    //radial_rep_distrib_y.clear();
-    fill(radial_rep_distrib_y.begin(), radial_rep_distrib_y.end(), 0);
-
-    radial_rep_distrib_z.reserve(nbdy_segs + ncap_segs);
-    //radial_rep_distrib_z.clear();
-    fill(radial_rep_distrib_z.begin(), radial_rep_distrib_z.end(), 0);
-    
-}
+//void nucleator::set_rep_bins()
+//{
+//    // vector<MYDOUBLE> radial_rep_bin_x;
+//    // vector<MYDOUBLE> radial_rep_bin_y;
+//		
+//    // bit of a guess, let's partition the samples as 1/2, 1/4, 1/4
+//    // body segments
+//
+//	// try to keep equidistant:
+//
+//	nbdy_segs = int( (2*segment) / ( (2 * PI * radius) / RADIAL_SEGMENTS ) );
+//
+//    //nbdy_segs = int(0.5*RADIAL_SEGMENTS);
+//    if(nbdy_segs%2 != 0)
+//		nbdy_segs++;
+//
+//    // body segments
+//    // clear everything
+//    fbar_bdy_x.clear();
+//    fbar_bdy_y.clear();
+//    
+//    MYDOUBLE seg_length = SEGMENT / (nbdy_segs/2.0 - 1);
+//
+//    MYDOUBLE x,y;
+//    cout << "body_segments:" << nbdy_segs << endl;
+//    
+//    // partition points on the capsule body
+//    for(int i=0; i<(nbdy_segs/2.0); i++){
+//	fbar_bdy_x.push_back( -RADIUS );
+//	fbar_bdy_y.push_back( -SEGMENT/2.0 + i*seg_length );
+//    }
+//    for(int i=0; i<(nbdy_segs/2.0); i++){
+//	fbar_bdy_x.push_back( +RADIUS );
+//	fbar_bdy_y.push_back( -SEGMENT/2.0 + i*seg_length );
+//    }
+//    
+//    // cap segments
+//    // clear everything
+//    fbar_cap_x.clear();
+//    fbar_cap_y.clear();
+//    fbar_cap_ang.clear();
+//    
+//    ncap_segs = RADIAL_SEGMENTS;// - nbdy_segs;
+//    if(ncap_segs%2 != 0)
+//		ncap_segs++;
+//
+//    cout << "cap_segments:" << ncap_segs << endl;
+//    
+//    MYDOUBLE seg_angle = PI/(ncap_segs/2.0);
+//    MYDOUBLE angle;
+//    
+//    for(int i=0; i<(ncap_segs); i++){
+//	angle = i*seg_angle + seg_angle/2.0;
+//	x = RADIUS * cos(angle);
+//	y = RADIUS * sin(angle);
+//	fbar_cap_x.push_back( x );
+//	fbar_cap_y.push_back( y );
+//	fbar_cap_ang.push_back( atan2(y, x) );	
+//    }
+//    
+//    radial_rep_distrib_x.reserve(nbdy_segs + ncap_segs);
+//    //radial_rep_distrib_x.clear();
+//    fill(radial_rep_distrib_x.begin(), radial_rep_distrib_x.end(), 0);
+//
+//    radial_rep_distrib_y.reserve(nbdy_segs + ncap_segs);
+//    //radial_rep_distrib_y.clear();
+//    fill(radial_rep_distrib_y.begin(), radial_rep_distrib_y.end(), 0);
+//
+//    radial_rep_distrib_z.reserve(nbdy_segs + ncap_segs);
+//    //radial_rep_distrib_z.clear();
+//    fill(radial_rep_distrib_z.begin(), radial_rep_distrib_z.end(), 0);
+//    
+//}
 
 bool nucleator::collision(nodes &node)//(MYDOUBLE &x, MYDOUBLE &y, MYDOUBLE &z)
 {  // returns true if succeeds, false if fails due to too great node ejection
@@ -561,9 +567,12 @@ if (USE_THREADS)
 		
 		if (NUCLEATOR_FORCES)
 		{
-			radial_rep_distrib_z[(int)(((atan2(node.y,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.z))*(rad-r);
-			radial_rep_distrib_x[(int)(((atan2(node.y,node.z)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.x))*(rad-r);
-			radial_rep_distrib_y[(int)(((atan2(node.z,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.y))*(rad-r);
+			//radial_rep_distrib_z[(int)(((atan2(node.y,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.z))*(rad-r);
+			//radial_rep_distrib_x[(int)(((atan2(node.y,node.z)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.x))*(rad-r);
+			//radial_rep_distrib_y[(int)(((atan2(node.z,node.x)/PI)+1)*RADIAL_SEGMENTS)%RADIAL_SEGMENTS]+= (1-fabs(node.y))*(rad-r);
+		
+			segs.addsurfaceimpact(node,(rad-r));
+
 		}
 
 		break;
@@ -632,9 +641,11 @@ if (USE_THREADS)
 				
 				if (NUCLEATOR_FORCES)
 				{
-					radial_rep_distrib_x[get_zbin(node.y,node.z)]   += (1-fabs(node.x/rad))*(rad-r); // scaled
-					radial_rep_distrib_y[get_zbin(node.x,node.z)]   += (1-fabs(node.y/rad))*(rad-r);
-					radial_rep_distrib_z[get_angbin(node.x,node.y)] += (rad-r); // not scaled
+					//radial_rep_distrib_x[get_zbin(node.y,node.z)]   += (1-fabs(node.x/rad))*(rad-r); // scaled
+					//radial_rep_distrib_y[get_zbin(node.x,node.z)]   += (1-fabs(node.y/rad))*(rad-r);
+					//radial_rep_distrib_z[get_angbin(node.x,node.y)] += (rad-r); // not scaled
+
+					segs.addsurfaceimpact(node,(rad-r));
 				}
 
 			}
@@ -662,9 +673,11 @@ if (USE_THREADS)
 
 				if (NUCLEATOR_FORCES)
 				{
-					radial_rep_distrib_x[nbdy_segs + get_angbin(node.y,z2)] += (1-fabs(node.x/rad))*(rad-r); // scaled
-					radial_rep_distrib_y[nbdy_segs + get_angbin(node.x,z2)] += (1-fabs(node.y/rad))*(rad-r);
-					radial_rep_distrib_z[get_angbin(node.x,node.y)]         += (1-fabs(z2/rad*scale))*(rad-r);
+					//radial_rep_distrib_x[nbdy_segs + get_angbin(node.y,z2)] += (1-fabs(node.x/rad))*(rad-r); // scaled
+					//radial_rep_distrib_y[nbdy_segs + get_angbin(node.x,z2)] += (1-fabs(node.y/rad))*(rad-r);
+					//radial_rep_distrib_z[get_angbin(node.x,node.y)]         += (1-fabs(z2/rad*scale))*(rad-r);
+
+					segs.addsurfaceimpact(node,(rad-r));
 				}
 
 			}
@@ -717,122 +730,122 @@ if (USE_THREADS)
 
 	return true; // sucessful node ejection
 }
+//
+//int nucleator::get_zbin(const MYDOUBLE x, const MYDOUBLE y)
+//{
+//    // FIXME:
+//    // Confusingly this is x,y where y is moving up capsule
+//    // and x is moving away (ie y = z, x = x|y) this made sense at the time.
+//    int indx = 0;
+//    int np = (int)fbar_bdy_y.size();
+//    MYDOUBLE mindist = fabs(y - fbar_bdy_y[indx]);;
+//    MYDOUBLE dist;
+//    
+//    for(int i=0; i<np; i++)
+//	{
+//		if(x * fbar_bdy_x[i] >= 0)
+//		{ // same side
+//			
+//			dist = fabs(y - fbar_bdy_y[i]);
+//
+//			if(dist < mindist)
+//			{
+//				mindist = dist;
+//				indx = i;
+//			}
+//		}
+//    }
+//    /*
+//    cout << "Zbin  " 
+//	 << "input x, y" << x << " " << y
+//	 << "  matches: "
+//	 << fbar_cap_x[indx] << " "
+//	 << fbar_cap_y[indx] 
+//    	 << " (" << indx << ")" << endl;
+//    */
+//    return indx;
+//}
+// 
+//int nucleator::get_angbin(const MYDOUBLE x, const MYDOUBLE y)
+//{
+//    // angular bin, assumed to be on a circle
+//    int indx = -1;
+//    int np = (int)fbar_cap_ang.size();
+//    MYDOUBLE ang;
+//    MYDOUBLE mindiff = 2*PI;
+//    MYDOUBLE diff;
+//
+//    ang = atan2(y, x);
+//    for(int i=0; i<np; i++){
+//	diff =  fabs(ang - fbar_cap_ang[i]);
+//	if(diff<mindiff){
+//	    mindiff = diff;
+//	    indx=i;
+//	}
+//    }
+//    /*
+//    cout << "AngBin  "
+//	 << "input x, y, angle : (" << x << ", " << y << ") "<< ang
+//	 << "  matches: ("
+//	 << fbar_cap_x[indx] << ", " 
+//	 << fbar_cap_y[indx] << ") " 
+//	 << fbar_cap_ang[indx]
+//	 << " indx: " << indx
+//	 << endl;
+//    */
+//    return indx;
+//}
 
-int nucleator::get_zbin(const MYDOUBLE x, const MYDOUBLE y)
-{
-    // FIXME:
-    // Confusingly this is x,y where y is moving up capsule
-    // and x is moving away (ie y = z, x = x|y) this made sense at the time.
-    int indx = 0;
-    int np = (int)fbar_bdy_y.size();
-    MYDOUBLE mindist = fabs(y - fbar_bdy_y[indx]);;
-    MYDOUBLE dist;
-    
-    for(int i=0; i<np; i++)
-	{
-		if(x * fbar_bdy_x[i] >= 0)
-		{ // same side
-			
-			dist = fabs(y - fbar_bdy_y[i]);
-
-			if(dist < mindist)
-			{
-				mindist = dist;
-				indx = i;
-			}
-		}
-    }
-    /*
-    cout << "Zbin  " 
-	 << "input x, y" << x << " " << y
-	 << "  matches: "
-	 << fbar_cap_x[indx] << " "
-	 << fbar_cap_y[indx] 
-    	 << " (" << indx << ")" << endl;
-    */
-    return indx;
-}
- 
-int nucleator::get_angbin(const MYDOUBLE x, const MYDOUBLE y)
-{
-    // angular bin, assumed to be on a circle
-    int indx = -1;
-    int np = (int)fbar_cap_ang.size();
-    MYDOUBLE ang;
-    MYDOUBLE mindiff = 2*PI;
-    MYDOUBLE diff;
-
-    ang = atan2(y, x);
-    for(int i=0; i<np; i++){
-	diff =  fabs(ang - fbar_cap_ang[i]);
-	if(diff<mindiff){
-	    mindiff = diff;
-	    indx=i;
-	}
-    }
-    /*
-    cout << "AngBin  "
-	 << "input x, y, angle : (" << x << ", " << y << ") "<< ang
-	 << "  matches: ("
-	 << fbar_cap_x[indx] << ", " 
-	 << fbar_cap_y[indx] << ") " 
-	 << fbar_cap_ang[indx]
-	 << " indx: " << indx
-	 << endl;
-    */
-    return indx;
-}
-
-int nucleator::saveradialsegments(ofstream *outputstream) 
-{
-
-	for (int i=0; i<RADIAL_SEGMENTS; i++)
-	{
-		if (i>0)
-			*outputstream << ",";
-		*outputstream << radial_rep_distrib_x[i];
-	}
-
-	for (int i=0; i<RADIAL_SEGMENTS; i++)
-	{
-		if (i>0)
-			*outputstream << ",";
-		*outputstream << radial_rep_distrib_y[i];
-	}
-
-	for (int i=0; i<RADIAL_SEGMENTS; i++)
-	{
-		if (i>0)
-			*outputstream << ",";
-		*outputstream << radial_rep_distrib_z[i];
-	}
-
-	return 0;
-}
-
-int nucleator::clearradialsegments()
-{
-	if (geometry == sphere)
-	{	
-		for (int i=0; i<RADIAL_SEGMENTS; ++i)
-		{
-			radial_rep_distrib_x[i]=0;
-			radial_rep_distrib_y[i]=0;
-			radial_rep_distrib_z[i]=0;
-		}
-	}
-	else
-	{
-		for (int i=0; i<(nbdy_segs + ncap_segs); ++i)
-		{
-			radial_rep_distrib_x[i]=0;
-			radial_rep_distrib_y[i]=0;
-			radial_rep_distrib_z[i]=0;
-		}
-	}
-
-	return 0;
-}
+//int nucleator::saveradialsegments(ofstream *outputstream) 
+//{
+//
+//	for (int i=0; i<RADIAL_SEGMENTS; i++)
+//	{
+//		if (i>0)
+//			*outputstream << ",";
+//		*outputstream << radial_rep_distrib_x[i];
+//	}
+//
+//	for (int i=0; i<RADIAL_SEGMENTS; i++)
+//	{
+//		if (i>0)
+//			*outputstream << ",";
+//		*outputstream << radial_rep_distrib_y[i];
+//	}
+//
+//	for (int i=0; i<RADIAL_SEGMENTS; i++)
+//	{
+//		if (i>0)
+//			*outputstream << ",";
+//		*outputstream << radial_rep_distrib_z[i];
+//	}
+//
+//	return 0;
+//}
+//
+//int nucleator::clearradialsegments()
+//{
+//	if (geometry == sphere)
+//	{	
+//		for (int i=0; i<RADIAL_SEGMENTS; ++i)
+//		{
+//			radial_rep_distrib_x[i]=0;
+//			radial_rep_distrib_y[i]=0;
+//			radial_rep_distrib_z[i]=0;
+//		}
+//	}
+//	else
+//	{
+//		for (int i=0; i<(nbdy_segs + ncap_segs); ++i)
+//		{
+//			radial_rep_distrib_x[i]=0;
+//			radial_rep_distrib_y[i]=0;
+//			radial_rep_distrib_z[i]=0;
+//		}
+//	}
+//
+//	return 0;
+//}
 
 int nucleator::save_data(ofstream &ostr) 
 {
@@ -891,20 +904,20 @@ int nucleator::load_data(ifstream &istr)
     return 0;
 }
 
-bool nucleator::is_sphere()
-{
-    return geometry == sphere;
-}
+//bool nucleator::is_sphere()
+//{
+//    return geometry == sphere;
+//}
+//
+//bool nucleator::is_capsule()
+//{
+//    return geometry == capsule;
+//}
 
-bool nucleator::is_capsule()
-{
-    return geometry == capsule;
-}
-
-int nucleator::n_force_segments()
-{
-    return nbdy_segs + ncap_segs;
-}
+//int nucleator::n_force_segments()
+//{
+//    return nbdy_segs + ncap_segs;
+//}
 
 void nucleator::definecagepoints(void)
 {

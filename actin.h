@@ -66,9 +66,9 @@ class actin
 public:
 	enum projection 
 	{
-		xaxis,
-		yaxis,
-		zaxis
+		xaxis = 0,
+		yaxis = 1,
+		zaxis = 2
 	};
 	actin(void);
 	~actin(void);
@@ -82,6 +82,7 @@ public:
 	ofstream opruninfo;
 	ofstream opvelocityinfo;
 	int highestnodecount;
+
 	Dbl2d imageR, imageG, imageB;
 
 	rotationmatrix actin_rotation, camera_rotation;
@@ -113,25 +114,25 @@ public:
 	int applyforces(void);
 	int savebmp(int filenum, projection proj);
 	void draw_bead_forces(int filenum, projection proj,
-				int width, int height,
+				int BMP_WIDTH, int BMP_HEIGHT,
 				int xgmax, int ygmax,
 				int movex, int movey,
 				MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-				MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
 				MYDOUBLE imageGmax, 
 				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color);
 
 	void draw_capsule_forces(int filenum, projection proj,
-				int width, int height,
+				int BMP_WIDTH, int BMP_HEIGHT,
 				int xgmax, int ygmax,
 				int movex, int movey,
 				MYDOUBLE meanx, MYDOUBLE meany, MYDOUBLE meanz,
-				MYDOUBLE dimx, MYDOUBLE dimy, MYDOUBLE dimz,
 				MYDOUBLE imageGmax, 
 				bool nuc_forces_overlay, MYDOUBLE scale, MYDOUBLE thickness,  char*  color);
 
 
-	nucleator* nucleation_object;
+	segments segs;
+
+	nucleator* p_nuc;
 	int linkforces();
 	Colour newnodescolour;
 	static int iteration_num;
@@ -188,6 +189,11 @@ public:
 	void setdontupdates(void);
 	rotationmatrix get_sym_break_axes(void);
 	void clearstats(void);
+
+	int pixels(const MYDOUBLE & coord)
+	{
+		return (int)((MYDOUBLE) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
+	}
 };
 
 #endif

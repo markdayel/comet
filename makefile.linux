@@ -1,18 +1,18 @@
 PROG = comet
-SRCS = actin.cpp Colour.cpp comet.cpp links.cpp nodes.cpp nucleator.cpp rotationmatrix.cpp
+SRCS = actin.cpp Colour.cpp comet.cpp links.cpp nodes.cpp nucleator.cpp rotationmatrix.cpp segments.cpp
 OBJS = $(SRCS:.cpp=.o)
 LIBS =  -lm -lpthread
 #CXXFLAGS = -O5 -ffast-math -fsingle-precision-constant -march=athlon-xp -mfpmath=sse -fomit-frame-pointer -malign-double -fprefetch-loop-arrays
 #
 #normal:
-#CXXFLAGS = -O5 -ffast-math -march=athlon-xp -mfpmath=sse \
-#           -fomit-frame-pointer -malign-double -fprefetch-loop-arrays \
-#           -g -Wall
-#
-#debug:
 CXXFLAGS = -O5 -ffast-math -march=athlon-xp -mfpmath=sse \
            -fomit-frame-pointer -malign-double -fprefetch-loop-arrays \
            -g -Wall
+#
+#debug:
+#CXXFLAGS = -march=athlon-xp -mfpmath=sse \
+#            -malign-double -fprefetch-loop-arrays \
+#           -g -Wall
 #CXXFLAGS = -O5 -ffast-math -march=athlon-xp -mfpmath=sse -fomit-frame-pointer -malign-double -fprefetch-loop-arrays -Wall
 #CXXFLAGS = -O5 -march=athlon-xp -mfpmath=sse -fmove-all-movables \
 #                -freduce-all-givs -Winline -Wall -g
