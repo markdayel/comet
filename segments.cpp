@@ -146,22 +146,22 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			//       offset     segnum        angle of 1 seg
 			theta = (0.5 + (double) i) * (PI / (double) num_cap_segs);
 
-			startx = - cos (theta);  // unit components
-			starty =   sin (theta);
+			startx = - cos (theta) * RADIUS;  // unit components
+			starty =   sin (theta) * RADIUS;
 
-			linestartx[axis][i] = startx * RADIUS;	// line start
+			linestartx[axis][i] = startx;	// line start
 	        
 			if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
 			{	// sphere or capsule z
-				linestarty[axis][i] = starty * RADIUS;
+				linestarty[axis][i] = starty;
 			}
 			else
 			{
-				linestarty[axis][i] = starty * RADIUS + CAPSULE_HALF_LINEAR;
+				linestarty[axis][i] = starty + CAPSULE_HALF_LINEAR;
 			}
 
-			lineunitvecx[axis][i] = - startx * FORCEBAR_SCALE;
-			lineunitvecy[axis][i] = - starty * FORCEBAR_SCALE;
+			lineunitvecx[axis][i] = - startx;
+			lineunitvecy[axis][i] = - starty;
 		}
 
 		// bottom cap
@@ -171,25 +171,25 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			//       offset     segnum                      angle of 1 seg
 			theta = (0.5 + (double) i) * (PI / (double) num_cap_segs);
 
-			startx = - cos (theta);  // unit components
-			starty =   sin (theta);
+			startx = - cos (theta) * RADIUS;  // unit components
+			starty =   sin (theta) * RADIUS;
 
 			if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
 			{	// sphere or capsule z
-				linestartx[axis][i] = startx * RADIUS;  // line start
-				linestarty[axis][i] = starty * RADIUS;
+				linestartx[axis][i] = startx;  // line start
+				linestarty[axis][i] = starty;
 		        
-				lineunitvecx[axis][i] = - startx * FORCEBAR_SCALE;
-				lineunitvecy[axis][i] = - starty * FORCEBAR_SCALE;
+				lineunitvecx[axis][i] = - startx;
+				lineunitvecy[axis][i] = - starty;
 			}
 			else
 			{	
 				// capsule x or y
-				linestartx[axis][i+num_straight_segs] = startx * RADIUS;  // line start
-				linestarty[axis][i+num_straight_segs] = starty * RADIUS - CAPSULE_HALF_LINEAR;
+				linestartx[axis][i+num_straight_segs] = startx ;  // line start
+				linestarty[axis][i+num_straight_segs] = starty - CAPSULE_HALF_LINEAR;
 		        
-				lineunitvecx[axis][i+num_straight_segs] = - startx * FORCEBAR_SCALE;
-				lineunitvecy[axis][i+num_straight_segs] = - starty * FORCEBAR_SCALE;
+				lineunitvecx[axis][i+num_straight_segs] = - startx;
+				lineunitvecy[axis][i+num_straight_segs] = - starty;
 			}
 		}
 
@@ -203,16 +203,16 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 				dist = (0.5 + (double) i) * straight_seg_len;
 
-				startx = 1;  // unit components
+				startx = RADIUS;  // unit components
 				starty = CAPSULE_HALF_LINEAR - dist ;
 
-				linestartx[axis][i+num_cap_segs] = startx * RADIUS;
+				linestartx[axis][i+num_cap_segs] = startx;
 				linestarty[axis][i+num_cap_segs] = starty;
 
 				// N.B. this is scaled by (cap_seg_len/straight_seg_len) to compenate for 
 				// difference in segments lengths
 		       
-				lineunitvecx[axis][i+num_cap_segs] = - startx * FORCEBAR_SCALE * (cap_seg_len/straight_seg_len);
+				lineunitvecx[axis][i+num_cap_segs] = - startx;
 				lineunitvecy[axis][i+num_cap_segs] = 0;
 			}
 
@@ -221,21 +221,28 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 				dist = (0.5 + (double) i) * straight_seg_len;
 
-				startx = - 1;  // unit components
+				startx = - RADIUS;  // unit components
 				starty = dist - CAPSULE_HALF_LINEAR ;
 
-				linestartx[axis][i+2*num_cap_segs+num_straight_segs] = startx * RADIUS;
+				linestartx[axis][i+2*num_cap_segs+num_straight_segs] = startx;
 				linestarty[axis][i+2*num_cap_segs+num_straight_segs] = starty;
 
 				// N.B. this is scaled by (cap_seg_len/straight_seg_len) to compenate for 
 				// difference in segments lengths
 		        
-				lineunitvecx[axis][i+2*num_cap_segs+num_straight_segs] = - startx * FORCEBAR_SCALE * (cap_seg_len/straight_seg_len);
+				lineunitvecx[axis][i+2*num_cap_segs+num_straight_segs] = - startx;
 				lineunitvecy[axis][i+2*num_cap_segs+num_straight_segs] = 0;
 			}
 			
 		}
 	}
+// N.B. TODO (important): need to derive scaled surface area
+// (integral of surface multiplied by orthoganal scaling factor used
+// during the impacts)
+// but use lengths for now:
+	curved_seg_area   = cap_seg_len;
+	straight_seg_area =  straight_seg_len;
+	// capsule_z_seg_area = 
 
 }
 
@@ -530,17 +537,16 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const doubl
 {
 
 	int centerx, centery;
-    int radius;
-    int segment;
+    //int radius;
+    //int segment;
 
 	centerx = BMP_WIDTH / 8;
 	centery = BMP_HEIGHT / 2;
 	
-	radius  = p_actin->pixels(RADIUS); 
-	segment = p_actin->pixels(CAPSULE_HALF_LINEAR);
-
 	double linelen, linex, liney;
 	double startx, starty;
+
+	double seg_area, unscaledlen;
 
 	int segstodraw = num_segs;
 
@@ -549,25 +555,36 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const doubl
 		segstodraw = 2 * num_cap_segs;
 	}
 
+	
 	for (int i=0; i<segstodraw; ++i)
 	{
 
 		startx = linestartx[axis][i];
 		starty = linestarty[axis][i];
+
+		if ((p_nuc->geometry == nucleator::capsule) && 
+			(axis != 2) &&
+			(fabs(starty) < CAPSULE_HALF_LINEAR))
+		{	// on capsule side
+			seg_area = straight_seg_area;
+		}
+		else
+		{
+			seg_area = curved_seg_area;
+		}
 	
-		linex = scale*surfaceimpacts[axis][i]*lineunitvecx[axis][i];
-		liney = scale*surfaceimpacts[axis][i]*lineunitvecy[axis][i];
+		unscaledlen = surfaceimpacts[axis][i] * FORCEBAR_SCALE * scale / seg_area;
+
+		linex = unscaledlen * lineunitvecx[axis][i];
+		liney = unscaledlen * lineunitvecy[axis][i];
 
 		linelen = calcdist(linex,liney);
 
-		if (linelen > 0.9)
+		if (linelen > 0.9 * RADIUS)
 		{
-			linex*= 0.9/linelen;
-			liney*= 0.9/linelen;			
+			linex*= 0.9 * RADIUS / linelen;
+			liney*= 0.9 * RADIUS / linelen;			
 		}
-
-		linex*= RADIUS;
-		liney*= RADIUS;
 
 		drawcmd << " line "
 				<< centerx + p_actin->pixels(startx) << "," 
@@ -603,6 +620,7 @@ void segments::savereport(const int& filenum) const
 	char filename[255];
 
 	double x,y,z;
+	double radius;
 
 	sprintf ( filename , "report%05i.txt", filenum );
 
@@ -640,12 +658,30 @@ void segments::savereport(const int& filenum) const
 				z = 0;
 			}
 
+
+			if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+			{	// sphere or capsule z
+				radius = calcdist(x,y) - RADIUS;
+			}
+			else
+			{
+				if (fabs(y) < CAPSULE_HALF_LINEAR)
+					radius = fabs(x) - RADIUS;
+				else
+					radius = calcdist(x,fabs(y)-CAPSULE_HALF_LINEAR) - RADIUS;
+			}
+
 			for(int dist = 0; dist<num_dist_segs; ++dist)
 			{
 				opreport 
 					<< axis << ","
 					<< seg << ","
-					<< dist << ",";
+					<< dist << ","
+					<< x << ","
+					<< y << ","
+					<< z << ","
+					<< radius << ",";
+
 					 
 
 			}

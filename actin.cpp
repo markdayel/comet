@@ -643,46 +643,35 @@ void actin::move_and_rotate()
 
 // do displacment
 
-if ((p_nuc->deltanucposn.length() > MIN_DISPLACEMENT_TO_UPDATE))
-{
-
-	debug_num_displace++;
-
-	// move the nucleator by moving nodes in opposite direction
-	// note this is *before* rotating the deltanucposn vector, since the
-	// nodes are in the nucleator reference frame
-	
-	for (int i = 0; i<highestnodecount; i++)
+	if ((p_nuc->deltanucposn.length() > MIN_DISPLACEMENT_TO_UPDATE))
 	{
-		node[i]-=p_nuc->deltanucposn;
+
+		debug_num_displace++;
+
+		// move the nucleator by moving nodes in opposite direction
+		// note this is *before* rotating the deltanucposn vector, since the
+		// nodes are in the nucleator reference frame
+		
+		for (int i = 0; i<highestnodecount; i++)
+		{
+			node[i]-=p_nuc->deltanucposn;
+		}
+
+
+		// rotate the nucleator displacement vector
+
+		p_nuc->nucleator_rotation.rotate(p_nuc->deltanucposn);
+
+		// update the nucleator position with the rotated vector
+
+		p_nuc->position+=p_nuc->deltanucposn;
+
+		// and zero
+
+		p_nuc->deltanucposn.zero();
+
+		//toupdategrid = true;
 	}
-
-
-	// rotate the nucleator displacement vector
-
-	p_nuc->nucleator_rotation.rotate(p_nuc->deltanucposn);
-
-	// update the nucleator position with the rotated vector
-
-	p_nuc->position+=p_nuc->deltanucposn;
-
-	// and zero
-
-	p_nuc->deltanucposn.zero();
-
-	//toupdategrid = true;
-}
-
-//if (toupdategrid)
-//{
-//	for (int i=0; i<highestnodecount; i++)
-//	{
-//		if ((!node[i].dontupdate) && node[i].polymer)
-//			node[i].updategrid(); // move the point on the grid if need to
-//								  // and update the unit vector position
-//	}
-//}
-
 
 	return;
 }
@@ -926,7 +915,7 @@ void * actin::collisiondetectiondowork(thread_data* dat)
 
 				distsqr = disp.sqrlength();
 
-				if (distsqr < SQRT_ACCURACY_LOSS)
+				if (distsqr < 2 * SQRT_ACCURACY_LOSS)
 				{	
 					continue;
 				}
@@ -952,53 +941,32 @@ void * actin::collisiondetectiondowork(thread_data* dat)
 
 					tomove = disp * ( 2 * force / dist);
 					
-
-//#ifdef FORCES_BOTH_WAYS
-//					
-//					(*sameGPnode)->rep_force_vec[0] -= tomove/2;
-//					(*nearnode)->rep_force_vec[0] += tomove/2;
-//
-//#else
-
 					(*sameGPnode)->rep_force_vec[0] -= tomove ;
-
-#ifndef NO_CALC_STATS
-
+//
+//#ifndef NO_CALC_STATS
+//
 					(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial[0], (*sameGPnode)->repforce_transverse[0]);
-
-					//(*sameGPnode)->repforce_radial[0]     += fabs(  (*sameGPnode)->unit_vec_posn.dot(disp)  * (2 * forcescale) ) ;
-
-					//(*sameGPnode)->repforce_transverse[0] += fabs( ((*sameGPnode)->unit_vec_posn.cross(disp)).length()  * (2 * forcescale));
-
-#endif
-
-					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
-					{
-					                            
-						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
-						scale = (double)NODE_INCOMPRESSIBLE_RADIUS / (double)4.0*dist;  
-
-						tomove = disp * (2*scale);	// these are the vector half components (in direction from i to j)
-
-//#ifdef FORCES_BOTH_WAYS
 //
-//						(*sameGPnode)->repulsion_displacement_vec[0] -= tomove/2;
-//						(*nearnode)->repulsion_displacement_vec[0]   += tomove/2;
+
+//#endif
+
+//					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
+//					{
+//					                            
+//						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
+//						scale = (double)NODE_INCOMPRESSIBLE_RADIUS / (double)4.0*dist;  
 //
-//#else
-
-						(*sameGPnode)->repulsion_displacement_vec[0] -= tomove;
-
-#ifndef NO_CALC_STATS
-
-						(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->dispforce_radial[0], (*sameGPnode)->dispforce_transverse[0]);
-
-						//(*sameGPnode)->dispforce_radial[0]     += fabs(  (*sameGPnode)->unit_vec_posn.dot(disp)  ) ;
-
-						//(*sameGPnode)->dispforce_transverse[0] += fabs( ((*sameGPnode)->unit_vec_posn.cross(disp)).length() );
-
-#endif
-					}
+//						tomove = disp * (2*scale);	// these are the vector half components (in direction from i to j)
+//
+//
+//						(*sameGPnode)->repulsion_displacement_vec[0] = -tomove;
+//
+////#ifndef NO_CALC_STATS
+////
+////						(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->dispforce_radial[0], (*sameGPnode)->dispforce_transverse[0]);
+////
+////#endif
+//					}
 				}
 
 			}
@@ -1316,16 +1284,16 @@ if (false) // USE_THREADS)
 //#else
 						node[n].link_force_vec[0] += tomove;
 
-#ifndef NO_CALC_STATS
-
+//#ifndef NO_CALC_STATS
+//
 						node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
-
-						//node[n].linkforce_radial[0]     += fabs(  node[n].unit_vec_posn.dot(disp)  * (2 * force * scale) ) ;
-
-						//node[n].linkforce_transverse[0] += fabs( (node[n].unit_vec_posn.cross(disp)).length()  * (2 * force * scale));
-
-						//cout << node[n].linkforce_radial[0] << " " <<  node[n].linkforce_transverse[0] << endl;
-#endif
+//
+//						//node[n].linkforce_radial[0]     += fabs(  node[n].unit_vec_posn.dot(disp)  * (2 * force * scale) ) ;
+//
+//						//node[n].linkforce_transverse[0] += fabs( (node[n].unit_vec_posn.cross(disp)).length()  * (2 * force * scale));
+//
+//						//cout << node[n].linkforce_radial[0] << " " <<  node[n].linkforce_transverse[0] << endl;
+//#endif
 						
 
 					}

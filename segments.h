@@ -62,6 +62,8 @@ public:
 	int num_straight_segs;			// num segs on *one* side
 	int num_dist_segs;				// number of segs going outwards from nuc
 	
+	double curved_seg_area;
+	double straight_seg_area;
 
 	double curved_length;			// length of *one* cap
 	double straight_length;		// length of *one* side

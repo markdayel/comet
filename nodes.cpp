@@ -21,18 +21,18 @@ nodes::nodes(void)
 	prevnode = this;
 	
 	x = y = z = 0.0;
-	lastpos.zero();
+	//lastpos.zero();
 	gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
 	//rep_force_vec.x  = rep_force_vec.y  = rep_force_vec.z  = 0.0;
 	
 	//repulsion_displacement_vec = new vect[NUM_THREADS+1];
-	repulsion_displacement_vec.resize(NUM_THREADS+1);
+	//repulsion_displacement_vec.resize(NUM_THREADS+1);
 	link_force_vec.resize(NUM_THREADS+1);
 	rep_force_vec.resize(NUM_THREADS+1);
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
-		repulsion_displacement_vec[i].zero();
+		//repulsion_displacement_vec[i].zero();
 		link_force_vec[i].zero();
 		rep_force_vec[i].zero();
 	}
@@ -54,6 +54,7 @@ nodes::nodes(void)
 	repforce_radial.resize(NUM_THREADS);
 	dispforce_transverse.resize(NUM_THREADS);
 	dispforce_radial.resize(NUM_THREADS);
+	nucleator_impacts.resize(NUM_THREADS);
 
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
 	{
@@ -67,16 +68,16 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
     nextnode = this;  // initialise to point to self
 	prevnode = this;
 	//rep_force_vec.x  = rep_force_vec.y  = rep_force_vec.z  = 0.0;
-	lastpos.zero();
+	//lastpos.zero();
 	//repulsion_displacement_vec =  new vect[NUM_THREADS+1];
 
-	repulsion_displacement_vec.resize(NUM_THREADS+1);
+	//repulsion_displacement_vec.resize(NUM_THREADS+1);
 	link_force_vec.resize(NUM_THREADS+1);
 	rep_force_vec.resize(NUM_THREADS+1);
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
-		repulsion_displacement_vec[i].zero();
+		//repulsion_displacement_vec[i].zero();
 		link_force_vec[i].zero();
 		rep_force_vec[i].zero();
 	}
@@ -127,7 +128,7 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 	y = set_y;
 	z = set_z;
 	
-	lastpos=*this; 
+	//lastpos=*this; 
 
 	polymer = true ;
 

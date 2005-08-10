@@ -38,7 +38,7 @@ public:
 	double theta;
 	double phi;
 
-	inline const double getlinkforces(const double& dist) 
+	inline double getlinkforces(const double& dist) 
 	{  // return force (nominally in pN)
 		double force;//=0.0;
 		double stress_over_breakage;

@@ -119,12 +119,12 @@ class vect
     //	return ((a.x * b.x) + (a.y * b.y) + (a.z * b.z));
     //}
     
-    const inline double dot(const vect &v) const
+    inline double dot(const vect &v) const
 	{
 	    return ((x * v.x) + (y * v.y) + (z * v.z));
 	}
     
-    const inline double length() const
+    inline double length() const
 	{
 	    return calcdist(x,y,z);
 	}
@@ -176,7 +176,7 @@ class vect
       
       }
 */  
-    const inline double sqrlength(void) const
+    inline double sqrlength(void) const
 	{
 	    return x*x + y*y + z*z;
 	}

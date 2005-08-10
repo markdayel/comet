@@ -42,10 +42,10 @@ public:
 	//int xrank;
 	//int yrank;
 	//int zrank;
-	vect lastpos;
+	//vect lastpos;
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
 	vector <vect> link_force_vec;  // index is the threadnum
-	vector <vect> repulsion_displacement_vec;
+	//vector <vect> repulsion_displacement_vec;
 	vector <vect> rep_force_vec;
 	//vect momentum_vec;
 	vector <links> listoflinks;
@@ -54,6 +54,8 @@ public:
 			 repforce_transverse, repforce_radial,
 			 dispforce_transverse, dispforce_radial;  // index is the threadnum
 	
+	vector <vect> nucleator_impacts;
+
 	int gridx, gridy, gridz;
 	vect delta;
 	//double delta_x, delta_y, delta_z;
@@ -78,12 +80,13 @@ public:
 	inline void applyforces(const int &threadnum)
 	{	
 		delta = (link_force_vec[threadnum] + rep_force_vec[threadnum]) * DELTA_T * FORCE_SCALE_FACT;
+				//+ repulsion_displacement_vec[threadnum];
 
 		*this+=delta;
 
 		rep_force_vec[threadnum].zero();
 		link_force_vec[threadnum].zero();
-		repulsion_displacement_vec[threadnum].zero();
+		//repulsion_displacement_vec[threadnum].zero();
 
 		//return 0;
 	}
@@ -110,6 +113,8 @@ public:
 		repforce_radial[threadnum]      = 
 		dispforce_transverse[threadnum] = 
 		dispforce_radial[threadnum]     = 0;
+
+		nucleator_impacts[threadnum].zero();
 	}
 };
 
