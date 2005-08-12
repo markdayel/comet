@@ -125,12 +125,29 @@ actin::actin(void)
 	debug_num_rotate = 0;
 	debug_num_displace = 0;
 
+	int x,y;
 
 	// bitmap size:
 	//BMP_WIDTH = 800;
 	//BMP_HEIGHT = 600;
 
-	
+	imageR.resize(BMP_WIDTH);
+	imageG.resize(BMP_WIDTH);
+	imageB.resize(BMP_WIDTH);
+
+	for (x = 0; x<BMP_WIDTH; x++)
+		{
+			imageR[x].resize(BMP_HEIGHT);
+			imageG[x].resize(BMP_HEIGHT);
+			imageB[x].resize(BMP_HEIGHT);
+
+			for (y = 0; y<BMP_HEIGHT; y++)
+			{
+				imageR[x][y]=0;
+				imageG[x][y]=0;
+				imageB[x][y]=0;
+			}
+		}
 
 } 
 
@@ -861,7 +878,7 @@ void * actin::collisiondetectiondowork(thread_data* dat)
 {
 	vect nodeposvec;
 	double distsqr,dist;
-	double scale,force;
+	double force;
 	vect tomove;
 
 	vect disp;
@@ -929,15 +946,17 @@ void * actin::collisiondetectiondowork(thread_data* dat)
 
 						dist = sqrt(distsqr); 
 
-					if (dist > NODE_INCOMPRESSIBLE_RADIUS)
-					{
-						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
-							(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * (dist-NODE_INCOMPRESSIBLE_RADIUS )) ;
-					}
-					else
-					{
-						force =  NODE_REPULSIVE_MAG ;
-					}  // fix force if below node incompressible distance
+						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+
+					//if (dist > NODE_INCOMPRESSIBLE_RADIUS)
+					//{
+					//	force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
+					//		(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * (dist-NODE_INCOMPRESSIBLE_RADIUS )) ;
+					//}
+					//else
+					//{
+					//	force =  NODE_REPULSIVE_MAG ;
+					//}  // fix force if below node incompressible distance
 
 					tomove = disp * ( 2 * force / dist);
 					
@@ -1562,16 +1581,8 @@ typedef struct tagBITMAPINFO {
 
 	double imageRmax, imageGmax, imageBmax;
 
-	imageR.resize(BMP_WIDTH);
-	imageG.resize(BMP_WIDTH);
-	imageB.resize(BMP_WIDTH);
-
 	for (x = 0; x<BMP_WIDTH; x++)
 		{
-			imageR[x].resize(BMP_HEIGHT);
-			imageG[x].resize(BMP_HEIGHT);
-			imageB[x].resize(BMP_HEIGHT);
-
 			for (y = 0; y<BMP_HEIGHT; y++)
 			{
 				imageR[x][y]=0;
@@ -1721,11 +1732,11 @@ vect rot;
 			y = pixels(rot.y - meany) + BMP_HEIGHT/2;
 		}
 
-		x+=movex;  // displace to bring bead back in bounds
-		y+=movey;
+		x += movex;  // displace to bring bead back in bounds
+		y += movey;
 
-		if ((x<0) || (x>=BMP_WIDTH- (2*xgmax+1)) ||
-			(y<0) || (y>=BMP_HEIGHT-(2*ygmax+1)))  // only plot if point in bounds
+		if ((x<0) || (x >= BMP_WIDTH  - (2*xgmax+1)) ||
+			(y<0) || (y >= BMP_HEIGHT - (2*ygmax+1)) )  // only plot if point in bounds
 		{
 			//cout << "point out of bounds " << x << "," << y << endl;
 		}
@@ -1743,8 +1754,8 @@ vect rot;
 						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
 						//		linkforces[i] * GaussMat[xg+xgmax][yg+ygmax];
 						
-						imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
-							node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
+						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
+						//	node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
 						
 						imageG[x+xg+xgmax][y+yg+ygmax]+=
 								1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
@@ -1828,6 +1839,12 @@ for (vector <vect>::iterator point=p_nuc->cagepoints.begin();
 		//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
 
 	}
+
+	// write the bins info:
+
+	p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
+					   imageRmax, imageGmax, imageBmax,
+					   p_nuc->segs.numnodes, proj);
 
 	
 	// the header for saving the bitmaps...
@@ -2687,17 +2704,13 @@ rotationmatrix actin::get_sym_break_axes(void)
 {
 
 	vect tmp_nodepos;
-
-	vect  CofM;
-
+	vect CofM;
 	vect sym_break_direction;
 
 	rotationmatrix tmp_rotation, final_rotation;	
 
 	double x_angle, y_angle, z_angle;
-
 	double x_inertia = 0, y_inertia = 0;
-	
 	double z_in_angle;
 
 	int numnodes;
@@ -2772,6 +2785,8 @@ rotationmatrix actin::get_sym_break_axes(void)
 	final_rotation.rotatematrix(0, 0, z_in_angle);
 	final_rotation.rotatematrix(x_angle, y_angle, 0);
 
+	reverse_camera_rotation.rotatematrix(0, 0, - z_in_angle);
+	reverse_camera_rotation.rotatematrix(-x_angle, -y_angle, 0);
 	
 	return final_rotation;
 }

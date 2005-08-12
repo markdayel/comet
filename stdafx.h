@@ -233,6 +233,8 @@ extern double MofI;
 
 extern bool FORCES_ON_SIDE;
 
+extern double colormap[];
+
 
 // compile-time options:
 
@@ -373,6 +375,8 @@ inline void endian_swap(unsigned int& x)
 	((x>>8) & 0x0000FF00) |
 	(x<<24);
 }
+
+
 
 /*
 // __int64 for MSVC, "long long" for gcc

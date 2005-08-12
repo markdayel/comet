@@ -29,18 +29,22 @@ Colour::~Colour(void)
 {
 }
 
-int Colour::setcol(double magnitude)
+int Colour::setcol(const double & magnitude)
 {  // colour scale 0--1
 	
-	mag=magnitude;
+	mag = magnitude;
 
-	r =  (double) mymin(  mymax( ((double)4*    (mag-(double)0.25) ) , (double)0 ), (double)1 );
-	b =  (double) mymin(  mymax( ((double)4*    ((double)0.75-mag) ) , (double)0 ), (double)1 );
-	g =  (double) mymin(  mymax( ((double)4*fabs(mag-(double)0.5)-1) , (double)0 ), (double)1 );
+	r =  mymin(  mymax( 8*mag / 3    , 0 ), 1 );
+	g =  mymin(  mymax( 8*mag / 3 - 1, 0 ), 1 );
+	b =  mymin(  mymax( 4*mag     - 3, 0 ), 1 );
+
+	//r =  (double) mymin(  mymax( ((double)4*    (mag-(double)0.25) ) , (double)0 ), (double)1 );
+	//b =  (double) mymin(  mymax( ((double)4*    ((double)0.75-mag) ) , (double)0 ), (double)1 );
+	//g =  (double) mymin(  mymax( ((double)4*fabs(mag-(double)0.5)-1) , (double)0 ), (double)1 );
 
 	R = (unsigned char) (r*255);
-	G = (unsigned char) (G*255);
-	B = (unsigned char) (B*255);
+	G = (unsigned char) (g*255);
+	B = (unsigned char) (b*255);
 
 	return 0;
 }

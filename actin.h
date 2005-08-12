@@ -85,7 +85,7 @@ public:
 
 	Dbl2d imageR, imageG, imageB;
 
-	rotationmatrix actin_rotation, camera_rotation;
+	rotationmatrix actin_rotation, camera_rotation, reverse_camera_rotation;
 
 	vector <Dbl2d> reportdat;
 
@@ -194,6 +194,14 @@ public:
 	{  // convert simulation distance into pixel distance
 		return (int)((double) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
 	}
+	
+	inline double unpixels(const int & pix) const
+	{  // convert pixel distance into simulation distance
+		return ((double) pix / (double) BMP_HEIGHT) * (double) VIEW_HEIGHT;
+	}
+
+
+
 };
 
 #endif

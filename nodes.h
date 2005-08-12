@@ -50,9 +50,9 @@ public:
 	//vect momentum_vec;
 	vector <links> listoflinks;
 
-	vector <double> linkforce_transverse, linkforce_radial,
-			 repforce_transverse, repforce_radial,
-			 dispforce_transverse, dispforce_radial;  // index is the threadnum
+	vector <double> linkforce_transverse, linkforce_radial,  // index is the threadnum
+			 repforce_transverse, repforce_radial;
+			 //dispforce_transverse, dispforce_radial;  
 	
 	vector <vect> nucleator_impacts;
 
@@ -91,15 +91,17 @@ public:
 		//return 0;
 	}
 
-	inline void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
+	void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
 	{
 		dotmag = fabs(unit_vec_posn.dot(displacement));
 		crossmag = displacement.length() - dotmag;
 	}
 
-	inline void adddirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
+	void adddirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
 	{  
-		double tmp_dotmag = fabs(unit_vec_posn.dot(displacement));
+		double tmp_dotmag; 
+		
+		tmp_dotmag= fabs(unit_vec_posn.dot(displacement));
 
 		dotmag += tmp_dotmag;
 		crossmag += displacement.length() - tmp_dotmag;
@@ -110,11 +112,17 @@ public:
 		linkforce_transverse[threadnum] = 
 		linkforce_radial[threadnum]     = 
 		repforce_transverse[threadnum]  = 
-		repforce_radial[threadnum]      = 
-		dispforce_transverse[threadnum] = 
-		dispforce_radial[threadnum]     = 0;
+		repforce_radial[threadnum]      = 0;
+//		dispforce_transverse[threadnum] = 
+//		dispforce_radial[threadnum]     = 0;
 
 		nucleator_impacts[threadnum].zero();
+	}
+
+	void setunitvec(void)
+	{	// TODO: fix this, it's wrong for capsule
+
+		unit_vec_posn = this->unitvec();  // set unit vector position
 	}
 };
 

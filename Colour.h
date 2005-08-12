@@ -24,7 +24,7 @@ public:
 	double r,g,b;
 	unsigned char R,G,B;
 	double mag;
-	int setcol(double mag);
+	int setcol(const double & mag);
 };
 
 #endif

@@ -40,10 +40,13 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	num_dist_segs = 20;
 	dist_step = 0.2;
 
+	centerx = BMP_WIDTH  / 8;
+	centery = BMP_HEIGHT / 2;
+
 	// calc segment lengths etc.
 
 	curved_length = PI * RADIUS;	// one cap
-	straight_length = 2*CAPSULE_HALF_LINEAR;		// one side
+	straight_length = 2 * CAPSULE_HALF_LINEAR;		// one side
 
 	num_cap_segs = (int) (RADIAL_SEGMENTS/2);
 	cap_seg_len = curved_length / (double) num_cap_segs;
@@ -89,8 +92,8 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	 rep_transverse.resize(3);
 	    link_radial.resize(3);
 	link_transverse.resize(3);
-	    disp_radial.resize(3);
-	disp_transverse.resize(3);
+//	    disp_radial.resize(3);
+//	disp_transverse.resize(3);
 
 	for (int axis = 0; axis < 3; ++axis)
 	{
@@ -99,8 +102,8 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		 rep_transverse[axis].resize(num_segs);
 		    link_radial[axis].resize(num_segs);
 		link_transverse[axis].resize(num_segs);
-		    disp_radial[axis].resize(num_segs);
-		disp_transverse[axis].resize(num_segs);
+//		    disp_radial[axis].resize(num_segs);
+//		disp_transverse[axis].resize(num_segs);
 
 		for(int i = 0; i<num_segs; ++i)
 		{
@@ -109,8 +112,8 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			 rep_transverse[axis][i].resize(num_dist_segs);
 			    link_radial[axis][i].resize(num_dist_segs);
 			link_transverse[axis][i].resize(num_dist_segs);
-			    disp_radial[axis][i].resize(num_dist_segs);
-			disp_transverse[axis][i].resize(num_dist_segs);
+//			    disp_radial[axis][i].resize(num_dist_segs);
+//			disp_transverse[axis][i].resize(num_dist_segs);
 		}
 	}
 
@@ -246,7 +249,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 }
 
-void segments::getsegmentnum(const nodes& node, int& xseg, int& yseg, int& zseg) const
+void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const
 {  // set the segment number for each axis, dependent on node position
 
 	if (p_nuc->geometry == nucleator::sphere)
@@ -302,41 +305,47 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 
 }
 
-void segments::getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const
+void segments::getsegmentdist(const vect& node,int& xdist, int& ydist, int& zdist) const
 {
+
+	vect rot_pos, rot_unit;
+
+	rot_pos = node;
+
+	p_actin->camera_rotation.rotate(rot_pos); 
 	
 	if (p_nuc->geometry == nucleator::sphere)
 	{	// sphere
 
-		xdist = dist_to_seg(calcdist(node.y, node.z) - RADIUS); 
-		ydist = dist_to_seg(calcdist(node.x, node.z) - RADIUS); 
-		zdist = dist_to_seg(calcdist(node.x, node.y) - RADIUS); 
+		xdist = dist_to_seg(calcdist(rot_pos.y, rot_pos.z) - RADIUS); 
+		ydist = dist_to_seg(calcdist(rot_pos.x, rot_pos.z) - RADIUS); 
+		zdist = dist_to_seg(calcdist(rot_pos.x, rot_pos.y) - RADIUS); 
 		return;
 	}
 	else
 	{	// capsule
 
-		zdist = dist_to_seg(calcdist(node.x, node.y) - RADIUS); 
+		zdist = dist_to_seg(calcdist(rot_pos.x, rot_pos.y) - RADIUS); 
 
-		if ((node.z <= CAPSULE_HALF_LINEAR) && (node.z >= -CAPSULE_HALF_LINEAR))
+		if ((node.z <= CAPSULE_HALF_LINEAR) && (rot_pos.z >= -CAPSULE_HALF_LINEAR))
 		{	// on cylinder
 
-			xdist = dist_to_seg(fabs(node.y) - RADIUS); 
-			ydist = dist_to_seg(fabs(node.x) - RADIUS); 
+			xdist = dist_to_seg(fabs(rot_pos.y) - RADIUS); 
+			ydist = dist_to_seg(fabs(rot_pos.x) - RADIUS); 
 		
 		} 
 		else if (node.z > 0)
 		{	// top cap
 	
-			xdist = dist_to_seg(calcdist(node.y, node.z - CAPSULE_HALF_LINEAR) - RADIUS); 
-			ydist = dist_to_seg(calcdist(node.x, node.z - CAPSULE_HALF_LINEAR) - RADIUS); 
+			xdist = dist_to_seg(calcdist(rot_pos.y, rot_pos.z - CAPSULE_HALF_LINEAR) - RADIUS); 
+			ydist = dist_to_seg(calcdist(rot_pos.x, rot_pos.z - CAPSULE_HALF_LINEAR) - RADIUS); 
 
 		}
 		else	//  (y < CAPSULE_HALF_LINEAR)
 		{	// bottom cap
 
-			xdist = dist_to_seg(calcdist(node.y, node.z + CAPSULE_HALF_LINEAR) - RADIUS); 
-			ydist = dist_to_seg(calcdist(node.x, node.z + CAPSULE_HALF_LINEAR) - RADIUS); 
+			xdist = dist_to_seg(calcdist(rot_pos.y, rot_pos.z + CAPSULE_HALF_LINEAR) - RADIUS); 
+			ydist = dist_to_seg(calcdist(rot_pos.x, rot_pos.z + CAPSULE_HALF_LINEAR) - RADIUS); 
 			
 		}
 
@@ -347,6 +356,9 @@ void segments::getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdi
 
 int segments::dist_to_seg(const double dist) const
 {	// convert distance to seg num, and return -1 if out of range
+
+	if (dist < 0) return -1;
+	
 	int dist_seg = (int) (dist / dist_step);
 
 	return ((dist_seg>num_dist_segs)||(dist_seg < 0))?(-1):(dist_seg);
@@ -359,52 +371,86 @@ void segments::addnode(const nodes& node)
     
 	int xseg, yseg, zseg;
 	int xdist, ydist, zdist;
+	double xfactor,yfactor,zfactor;
 
-	getsegmentnum(node, xseg, yseg, zseg);
-	getsegmentdist(node, xdist, ydist, zdist);
+	vect rot_pos, rot_unit;
+
+	rot_pos = node;
+	rot_unit = node.unit_vec_posn;
+
+	p_actin->camera_rotation.rotate(rot_pos); 
+	p_actin->camera_rotation.rotate(rot_unit); 
+
+	getsegmentnum(rot_pos, xseg, yseg, zseg);
+	getsegmentdist(rot_pos, xdist, ydist, zdist);
 
 	if (xdist!=-1)
-		numnodes[2][zseg][zdist] ++;
+		numnodes[0][xseg][xdist] ++;
 
 	if (ydist!=-1)	
 		numnodes[1][yseg][ydist] ++;
 
 	if (zdist!=-1)
-		numnodes[0][xseg][xdist] ++;
+		numnodes[2][zseg][zdist] ++;
+
+	// scaling factor if off-axis
+
+	xfactor = 1 - fabs(rot_unit.x);
+	yfactor = 1 - fabs(rot_unit.y);
+
+	if (p_nuc->geometry == nucleator::sphere)
+	{
+		zfactor = fabs(1 - rot_unit.z);	
+	}
+	else
+	{
+		if ((rot_pos.z < CAPSULE_HALF_LINEAR) && (rot_pos.z > -CAPSULE_HALF_LINEAR))
+		{  // on cylinder, don't scale by z component
+			zfactor = 1;
+		}
+		else
+		{	// on ends
+
+			zfactor = 1 - fabs(rot_unit.z);	
+		}
+
+	}
+	
+
 	
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
 	{
 		if (xdist!=-1)
 		{
 
-			 rep_radial[0][xseg][xdist] += node.repforce_radial[threadnum];
-		 rep_transverse[0][xseg][xdist] += node.repforce_transverse[threadnum];
-			link_radial[0][xseg][xdist] += node.linkforce_radial[threadnum];
-		link_transverse[0][xseg][xdist] += node.linkforce_transverse[threadnum];
-			disp_radial[0][xseg][xdist] += node.dispforce_radial[threadnum];
-		disp_transverse[0][xseg][xdist] += node.dispforce_transverse[threadnum];
+			 rep_radial[0][xseg][xdist] += xfactor * node.repforce_radial[threadnum];
+		 rep_transverse[0][xseg][xdist] += xfactor * node.repforce_transverse[threadnum];
+			link_radial[0][xseg][xdist] += xfactor * node.linkforce_radial[threadnum];
+		link_transverse[0][xseg][xdist] += xfactor * node.linkforce_transverse[threadnum];
+//			disp_radial[0][xseg][xdist] += node.dispforce_radial[threadnum];
+//		disp_transverse[0][xseg][xdist] += node.dispforce_transverse[threadnum];
 		}
 
 
 		if (ydist!=-1)
 		{
-			 rep_radial[1][yseg][ydist] += node.repforce_radial[threadnum];
-		 rep_transverse[1][yseg][ydist] += node.repforce_transverse[threadnum];
-			link_radial[1][yseg][ydist] += node.linkforce_radial[threadnum];
-		link_transverse[1][yseg][ydist] += node.linkforce_transverse[threadnum];
-			disp_radial[1][yseg][ydist] += node.dispforce_radial[threadnum];
-		disp_transverse[1][yseg][ydist] += node.dispforce_transverse[threadnum];
+			 rep_radial[1][yseg][ydist] += yfactor * node.repforce_radial[threadnum];
+		 rep_transverse[1][yseg][ydist] += yfactor * node.repforce_transverse[threadnum];
+			link_radial[1][yseg][ydist] += yfactor * node.linkforce_radial[threadnum];
+		link_transverse[1][yseg][ydist] += yfactor * node.linkforce_transverse[threadnum];
+//			disp_radial[1][yseg][ydist] += node.dispforce_radial[threadnum];
+//		disp_transverse[1][yseg][ydist] += node.dispforce_transverse[threadnum];
 		}
 
 
 		if (zdist!=-1)
 		{
-			 rep_radial[2][zseg][zdist] += node.repforce_radial[threadnum];
-		 rep_transverse[2][zseg][zdist] += node.repforce_transverse[threadnum];
-			link_radial[2][zseg][zdist] += node.linkforce_radial[threadnum];
-		link_transverse[2][zseg][zdist] += node.linkforce_transverse[threadnum];
-			disp_radial[2][zseg][zdist] += node.dispforce_radial[threadnum];
-		disp_transverse[2][zseg][zdist] += node.dispforce_transverse[threadnum];
+			 rep_radial[2][zseg][zdist] += zfactor * node.repforce_radial[threadnum];
+		 rep_transverse[2][zseg][zdist] += zfactor * node.repforce_transverse[threadnum];
+			link_radial[2][zseg][zdist] += zfactor * node.linkforce_radial[threadnum];
+		link_transverse[2][zseg][zdist] += zfactor * node.linkforce_transverse[threadnum];
+//			disp_radial[2][zseg][zdist] += node.dispforce_radial[threadnum];
+//		disp_transverse[2][zseg][zdist] += node.dispforce_transverse[threadnum];
 		}
 
 
@@ -415,15 +461,22 @@ void segments::addsurfaceimpact(const nodes& node, const double& mag)
 {	// add a surface impact
 	
     int xseg,yseg,zseg;
+	vect rot_pos, rot_unit;
 
-	getsegmentnum(node, xseg, yseg, zseg);
+	rot_pos = node;
+	rot_unit = node.unit_vec_posn;
 
-    surfaceimpacts[0][xseg]+= mag * fabs(RADIUS - node.x);
-	surfaceimpacts[1][yseg]+= mag * fabs(RADIUS - node.y);
+	p_actin->camera_rotation.rotate(rot_pos); 
+	p_actin->camera_rotation.rotate(rot_unit); 
+
+	getsegmentnum(rot_pos, xseg, yseg, zseg);
+
+    surfaceimpacts[0][xseg]+= mag * (1 - fabs(rot_unit.x));
+	surfaceimpacts[1][yseg]+= mag * (1 - fabs(rot_unit.y));
 
 	if (p_nuc->geometry == nucleator::sphere)
 	{
-		surfaceimpacts[2][zseg]+= mag * fabs(1 - node.z);	
+		surfaceimpacts[2][zseg]+= mag * (1 - fabs(rot_unit.z));	
 	}
 	else
 	{
@@ -433,15 +486,8 @@ void segments::addsurfaceimpact(const nodes& node, const double& mag)
 		}
 		else
 		{	// on ends
-			if (node.z > 0)
-			{
-				surfaceimpacts[2][zseg]+= mag * fabs(RADIUS - (node.z-CAPSULE_HALF_LINEAR));	
-			}
-			else
-			{
-				surfaceimpacts[2][zseg]+= mag * fabs(RADIUS - (node.z+CAPSULE_HALF_LINEAR));
-			}
 
+			surfaceimpacts[2][zseg]+= mag * (1 - fabs(rot_unit.z));	
 		}
 
 	}
@@ -472,8 +518,8 @@ void segments::clearnodes(void)
 				 rep_transverse[axis][i][j]=0;
 				    link_radial[axis][i][j]=0;
 				link_transverse[axis][i][j]=0;
-				    disp_radial[axis][i][j]=0;
-			    disp_transverse[axis][i][j]=0;
+//				    disp_radial[axis][i][j]=0;
+//			    disp_transverse[axis][i][j]=0;
 			}
 		}
 	}
@@ -482,13 +528,9 @@ void segments::clearnodes(void)
 void segments::drawoutline(ostream& drawcmd, const int& axis) const
 {
 
-	int centerx, centery;
     int radius;
     int segment;
 
-	centerx = BMP_WIDTH / 8;
-	centery = BMP_HEIGHT / 2;
-	
 	radius  = p_actin->pixels(RADIUS); 
 	segment = p_actin->pixels(CAPSULE_HALF_LINEAR);
 	
@@ -536,13 +578,6 @@ void segments::drawoutline(ostream& drawcmd, const int& axis) const
 void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double scale) const
 {
 
-	int centerx, centery;
-    //int radius;
-    //int segment;
-
-	centerx = BMP_WIDTH / 8;
-	centery = BMP_HEIGHT / 2;
-	
 	double linelen, linex, liney;
 	double startx, starty;
 
@@ -614,6 +649,8 @@ void segments::drawnodestats(ostream& drawcmd, const int& axis) const
 
 }
 
+
+
 void segments::savereport(const int& filenum) const
 {
 
@@ -639,40 +676,27 @@ void segments::savereport(const int& filenum) const
 			if ((axis == 2) && (seg >= 2 * num_cap_segs))
 				continue;  // no linear segment on z axis
 
-			if (axis == 0)
-			{
-                x = 0;
-				y = linestartx[axis][seg];
-				z = linestarty[axis][seg];
-			}
-			else if (axis == 1)
-			{
-				x = linestartx[axis][seg];
-				y = 0;
-				z = linestarty[axis][seg];
-			}
-			else
-			{
-				x = linestartx[axis][seg];
-				y = linestarty[axis][seg];
-				z = 0;
-			}
-
-
-			if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
-			{	// sphere or capsule z
-				radius = calcdist(x,y) - RADIUS;
-			}
-			else
-			{
-				if (fabs(y) < CAPSULE_HALF_LINEAR)
-					radius = fabs(x) - RADIUS;
-				else
-					radius = calcdist(x,fabs(y)-CAPSULE_HALF_LINEAR) - RADIUS;
-			}
-
 			for(int dist = 0; dist<num_dist_segs; ++dist)
 			{
+
+				getsegmentposition(x, y, z, seg, dist, axis);
+
+				p_actin->camera_rotation.rotate(x,y,z); 
+
+				if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+				{	// sphere or capsule z
+					radius = calcdist(x,y) - RADIUS;
+				}
+				else
+				{
+					if (fabs(y) < CAPSULE_HALF_LINEAR)
+						radius = fabs(x) - RADIUS;
+					else
+						radius = calcdist(x,fabs(y)-CAPSULE_HALF_LINEAR) - RADIUS;
+				}
+
+// Axis,segment,distseg,x,y,z,Radius,numnodes,area,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
+
 				opreport 
 					<< axis << ","
 					<< seg << ","
@@ -680,18 +704,151 @@ void segments::savereport(const int& filenum) const
 					<< x << ","
 					<< y << ","
 					<< z << ","
-					<< radius << ",";
-
+					<< radius << ","
+					<< 0 << ","
+					<< numnodes[axis][seg][dist] << ","
+					<< rep_radial[axis][seg][dist] << ","
+					<< rep_transverse[axis][seg][dist] << ","
+					<< link_radial[axis][seg][dist] << ","
+					<< link_transverse[axis][seg][dist] << endl;
+//					<< disp_radial[axis][seg][dist] << ","
+//					<< disp_transverse[axis][seg][dist] << ",";
 					 
 
 			}
 		}
 	}
 
-
-
-
 	opreport << endl;
 
 	opreport.close();
+}
+
+void segments::getsegmentposition(double& x, double& y, double& z, const int & seg,
+								  const int & dist, const int & axis) const
+{
+	if (axis == 0)
+	{
+		x = 0;
+		y = linestartx[axis][seg] - lineunitvecx[axis][seg] * dist * dist_step;
+		z = linestarty[axis][seg] - lineunitvecy[axis][seg] * dist * dist_step;
+	}
+	else if (axis == 1)
+	{
+		x = linestartx[axis][seg] - lineunitvecx[axis][seg] * dist * dist_step;
+		y = 0;
+		z = linestarty[axis][seg] - lineunitvecy[axis][seg] * dist * dist_step;
+	}
+	else
+	{
+		x = linestartx[axis][seg] - lineunitvecx[axis][seg] * dist * dist_step;
+		y = linestarty[axis][seg] - lineunitvecy[axis][seg] * dist * dist_step;
+		z = 0;
+	}
+
+}
+
+void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
+					   const double &imageRmax, const double &imageGmax, const double &imageBmax,
+					   const Dbl3d & var, const int& axis)
+{
+
+	const int bins_bitmap_width  = centerx * 2;			// width and height of pixels to plot
+	const int bins_bitmap_height = BMP_HEIGHT / 2;
+
+	const int offsetx =  bins_bitmap_width / 2;			// center these pixels
+	const int offsety = bins_bitmap_height / 2;
+
+	int pix_x, pix_y;	// these are bitmap co-ords
+
+	int xseg, yseg, zseg;
+	int xdist, ydist, zdist;
+	int seg,dist;
+
+	nodes dummynode;
+
+	double maxval = 0.0000001;
+
+	// set max value:
+
+	for (int ax = 0; ax < 3; ++ax)
+		for(int seg = 0; seg<num_segs; ++seg)
+			for(int dist = 0; dist<num_dist_segs; ++dist)
+			{
+				if (var[ax][seg][dist] > maxval)
+					maxval = var[ax][seg][dist];
+			}
+
+	// go through bitmap
+
+	for (pix_x = 0; pix_x < bins_bitmap_width; ++pix_x)
+		for (pix_y = 0; pix_y < bins_bitmap_height; ++pix_y)
+		{
+			if (axis == 0)
+			{
+				dummynode.y = p_actin->unpixels(pix_x - offsetx);
+				dummynode.z = p_actin->unpixels(pix_y - offsety);
+			}
+			else if (axis == 1)
+			{
+				dummynode.x = p_actin->unpixels(pix_x - offsetx);
+				dummynode.z = p_actin->unpixels(pix_y - offsety);
+			}
+			else
+			{
+				dummynode.x = p_actin->unpixels(pix_x - offsetx);
+				dummynode.y = p_actin->unpixels(pix_y - offsety);
+			}
+			
+			p_actin->reverse_camera_rotation.rotate(dummynode); 
+	
+			dummynode.setunitvec();
+
+			// get bin numbers:
+
+			getsegmentnum(dummynode,	 xseg, yseg, zseg);
+			getsegmentdist(dummynode, xdist, ydist, zdist);
+
+			if (axis == 0)
+			{
+				seg = xseg;
+				dist = xdist;
+			}
+			else if (axis == 1)
+			{
+				seg = yseg;
+				dist = ydist;
+			}
+			else
+			{
+				seg = zseg;
+				dist = zdist;
+			}
+
+			if (dist == -1)
+				continue;
+
+			dummynode.colour.setcol(var[axis][seg][dist]/maxval);
+
+			imageR[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.r * imageRmax;
+			imageG[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.g * imageGmax;
+			imageB[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.b * imageBmax;
+
+		}
+
+// write out colormap key
+
+const int keyheight = 10;
+
+
+	for (pix_x = 0; pix_x < bins_bitmap_width; ++pix_x)
+		for (pix_y = bins_bitmap_height; pix_y < bins_bitmap_height + keyheight; ++pix_y)
+		{
+			dummynode.colour.setcol((double)pix_x/(double)bins_bitmap_width);
+
+			imageR[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.r * imageRmax;
+			imageG[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.g * imageGmax;
+			imageB[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.b * imageBmax;
+		}
+
 }

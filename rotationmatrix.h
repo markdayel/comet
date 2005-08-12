@@ -23,7 +23,7 @@ class rotationmatrix
     
     
     void rotatematrix(double angle, axis a);
-    void rotatematrix(const double x_angle, const double y_angle, const double z_angle);
+    void rotatematrix(const double &x_angle, const double &y_angle, const double &z_angle);
     
     //void rotate(double &x, double &y, double &z);
     

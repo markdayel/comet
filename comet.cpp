@@ -160,6 +160,26 @@ vector <nodes*> actin::linkremoveto;
 
 int InterRecordIterations = 0;
 
+double colormap[] = {
+	0.0417,0,0,   0.083,0,0,   0.1250,0,0,   0.1667,0,0,   
+	0.2083,0,0,   0.2500,0,0,   0.2917,0,0,   0.333,0,0,
+	0.3750,0,0,   0.4167,0,0,   0.4583,0,0,   0.5000,0,0,
+	0.5417,0,0,   0.583,0,0,	0.6250,0,0,   0.6667,0,0,
+	0.7083,0,0,   0.7500,0,0,
+	0.7917,0,0,   0.833,0,0,   0.8750,0,0,   0.9167,0,0,
+	0.9583,0,0,   1,0,0,   1,0.0417,0,   1,0.083,0,
+	1,0.1250,0,   1,0.1667,0,   1,0.2083,0,   1,0.2500,0,
+	1,0.2917,0,   1,0.333,0,   1,0.3750,0,   1,0.4167,0,
+	1,0.4583,0,   1,0.5000,0,   1,0.5417,0,   1,0.583,0,
+	1,0.6250,0,   1,0.6667,0,   1,0.7083,0,   1,0.7500,0,
+	1,0.7917,0,   1,0.833,0,   1,0.8750,0,   1,0.9167,0,
+	1,0.9583,0,   1,1,0,   1,1,0.0625,   1,1,0.1250,
+	1,1,0.1875,   1,1,0.2500,   1,1,0.3125,   1,1,0.3750,
+	1,1,0.4375,   1,1,0.5000,   1,1,0.5625,   1,1,0.6250,
+	1,1,0.6875,   1,1,0.7500,   1,1,0.8125,   1,1,0.8750,
+	1,1,0.9375,   1,1,1};
+
+
 int load_data(actin &theactin, int iteration);
 int save_data(actin &theactin, int iteration);
 void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations);
@@ -816,6 +836,9 @@ srand( (unsigned) 200 );
 			//save_data(theactin, i+1);			
 			//srand( (unsigned) 200 );
 			//cout << "reseeded: " << rand() << endl;
+
+			nuc_object.segs.addallnodes();
+			nuc_object.segs.savereport(i/InterRecordIterations);
 
 			theactin.savebmp((i/InterRecordIterations), actin::xaxis);
 			theactin.savebmp((i/InterRecordIterations), actin::yaxis);

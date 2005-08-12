@@ -52,8 +52,8 @@ nodes::nodes(void)
 	linkforce_radial.resize(NUM_THREADS);
 	repforce_transverse.resize(NUM_THREADS);
 	repforce_radial.resize(NUM_THREADS);
-	dispforce_transverse.resize(NUM_THREADS);
-	dispforce_radial.resize(NUM_THREADS);
+//	dispforce_transverse.resize(NUM_THREADS);
+//	dispforce_radial.resize(NUM_THREADS);
 	nucleator_impacts.resize(NUM_THREADS);
 
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
@@ -273,30 +273,35 @@ int nodes::load_data(ifstream &istrm)
 void nodes::updategrid(void)
 {
 	int gridtmpx, gridtmpy, gridtmpz;
-	int oldgridx = gridx;  // store old grid pos'n
+	int oldgridx = gridx;			// store old grid pos'n
 	int oldgridy = gridy;
 	int oldgridz = gridz;
 
-	setgridcoords();  // set gridx,y,z by x,y,z position
-	unit_vec_posn=this->unitvec();  //set unit vector position
+	setgridcoords();				// set gridx,y,z by x,y,z position
+	setunitvec();
 
-	if	(((gridx!=oldgridx) ||     // has the node moved gridpoints?
-		  (gridy!=oldgridy) || 
-		  (gridz!=oldgridz)))
+	
+
+	if	((gridx != oldgridx) ||		// has the node moved gridpoints?
+		 (gridy != oldgridy) || 
+		 (gridz != oldgridz))
 	{
 		// node moved, check not out of grid bounds
-		if ((gridx>GRIDSIZE) ||
-			(gridy>GRIDSIZE) ||
-			(gridz>GRIDSIZE) ||
-			(gridx<0) ||
-			(gridy<0) ||
-			(gridz<0)) 
+		if ((gridx > GRIDSIZE) ||
+			(gridy > GRIDSIZE) ||
+			(gridz > GRIDSIZE) ||
+			(gridx < 0) ||
+			(gridy < 0) ||
+			(gridz < 0)) 
 		{  
 			cout << "Node out of grid bounds, deleted:" << x << " " << y << " " << z << endl;
-			gridx=oldgridx;
-			gridy=oldgridy;
-			gridz=oldgridz;
+
+			gridx = oldgridx;
+			gridy = oldgridy;
+			gridz = oldgridz;
+
 			depolymerize();
+
 			return;
 		}
 	}

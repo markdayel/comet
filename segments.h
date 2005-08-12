@@ -43,13 +43,21 @@ public:
 	void addallnodes();
 	void addsurfaceimpact(const nodes& node, const double& mag);
 
-	void getsegmentnum(const nodes& node, int& xseg, int& yseg, int& zseg) const;
+	void getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const;
+	void getsegmentdist(const vect& node,int& xdist, int& ydist, int& zdist) const;
+
 	int  getcapsuleseg(const double & x, const double & y) const;
-	void getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const;
+	void getsegmentposition(double& x, double& y, double& z, const int & seg,
+								  const int & dist, const int & axis) const;
+
 
 	int  dist_to_seg(const double dist) const;
 
 	void savereport(const int& filenum) const;
+
+	void write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
+					   const double &imageRmax, const double &imageGmax, const double &imageBmax,
+					   const Dbl3d & var, const int& axis);
 
 	void clearsurfaceimpacts(void);
 	void clearnodes(void);
@@ -66,11 +74,13 @@ public:
 	double straight_seg_area;
 
 	double curved_length;			// length of *one* cap
-	double straight_length;		// length of *one* side
+	double straight_length;			// length of *one* side
 
 	double straight_seg_len;		// distance between transverse segs on straight part of nuc
-	double cap_seg_len;			// distance between transverse segs on caps of nuc
+	double cap_seg_len;				// distance between transverse segs on caps of nuc
 	double dist_step;				// distance between outward segs
+
+	int centerx, centery;			// co-ords of center of nucleator drawing
 
 
 	//vector <double> linestartx;	// x position of force line origin
@@ -95,9 +105,9 @@ public:
 		rep_radial,
 		rep_transverse,
 		link_radial,
-		link_transverse,
-		disp_radial,
-		disp_transverse;
+		link_transverse;
+//		disp_radial,
+//		disp_transverse;
 
 
 

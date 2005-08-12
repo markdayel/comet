@@ -60,7 +60,7 @@ void rotationmatrix::rotatematrix(double angle, axis a)
 	case (yaxis):
 	{
 	    tmp_xx =  cos(angle);	tmp_xy =  0;			tmp_xz = -sin(angle);
-	    tmp_yx =  0;		tmp_yy =  1;			tmp_yz =  0;
+	    tmp_yx =  0;			tmp_yy =  1;			tmp_yz =  0;
 	    tmp_zx =  sin(angle);	tmp_zy =  0;			tmp_zz =  cos(angle);
 	    break;
 	}
@@ -68,7 +68,7 @@ void rotationmatrix::rotatematrix(double angle, axis a)
 	{
 	    tmp_xx =  cos(angle);	tmp_xy =  sin(angle);	tmp_xz =  0;
 	    tmp_yx = -sin(angle);	tmp_yy =  cos(angle);	tmp_yz =  0;
-	    tmp_zx =  0;		tmp_zy =  0;		tmp_zz =  1;
+	    tmp_zx =  0;			tmp_zy =  0;			tmp_zz =  1;
 	} 
     }
     
@@ -100,7 +100,7 @@ void rotationmatrix::rotatematrix(double angle, axis a)
     
 }
 
-void rotationmatrix::rotatematrix(const double x_angle, const double y_angle, const double z_angle)
+void rotationmatrix::rotatematrix(const double& x_angle, const double& y_angle, const double& z_angle)
 {
     rotatematrix(x_angle, xaxis);
     rotatematrix(y_angle, yaxis);
@@ -110,8 +110,8 @@ void rotationmatrix::rotatematrix(const double x_angle, const double y_angle, co
 void rotationmatrix::getangles(double& x_angle, double& y_angle, double& z_angle)
 {  // todo: check these are right way around
     y_angle = -atan2(zx,calcdist(xx,yx));
-    z_angle = atan2(yx/cos(y_angle),xx/cos(y_angle));
-    x_angle	= atan2(zy/cos(y_angle),zz/cos(y_angle));
+    z_angle =  atan2(yx/cos(y_angle),xx/cos(y_angle));
+    x_angle	=  atan2(zy/cos(y_angle),zz/cos(y_angle));
 }
 
 
