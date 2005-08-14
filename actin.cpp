@@ -1288,6 +1288,7 @@ if (false) // USE_THREADS)
 					{	// broken link: store which ones to break:
 						linkremovefrom.push_back(&node[n]);
 						linkremoveto.push_back(i->linkednodeptr);
+						node[n].links_broken[0]++;
 					}
 					else
 					{
@@ -1483,7 +1484,7 @@ int actin::setnodecols(void)
 }
 
 int actin::savebmp(int filenum, projection proj)
-{ // todo: change to do 3 axes in one go to save calculation time
+{ 
 
 // bitmap headers etc (see microsoft website):
 
@@ -1840,11 +1841,11 @@ for (vector <vect>::iterator point=p_nuc->cagepoints.begin();
 
 	}
 
-	// write the bins info:
+	// write the bins graphics
 
 	p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
 					   imageRmax, imageGmax, imageBmax,
-					   p_nuc->segs.numnodes, proj);
+					   p_nuc->segs.link_transverse, proj);
 
 	
 	// the header for saving the bitmaps...
@@ -1924,11 +1925,11 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 	free(fileHeader);
 	free(fileInfo);
 
-	if (FORCES_ON_SIDE)
-	{
-		movex = 50-(BMP_WIDTH/2);
-		meanx=meany=meanz=0.0;
-	}
+	//if (FORCES_ON_SIDE)
+	//{
+	//	movex = 50 - (BMP_WIDTH/2);
+	//	meanx = meany = meanz = 0.0;
+	//}
 
 	char command1[10240], command2[10240];
 

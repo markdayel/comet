@@ -51,7 +51,8 @@ public:
 	vector <links> listoflinks;
 
 	vector <double> linkforce_transverse, linkforce_radial,  // index is the threadnum
-			 repforce_transverse, repforce_radial;
+			 repforce_transverse, repforce_radial,
+			 links_broken;
 			 //dispforce_transverse, dispforce_radial;  
 	
 	vector <vect> nucleator_impacts;
@@ -112,7 +113,8 @@ public:
 		linkforce_transverse[threadnum] = 
 		linkforce_radial[threadnum]     = 
 		repforce_transverse[threadnum]  = 
-		repforce_radial[threadnum]      = 0;
+		repforce_radial[threadnum]      = 
+		links_broken[threadnum]			= 0;
 //		dispforce_transverse[threadnum] = 
 //		dispforce_radial[threadnum]     = 0;
 
@@ -120,9 +122,35 @@ public:
 	}
 
 	void setunitvec(void)
-	{	// TODO: fix this, it's wrong for capsule
+	{	// TODO: fix this to bring in line with normal nuclator shape test
 
-		unit_vec_posn = this->unitvec();  // set unit vector position
+		if (NUCSHAPE == nucleator::sphere)
+		{
+			unit_vec_posn = this->unitvec();  // set unit vector position
+		}
+		else
+		{	// capsule
+			if (fabs(z) < CAPSULE_HALF_LINEAR)
+			{  // on cylinder, no z component
+				double len = calcdist(x,y);
+				unit_vec_posn = vect(x/len, y/len, 0);;
+			}
+			else
+			{	// on ends
+				if (z>0) // top
+				{
+					vect offsetvec = *this;
+					offsetvec.z -= CAPSULE_HALF_LINEAR;
+					unit_vec_posn = offsetvec.unitvec();
+				}
+				else
+				{
+					vect offsetvec = *this;
+					offsetvec.z += CAPSULE_HALF_LINEAR;
+					unit_vec_posn = offsetvec.unitvec();
+				}	
+			}
+		}
 	}
 };
 

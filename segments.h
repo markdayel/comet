@@ -105,7 +105,8 @@ public:
 		rep_radial,
 		rep_transverse,
 		link_radial,
-		link_transverse;
+		link_transverse, 
+		links_broken;
 //		disp_radial,
 //		disp_transverse;
 

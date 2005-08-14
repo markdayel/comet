@@ -27,8 +27,8 @@ class nucleator
 {
 public:
 	enum shape {
-		sphere,
-		capsule };
+		sphere = 0,
+		capsule = 1};
 	nucleator(void);
 	~nucleator(void);
 	nucleator(shape set_geometry, actin *ptheactin);

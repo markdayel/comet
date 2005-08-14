@@ -52,6 +52,7 @@ nodes::nodes(void)
 	linkforce_radial.resize(NUM_THREADS);
 	repforce_transverse.resize(NUM_THREADS);
 	repforce_radial.resize(NUM_THREADS);
+	links_broken.resize(NUM_THREADS);
 //	dispforce_transverse.resize(NUM_THREADS);
 //	dispforce_radial.resize(NUM_THREADS);
 	nucleator_impacts.resize(NUM_THREADS);

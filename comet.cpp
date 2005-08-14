@@ -14,15 +14,16 @@ removed without prior written permission from the author.
 
 #include "stdafx.h"
 #include "comet.h"
+// #include "nucleator.h"
 // #include "string.h"
 
 double TOTAL_SIMULATION_TIME = 20000;  
-double DELTA_T = (double)0.1;	
+double DELTA_T = 0.1;	
 double MIN_TORQUE_TO_UPDATE = 0.2;
 double MIN_DISPLACEMENT_TO_UPDATE = 0.001;
-//double MAX_DISP_PERDT = (double)0.01;
-//double MAX_DISP_PERDT_DIVSQRTTWO = (double)0.00707;
-double GAUSSFWHM = (double) 0.266;
+//double MAX_DISP_PERDT = 0.01;
+//double MAX_DISP_PERDT_DIVSQRTTWO = 0.00707;
+double GAUSSFWHM =  0.266;
 
 bool NUCLEATOR_FORCES = true;
 
@@ -37,7 +38,7 @@ int SPECKLE_FACTOR = 1;
 
 bool ROTATION = true;
 
-double MofI = (double) 0.1;
+double MofI =  0.1;
 
 bool FORCES_ON_SIDE = true;
 
@@ -49,27 +50,29 @@ int RESTORE_FROM_ITERATION = 0; // =0 don't load a checkpoint
 int RECORDING_INTERVAL = 0;
 int NUMBER_RECORDINGS = 0;
 
-double FORCE_SCALE_FACT = (double)0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
+double FORCE_SCALE_FACT = 0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
 					        // this is related to effective viscosity and effective size of node
-double FORCEBAR_SCALE   = (double)10;	// scale for relating force to image bar
+double FORCEBAR_SCALE   = 10;	// scale for relating force to image bar
 
-double XLINK_NODE_RANGE = (double) 1.0;		// Limit crosslink to within this range
-double NODE_INCOMPRESSIBLE_RADIUS = (double)0.2;	// repulsion is zero here
+double XLINK_NODE_RANGE =  1.0;		// Limit crosslink to within this range
+double NODE_INCOMPRESSIBLE_RADIUS = 0.2;	// repulsion is zero here
 // double NODE_REPULSIVE_MAG = 1000;   // max repulsion (at dist=0)
 
-double LINK_BREAKAGE_FORCE = (double) 100;	 // breakage force per link
-double P_LINK_BREAK_IF_OVER = (double) 0.25;  // probablility that force will break link if over the link breakage force
+double LINK_BREAKAGE_FORCE =  100;	 // breakage force per link
+double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NODE = 100;
 
-double LINK_TAUT_FORCE = (double) 5;
-double LINK_TAUT_RATIO = (double) 1.1;
+double LINK_TAUT_FORCE =  5;
+double LINK_TAUT_RATIO =  1.1;
 
 
-double LINK_FORCE = (double)0.1;
-double P_XLINK = (double) 0.5;
-double P_NUC = (double) 0.08;
-double RADIUS = (double) 1.0;
-double CAPSULE_HALF_LINEAR = (double) 6.0;
+double LINK_FORCE = 0.1;
+double P_XLINK =  0.5;
+double P_NUC =  0.08;
+double RADIUS =  1.0;
+double CAPSULE_HALF_LINEAR =  6.0;
+
+extern nucleator::shape NUCSHAPE = nucleator::sphere;  //default to sphere
 
 //double SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
 double RAD_INCOMP = RADIUS;// + NODE_INCOMPRESSIBLE_RADIUS/2;
@@ -91,7 +94,7 @@ int CROSSLINKDELAY = 20;  // number of interations before crosslinking
 						 //  (to allow position to be equilibrated to something
 						 //       reasonable before locking node in place)
 
-double NODE_REPULSIVE_MAG = (double) 0.00000001;
+double NODE_REPULSIVE_MAG =  0.00000001;
 double NODE_REPULSIVE_RANGE = NODE_INCOMPRESSIBLE_RADIUS*2;
 
 int ASYMMETRIC_NUCLEATION = 0;
@@ -159,26 +162,6 @@ vector <nodes*> actin::linkremovefrom;
 vector <nodes*> actin::linkremoveto;
 
 int InterRecordIterations = 0;
-
-double colormap[] = {
-	0.0417,0,0,   0.083,0,0,   0.1250,0,0,   0.1667,0,0,   
-	0.2083,0,0,   0.2500,0,0,   0.2917,0,0,   0.333,0,0,
-	0.3750,0,0,   0.4167,0,0,   0.4583,0,0,   0.5000,0,0,
-	0.5417,0,0,   0.583,0,0,	0.6250,0,0,   0.6667,0,0,
-	0.7083,0,0,   0.7500,0,0,
-	0.7917,0,0,   0.833,0,0,   0.8750,0,0,   0.9167,0,0,
-	0.9583,0,0,   1,0,0,   1,0.0417,0,   1,0.083,0,
-	1,0.1250,0,   1,0.1667,0,   1,0.2083,0,   1,0.2500,0,
-	1,0.2917,0,   1,0.333,0,   1,0.3750,0,   1,0.4167,0,
-	1,0.4583,0,   1,0.5000,0,   1,0.5417,0,   1,0.583,0,
-	1,0.6250,0,   1,0.6667,0,   1,0.7083,0,   1,0.7500,0,
-	1,0.7917,0,   1,0.833,0,   1,0.8750,0,   1,0.9167,0,
-	1,0.9583,0,   1,1,0,   1,1,0.0625,   1,1,0.1250,
-	1,1,0.1875,   1,1,0.2500,   1,1,0.3125,   1,1,0.3750,
-	1,1,0.4375,   1,1,0.5000,   1,1,0.5625,   1,1,0.6250,
-	1,1,0.6875,   1,1,0.7500,   1,1,0.8125,   1,1,0.8750,
-	1,1,0.9375,   1,1,1};
-
 
 int load_data(actin &theactin, int iteration);
 int save_data(actin &theactin, int iteration);
@@ -349,7 +332,6 @@ int main(int argc, char* argv[])
 
 	// main parameters:
 
-	nucleator::shape nucshape=nucleator::sphere;  //default to sphere
 
 	// read the parameters file:
 
@@ -549,9 +531,9 @@ int main(int argc, char* argv[])
 			{
 				ss >> buff2;
 				if (buff2 == "CAPSULE") 
-					nucshape = nucleator::capsule;
+					NUCSHAPE = nucleator::capsule;
 				else
-					nucshape = nucleator::sphere;
+					NUCSHAPE = nucleator::sphere;
                 continue;
 			}
        }
@@ -588,7 +570,7 @@ int main(int argc, char* argv[])
 	// create main objects
 
 	actin theactin;
-	nucleator nuc_object(nucshape, &theactin);
+	nucleator nuc_object(NUCSHAPE, &theactin);
 
 	// write out parameters to screen
 
@@ -598,7 +580,7 @@ int main(int argc, char* argv[])
 	cout << "DISTANCE_TO_UPDATE:         " << DISTANCE_TO_UPDATE << endl;
 	cout << "     (actual distance:      " << DISTANCE_TO_UPDATE*RADIUS << ")" << endl;
 	cout << "MAX_DISP:                   " << MAX_DISP << endl;
-	if (nucshape == nucleator::capsule)
+	if (NUCSHAPE == nucleator::capsule)
 	{
 	cout << "Capsule radius:             " << RADIUS << endl;
 	cout << "CAPSULE_HALF_LINEAR:        " << CAPSULE_HALF_LINEAR << endl;
@@ -630,7 +612,7 @@ int main(int argc, char* argv[])
 	theactin.opruninfo << "NODES_TO_UPDATE:            " << NODES_TO_UPDATE << endl;
 	theactin.opruninfo << "DISTANCE_TO_UPDATE:         " << DISTANCE_TO_UPDATE << endl;
 	theactin.opruninfo << "Nucleator radius:           " << RADIUS << endl;
-if (nucshape == nucleator::capsule)
+if (NUCSHAPE == nucleator::capsule)
     theactin.opruninfo << "Nucleator Segment:          " << 2*CAPSULE_HALF_LINEAR << endl;
 	theactin.opruninfo << "P(nuc):                     " << P_NUC << endl;
 	theactin.opruninfo << "Force scale factor:         " << FORCE_SCALE_FACT << endl;

@@ -265,13 +265,19 @@ inline double calcdist(const double & xdist, const double & ydist);
 inline void endian_swap(unsigned short& x);
 inline void endian_swap(unsigned int& x);
 
+
 // own headers
 #include "comet.h"
 #include "nucleator.h"
+
+extern nucleator::shape NUCSHAPE;  //default to sphere
+
 #include "nodes.h"
 #include "links.h"
 #include "actin.h"
 #include "vect.h"
+
+
 
 inline double calcdist(const vect & v1, const vect & v2);
 

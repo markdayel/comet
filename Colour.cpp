@@ -34,13 +34,20 @@ int Colour::setcol(const double & magnitude)
 	
 	mag = magnitude;
 
-	r =  mymin(  mymax( 8*mag / 3    , 0 ), 1 );
-	g =  mymin(  mymax( 8*mag / 3 - 1, 0 ), 1 );
-	b =  mymin(  mymax( 4*mag     - 3, 0 ), 1 );
+	// hot colormap
+	//r =  mymin(  mymax( 8*mag / 3    , 0 ), 1 );
+	//g =  mymin(  mymax( 8*mag / 3 - 1, 0 ), 1 );
+	//b =  mymin(  mymax( 4*mag     - 3, 0 ), 1 );
 
-	//r =  (double) mymin(  mymax( ((double)4*    (mag-(double)0.25) ) , (double)0 ), (double)1 );
-	//b =  (double) mymin(  mymax( ((double)4*    ((double)0.75-mag) ) , (double)0 ), (double)1 );
-	//g =  (double) mymin(  mymax( ((double)4*fabs(mag-(double)0.5)-1) , (double)0 ), (double)1 );
+	// rainbow colormap, 0 = black
+	r = mymin( mymax( -2 * fabs( mag - 1   ) + 1.3  ,0) ,1);
+	g = mymin( mymax( -2 * fabs( mag - 0.55) + 1.05 ,0) ,1);
+	b = mymin( mymax( -5 * fabs( mag - 0.25) + 1.2  ,0) ,1);
+
+	// hls, sort of
+	//r =   mymin(  mymax( (4*    (mag-0.25) ) , 0 ), 1 );
+	//b =   mymin(  mymax( (4*    (0.75-mag) ) , 0 ), 1 );
+	//g =   mymin(  mymax( (4*fabs(mag-0.5)-1) , 0 ), 1 );
 
 	R = (unsigned char) (r*255);
 	G = (unsigned char) (g*255);

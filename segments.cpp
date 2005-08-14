@@ -40,7 +40,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	num_dist_segs = 20;
 	dist_step = 0.2;
 
-	centerx = BMP_WIDTH  / 8;
+	centerx = BMP_WIDTH  / 7;  // specifies center of nucleator on forces and seg maps
 	centery = BMP_HEIGHT / 2;
 
 	// calc segment lengths etc.
@@ -50,8 +50,6 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 	num_cap_segs = (int) (RADIAL_SEGMENTS/2);
 	cap_seg_len = curved_length / (double) num_cap_segs;
-
-
 
 	// => will need to scale straight numbers by (cap_seg_len/straight_seg_len) before readout
 
@@ -92,6 +90,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	 rep_transverse.resize(3);
 	    link_radial.resize(3);
 	link_transverse.resize(3);
+	   links_broken.resize(3);
 //	    disp_radial.resize(3);
 //	disp_transverse.resize(3);
 
@@ -102,6 +101,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		 rep_transverse[axis].resize(num_segs);
 		    link_radial[axis].resize(num_segs);
 		link_transverse[axis].resize(num_segs);
+		   links_broken[axis].resize(num_segs);
 //		    disp_radial[axis].resize(num_segs);
 //		disp_transverse[axis].resize(num_segs);
 
@@ -112,6 +112,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			 rep_transverse[axis][i].resize(num_dist_segs);
 			    link_radial[axis][i].resize(num_dist_segs);
 			link_transverse[axis][i].resize(num_dist_segs);
+			   links_broken[axis][i].resize(num_dist_segs);
 //			    disp_radial[axis][i].resize(num_dist_segs);
 //			disp_transverse[axis][i].resize(num_dist_segs);
 		}
@@ -276,7 +277,7 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 	// segments are numbered clockwise
 	// starting at upper cap on left most edge
 	
-	if ((y <= CAPSULE_HALF_LINEAR) && (y >= -CAPSULE_HALF_LINEAR))
+	if (fabs(y) < CAPSULE_HALF_LINEAR)
 	{	// on cylinder
 
 		if (x>0)	// RHS
@@ -298,7 +299,7 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 	else	//  (y < CAPSULE_HALF_LINEAR)
 	{	// bottom cap
 
-		return num_cap_segs + num_straight_segs
+		return num_straight_segs
 			+ (int)((double)num_cap_segs * (1+ (atan2((y + (CAPSULE_HALF_LINEAR)),-x) / PI)) );
 		
 	}
@@ -312,7 +313,7 @@ void segments::getsegmentdist(const vect& node,int& xdist, int& ydist, int& zdis
 
 	rot_pos = node;
 
-	p_actin->camera_rotation.rotate(rot_pos); 
+	//p_actin->camera_rotation.rotate(rot_pos); 
 	
 	if (p_nuc->geometry == nucleator::sphere)
 	{	// sphere
@@ -378,8 +379,8 @@ void segments::addnode(const nodes& node)
 	rot_pos = node;
 	rot_unit = node.unit_vec_posn;
 
-	p_actin->camera_rotation.rotate(rot_pos); 
-	p_actin->camera_rotation.rotate(rot_unit); 
+	//p_actin->camera_rotation.rotate(rot_pos); 
+	//p_actin->camera_rotation.rotate(rot_unit); 
 
 	getsegmentnum(rot_pos, xseg, yseg, zseg);
 	getsegmentdist(rot_pos, xdist, ydist, zdist);
@@ -427,6 +428,7 @@ void segments::addnode(const nodes& node)
 		 rep_transverse[0][xseg][xdist] += xfactor * node.repforce_transverse[threadnum];
 			link_radial[0][xseg][xdist] += xfactor * node.linkforce_radial[threadnum];
 		link_transverse[0][xseg][xdist] += xfactor * node.linkforce_transverse[threadnum];
+		   links_broken[0][xseg][xdist] += xfactor * node.links_broken[threadnum];
 //			disp_radial[0][xseg][xdist] += node.dispforce_radial[threadnum];
 //		disp_transverse[0][xseg][xdist] += node.dispforce_transverse[threadnum];
 		}
@@ -438,6 +440,7 @@ void segments::addnode(const nodes& node)
 		 rep_transverse[1][yseg][ydist] += yfactor * node.repforce_transverse[threadnum];
 			link_radial[1][yseg][ydist] += yfactor * node.linkforce_radial[threadnum];
 		link_transverse[1][yseg][ydist] += yfactor * node.linkforce_transverse[threadnum];
+		   links_broken[1][yseg][ydist] += yfactor * node.links_broken[threadnum];
 //			disp_radial[1][yseg][ydist] += node.dispforce_radial[threadnum];
 //		disp_transverse[1][yseg][ydist] += node.dispforce_transverse[threadnum];
 		}
@@ -449,6 +452,7 @@ void segments::addnode(const nodes& node)
 		 rep_transverse[2][zseg][zdist] += zfactor * node.repforce_transverse[threadnum];
 			link_radial[2][zseg][zdist] += zfactor * node.linkforce_radial[threadnum];
 		link_transverse[2][zseg][zdist] += zfactor * node.linkforce_transverse[threadnum];
+		   links_broken[2][zseg][zdist] += zfactor * node.links_broken[threadnum];
 //			disp_radial[2][zseg][zdist] += node.dispforce_radial[threadnum];
 //		disp_transverse[2][zseg][zdist] += node.dispforce_transverse[threadnum];
 		}
@@ -466,8 +470,8 @@ void segments::addsurfaceimpact(const nodes& node, const double& mag)
 	rot_pos = node;
 	rot_unit = node.unit_vec_posn;
 
-	p_actin->camera_rotation.rotate(rot_pos); 
-	p_actin->camera_rotation.rotate(rot_unit); 
+	//p_actin->camera_rotation.rotate(rot_pos); 
+	//p_actin->camera_rotation.rotate(rot_unit); 
 
 	getsegmentnum(rot_pos, xseg, yseg, zseg);
 
@@ -518,6 +522,7 @@ void segments::clearnodes(void)
 				 rep_transverse[axis][i][j]=0;
 				    link_radial[axis][i][j]=0;
 				link_transverse[axis][i][j]=0;
+	   			   links_broken[axis][i][j]=0;
 //				    disp_radial[axis][i][j]=0;
 //			    disp_transverse[axis][i][j]=0;
 			}
@@ -659,29 +664,53 @@ void segments::savereport(const int& filenum) const
 	double x,y,z;
 	double radius;
 
+	double 
+		tmp_numnodes,				
+		tmp_rep_radial,
+		tmp_rep_transverse,
+		tmp_link_radial,
+		tmp_link_transverse;
+
+	bool capsuleside;
+
 	sprintf ( filename , "report%05i.txt", filenum );
 
 	ofstream opreport(filename, ios::out | ios::trunc);
 	if (!opreport) 
 	{ cout << "Unable to open file " << filename << " for output"; return;}
 
+	sprintf ( filename , "report_radial%05i.txt", filenum );
+
+	ofstream opradialreport(filename, ios::out | ios::trunc);
+	if (!opradialreport) 
+	{ cout << "Unable to open file " << filename << " for output"; return;}
+
 	// write header
 	
-	opreport << "Axis,segment,distseg,x,y,z,NodeRadius,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
-	
-	for (int axis = 0; axis < 3; ++axis)
-	{
-		for(int seg = 0; seg<num_segs; ++seg)
-		{
-			if ((axis == 2) && (seg >= 2 * num_cap_segs))
-				continue;  // no linear segment on z axis
+	opreport << "Axis,segment,distseg,x,y,z,Radius,area,capsuleside,numnodes,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
+	opradialreport << "RadialSegDist,numnodes,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
 
-			for(int dist = 0; dist<num_dist_segs; ++dist)
+
+	for(int dist = 0; dist<num_dist_segs; ++dist)
+	{
+		tmp_numnodes =				// sum by radial bin
+		tmp_rep_radial =  
+		tmp_rep_transverse =  
+		tmp_link_radial = 
+		tmp_link_transverse = 0; 
+
+		for (int axis = 0; axis < 3; ++axis)
+		{
+			for(int seg = 0; seg<num_segs; ++seg)
 			{
+				if ((axis == 2) && (seg >= 2 * num_cap_segs))
+					continue;  // no linear segment on z axis
 
 				getsegmentposition(x, y, z, seg, dist, axis);
 
-				p_actin->camera_rotation.rotate(x,y,z); 
+				//p_actin->camera_rotation.rotate(x,y,z); 
+
+				capsuleside = false;
 
 				if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
 				{	// sphere or capsule z
@@ -690,12 +719,17 @@ void segments::savereport(const int& filenum) const
 				else
 				{
 					if (fabs(y) < CAPSULE_HALF_LINEAR)
+					{
+						capsuleside = true;
 						radius = fabs(x) - RADIUS;
+					}
 					else
-						radius = calcdist(x,fabs(y)-CAPSULE_HALF_LINEAR) - RADIUS;
+					{
+						radius = calcdist(x , fabs(y) - CAPSULE_HALF_LINEAR) - RADIUS;
+					}
 				}
 
-// Axis,segment,distseg,x,y,z,Radius,numnodes,area,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
+// Axis,segment,distseg,x,y,z,Radius,numnodes,area,capsuleside,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
 
 				opreport 
 					<< axis << ","
@@ -706,6 +740,7 @@ void segments::savereport(const int& filenum) const
 					<< z << ","
 					<< radius << ","
 					<< 0 << ","
+					<< capsuleside << ","
 					<< numnodes[axis][seg][dist] << ","
 					<< rep_radial[axis][seg][dist] << ","
 					<< rep_transverse[axis][seg][dist] << ","
@@ -713,15 +748,31 @@ void segments::savereport(const int& filenum) const
 					<< link_transverse[axis][seg][dist] << endl;
 //					<< disp_radial[axis][seg][dist] << ","
 //					<< disp_transverse[axis][seg][dist] << ",";
-					 
+
+				tmp_numnodes += numnodes[axis][seg][dist];
+				tmp_rep_radial += rep_radial[axis][seg][dist]; 
+				tmp_rep_transverse += rep_transverse[axis][seg][dist]; 
+				tmp_link_radial += link_radial[axis][seg][dist]; 
+				tmp_link_transverse += link_transverse[axis][seg][dist];
 
 			}
 		}
+//	opradialreport << "RadialSegDist,numnodes,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
+
+	opradialreport 
+		<< tmp_numnodes << ","
+		<< tmp_rep_radial << ","
+		<< tmp_rep_transverse << ","
+		<< tmp_link_radial << ","
+		<< tmp_link_transverse << endl;
+
 	}
 
 	opreport << endl;
+	opradialreport << endl;
 
 	opreport.close();
+	opradialreport.close();
 }
 
 void segments::getsegmentposition(double& x, double& y, double& z, const int & seg,
@@ -754,9 +805,9 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 {
 
 	const int bins_bitmap_width  = centerx * 2;			// width and height of pixels to plot
-	const int bins_bitmap_height = BMP_HEIGHT / 2;
+	const int bins_bitmap_height = (int) ((double) BMP_HEIGHT * 2/3);
 
-	const int offsetx =  bins_bitmap_width / 2;			// center these pixels
+	const int offsetx = bins_bitmap_width / 2;			// center these pixels
 	const int offsety = bins_bitmap_height / 2;
 
 	int pix_x, pix_y;	// these are bitmap co-ords
@@ -767,7 +818,9 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 	nodes dummynode;
 
-	double maxval = 0.0000001;
+	double value;
+
+	double maxval = SQRT_ACCURACY_LOSS;
 
 	// set max value:
 
@@ -800,13 +853,13 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 				dummynode.y = p_actin->unpixels(pix_y - offsety);
 			}
 			
-			p_actin->reverse_camera_rotation.rotate(dummynode); 
+			//p_actin->reverse_camera_rotation.rotate(dummynode); 
 	
 			dummynode.setunitvec();
 
 			// get bin numbers:
 
-			getsegmentnum(dummynode,	 xseg, yseg, zseg);
+			getsegmentnum( dummynode, xseg,  yseg,  zseg);
 			getsegmentdist(dummynode, xdist, ydist, zdist);
 
 			if (axis == 0)
@@ -828,7 +881,12 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 			if (dist == -1)
 				continue;
 
-			dummynode.colour.setcol(var[axis][seg][dist]/maxval);
+			value = var[axis][seg][dist] / maxval;  // scaled between 0 and 1
+
+			if (value < 0.00001)	// skip if zero
+				continue;
+
+			dummynode.colour.setcol(value);
 
 			imageR[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.r * imageRmax;
 			imageG[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.g * imageGmax;
@@ -838,17 +896,22 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 // write out colormap key
 
-const int keyheight = 10;
+const int keyheight = bins_bitmap_height;
+const int keywidth  = 10;
 
+const int keyxorig = 0; //centerx - offsetx;
+const int keyyorig = centery - (keyheight / 2);
 
-	for (pix_x = 0; pix_x < bins_bitmap_width; ++pix_x)
-		for (pix_y = bins_bitmap_height; pix_y < bins_bitmap_height + keyheight; ++pix_y)
+	for (pix_y = 0; pix_y < keyheight; ++pix_y)
+	{
+		dummynode.colour.setcol(1 - (double)pix_y / (double)keyheight);
+
+		for (pix_x = 0; pix_x < keywidth; ++pix_x)
 		{
-			dummynode.colour.setcol((double)pix_x/(double)bins_bitmap_width);
-
-			imageR[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.r * imageRmax;
-			imageG[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.g * imageGmax;
-			imageB[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.b * imageBmax;
+			imageR[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.r * imageRmax;
+			imageG[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.g * imageGmax;
+			imageB[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.b * imageBmax;
 		}
+	}
 
 }
