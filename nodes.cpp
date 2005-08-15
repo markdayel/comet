@@ -152,58 +152,59 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 	return true;
 }
 
-int nodes::save(ofstream *outputstream) 
-{
-	*outputstream	<< nodenum << "," << x << "," << y << "," << z 
-					<< "," << harbinger << "," << polymer << "," 
-					<< colour.r << "," << colour.g << "," << colour.b << ","
-					<< creation_iter_num << (unsigned int) listoflinks.size() 
-				 << "," << endl;
+//int nodes::save(ofstream *outputstream) 
+//{
+//	*outputstream	<< nodenum << "," << x << "," << y << "," << z 
+//					<< "," << harbinger << "," << polymer << "," 
+//					<< colour.r << "," << colour.g << "," << colour.b << ","
+//					<< creation_iter_num << (unsigned int) listoflinks.size() 
+//				 << "," << endl;
+//
+//	return 0;
+//}
 
-	return 0;
-}
-
-int nodes::savedata(ofstream *outputstream) 
-{
-	*outputstream	<< nodenum << "," << x << "," << y << "," << z 
-					<< "," << harbinger << "," << polymer << "," 
-					<< colour.r << "," << colour.g << "," << colour.b << ","
-					<< creation_iter_num << "," << (unsigned int) listoflinks.size();
-					
-	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
-	{	 
-		*outputstream << ",";
-		i->savedata(outputstream);
-	}
-	
-	*outputstream << endl;
-
-	return 0;
-}
-
-int nodes::loaddata(ifstream *inputstream) 
-{
-	char delim;
-	unsigned int linklistsize;
-
-	*inputstream	>> nodenum >> delim >> x >> delim >> y >> delim >> z 
-					>> delim >> harbinger >> delim >> polymer >> delim 
-					>> colour.r >> delim >> colour.g >> delim >> colour.b >> delim
-					>> creation_iter_num >> delim >> linklistsize ;
-					
-	listoflinks.resize(linklistsize);  // is resize right? or should it be reserve?
-
-	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
-	{	 
-		*inputstream >> delim;
-		i->loaddata(inputstream);
-	}
-
-	setgridcoords();
-	addtogrid(); 
-
-	return 0;
-}
+//
+//int nodes::savedata(ofstream *outputstream) 
+//{
+//	*outputstream	<< nodenum << "," << x << "," << y << "," << z 
+//					<< "," << harbinger << "," << polymer << "," 
+//					<< colour.r << "," << colour.g << "," << colour.b << ","
+//					<< creation_iter_num << "," << (unsigned int) listoflinks.size();
+//					
+//	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
+//	{	 
+//		*outputstream << ",";
+//		i->savedata(outputstream);
+//	}
+//	
+//	*outputstream << endl;
+//
+//	return 0;
+//}
+//
+//int nodes::loaddata(ifstream *inputstream) 
+//{
+//	char delim;
+//	unsigned int linklistsize;
+//
+//	*inputstream	>> nodenum >> delim >> x >> delim >> y >> delim >> z 
+//					>> delim >> harbinger >> delim >> polymer >> delim 
+//					>> colour.r >> delim >> colour.g >> delim >> colour.b >> delim
+//					>> creation_iter_num >> delim >> linklistsize ;
+//					
+//	listoflinks.resize(linklistsize);  // is resize right? or should it be reserve?
+//
+//	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
+//	{	 
+//		*inputstream >> delim;
+//		i->loaddata(inputstream);
+//	}
+//
+//	setgridcoords();
+//	addtogrid(); 
+//
+//	return 0;
+//}
 
 
 int nodes::save_data(ofstream &ostr) 

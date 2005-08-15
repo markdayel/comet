@@ -42,28 +42,28 @@ links::links(nodes* linknodep, double dist)
 }
 
 
-
-
-int links::savedata(ofstream *outputstream) 
-{
-	*outputstream << broken << "," << breakcount << "," << breaklastiter
-		<< "," << orig_dist << "," << linkednodeptr->nodenum;
-
-	return 0;
-}
-
-int links::loaddata(ifstream *inputstream) 
-{
-	char delim;
-
-	*inputstream >> broken >> delim >> breakcount >> delim >> breaklastiter 
-		>> delim >> orig_dist >> delim >>  linkednodeptr->nodenum;
-
-	orig_distsqr = orig_dist*orig_dist;
-	orig_dist_recip = 1/orig_dist;
-
-	return 0;
-}
+//
+//
+//int links::savedata(ofstream *outputstream) 
+//{
+//	*outputstream << broken << "," << breakcount << "," << breaklastiter
+//		<< "," << orig_dist << "," << linkednodeptr->nodenum;
+//
+//	return 0;
+//}
+//
+//int links::loaddata(ifstream *inputstream) 
+//{
+//	char delim;
+//
+//	*inputstream >> broken >> delim >> breakcount >> delim >> breaklastiter 
+//		>> delim >> orig_dist >> delim >>  linkednodeptr->nodenum;
+//
+//	orig_distsqr = orig_dist*orig_dist;
+//	orig_dist_recip = 1/orig_dist;
+//
+//	return 0;
+//}
 
 int links::save_data(ofstream &ostr) 
 {

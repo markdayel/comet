@@ -744,12 +744,12 @@ if (NUCSHAPE == nucleator::capsule)
 
 			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
 
-			//if ((!theactin.brokensymmetry) && (distfromorigin > 0.1))
+			//if ((!theactin.brokensymmetry) && (distfromorigin > 0.5 * RADIUS))
 			//if  (distfromorigin > 0.1)
 			//{
 			//	theactin.brokensymmetry = true;
-			//	theactin.camera_rotation = theactin.get_sym_break_axes();
-			//}  // srand(
+			//	theactin.set_sym_break_axes();
+			//}  
 
 			cout << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
@@ -830,9 +830,9 @@ srand( (unsigned) 200 );
 				<< "/" << NUMBER_RECORDINGS << endl ;
 
 			//theactin.setnodecols();
-			theactin.save((i/InterRecordIterations));
+			//theactin.save((i/InterRecordIterations));
 			theactin.savevrml((i/InterRecordIterations));
-			theactin.savedata((i/InterRecordIterations));
+			//theactin.savedata((i/InterRecordIterations));
 			
 			// test the load/save of data:
 			//theactin.loaddata((i/InterRecordIterations));

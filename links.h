@@ -21,8 +21,8 @@ public:
 	links(void);
 	links(nodes* linknodep, double dist);
 	 ~links(void);
-	int savedata(ofstream *outputstream);
-	int loaddata(ifstream *inputstream);
+	//int savedata(ofstream *outputstream);
+	//int loaddata(ifstream *inputstream);
 	int save_data(ofstream &ostr);
 	int load_data(ifstream &istr);
 	nodes* linkednodeptr;

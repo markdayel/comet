@@ -253,72 +253,72 @@ int actin::crosslinknewnodes(int numnewnodes)
 
 	return numnewnodes;
 }
-
-int actin::save(int filenum)
-{
-	char filename[255];
-	//char time[255], date[255];
-
-    //_strtime( time );
-    //_strdate( date );
-
-	sprintf ( filename , "nodes%05i.txt", filenum );
-
-	ofstream opactindata(filename, ios::out | ios::trunc);
-	if (!opactindata) 
-	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-
-	// write header
-	opactindata << "comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
-	//opactindata << "Data Output " << date << " " << time << endl;
-	opactindata << "Nodes Data Itteration Number: " << filenum << endl;
-	opactindata << "Highest Node Count: " << highestnodecount << endl;
-		opactindata << "nodenum,x,y,z,harbinger,polymer,r,g,b,creationiter,numlinks " << endl;
-	
-	p_nuc->save(&opactindata);
-
-
-
-	// write data
-	for (int i=0; i<highestnodecount; i++)
-	{
-		if (node[i].polymer)
-		{
-			node[i].save(&opactindata);
-		}
-	}
-
-	opactindata.close();
-
-
-
-	// now save links
-
-	sprintf ( filename , "links%05i.txt", filenum );
-
-	ofstream oplinkdata(filename, ios::out | ios::trunc);
-
-	if (!oplinkdata) 
-	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-
-	// write header
-	oplinkdata << "comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
-	//oplinkdata << "Data Output " << date << " " << time << endl;
-	oplinkdata << "Links Data Itteration Number: " << filenum << endl;
-	oplinkdata << "Highest Node Count: " << highestnodecount << endl;
-	oplinkdata << "nodenum,numlinks,linknum1,linknum2,..." << endl;
-
-	for (int i=0; i<highestnodecount; i++)
-	{
-		if (node[i].polymer)
-		{
-			node[i].savelinks(&oplinkdata);
-		}
-	}
-	oplinkdata.close();
-
-	return 0;
-}
+//
+//int actin::save(int filenum)
+//{
+//	char filename[255];
+//	//char time[255], date[255];
+//
+//    //_strtime( time );
+//    //_strdate( date );
+//
+//	sprintf ( filename , "nodes%05i.txt", filenum );
+//
+//	ofstream opactindata(filename, ios::out | ios::trunc);
+//	if (!opactindata) 
+//	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+//
+//	// write header
+//	opactindata << "comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
+//	//opactindata << "Data Output " << date << " " << time << endl;
+//	opactindata << "Nodes Data Itteration Number: " << filenum << endl;
+//	opactindata << "Highest Node Count: " << highestnodecount << endl;
+//		opactindata << "nodenum,x,y,z,harbinger,polymer,r,g,b,creationiter,numlinks " << endl;
+//	
+//	p_nuc->save(&opactindata);
+//
+//
+//
+//	// write data
+//	for (int i=0; i<highestnodecount; i++)
+//	{
+//		if (node[i].polymer)
+//		{
+//			node[i].save(&opactindata);
+//		}
+//	}
+//
+//	opactindata.close();
+//
+//
+//
+//	// now save links
+//
+//	sprintf ( filename , "links%05i.txt", filenum );
+//
+//	ofstream oplinkdata(filename, ios::out | ios::trunc);
+//
+//	if (!oplinkdata) 
+//	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+//
+//	// write header
+//	oplinkdata << "comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
+//	//oplinkdata << "Data Output " << date << " " << time << endl;
+//	oplinkdata << "Links Data Itteration Number: " << filenum << endl;
+//	oplinkdata << "Highest Node Count: " << highestnodecount << endl;
+//	oplinkdata << "nodenum,numlinks,linknum1,linknum2,..." << endl;
+//
+//	for (int i=0; i<highestnodecount; i++)
+//	{
+//		if (node[i].polymer)
+//		{
+//			node[i].savelinks(&oplinkdata);
+//		}
+//	}
+//	oplinkdata.close();
+//
+//	return 0;
+//}
 
 int actin::saveinfo()
 {
@@ -1503,8 +1503,8 @@ int actin::savebmp(int filenum, projection proj)
     else if (proj == yaxis)
 		sprintf ( projletter , "y");
 
-//	cout << "Processing "<< projletter << "-axis BMP";
-//	cout.flush();
+	cout << "Processing "<< projletter << "-axis BMP";
+	cout.flush();
 
 
 	double minx, miny, minz;
@@ -1757,8 +1757,8 @@ int actin::savebmp(int filenum, projection proj)
 
 	}
 
-//	cout << ".";
-//	cout.flush();
+	cout << ".";
+	cout.flush();
 
 	// write the bins graphics
 
@@ -1774,28 +1774,34 @@ int actin::savebmp(int filenum, projection proj)
 		
 	writebitmapfile(filename, imageR, imageG, imageB);
 
-//	cout << ".";
-//	cout.flush();
+	cout << ".";
+	cout.flush();
 
 	// add the imagemagick overlays
 	
 	char command1[10240], command2[10240];
 
-    stringstream drawcmd;
+    stringstream tmp_drawcmd, drawcmd;
 
 	int scalebarlength = pixels(1.0);
 
 	drawcmd << "-fill none -stroke grey -draw \"";
 	p_nuc->segs.drawoutline(drawcmd,proj);				// draw outline of nucleator
+					
+	// check have lines to draw before adding them
+	// else ImageMagick intermittently crashes
 
-	drawcmd << "\" -stroke blue -draw \"";				// change color to blue
-	p_nuc->segs.drawsurfaceimpacts(drawcmd,proj,1);		// draw surface impact forces
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd,proj,1) > 0)		
+		drawcmd << "\" -stroke blue -draw \"" << tmp_drawcmd.str();
+	tmp_drawcmd.clear();
 
-	drawcmd << "\" -stroke red -draw \"";				// change color to red
-	p_nuc->segs.drawsurfaceimpacts(drawcmd,proj,0.2);	// scaled impact forces
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd,proj,0.2) > 0)	// scaled impact forces
+		drawcmd << "\" -stroke red -draw \"" << tmp_drawcmd.str();	
+	tmp_drawcmd.clear();
 
-	drawcmd << "\" -stroke yellow -draw \"";			// change color to yellow
-	p_nuc->segs.drawsurfaceimpacts(drawcmd,proj,0.05);	// scaled impact forces
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd,proj,0.05) > 0)	// scaled impact forces
+		drawcmd << "\" -stroke yellow -draw \"" << tmp_drawcmd.str();	
+	tmp_drawcmd.clear();
 
 	drawcmd << "\"";
 
@@ -1805,7 +1811,7 @@ int actin::savebmp(int filenum, projection proj)
 if (NO_IMAGE_TEXT)
 {	
 		sprintf(command1,
-		"convert -quality %i -fill white -draw \" rectangle 5 576 %i 573 \" %s %s_proj_%05i.%s",
+		"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s_proj_%05i.%s",
 		     BMP_COMPRESSION, scalebarlength+5, filename, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 }
 else 
@@ -1825,6 +1831,8 @@ else
     system(command1);
     system(command2);
 
+	opruninfo << endl << command1 << endl << command2 << endl;
+
 
 #ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
 	sprintf(command2 , "del %s 2>/dev/null", filename);
@@ -1834,8 +1842,8 @@ else
 
 	system(command2);	
 
-	//cout << ". ";
-	//cout.flush();
+	cout << ". ";
+	cout.flush();
 
 	return filenum;
 }
@@ -2072,11 +2080,11 @@ void * actin::compressfilesthread(void* threadarg)
 
 		// gzip the text data:
 
-		sprintf(command1, "gzip -f -9 nodes%05i.txt",dat->startnode);
-		system(command1);
+		//sprintf(command1, "gzip -f -9 nodes%05i.txt",dat->startnode);
+		//system(command1);
 
-		sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
-		system(command1);
+		//sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
+		//system(command1);
 
 		sprintf(command1, "gzip -q -f -9 report*.txt 2>/dev/null" );
 		system(command1);
@@ -2153,74 +2161,74 @@ int actin::find_center(vect &center)
 	return 0;
 }
 
-
-int actin::savedata(int filenum)
-{
-	char filename[255];
-
-	sprintf ( filename , "data%05i.txt", filenum );
-
-	ofstream opdata(filename, ios::out | ios::trunc);
-	if (!opdata) 
-	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-
-	opdata << highestnodecount << "," << iteration_num 
-		<< "," << linksbroken << "," << linksformed << endl;
-
-	for (int i=0; i<highestnodecount; i++)
-	{
-		node[i].savedata(&opdata);
-	}
-
-	opdata << endl;
-	opdata << (unsigned int) crosslinknodesdelay.size();
-
-	for (vector <int>::iterator i=crosslinknodesdelay.begin(); i<crosslinknodesdelay.end() ; i++ )
-	{	 
-		opdata << "," << (*i);
-	}
-
-	opdata.close();
-
-	return 0;
-}
-
-int actin::loaddata(int filenum)
-{
-
-	for (int i=0; i!=(GRIDSIZE+1); i++) // clear the nodegrid
-		for (int j=0; j!=(GRIDSIZE+1); j++)
-			for (int k=0; k!=(GRIDSIZE+1); k++)
-				nodegrid[i][j][k]=0;;
-
-	char filename[255];
-	char delim;
-	unsigned int numcrosslinkdelay;
-
-	sprintf ( filename , "data%05i.txt", filenum );
-
-	ifstream ipdata(filename);
-	if (!ipdata) 
-	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-
-	ipdata >> highestnodecount >> delim >> iteration_num 
-		>> delim >> linksbroken >> delim >> linksformed;
-
-	for (int i=0; i<highestnodecount; i++)
-	{
-		node[i].loaddata(&ipdata);
-	}
-
-	ipdata >> numcrosslinkdelay;
-	crosslinknodesdelay.resize(numcrosslinkdelay);
-
-	for (vector <int>::iterator i=crosslinknodesdelay.begin(); i<crosslinknodesdelay.end() ; i++ )
-	{	 
-		ipdata >> delim >> (*i);
-	}
-
-	return 0;
-}
+//
+//int actin::savedata(int filenum)
+//{
+//	char filename[255];
+//
+//	sprintf ( filename , "data%05i.txt", filenum );
+//
+//	ofstream opdata(filename, ios::out | ios::trunc);
+//	if (!opdata) 
+//	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+//
+//	opdata << highestnodecount << "," << iteration_num 
+//		<< "," << linksbroken << "," << linksformed << endl;
+//
+//	for (int i=0; i<highestnodecount; i++)
+//	{
+//		node[i].savedata(&opdata);
+//	}
+//
+//	opdata << endl;
+//	opdata << (unsigned int) crosslinknodesdelay.size();
+//
+//	for (vector <int>::iterator i=crosslinknodesdelay.begin(); i<crosslinknodesdelay.end() ; i++ )
+//	{	 
+//		opdata << "," << (*i);
+//	}
+//
+//	opdata.close();
+//
+//	return 0;
+//}
+////
+////int actin::loaddata(int filenum)
+////{
+////
+////	for (int i=0; i!=(GRIDSIZE+1); i++) // clear the nodegrid
+////		for (int j=0; j!=(GRIDSIZE+1); j++)
+////			for (int k=0; k!=(GRIDSIZE+1); k++)
+////				nodegrid[i][j][k]=0;;
+////
+////	char filename[255];
+////	char delim;
+////	unsigned int numcrosslinkdelay;
+////
+////	sprintf ( filename , "data%05i.txt", filenum );
+////
+////	ifstream ipdata(filename);
+////	if (!ipdata) 
+////	{ cout << "Unable to open file " << filename << " for output"; return 1;}
+////
+////	ipdata >> highestnodecount >> delim >> iteration_num 
+////		>> delim >> linksbroken >> delim >> linksformed;
+////
+////	for (int i=0; i<highestnodecount; i++)
+////	{
+////		node[i].loaddata(&ipdata);
+////	}
+////
+////	ipdata >> numcrosslinkdelay;
+////	crosslinknodesdelay.resize(numcrosslinkdelay);
+////
+////	for (vector <int>::iterator i=crosslinknodesdelay.begin(); i<crosslinknodesdelay.end() ; i++ )
+////	{	 
+////		ipdata >> delim >> (*i);
+////	}
+////
+////	return 0;
+////}
 
 void actin::clear_nodegrid()
 {
@@ -2386,7 +2394,7 @@ void actin::setdontupdates(void)
 	}
 }
 
-rotationmatrix actin::get_sym_break_axes(void)
+void actin::set_sym_break_axes(void)
 {
 
 	vect tmp_nodepos;
@@ -2467,14 +2475,13 @@ rotationmatrix actin::get_sym_break_axes(void)
 		 << " sqrt(y_inertia): " << sqrt(y_inertia) 
 		 << " z_in_angle: " << 180*z_in_angle << endl; 
 
-	//final_rotation.rotatematrix(x_angle, y_angle, -z_in_angle);
-	final_rotation.rotatematrix(0, 0, z_in_angle);
-	final_rotation.rotatematrix(x_angle, y_angle, 0);
+	//camera_rotation.rotatematrix(x_angle, y_angle, -z_in_angle);
+	//camera_rotation.rotatematrix(0, 0, z_in_angle);
+	camera_rotation.rotatematrix(x_angle, y_angle, 0);
 
-	reverse_camera_rotation.rotatematrix(0, 0, - z_in_angle);
+	//reverse_camera_rotation.rotatematrix(0, 0, - z_in_angle);
 	reverse_camera_rotation.rotatematrix(-x_angle, -y_angle, 0);
-	
-	return final_rotation;
+
 }
 
 void actin::clearstats(void)
@@ -2489,5 +2496,6 @@ void actin::clearstats(void)
 	}
 
 }
+
 
 

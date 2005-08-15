@@ -638,13 +638,15 @@ void segments::drawoutline(ostream& drawcmd, const int& axis) const
 
 }
 
-void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double scale) const
+int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double scale) const
 {
 
 	double linelen, linex, liney;
 	double startx, starty;
 
 	double seg_area, unscaledlen;
+
+	int numlinesplotted = 0;
 
 	int segstodraw = num_segs;
 
@@ -684,6 +686,13 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const doubl
 			liney*= 0.9 * RADIUS / linelen;			
 		}
 
+		// don't plot zero length lines
+		if ((p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
+			(p_actin->pixels(starty) == p_actin->pixels(starty + liney)))
+			continue;
+
+		numlinesplotted++;
+
 		drawcmd << " line "
 				<< centerx + p_actin->pixels(startx) << "," 
 				<< centery + p_actin->pixels(starty) << " "
@@ -693,6 +702,7 @@ void segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const doubl
 
 	}
 
+return numlinesplotted;
 }
 
 void segments::addallnodes()

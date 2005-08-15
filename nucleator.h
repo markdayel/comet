@@ -68,7 +68,7 @@ public:
 	int addnodessphere(void);
 	int addnodescapsule(void);
 	int definenucleatorgrid(void);
-	int save(ofstream *outputstream) ;
+	//int save(ofstream *outputstream) ;
 	int savevrml(ofstream *outputstream) ;
 	//int saveradialsegments(ofstream *outputstream);
 	//int clearradialsegments();

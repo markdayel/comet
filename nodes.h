@@ -34,9 +34,9 @@ public:
 	nodes* prevnode;
 	bool depolymerize(void);
 	bool polymerize(const double& set_x, const double& set_y, const double& set_z);
-	int save(ofstream*);
-	int savedata(ofstream*);
-	int loaddata(ifstream *inputstream);
+	//int save(ofstream*);
+	//int savedata(ofstream*);
+	//int loaddata(ifstream *inputstream);
 	int save_data(ofstream &ofstr);
 	int load_data(ifstream &ifstr);
 	//int xrank;

@@ -73,7 +73,7 @@ public:
 	actin(void);
 	~actin(void);
 	int nucleate();
-	int save(int);
+	//int save(int);
 	int saveinfo(void);
 	int iterate(void);
 	int addlinks(const int& linknode1,const int& linknode2);
@@ -167,16 +167,16 @@ public:
 	int sortnodesbygridpoint(void);
 	int nexttocrosslink;
 	int find_center(vect &center);
-	int save_linkstats(int filenum);
+	//int save_linkstats(int filenum);
 	//void reportsnapshot(int filenum, int highestnode, int reportiteration);
 	//void savereport(int filenum, int highestnode);
-	int savedata(int filenum);
-	int loaddata(int filenum);
+	//int savedata(int filenum);
+	//int loaddata(int filenum);
 	void clear_nodegrid();
 	int save_data(ofstream &ofstrm);
 	int load_data(ifstream &ifstrm);
 	void setdontupdates(void);
-	rotationmatrix get_sym_break_axes(void);
+	void set_sym_break_axes(void);
 	void clearstats(void);
 
 	inline int pixels(const double & coord) const
