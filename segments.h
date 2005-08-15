@@ -22,6 +22,12 @@ typedef vector<double> Dbl1d;
 typedef vector<Dbl1d> Dbl2d;
 typedef vector<Dbl2d> Dbl3d;
 
+typedef vector<int> Int1d;
+typedef vector<Int1d> Int2d;
+typedef vector<Int2d> Int3d;
+typedef vector<Int3d> Int4d;
+typedef vector<Int4d> Int5d;
+
 class nodes;
 class nucleator;
 class actin;
@@ -37,27 +43,28 @@ public:
 
 	void drawoutline(ostream& out, const int& axis) const;
 	void drawsurfaceimpacts(ostream& out, const int& axis, const double scale) const;
-	void drawnodestats(ostream& drawcmd, const int& axis) const;
 
 	void addnode(const nodes& node);
 	void addallnodes();
 	void addsurfaceimpact(const nodes& node, const double& mag);
 
 	void getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const;
-	void getsegmentdist(const vect& node,int& xdist, int& ydist, int& zdist) const;
+	void getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const;
 
 	int  getcapsuleseg(const double & x, const double & y) const;
 	void getsegmentposition(double& x, double& y, double& z, const int & seg,
 								  const int & dist, const int & axis) const;
 
 
-	int  dist_to_seg(const double dist) const;
+	int  dist_to_seg(const double & dist) const;
 
 	void savereport(const int& filenum) const;
+	void saveradialreport(const int& filenum) const;
 
 	void write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
-					   const double &imageRmax, const double &imageGmax, const double &imageBmax,
 					   const Dbl3d & var, const int& axis);
+
+	void setbitmapcoords();
 
 	void clearsurfaceimpacts(void);
 	void clearnodes(void);
@@ -110,7 +117,20 @@ public:
 //		disp_radial,
 //		disp_transverse;
 
+	double radialdist;
+	int num_radial_bins;
 
+	int bins_bitmap_width, bins_bitmap_height;
+
+	Dbl1d						// radial average
+		radial_numnodes,				
+		radial_rep_radial,
+		radial_rep_transverse,
+		radial_link_radial,
+		radial_link_transverse,
+		radial_links_broken;
+
+	//Int4d segment_pixel;
 
 };
 

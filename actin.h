@@ -94,6 +94,7 @@ public:
 	static bool collisionthreaddone3;
 	static bool collisionthreaddone4;
 
+	char outbmpbuffer[1024000];
 	
 	int debug_num_rotate, debug_num_displace;
 
@@ -111,24 +112,12 @@ public:
 	void ejectfromnucleator(void);
 	void move_and_rotate(void);
 
-	int applyforces(void);
+	int applyforces(void);	
+
+	void writebitmapfile(const char* filename, 
+							const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
+	
 	int savebmp(int filenum, projection proj);
-	void draw_bead_forces(int filenum, projection proj,
-				int BMP_WIDTH, int BMP_HEIGHT,
-				int xgmax, int ygmax,
-				int movex, int movey,
-				double meanx, double meany, double meanz,
-				double imageGmax, 
-				bool nuc_forces_overlay, double scale, double thickness,  char*  color);
-
-	void draw_capsule_forces(int filenum, projection proj,
-				int BMP_WIDTH, int BMP_HEIGHT,
-				int xgmax, int ygmax,
-				int movex, int movey,
-				double meanx, double meany, double meanz,
-				double imageGmax, 
-				bool nuc_forces_overlay, double scale, double thickness,  char*  color);
-
 
 	segments segs;
 
@@ -159,7 +148,7 @@ public:
 	//inline static int dorepulsion(const int& node_i,const int& node_j, const double& distsqr, const int& threadnum);
 	//static inline int dorepulsion(nodes& node_i,nodes& node_j,
 	//						  const double& dist,const int& threadnum);
-	static void *collisiondetectionthread(void*threadarg);
+	static void *collisiondetectionthread(void* threadarg);
 	static void *collisiondetectiondowork(thread_data* dat);
 	static bool isinthread;
 	//static Bool2d repulsedone;
@@ -202,6 +191,7 @@ public:
 
 
 
+	void writebitmapfile(void);
 };
 
 #endif

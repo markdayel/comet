@@ -37,11 +37,17 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	p_nuc = pnuc;
 	p_actin = pactin;
 	
-	num_dist_segs = 20;
+	num_dist_segs = 20;		// normal bins radial distance
 	dist_step = 0.2;
+
+	radialdist = 0.1;		// for radial-only averaging
+	num_radial_bins = 20;
 
 	centerx = BMP_WIDTH  / 7;  // specifies center of nucleator on forces and seg maps
 	centery = BMP_HEIGHT / 2;
+
+	bins_bitmap_width  = centerx * 2;			// width and height of pixels to plot
+	bins_bitmap_height = (int) ((double) BMP_HEIGHT * 2/3);
 
 	// calc segment lengths etc.
 
@@ -94,6 +100,8 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 //	    disp_radial.resize(3);
 //	disp_transverse.resize(3);
 
+//	segment_pixel.resize(3);
+
 	for (int axis = 0; axis < 3; ++axis)
 	{
 		       numnodes[axis].resize(num_segs);			
@@ -102,8 +110,8 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		    link_radial[axis].resize(num_segs);
 		link_transverse[axis].resize(num_segs);
 		   links_broken[axis].resize(num_segs);
-//		    disp_radial[axis].resize(num_segs);
-//		disp_transverse[axis].resize(num_segs);
+
+		//segment_pixel[axis].resize(num_segs);
 
 		for(int i = 0; i<num_segs; ++i)
 		{
@@ -113,12 +121,29 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			    link_radial[axis][i].resize(num_dist_segs);
 			link_transverse[axis][i].resize(num_dist_segs);
 			   links_broken[axis][i].resize(num_dist_segs);
-//			    disp_radial[axis][i].resize(num_dist_segs);
-//			disp_transverse[axis][i].resize(num_dist_segs);
+
+			//segment_pixel[axis][i].resize(num_dist_segs);
+
+			//for(int j = 0; j<num_dist_segs; ++j)
+			//{
+			//	segment_pixel[axis][i][j].resize(0);
+
+			//}
+
 		}
 	}
 
+
+	radial_numnodes.resize(num_radial_bins);				
+	radial_rep_radial.resize(num_radial_bins);	
+	radial_rep_transverse.resize(num_radial_bins);	
+	radial_link_radial.resize(num_radial_bins);	
+	radial_link_transverse.resize(num_radial_bins);	
+	radial_links_broken.resize(num_radial_bins);	
+
 	clearnodes();
+
+
 
 	// define force lines co-ords
 
@@ -306,7 +331,7 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 
 }
 
-void segments::getsegmentdist(const vect& node,int& xdist, int& ydist, int& zdist) const
+void segments::getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const
 {
 
 	vect rot_pos, rot_unit;
@@ -328,7 +353,7 @@ void segments::getsegmentdist(const vect& node,int& xdist, int& ydist, int& zdis
 
 		zdist = dist_to_seg(calcdist(rot_pos.x, rot_pos.y) - RADIUS); 
 
-		if ((node.z <= CAPSULE_HALF_LINEAR) && (rot_pos.z >= -CAPSULE_HALF_LINEAR))
+		if (node.onseg)
 		{	// on cylinder
 
 			xdist = dist_to_seg(fabs(rot_pos.y) - RADIUS); 
@@ -355,26 +380,31 @@ void segments::getsegmentdist(const vect& node,int& xdist, int& ydist, int& zdis
 }
 
 
-int segments::dist_to_seg(const double dist) const
+int segments::dist_to_seg(const double & dist) const
 {	// convert distance to seg num, and return -1 if out of range
 
 	if (dist < 0) return -1;
 	
 	int dist_seg = (int) (dist / dist_step);
 
-	return ((dist_seg>num_dist_segs)||(dist_seg < 0))?(-1):(dist_seg);
+	return (dist_seg>num_dist_segs)?(-1):(dist_seg);
 }
 
 
 
 void segments::addnode(const nodes& node)
 {	// add the node's data to the segments
+
+	// TODO:  fix this for capsule rotation
     
 	int xseg, yseg, zseg;
 	int xdist, ydist, zdist;
+	int dist;
 	double xfactor,yfactor,zfactor;
+	double radius;
 
-	vect rot_pos, rot_unit;
+	nodes rot_pos;
+	vect rot_unit;
 
 	rot_pos = node;
 	rot_unit = node.unit_vec_posn;
@@ -394,29 +424,32 @@ void segments::addnode(const nodes& node)
 	if (zdist!=-1)
 		numnodes[2][zseg][zdist] ++;
 
-	// scaling factor if off-axis
+	// find scaling factor if off-axis, using rotated vector
+	// and radius using normal pos'n
 
-	xfactor = 1 - fabs(rot_unit.x);
-	yfactor = 1 - fabs(rot_unit.y);
+	xfactor = calcdist(rot_unit.y,rot_unit.z);
+	yfactor = calcdist(rot_unit.x,rot_unit.z);
 
 	if (p_nuc->geometry == nucleator::sphere)
 	{
-		zfactor = fabs(1 - rot_unit.z);	
+		zfactor = calcdist(rot_unit.x,rot_unit.y);	
+		radius = node.length() - RADIUS;
 	}
 	else
 	{
-		if ((rot_pos.z < CAPSULE_HALF_LINEAR) && (rot_pos.z > -CAPSULE_HALF_LINEAR))
+		if (node.onseg)
 		{  // on cylinder, don't scale by z component
 			zfactor = 1;
+			radius = calcdist(node.x,node.y) - RADIUS;
 		}
 		else
 		{	// on ends
 
-			zfactor = 1 - fabs(rot_unit.z);	
+			zfactor = calcdist(rot_unit.x,rot_unit.y);	
+			radius = calcdist(node.x,node.y,fabs(node.z) - CAPSULE_HALF_LINEAR) - RADIUS;
 		}
 
 	}
-	
 
 	
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
@@ -456,9 +489,23 @@ void segments::addnode(const nodes& node)
 //			disp_radial[2][zseg][zdist] += node.dispforce_radial[threadnum];
 //		disp_transverse[2][zseg][zdist] += node.dispforce_transverse[threadnum];
 		}
+	
 
 
+		dist = (int) (radius / radialdist);
+
+		if (dist > num_radial_bins)
+			continue;
+
+		radial_numnodes[dist]++;
+		radial_rep_radial[dist] += node.repforce_radial[threadnum]; 
+		radial_rep_transverse[dist] += node.repforce_transverse[threadnum]; 
+		radial_link_radial[dist] += node.linkforce_radial[threadnum];
+		radial_link_transverse[dist] += node.linkforce_transverse[threadnum];
+		radial_links_broken[dist] += node.links_broken[threadnum];
+	
 	}
+
 }
 
 void segments::addsurfaceimpact(const nodes& node, const double& mag)
@@ -475,23 +522,23 @@ void segments::addsurfaceimpact(const nodes& node, const double& mag)
 
 	getsegmentnum(rot_pos, xseg, yseg, zseg);
 
-    surfaceimpacts[0][xseg]+= mag * (1 - fabs(rot_unit.x));
-	surfaceimpacts[1][yseg]+= mag * (1 - fabs(rot_unit.y));
+    surfaceimpacts[0][xseg]+= mag * calcdist(rot_unit.x,rot_unit.y);
+	surfaceimpacts[1][yseg]+= mag * calcdist(rot_unit.x,rot_unit.z);
 
 	if (p_nuc->geometry == nucleator::sphere)
 	{
-		surfaceimpacts[2][zseg]+= mag * (1 - fabs(rot_unit.z));	
+		surfaceimpacts[2][zseg]+= mag * calcdist(rot_unit.x,rot_unit.y);	
 	}
 	else
 	{
-		if ((node.z < CAPSULE_HALF_LINEAR) && (node.z > -CAPSULE_HALF_LINEAR))
+		if (node.onseg)
 		{  // on cylinder, don't scale by z component
 			surfaceimpacts[2][zseg]+= mag;
 		}
 		else
 		{	// on ends
 
-			surfaceimpacts[2][zseg]+= mag * (1 - fabs(rot_unit.z));	
+			surfaceimpacts[2][zseg]+= mag * calcdist(rot_unit.x,rot_unit.y);	
 		}
 
 	}
@@ -527,6 +574,17 @@ void segments::clearnodes(void)
 //			    disp_transverse[axis][i][j]=0;
 			}
 		}
+	}
+
+	
+	for(int i = 0; i<num_segs; ++i)
+	{
+		radial_numnodes[i] =			
+		radial_rep_radial[i] =
+		radial_rep_transverse[i] =
+		radial_link_radial[i] =
+		radial_link_transverse[i] =
+		radial_links_broken[i] = 0;
 	}
 }
 
@@ -649,12 +707,6 @@ void segments::addallnodes()
 
 }
 
-void segments::drawnodestats(ostream& drawcmd, const int& axis) const
-{
-
-}
-
-
 
 void segments::savereport(const int& filenum) const
 {
@@ -664,13 +716,6 @@ void segments::savereport(const int& filenum) const
 	double x,y,z;
 	double radius;
 
-	double 
-		tmp_numnodes,				
-		tmp_rep_radial,
-		tmp_rep_transverse,
-		tmp_link_radial,
-		tmp_link_transverse;
-
 	bool capsuleside;
 
 	sprintf ( filename , "report%05i.txt", filenum );
@@ -679,26 +724,13 @@ void segments::savereport(const int& filenum) const
 	if (!opreport) 
 	{ cout << "Unable to open file " << filename << " for output"; return;}
 
-	sprintf ( filename , "report_radial%05i.txt", filenum );
-
-	ofstream opradialreport(filename, ios::out | ios::trunc);
-	if (!opradialreport) 
-	{ cout << "Unable to open file " << filename << " for output"; return;}
-
 	// write header
 	
 	opreport << "Axis,segment,distseg,x,y,z,Radius,area,capsuleside,numnodes,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
-	opradialreport << "RadialSegDist,numnodes,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
 
 
 	for(int dist = 0; dist<num_dist_segs; ++dist)
 	{
-		tmp_numnodes =				// sum by radial bin
-		tmp_rep_radial =  
-		tmp_rep_transverse =  
-		tmp_link_radial = 
-		tmp_link_transverse = 0; 
-
 		for (int axis = 0; axis < 3; ++axis)
 		{
 			for(int seg = 0; seg<num_segs; ++seg)
@@ -749,29 +781,49 @@ void segments::savereport(const int& filenum) const
 //					<< disp_radial[axis][seg][dist] << ","
 //					<< disp_transverse[axis][seg][dist] << ",";
 
-				tmp_numnodes += numnodes[axis][seg][dist];
-				tmp_rep_radial += rep_radial[axis][seg][dist]; 
-				tmp_rep_transverse += rep_transverse[axis][seg][dist]; 
-				tmp_link_radial += link_radial[axis][seg][dist]; 
-				tmp_link_transverse += link_transverse[axis][seg][dist];
+
 
 			}
 		}
 //	opradialreport << "RadialSegDist,numnodes,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
 
-	opradialreport 
-		<< tmp_numnodes << ","
-		<< tmp_rep_radial << ","
-		<< tmp_rep_transverse << ","
-		<< tmp_link_radial << ","
-		<< tmp_link_transverse << endl;
+
 
 	}
 
 	opreport << endl;
-	opradialreport << endl;
 
 	opreport.close();
+
+}
+
+void segments::saveradialreport(const int& filenum) const
+{
+
+	char filename [255];
+
+	sprintf ( filename , "report_radial%05i.txt", filenum );
+
+	ofstream opradialreport(filename, ios::out | ios::trunc);
+	if (!opradialreport) 
+	{ cout << "Unable to open file " << filename << " for output"; return;}
+
+	opradialreport << "RadialSegDist,numnodes,RepForceRadial,RepForceTrans,LinkForceRadial,LinkForceTrans,LinksBroken" << endl;
+
+	for (int dist = 0; dist < num_radial_bins; ++dist)
+	{
+
+		opradialreport 
+			<< ((double)dist + 0.5) * radialdist << ","
+			<< radial_numnodes[dist] << ","
+			<< radial_rep_radial[dist] << ","
+			<< radial_rep_transverse[dist] << ","
+			<< radial_link_radial[dist] << ","
+			<< radial_link_transverse[dist] << ","
+			<< radial_links_broken[dist] << endl;
+	}
+
+	opradialreport << endl;
 	opradialreport.close();
 }
 
@@ -799,22 +851,99 @@ void segments::getsegmentposition(double& x, double& y, double& z, const int & s
 
 }
 
+//void segments::setbitmapcoords()
+//{
+//
+//	for (int axis = 0; axis < 3; ++axis)
+//		for(int i = 0; i<num_segs; ++i)
+//			for(int j = 0; j<num_dist_segs; ++j)
+//			{
+//				segment_pixel[axis][i][j].resize(0);
+//			}
+//
+//	const int offsetx = bins_bitmap_width / 2;			// center these pixels
+//	const int offsety = bins_bitmap_height / 2;
+//
+//	int pix_x, pix_y;	// these are bitmap co-ords
+//
+//	int xseg, yseg, zseg;
+//	int xdist, ydist, zdist;
+//	int seg,dist;
+//
+//	nodes dummynode;
+//
+//	// go through bitmap
+//
+//	for (pix_x = 0; pix_x < bins_bitmap_width; ++pix_x)
+//		for (pix_y = 0; pix_y < bins_bitmap_height; ++pix_y)
+//			for(int axis = 0; axis < 3; ++axis)
+//			{
+//				if (axis == 0)
+//				{
+//					dummynode.y = p_actin->unpixels(pix_x - offsetx);
+//					dummynode.z = p_actin->unpixels(pix_y - offsety);
+//				}
+//				else if (axis == 1)
+//				{
+//					dummynode.x = p_actin->unpixels(pix_x - offsetx);
+//					dummynode.z = p_actin->unpixels(pix_y - offsety);
+//				}
+//				else
+//				{
+//					dummynode.x = p_actin->unpixels(pix_x - offsetx);
+//					dummynode.y = p_actin->unpixels(pix_y - offsety);
+//				}
+//				
+//				//p_actin->reverse_camera_rotation.rotate(dummynode); 
+//		
+//				dummynode.setunitvec();
+//
+//				// get bin numbers:
+//
+//				getsegmentnum( dummynode, xseg,  yseg,  zseg);
+//				getsegmentdist(dummynode, xdist, ydist, zdist);
+//
+//				if (axis == 0)
+//				{
+//					seg = xseg;
+//					dist = xdist;
+//				}
+//				else if (axis == 1)
+//				{
+//					seg = yseg;
+//					dist = ydist;
+//				}
+//				else
+//				{
+//					seg = zseg;
+//					dist = zdist;
+//				}
+//
+//				if (dist == -1)
+//					continue;
+//
+//				segment_pixel[axis][seg][dist].push_back(pix_x + centerx - offsetx);
+//				segment_pixel[axis][seg][dist].push_back(pix_y + centery - offsety);
+//
+//			}
+//
+//}
+
 void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
-					   const double &imageRmax, const double &imageGmax, const double &imageBmax,
 					   const Dbl3d & var, const int& axis)
 {
-
-	const int bins_bitmap_width  = centerx * 2;			// width and height of pixels to plot
-	const int bins_bitmap_height = (int) ((double) BMP_HEIGHT * 2/3);
 
 	const int offsetx = bins_bitmap_width / 2;			// center these pixels
 	const int offsety = bins_bitmap_height / 2;
 
-	int pix_x, pix_y;	// these are bitmap co-ords
+	//int x, y;	// these are bitmap co-ords
 
 	int xseg, yseg, zseg;
 	int xdist, ydist, zdist;
 	int seg,dist;
+
+	int pix_x,pix_y;
+
 
 	nodes dummynode;
 
@@ -831,6 +960,31 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 				if (var[ax][seg][dist] > maxval)
 					maxval = var[ax][seg][dist];
 			}
+
+	//for(int seg = 0; seg<num_segs; ++seg)
+	//	for(int dist = 0; dist<num_dist_segs; ++dist)
+	//	{
+	//		value = var[axis][seg][dist] / maxval;  // scaled between 0 and 1
+
+	//		if (value < 0.00001)	// skip if zero
+	//			continue;
+
+	//		dummynode.colour.setcol(value);
+
+	//		for (vector <int>::iterator i=segment_pixel[axis][seg][dist].begin(); i<segment_pixel[axis][seg][dist].end() ; i++ )
+	//		{	 
+
+	//		x = *i;
+
+	//		i++;
+	//		y = *i;
+
+	//		imageR[x][y] = dummynode.colour.r;
+	//		imageG[x][y] = dummynode.colour.g;
+	//		imageB[x][y] = dummynode.colour.b;
+
+	//		}
+		//}
 
 	// go through bitmap
 
@@ -888,9 +1042,9 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 			dummynode.colour.setcol(value);
 
-			imageR[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.r * imageRmax;
-			imageG[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.g * imageGmax;
-			imageB[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.b * imageBmax;
+			imageR[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.r;
+			imageG[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.g;
+			imageB[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.b;
 
 		}
 
@@ -902,15 +1056,16 @@ const int keywidth  = 10;
 const int keyxorig = 0; //centerx - offsetx;
 const int keyyorig = centery - (keyheight / 2);
 
+
 	for (pix_y = 0; pix_y < keyheight; ++pix_y)
 	{
 		dummynode.colour.setcol(1 - (double)pix_y / (double)keyheight);
 
 		for (pix_x = 0; pix_x < keywidth; ++pix_x)
 		{
-			imageR[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.r * imageRmax;
-			imageG[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.g * imageGmax;
-			imageB[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.b * imageBmax;
+			imageR[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.r;
+			imageG[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.g;
+			imageB[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.b;
 		}
 	}
 

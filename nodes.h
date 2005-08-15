@@ -133,10 +133,14 @@ public:
 			if (fabs(z) < CAPSULE_HALF_LINEAR)
 			{  // on cylinder, no z component
 				double len = calcdist(x,y);
-				unit_vec_posn = vect(x/len, y/len, 0);;
+				unit_vec_posn = vect(x/len, y/len, 0);
+				onseg = true;
 			}
 			else
 			{	// on ends
+
+				onseg = false;
+
 				if (z>0) // top
 				{
 					vect offsetvec = *this;
@@ -152,6 +156,7 @@ public:
 			}
 		}
 	}
+	bool onseg;
 };
 
 #endif

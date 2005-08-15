@@ -1306,8 +1306,17 @@ if (false) // USE_THREADS)
 
 //#ifndef NO_CALC_STATS
 //
-						node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
-//
+						if (force < 0) // put tension into link forces
+						{
+							node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
+						}
+						else	// but put compression into link forces
+						{
+							node[n].adddirectionalmags(tomove, node[n].repforce_radial[0], node[n].repforce_transverse[0]);
+						}
+
+
+
 //						//node[n].linkforce_radial[0]     += fabs(  node[n].unit_vec_posn.dot(disp)  * (2 * force * scale) ) ;
 //
 //						//node[n].linkforce_transverse[0] += fabs( (node[n].unit_vec_posn.cross(disp)).length()  * (2 * force * scale));
@@ -1486,86 +1495,6 @@ int actin::setnodecols(void)
 int actin::savebmp(int filenum, projection proj)
 { 
 
-// bitmap headers etc (see microsoft website):
-
-// define data structures for bitmap header:
-
-#ifdef _WIN32
-	#define QUADWORD __int64
-#else 
-	#define QUADWORD long long
-#endif
-
-#define DWORD unsigned int
-#define LONG unsigned int
-#define WORD unsigned short int
-#define BYTE unsigned char
-#define FOURCC unsigned int
-
-#pragma pack(push,1)  // align the structs to byte boundaries
-
-typedef struct tagRGBQUAD {
-	BYTE    rgbBlue; 
-	BYTE    rgbGreen; 
-	BYTE    rgbRed; 
-	BYTE    rgbReserved; 
-} RGBQUAD; 
-
-typedef struct tagRGB {
-	BYTE    B; 
-	BYTE    G; 
-	BYTE    R; 
-} RGB; 
-
-
-typedef struct tagBITMAPFILEHEADER { 
-	WORD    bfType; 
-	DWORD   bfSize; 
-	WORD    bfReserved1; 
-	WORD    bfReserved2; 
-	DWORD   bfOffBits; 
-} BITMAPFILEHEADER, *PBITMAPFILEHEADER; 
-
-typedef struct tagBITMAPINFOHEADER{
-	DWORD  biSize; 
-	LONG   biWidth; 
-	LONG   biHeight; 
-	WORD   biPlanes; 
-	WORD   biBitCount; 
-	DWORD  biCompression; 
-	DWORD  biSizeImage; 
-	LONG   biXPelsPerMeter; 
-	LONG   biYPelsPerMeter; 
-	DWORD  biClrUsed; 
-	DWORD  biClrImportant; 
-} BITMAPINFOHEADER, *PBITMAPINFOHEADER; 
-
-typedef struct tagBITMAPINFO { 
-  BITMAPINFOHEADER bmiHeader; 
-  RGBQUAD          bmiColors[1]; 
-} BITMAPINFO, *PBITMAPINFO; 
-
-#pragma pack(pop)
-
-	char filename[255];
-
-	if (proj == xaxis)  // choose projection
-	{
-		sprintf ( filename , "x_proj_%05i.bmp", filenum );
-	}
-	else if (proj == yaxis)
-	{
-		sprintf ( filename , "y_proj_%05i.bmp", filenum );
-	}
-	else 
-	{
-		sprintf ( filename , "z_proj_%05i.bmp", filenum );
-	}
-
-	ofstream outbmpfile(filename, ios::out | ios::binary | ios::trunc);
-	if (!outbmpfile) 
-	{ cout << "Unable to open file '" << filename << "' for output"; return 1;}
-
 	double minx, miny, minz;
 	double maxx, maxy, maxz; 
 	//double VIEW_HEIGHT, VIEW_HEIGHT, VIEW_HEIGHT;
@@ -1574,8 +1503,6 @@ typedef struct tagBITMAPINFO {
 	int beadminx, beadminy;
 	//double centerx, centery, centerz;
 	
-
-
 	int x,y;
 
 	double gaussmax = (double) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
@@ -1612,14 +1539,7 @@ typedef struct tagBITMAPINFO {
 		}
 	} 
 
-	//VIEW_HEIGHT = mymax(((maxx - minx) + 4 * gaussmax),12);
-	//VIEW_HEIGHT = mymax(((maxy - miny) + 4 * gaussmax),12);
-	//VIEW_HEIGHT = mymax(((maxz - minz) + 4 * gaussmax),12);
-
- 	// VIEW_HEIGHT = VIEW_HEIGHT = VIEW_HEIGHT = VIEW_HEIGHT;  //these are the x,y and z scales (should be equal)
-
 	double meanx, meany, meanz;
-
 
 	// temp: reset center:
 	meanx = -p_nuc->position.x; 
@@ -1629,10 +1549,6 @@ typedef struct tagBITMAPINFO {
 	p_nuc->nucleator_rotation.rotate(meanx,meany,meanz);
 	camera_rotation.rotate(meanx,meany,meanz); 
 	
-	//meanx = (maxx+minx)/2;
-	//meany = (maxy+miny)/2;
-	//meanz = (maxz+minz)/2;
-
 	// precalculate gaussian
 
 	Dbl2d GaussMat;
@@ -1657,7 +1573,7 @@ typedef struct tagBITMAPINFO {
 		}
 	}
 
-	double  keep_within_border;
+	double keep_within_border;
 
 	if (p_nuc->geometry == nucleator::sphere)
 		 keep_within_border = 2* RADIUS;
@@ -1690,22 +1606,17 @@ typedef struct tagBITMAPINFO {
 	int movex=0;
 	int movey=0;
 
-	if (beadmaxx>BMP_WIDTH)
-		movex=-(beadmaxx-BMP_WIDTH);
-	if (beadmaxy>BMP_HEIGHT)
-		movey=-(beadmaxy-BMP_HEIGHT);
-	if (beadminx<0)
-		movex=-(beadminx);
-	if (beadminy<0)
-		movey=-(beadminy);
+	if (beadmaxx > BMP_WIDTH)
+		movex =- (beadmaxx - BMP_WIDTH);
+	if (beadmaxy > BMP_HEIGHT)
+		movey =- (beadmaxy - BMP_HEIGHT);
+	if (beadminx < 0)
+		movex =- beadminx;
+	if (beadminy < 0)
+		movey =- beadminy;
 
 
-//int harbingers = 0;
-
-//double xx,yy,zz;
-//double rotx, roty, rotz;
-
-vect rot;
+	vect rot;
 
 	for (int i=0; i<highestnodecount; i++)
 	{
@@ -1749,59 +1660,52 @@ vect rot;
 					{
 						if ((xg*xg+yg*yg)>(xgmax*ygmax))
 							continue;  // don't do corners
-
-						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
-						//	node[i].nodelinksbroken * GaussMat[xg+xgmax][yg+ygmax];
-						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
-						//		linkforces[i] * GaussMat[xg+xgmax][yg+ygmax];
 						
 						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
 						//	node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
 						
 						imageG[x+xg+xgmax][y+yg+ygmax]+=
 								1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
-						//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
-						//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
-						//imageB[x+xg+xgmax][y+yg+ygmax]+=          // Blue: number of links 
-						//		node[i].listoflinks.size() * GaussMat[xg+xgmax][yg+ygmax];
+
 					}
-
-
-
 		}
-//	if (node[i].harbinger)
-//		harbingers++;
 	}
-//cout << endl << "Harbingers:" << harbingers << endl;
 
-
-		// normalize image
-
-	
+	// normalize image
 
 	imageRmax = 1000/INIT_R_GAIN;
 	imageGmax = 1000/INIT_G_GAIN;
 	imageBmax = 1000/INIT_B_GAIN;  // prevent over sensitivity
 
-	// imageRmax = 1;  // max sensitivity for red channel
-
-	for (y = 0; y<BMP_HEIGHT; y++)
+	for (x = 0; x<BMP_WIDTH; x++)
+	{
+		for (y = 0; y<BMP_HEIGHT; y++)
 		{
-			for (x = 0; x<BMP_WIDTH; x++)
-			{
-				if (imageR[x][y]>imageRmax)
-						imageRmax=imageR[x][y];
-				if (imageG[x][y]>imageGmax)
-						imageGmax=imageG[x][y];
-				if (imageB[x][y]>imageBmax)
-						imageBmax=imageB[x][y];
-			}
+			if (imageR[x][y]>imageRmax)
+					imageRmax=imageR[x][y];
+			if (imageG[x][y]>imageGmax)
+					imageGmax=imageG[x][y];
+			if (imageB[x][y]>imageBmax)
+					imageBmax=imageB[x][y];
 		}
+	}
+
+	// re-scale from 0 to 1
+
+	for (x = 0; x<BMP_WIDTH; x++)
+	{
+		for (y = 0; y<BMP_HEIGHT; y++)
+		{
+			imageR[x][y] /= imageRmax;
+			imageG[x][y] /= imageGmax;
+			imageB[x][y] /= imageBmax;
+		}
+	}
 
 
 // draw the nucleator points cage:
 
-for (vector <vect>::iterator point=p_nuc->cagepoints.begin(); 
+	for (vector <vect>::iterator point=p_nuc->cagepoints.begin(); 
 	      point<p_nuc->cagepoints.end() ; ++point )
 	{
 		// rotate point	
@@ -1833,104 +1737,44 @@ for (vector <vect>::iterator point=p_nuc->cagepoints.begin();
 			(((y+ygmax)<0) || ((y+ygmax)>=BMP_HEIGHT)))  // only plot if point in bounds
 			continue;
 		
-		imageR[x+xgmax][y+ygmax] = p_nuc->colour.r * imageRmax;
-		imageG[x+xgmax][y+ygmax] = p_nuc->colour.g * imageGmax;
-		imageB[x+xgmax][y+ygmax] = p_nuc->colour.b * imageBmax;
+		imageR[x+xgmax][y+ygmax] = p_nuc->colour.r;
+		imageG[x+xgmax][y+ygmax] = p_nuc->colour.g;
+		imageB[x+xgmax][y+ygmax] = p_nuc->colour.b;
 		//imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
 		//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
 
 	}
 
+
 	// write the bins graphics
 
 	p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
-					   imageRmax, imageGmax, imageBmax,
 					   p_nuc->segs.link_transverse, proj);
 
+
+
+	// choose projection letter for filename etc.
+
+	char projletter[] = "z";
+
+    if (proj == xaxis)
+		sprintf ( projletter , "x");
+    else if (proj == yaxis)
+		sprintf ( projletter , "y");
+
+
+	char filename[255];
+
+	sprintf ( filename , "%s_proj_%05i.bmp", projletter , filenum );
+
+
+	// write the bitmap file
+		
+	writebitmapfile(filename, imageR, imageG, imageB);
+
+
+	// add the imagemagick overlays
 	
-	// the header for saving the bitmaps...
-
-	BITMAPFILEHEADER *fileHeader;
-	BITMAPINFO       *fileInfo;
-
-	fileHeader = (BITMAPFILEHEADER*)calloc(1, sizeof( BITMAPFILEHEADER ));
-	fileInfo = (BITMAPINFO*)calloc(1, sizeof( BITMAPINFO ) + 256 * sizeof(RGBQUAD));
-
-	fileHeader->bfType = 0x4d42;
-	fileHeader->bfSize = (DWORD)(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFO) + (BMP_WIDTH * BMP_HEIGHT* 3));
-	fileHeader->bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFO) + (256*sizeof(RGBQUAD));
-
-	fileInfo->bmiHeader.biSize          = sizeof(BITMAPINFOHEADER);
-	fileInfo->bmiHeader.biWidth         = BMP_WIDTH;
-	fileInfo->bmiHeader.biHeight        = BMP_HEIGHT;
-	fileInfo->bmiHeader.biPlanes        = 1;
-	//fileInfo->bmiHeader.biBitCount      = 8;
-	fileInfo->bmiHeader.biBitCount      = 24;
-	fileInfo->bmiHeader.biCompression   = 0;  // BI_RGB = 0
-	fileInfo->bmiHeader.biXPelsPerMeter = 1000;
-	fileInfo->bmiHeader.biYPelsPerMeter = 1000;
-
-#ifdef __BIG_ENDIAN__
-
-#pragma pack(push,1)  // align the structs to byte boundaries
-endian_swap(fileHeader->bfType);
-endian_swap(fileHeader->bfSize);
-endian_swap(fileHeader->bfOffBits);
-endian_swap(fileInfo->bmiHeader.biSize);
-endian_swap(fileInfo->bmiHeader.biWidth);
-endian_swap(fileInfo->bmiHeader.biHeight);
-endian_swap(fileInfo->bmiHeader.biPlanes);
-endian_swap(fileInfo->bmiHeader.biBitCount);
-endian_swap(fileInfo->bmiHeader.biCompression);
-endian_swap(fileInfo->bmiHeader.biXPelsPerMeter);
-endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
-#pragma pack(pop)
-
-#endif
-
-	for (int i=0;i<=255;i++)
-	{ // the bitmap palette  (not used for 24 bit, of course)
-		fileInfo->bmiColors[i].rgbBlue = (BYTE) i;
-		fileInfo->bmiColors[i].rgbGreen = (BYTE) i;
-		fileInfo->bmiColors[i].rgbRed = (BYTE) i;
-		fileInfo->bmiColors[i].rgbReserved = (BYTE) 0;
-		}
-
-	// save headers
-
-	outbmpfile.write((char*)fileHeader,sizeof(BITMAPFILEHEADER));
-	outbmpfile.write((char*)fileInfo,sizeof(BITMAPINFO) + 256*sizeof(RGBQUAD));
-
-	// re-scale for byte output and save image data
-
-	RGB *line;
-	line = new RGB[BMP_WIDTH];
-
-	// write out the data, line by line (note: y is backwards)
-	for (y = (BMP_HEIGHT-1); y>=0; y--)
-		{
-		//outbmpfile.write(picbuff + (BMP_WIDTH*y), BMP_WIDTH);
-		for (x = 0; x<BMP_WIDTH; x++)
-			{
-			line[x].B=(unsigned char)(255 * (double)(imageB[x][y])/(double)imageBmax);
-			line[x].G=(unsigned char)(255 * (double)(imageG[x][y])/(double)imageGmax);
-			line[x].R=(unsigned char)(255 * (double)(imageR[x][y])/(double)imageRmax);
-			}
-			outbmpfile.write((char*)line,BMP_WIDTH*3);
-		}
-
-	outbmpfile.close();
-
-	delete [] line;
-	free(fileHeader);
-	free(fileInfo);
-
-	//if (FORCES_ON_SIDE)
-	//{
-	//	movex = 50 - (BMP_WIDTH/2);
-	//	meanx = meany = meanz = 0.0;
-	//}
-
 	char command1[10240], command2[10240];
 
     stringstream drawcmd;
@@ -1952,77 +1796,187 @@ endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
 	drawcmd << "\"";
 
 
-    if (proj == xaxis)
-    {
+	sprintf(command1,
+		"convert -font helvetica -fill white -pointsize 20 -draw \
+				\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" \
+				%s %s_proj_%05i.png",  
+		scalebarlength+5,projletter,filenum,
+		(int)((1000/(double)imageGmax)+0.5),  filename, projletter, filenum );
 
-		sprintf(command1,
-			"convert -font helvetica -fill white -pointsize 20 -draw \
-					\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'X-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-					x_proj_%05i.bmp x_proj_%05i.png",  
-			scalebarlength,filenum,(int)((1000/(double)imageGmax)+0.5),  filenum, filenum );
+	sprintf(command2,
+		"convert %s %s_proj_%05i.png %s_forces_%05i.png",
+		drawcmd.str().c_str(), projletter, filenum, projletter, filenum);
 
-		sprintf(command2,
-			"convert %s x_proj_%05i.png x_forces_%05i.png",
-			drawcmd.str().c_str(), filenum, filenum);
 
-    }
-    else if (proj == yaxis)
-    {
-
-		sprintf(command1,
-			"convert -font helvetica -fill white -pointsize 20 -draw \
-					\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Y-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-					y_proj_%05i.bmp y_proj_%05i.png",  
-			scalebarlength,filenum,(int)((1000/(double)imageGmax)+0.5),  filenum, filenum );
-
-		sprintf(command2,
-			"convert %s y_proj_%05i.png y_forces_%05i.png",
-			drawcmd.str().c_str(), filenum, filenum);
-    }
-    else 
-    {
-
-		sprintf(command1,
-			"convert -font helvetica -fill white -pointsize 20 -draw \
-					\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 'Z-Projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-					z_proj_%05i.bmp z_proj_%05i.png",  
-			scalebarlength,filenum,(int)((1000/(double)imageGmax)+0.5),  filenum, filenum );
-
-		sprintf(command2,
-			"convert %s z_proj_%05i.png z_forces_%05i.png",
-			drawcmd.str().c_str(), filenum, filenum);
-
-    }
-    //cout << endl << command1 << endl << endl << command2 << endl;
     system(command1);
     system(command2);
 
-	
 
 #ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
-
-	if (proj == xaxis)  // choose projection
-		sprintf(command2 , "del x_proj_%05i.bmp 2>/dev/null", filenum);
-	else if (proj == yaxis)
-		sprintf(command2 , "del y_proj_%05i.bmp 2>/dev/null", filenum);
-	else 
-		sprintf(command2 , "del z_proj_%05i.bmp 2>/dev/null", filenum);
-
+	sprintf(command2 , "del %s 2>/dev/null", filename);
 #else
+	sprintf(command2 , "rm -f %s 2>/dev/null", projletter, filename);
+#endif
 
-	if (proj == xaxis)  // choose projection
-		sprintf(command2 , "rm -f x_proj_%05i.bmp 2>/dev/null", filenum);
-	else if (proj == yaxis)
-		sprintf(command2 , "rm -f y_proj_%05i.bmp 2>/dev/null", filenum);
-	else 
-		sprintf(command2 , "rm -f z_proj_%05i.bmp 2>/dev/null", filenum);
+	system(command2);	
 
-system(command2);		
+	return filenum;
+}
 
+
+
+void actin::writebitmapfile(const char* filename, 
+							const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB)
+{
+
+	const int bitmapwidth = (int) imageR.size();
+	const int bitmapheight = (int) imageR[0].size();
+	
+	// bitmap headers etc (see microsoft website):
+
+	// define data structures for bitmap header:
+
+	#ifdef _WIN32
+		#define QUADWORD __int64
+	#else 
+		#define QUADWORD long long
+	#endif
+
+	#define DWORD unsigned int
+	#define LONG unsigned int
+	#define WORD unsigned short int
+	#define BYTE unsigned char
+	#define FOURCC unsigned int
+
+	#pragma pack(push,1)  // align the structs to byte boundaries
+
+	typedef struct tagRGBQUAD {
+		BYTE    rgbBlue; 
+		BYTE    rgbGreen; 
+		BYTE    rgbRed; 
+		BYTE    rgbReserved; 
+	} RGBQUAD; 
+
+	typedef struct tagRGB {
+		BYTE    B; 
+		BYTE    G; 
+		BYTE    R; 
+	} RGB; 
+
+
+	typedef struct tagBITMAPFILEHEADER { 
+		WORD    bfType; 
+		DWORD   bfSize; 
+		WORD    bfReserved1; 
+		WORD    bfReserved2; 
+		DWORD   bfOffBits; 
+	} BITMAPFILEHEADER, *PBITMAPFILEHEADER; 
+
+	typedef struct tagBITMAPINFOHEADER{
+		DWORD  biSize; 
+		LONG   biWidth; 
+		LONG   biHeight; 
+		WORD   biPlanes; 
+		WORD   biBitCount; 
+		DWORD  biCompression; 
+		DWORD  biSizeImage; 
+		LONG   biXPelsPerMeter; 
+		LONG   biYPelsPerMeter; 
+		DWORD  biClrUsed; 
+		DWORD  biClrImportant; 
+	} BITMAPINFOHEADER, *PBITMAPINFOHEADER; 
+
+	typedef struct tagBITMAPINFO { 
+	BITMAPINFOHEADER bmiHeader; 
+	RGBQUAD          bmiColors[1]; 
+	} BITMAPINFO, *PBITMAPINFO; 
+
+	#pragma pack(pop)
+
+	
+	// the header for saving the bitmaps...
+
+	BITMAPFILEHEADER *fileHeader;
+	BITMAPINFO       *fileInfo;
+
+	fileHeader = (BITMAPFILEHEADER*)calloc(1, sizeof( BITMAPFILEHEADER ));
+	fileInfo = (BITMAPINFO*)calloc(1, sizeof( BITMAPINFO ) + 256 * sizeof(RGBQUAD));
+
+	fileHeader->bfType = 0x4d42;
+	fileHeader->bfSize = (DWORD)(sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFO) + (bitmapwidth * bitmapheight* 3));
+	fileHeader->bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFO) + (256*sizeof(RGBQUAD));
+
+	fileInfo->bmiHeader.biSize          = sizeof(BITMAPINFOHEADER);
+	fileInfo->bmiHeader.biWidth         = bitmapwidth;
+	fileInfo->bmiHeader.biHeight        = bitmapheight;
+	fileInfo->bmiHeader.biPlanes        = 1;
+	//fileInfo->bmiHeader.biBitCount      = 8;
+	fileInfo->bmiHeader.biBitCount      = 24;
+	fileInfo->bmiHeader.biCompression   = 0;  // BI_RGB = 0
+	fileInfo->bmiHeader.biXPelsPerMeter = 1000;
+	fileInfo->bmiHeader.biYPelsPerMeter = 1000;
+
+#ifdef __BIG_ENDIAN__
+
+#pragma pack(push,1)  // align the structs to byte boundaries
+	endian_swap(fileHeader->bfType);
+	endian_swap(fileHeader->bfSize);
+	endian_swap(fileHeader->bfOffBits);
+	endian_swap(fileInfo->bmiHeader.biSize);
+	endian_swap(fileInfo->bmiHeader.biWidth);
+	endian_swap(fileInfo->bmiHeader.biHeight);
+	endian_swap(fileInfo->bmiHeader.biPlanes);
+	endian_swap(fileInfo->bmiHeader.biBitCount);
+	endian_swap(fileInfo->bmiHeader.biCompression);
+	endian_swap(fileInfo->bmiHeader.biXPelsPerMeter);
+	endian_swap(fileInfo->bmiHeader.biYPelsPerMeter);
+#pragma pack(pop)
 
 #endif
 
-	return filenum;
+	for (int i=0;i<=255;i++)
+	{ // the bitmap palette  (not used for 24 bit, of course)
+		fileInfo->bmiColors[i].rgbBlue = (BYTE) i;
+		fileInfo->bmiColors[i].rgbGreen = (BYTE) i;
+		fileInfo->bmiColors[i].rgbRed = (BYTE) i;
+		fileInfo->bmiColors[i].rgbReserved = (BYTE) 0;
+	}
+
+	ofstream outbmpfile(filename, ios::out | ios::binary | ios::trunc);
+	if (!outbmpfile) 
+	{ cout << "Unable to open file '" << filename << "' for output"; return;}
+
+	outbmpfile.rdbuf()->pubsetbuf(outbmpbuffer,sizeof(outbmpbuffer));
+
+	// save headers
+
+	outbmpfile.write((char*)fileHeader,sizeof(BITMAPFILEHEADER));
+	outbmpfile.write((char*)fileInfo,sizeof(BITMAPINFO) + 256*sizeof(RGBQUAD));
+
+	// re-scale for byte output and save image data
+
+	RGB *line;
+	line = new RGB[bitmapwidth];
+
+	// write out the data, line by line (note: y is backwards)
+	for (int y = (bitmapheight-1); y>=0; y--)
+		{
+		//outbmpfile.write(picbuff + (bitmapwidth*y), bitmapwidth);
+		for (int x = 0; x<bitmapwidth; x++)
+			{
+			line[x].B=(unsigned char)(255 * imageB[x][y]);
+			line[x].G=(unsigned char)(255 * imageG[x][y]);
+			line[x].R=(unsigned char)(255 * imageR[x][y]);
+			}
+			outbmpfile.write((char*)line,bitmapwidth*3);
+		}
+
+	outbmpfile.close();
+
+	delete [] line;
+	free(fileHeader);
+	free(fileInfo);
+
 }
 
 
@@ -2804,3 +2758,5 @@ void actin::clearstats(void)
 	}
 
 }
+
+

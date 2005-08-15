@@ -821,6 +821,7 @@ srand( (unsigned) 200 );
 
 			nuc_object.segs.addallnodes();
 			nuc_object.segs.savereport(i/InterRecordIterations);
+			nuc_object.segs.saveradialreport(i/InterRecordIterations);
 
 			theactin.savebmp((i/InterRecordIterations), actin::xaxis);
 			theactin.savebmp((i/InterRecordIterations), actin::yaxis);
@@ -841,8 +842,6 @@ srand( (unsigned) 200 );
 			//sem_post(&compressfiles_thread_go[0]);
 			pthread_mutex_unlock(&filesdonelock_mutex);  // allow thread to grab done lock
 			pthread_mutex_unlock(&filessavelock_mutex);  // start the thread
-
-
 
 			lastlinksformed = theactin.linksformed;
 			lastlinksbroken = theactin.linksbroken;

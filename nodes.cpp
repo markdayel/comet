@@ -16,6 +16,7 @@ removed without prior written permission from the author.
 #include "nodes.h"
 
 nodes::nodes(void)
+: onseg(false)
 {
 	nextnode = this;  // initialise to point to self
 	prevnode = this;
