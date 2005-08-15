@@ -1121,7 +1121,7 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
 
 	numthreadnodes = highestnodecount / NUM_THREADS;
 
-if (false) // (USE_THREADS)  // switch this off for now...
+if (!GRASS_IS_GREEN) // (USE_THREADS)  // switch this off for now...
 	{
 		for (int i = 0; i < NUM_THREADS; i++)
 		{
@@ -1185,7 +1185,7 @@ void * actin::applyforcesthread(void* threadarg)
 	//cout << "Thread " << dat->threadnum << " started" << endl;
 	//cout.flush();
 
-	while (true)
+	while (GRASS_IS_GREEN)
 	{	
 
 		sem_wait(&applyforces_thread_go[dat->threadnum]);  // go only if released by main thread
@@ -1231,7 +1231,7 @@ int actin::linkforces()
 
 	numthreadnodes = highestnodecount / NUM_THREADS;
 
-if (false) // USE_THREADS)
+if (!GRASS_IS_GREEN) // USE_THREADS)
 	{
 		for (int i = 0; i < NUM_THREADS; i++)
 		{
@@ -1494,6 +1494,18 @@ int actin::setnodecols(void)
 
 int actin::savebmp(int filenum, projection proj)
 { 
+	// choose projection letter for filename etc.
+
+	char projletter[] = "z";
+
+    if (proj == xaxis)
+		sprintf ( projletter , "x");
+    else if (proj == yaxis)
+		sprintf ( projletter , "y");
+
+//	cout << "Processing "<< projletter << "-axis BMP";
+//	cout.flush();
+
 
 	double minx, miny, minz;
 	double maxx, maxy, maxz; 
@@ -1745,23 +1757,13 @@ int actin::savebmp(int filenum, projection proj)
 
 	}
 
+//	cout << ".";
+//	cout.flush();
 
 	// write the bins graphics
 
 	p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
 					   p_nuc->segs.link_transverse, proj);
-
-
-
-	// choose projection letter for filename etc.
-
-	char projletter[] = "z";
-
-    if (proj == xaxis)
-		sprintf ( projletter , "x");
-    else if (proj == yaxis)
-		sprintf ( projletter , "y");
-
 
 	char filename[255];
 
@@ -1772,6 +1774,8 @@ int actin::savebmp(int filenum, projection proj)
 		
 	writebitmapfile(filename, imageR, imageG, imageB);
 
+//	cout << ".";
+//	cout.flush();
 
 	// add the imagemagick overlays
 	
@@ -1795,18 +1799,28 @@ int actin::savebmp(int filenum, projection proj)
 
 	drawcmd << "\"";
 
+// drawing image text takes forever on alpha and OSX
+// so have option to bypass
 
-	sprintf(command1,
-		"convert -font helvetica -fill white -pointsize 20 -draw \
+if (NO_IMAGE_TEXT)
+{	
+		sprintf(command1,
+		"convert -quality %i -fill white -draw \" rectangle 5 576 %i 573 \" %s %s_proj_%05i.%s",
+		     BMP_COMPRESSION, scalebarlength+5, filename, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+}
+else 
+{
+		sprintf(command1,
+		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \
 				\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-				%s %s_proj_%05i.png",  
+				%s %s_proj_%05i.%s",  BMP_COMPRESSION,
 		scalebarlength+5,projletter,filenum,
-		(int)((1000/(double)imageGmax)+0.5),  filename, projletter, filenum );
+		(int)((1000/(double)imageGmax)+0.5),  filename, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+}
 
 	sprintf(command2,
-		"convert %s %s_proj_%05i.png %s_forces_%05i.png",
-		drawcmd.str().c_str(), projletter, filenum, projletter, filenum);
-
+		"convert -quality %i %s %s_proj_%05i.%s %s_forces_%05i.%s", BMP_COMPRESSION, 
+		drawcmd.str().c_str(), projletter, filenum, BMP_OUTPUT_FILETYPE.c_str() ,  projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
     system(command1);
     system(command2);
@@ -1815,10 +1829,13 @@ int actin::savebmp(int filenum, projection proj)
 #ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
 	sprintf(command2 , "del %s 2>/dev/null", filename);
 #else
-	sprintf(command2 , "rm -f %s 2>/dev/null", projletter, filename);
+	sprintf(command2 , "rm -f %s 2>/dev/null", filename);
 #endif
 
 	system(command2);	
+
+	//cout << ". ";
+	//cout.flush();
 
 	return filenum;
 }
@@ -1996,202 +2013,6 @@ int actin::squash(double thickness)
 	return 0;
 }
 
-/*
-int actin::repulsiveforces(void)  // this is defunct
-{
-	double xdist, ydist, zdist, dist;
-	double force, distsqr;
-	vect nodeposvec;
-	
-	int numthreadnodes, start, end;
-
-	numthreadnodes = highestnodecount / NUM_THREADS;
-
-	for (int i=0; i<highestnodecount; i++)
-	{
-		repdonenode[i] = false;
-	}
-
-if (USE_THREADS)
-	{
-		for (int i = 0; i < NUM_THREADS; i++)
-		{
-			start = i * numthreadnodes;
-			end = (i+1) * numthreadnodes;
-
-			collision_thread_data_array[i].startnode = start;
-			collision_thread_data_array[i].endnode = end;
-			collision_thread_data_array[i].threadnum = i;
-
-			if (i<NUM_THREADS-1)
-			{
-				collision_thread_data_array[i].endnode = end;
-			}
-			else
-			{	// put remainder in last thread (cludge for now)
-				collision_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
-			}
-		}
-
-		// release thread blocks to start threads:
-	for (int i = 0; i < NUM_THREADS; i++)
-		{
-//			sem_post(&compressfiles_thread_go[i]);
-		}
-
-	}
-	else
-	{
-		// go through all nodes
-		for (int i=0; i<highestnodecount; i++)
-		{  	
-			if ((!node[i].polymer) || (node[i].harbinger))
-				continue;  // no forces act on harbingers (or depolymerized nodes)
-
-			if (findnearbynodes(nodesbygridpoint[i],NODE_REPULSIVE_RANGE_GRIDSEARCH,0)==0) continue;	// find nodes within 1 grid point
-												// skip if zero
-			//tmpnodeptr = &node[i];  // for debugging
-			//sameGPnode= &tmpnodeptr;
-
-			// loop over nodes on same gridpoint:
-			for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[0].begin(); sameGPnode<nodes_on_same_gridpoint[0].end() ; sameGPnode++ )
-			{
-				if ((!(*sameGPnode)->polymer) || ((*sameGPnode)->harbinger))
-				continue;  // no forces act on harbingers (or depolymerized nodes)
-
-				for (vector <nodes*>::iterator nearnode=recti_near_nodes[0].begin(); nearnode<recti_near_nodes[0].end() ; nearnode++ )
-				{
-					if (((*sameGPnode)==(*nearnode)) || (repdonenode[(*sameGPnode)->nodenum]==true))
-						 continue;  // skip if self or if done
-					
-					// this check should not be necessary?:
-
-					xdist = (*nearnode)->x - (*sameGPnode)->x;
-					ydist = (*nearnode)->y - (*sameGPnode)->y;
-					zdist = (*nearnode)->z - (*sameGPnode)->z;
-
-					distsqr = xdist*xdist + ydist*ydist + zdist*zdist;
-
-					if (distsqr < SQRT_ACCURACY_LOSS)
-					{	
-						repdonenode[(*sameGPnode)->nodenum] = true;  // mark node as done
-						continue;
-					}
-
-					if (( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE) &&
-						 (distsqr > NODE_INCOMPRESSIBLE_RADIUS*NODE_INCOMPRESSIBLE_RADIUS))
-								// must be between NODE_INCOMPRESSIBLE_RANGE and NODE_INCOMPRESSIBLE_RADIUS
-					{
-						dist = calcdist(xdist,ydist,zdist);  // calc dist between nodes
-
-						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
-							(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * dist) ;
-
-						(*sameGPnode)->rep_force_vec[0].x -= force * (xdist/dist);
-						(*sameGPnode)->rep_force_vec[0].y -= force * (ydist/dist);
-						(*sameGPnode)->rep_force_vec[0].z -= force * (zdist/dist);
-
-					}
-
-					repdonenode[(*sameGPnode)->nodenum] = true;  // mark node as done
-				}
-			}
-			}
-	
-	}
-	return 0;
-}
-void * actin::repulsiveforcesthread(void* threadarg)
-{
-	struct thread_data *dat;
-	dat = (struct thread_data *) threadarg;
-
-	double xdist, ydist, zdist;
-	double distsqr, dist, force;
-	vect nodeposvec;
-
-	//cout << "Thread " << dat->threadnum << " started" << endl;
-	//cout.flush();
-
-	while (true)
-	{	
-
-//		sem_wait(&compressfiles_thread_go[dat->threadnum]);  // go only if released by main thread
-
-		//applyforcesdetectiondowork(dat);
-
-		for (int i=dat->startnode; i<dat->endnode; i++)
-			{  	
-			if ((!node[i].polymer) || (node[i].harbinger))
-				continue;  // no forces act on harbingers (or depolymerized nodes)
-
-			if (findnearbynodes(nodesbygridpoint[i],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum+NUM_THREADS)==0) continue;	// find nodes within 1 grid point
-												// skip if zero
-			//tmpnodeptr = &node[i];  // for debugging
-			//sameGPnode= &tmpnodeptr;
-
-			// loop over nodes on same gridpoint:
-			for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum+NUM_THREADS].begin(); sameGPnode<nodes_on_same_gridpoint[dat->threadnum+NUM_THREADS].end() ; sameGPnode++ )
-			{
-				if (( (*sameGPnode)->nodenum < dat->startnode) ||
-					( (*sameGPnode)->nodenum >= dat->endnode) )
-					continue;    // skip if out of range of this thread
-
-				// of these nodes, calculate euclidian dist
-
-				nodeposvec.x = (*sameGPnode)->x;	// get xyz of our node
-				nodeposvec.y = (*sameGPnode)->y;
-				nodeposvec.z = (*sameGPnode)->z;
-
-				for (vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); nearnode<recti_near_nodes[dat->threadnum].end() ; nearnode++ )
-				{
-					if ((*sameGPnode)==(*nearnode)) continue;  // skip if self
-					//if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
-					//	continue;  // skip if done opposite pair
-					
-					// this check should not be necessary?:
-
-					if (( (*sameGPnode)->nodenum < dat->startnode) ||
-						( (*sameGPnode)->nodenum >= dat->endnode) )
-						continue;    // skip if out of range of this thread  
-
-					xdist = (*nearnode)->x - nodeposvec.x;
-					ydist = (*nearnode)->y - nodeposvec.y;
-					zdist = (*nearnode)->z - nodeposvec.z;
-
-					distsqr = xdist*xdist + ydist*ydist + zdist*zdist;
-
-					if (distsqr < SQRT_ACCURACY_LOSS)
-					{	
-						repdonenode[(*sameGPnode)->nodenum] = true;  // mark node as done
-						continue;
-					}
-
-					if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
-					{
-						dist = calcdist(xdist,ydist,zdist);  // calc dist between nodes
-
-						force =  NODE_REPULSIVE_MAG 
-						- (NODE_REPULSIVE_MAG / (NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) ) * dist;
-
-						(*sameGPnode)->rep_force_vec[dat->threadnum].x += force * (xdist/dist);
-						(*sameGPnode)->rep_force_vec[dat->threadnum].y += force * (ydist/dist);
-						(*sameGPnode)->rep_force_vec[dat->threadnum].z += force * (zdist/dist);
-
-					}
-
-					repdonenode[(*sameGPnode)->nodenum] = true;  // mark node as done
-				}
-			}
-			}
-		}
-
-//		sem_post(&compressfiles_data_done[dat->threadnum]);  // release main thread block waiting for data
-
-	  
-	return (void*) NULL;
-}
-*/
 
 int actin::sortnodesbygridpoint(void)
 {
@@ -2240,7 +2061,7 @@ void * actin::compressfilesthread(void* threadarg)
 	struct thread_data *dat;
 	dat = (struct thread_data *) threadarg;
 
-	while (true)
+	while (GRASS_IS_GREEN)
 	{	
 		//sem_wait(&compressfiles_thread_go[0]);  // go only if released by main thread
 
@@ -2332,96 +2153,6 @@ int actin::find_center(vect &center)
 	return 0;
 }
 
-int actin::save_linkstats(int filenum)
-{
-	char filename[255];
-//	double radial_force, transverse_force;
-
-	sprintf ( filename , "linkstats%05i.txt", filenum );
-
-	ofstream oplinkstats(filename, ios::out | ios::trunc);
-	if (!oplinkstats) 
-	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-
-	// write header
-	
-	oplinkstats << "Link Radius,Radial Force,Transverse Force" << endl;
-	for (int i=0; i<highestnodecount; i++)
-	{
-		if ((node[i].polymer) && (!node[i].harbinger))
-		{
-            //link_force_vec[0].x
-		}
-	}
-
-
-	return 0;
-}
-
-
-
-/*
-
-void actin::savereport(int filenum, int highestnode)
-{
-
-	char filename[255];
-
-	sprintf ( filename , "report%05i.txt", filenum );
-
-	ofstream opreport(filename, ios::out | ios::trunc);
-	if (!opreport) 
-	{ cout << "Unable to open file " << filename << " for output"; return;}
-
-	// write header
-	
-	opreport << "Nodenum,NodeRadius,NodeRadiusSD,RepForceRadial,RepForceRadialSD,RepForceTrans,RepForceTransSD,RepDisplRadial,RepDisplRadialSD,RepDisplTrans,RepDisplTransSD,LinkForceRadial,LinkForceRadialSD,LinkForceTrans,LinkForceTransSD" << endl;
-	
-	double sum, mean, sd, varsum, count;
-
-	for(int i=1; i<highestnode; ++i)
-	{
-		opreport << i << ",";
-
-		for(int j=1; j<REPORT_NUM_VARIABLES; ++j)  // skip i=0 since this is the 'valid' switch
-		{
-			sum = 0;
-			varsum = 0;
-			count = 0;
-
-			for (int k=0; k<REPORT_AVERAGE_ITTERATIONS; k++)
-			{
-
-				if (reportdat[0][k][i] > 0)
-				{ // valid point
-					++count;
-					sum+=reportdat[j][k][i];
-				}
-			}
-
-			mean = sum/count;
-
-			for (int k=0; k<REPORT_AVERAGE_ITTERATIONS; k++)
-			{
-
-				if (reportdat[0][k][i] > 0)
-				{ // valid point
-					varsum+=pow((mean - reportdat[j][k][i]),2);
-				}
-			}
-
-			sd = varsum/count;
-
-			opreport << mean << "," << sd << "," ;
-		}
-
-		opreport << endl;
-	}
-
-	opreport.close();
-
-}
-*/
 
 int actin::savedata(int filenum)
 {
@@ -2664,7 +2395,7 @@ rotationmatrix actin::get_sym_break_axes(void)
 
 	rotationmatrix tmp_rotation, final_rotation;	
 
-	double x_angle, y_angle, z_angle;
+	double x_angle, y_angle; //, z_angle;
 	double x_inertia = 0, y_inertia = 0;
 	double z_in_angle;
 
@@ -2674,7 +2405,7 @@ rotationmatrix actin::get_sym_break_axes(void)
 
 	x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
 	y_angle = atan2(sym_break_direction.x,sym_break_direction.z);
-	z_angle = atan2(sym_break_direction.x,sym_break_direction.y);
+	//z_angle = atan2(sym_break_direction.x,sym_break_direction.y);
 
 	// make a temp rotation matrix in that direction:
 

@@ -166,6 +166,8 @@ int threadnum;
 
 // global variables:
 
+extern bool GRASS_IS_GREEN;  // this is a kludge to get rid of compiler warnings
+
 extern double TOTAL_SIMULATION_TIME;  
 extern double DELTA_T;
 extern double MIN_TORQUE_TO_UPDATE;
@@ -191,6 +193,9 @@ extern double P_XLINK;
 extern double P_NUC;
 
 extern int BMP_WIDTH,BMP_HEIGHT;
+extern bool NO_IMAGE_TEXT;
+extern int BMP_COMPRESSION;
+extern string BMP_OUTPUT_FILETYPE;
 
 extern double GAUSSFWHM;
 extern int SPECKLE_FACTOR;

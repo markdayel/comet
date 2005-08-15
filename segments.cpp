@@ -577,7 +577,7 @@ void segments::clearnodes(void)
 	}
 
 	
-	for(int i = 0; i<num_segs; ++i)
+	for(int i = 0; i<num_radial_bins; ++i)
 	{
 		radial_numnodes[i] =			
 		radial_rep_radial[i] =

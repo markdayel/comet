@@ -37,10 +37,15 @@ double INIT_B_GAIN = 20;
 int SPECKLE_FACTOR = 1;
 
 bool ROTATION = true;
+bool GRASS_IS_GREEN = true;
 
 double MofI =  0.1;
 
-bool FORCES_ON_SIDE = true;
+//bool FORCES_ON_SIDE = true;
+
+bool NO_IMAGE_TEXT = false;
+int BMP_COMPRESSION = 75;
+string BMP_OUTPUT_FILETYPE = "png";
 
 //int REPORT_AVERAGE_ITTERATIONS = 50;
 
@@ -72,7 +77,7 @@ double P_NUC =  0.08;
 double RADIUS =  1.0;
 double CAPSULE_HALF_LINEAR =  6.0;
 
-extern nucleator::shape NUCSHAPE = nucleator::sphere;  //default to sphere
+nucleator::shape NUCSHAPE = nucleator::sphere;  //default to sphere
 
 //double SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
 double RAD_INCOMP = RADIUS;// + NODE_INCOMPRESSIBLE_RADIUS/2;
@@ -183,9 +188,9 @@ int main(int argc, char* argv[])
 
 	vector<int> postprocess_iterations;
 	postprocess_iterations.clear();
-	//if(argc > 2 &&  strcasecmp(argv[1], "post") == 0 ) {
-	//    cout << "Postprocessing iterations: ";
-	//    get_postprocess_iterations(argv[2], postprocess_iterations);
+	if(argc > 2 &&  strcmp(argv[1], "post") == 0 ) {
+	    cout << "Postprocessing iterations: ";
+	    get_postprocess_iterations(argv[2], postprocess_iterations);
 	//    //vector<int>::iterator ppiter;
 	    //for(ppiter = postprocess_iterations.begin(); ppiter != postprocess_iterations.end(); ++ppiter){
 	    //	cout << *ppiter << " ";
@@ -194,7 +199,7 @@ int main(int argc, char* argv[])
 
             // REVISIT: continue to setup using the cometparams.ini file
 	    // or perhaps breakout here? (ML)
-	//}
+	}
 	
 	ifstream param("cometparams.ini"); 
 	if(!param) 
@@ -206,9 +211,8 @@ int main(int argc, char* argv[])
 #ifdef NO_IMAGEMAGICK
 	cerr << "Warning: compiled with ImageMagick support turned off" << endl << endl;
 #else 
-	#ifdef NO_IMAGE_TEXT
-		cerr << "Warning: compiled with image text turned off" << endl << endl;
-	#endif
+	if (NO_IMAGE_TEXT)
+		cerr << "Warning: image text turned off" << endl << endl;
 #endif
 
 	if (argc < 3) 
@@ -527,6 +531,25 @@ int main(int argc, char* argv[])
 				ss >> MofI;
 				continue;						  
 			} 
+			else if (tag == "NO_IMAGE_TEXT") 
+			{
+				ss >> NO_IMAGE_TEXT;
+				continue;						  
+			} 
+			else if (tag == "BMP_COMPRESSION") 
+			{
+				ss >> BMP_COMPRESSION;
+				if (BMP_COMPRESSION > 100)
+					BMP_COMPRESSION = 100;
+				else if (BMP_COMPRESSION < 0)
+					BMP_COMPRESSION = 0;
+				continue;						  
+			} 
+			else if (tag == "BMP_OUTPUT_FILETYPE") 
+			{
+				ss >> BMP_OUTPUT_FILETYPE;
+				continue;						  
+			} 
 			else if (tag == "SHAPE") 
 			{
 				ss >> buff2;
@@ -741,6 +764,7 @@ if (NUCSHAPE == nucleator::capsule)
 			<< "|NR " << setw(6) <<  theactin.debug_num_rotate	
 			<< "|ND " << setw(6) <<  theactin.debug_num_displace
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime) << "\r";
+
 			cout.flush();
 		}
 
@@ -819,7 +843,8 @@ srand( (unsigned) 200 );
 			//srand( (unsigned) 200 );
 			//cout << "reseeded: " << rand() << endl;
 
-			nuc_object.segs.addallnodes();
+			nuc_object.segs.addallnodes();  // put node data into segment bins
+
 			nuc_object.segs.savereport(i/InterRecordIterations);
 			nuc_object.segs.saveradialreport(i/InterRecordIterations);
 
@@ -827,7 +852,9 @@ srand( (unsigned) 200 );
 			theactin.savebmp((i/InterRecordIterations), actin::yaxis);
 			theactin.savebmp((i/InterRecordIterations), actin::zaxis);
 
-			//nuc_object.clearradialsegments();
+			cout << "\r";
+			cout.flush();
+
 			nuc_object.segs.clearsurfaceimpacts();
 			nuc_object.segs.clearnodes();
 			theactin.clearstats();
@@ -1023,85 +1050,24 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 
 void postprocess(actin &theactin, vector<int> &postprocess_iterations)
 {
-    vector<int>::iterator iteration;
-    for(iteration = postprocess_iterations.begin(); iteration != postprocess_iterations.end(); ++iteration){
-	cout << " post processing iteration:" << *iteration << endl;
-	load_data(theactin, *iteration);
-	theactin.savebmp((*iteration/InterRecordIterations), actin::xaxis);
-	theactin.savebmp((*iteration/InterRecordIterations), actin::yaxis);
-	theactin.savebmp((*iteration/InterRecordIterations), actin::zaxis);
+
+    for(vector<int>::iterator iteration = postprocess_iterations.begin(); 
+		iteration != postprocess_iterations.end(); ++iteration)
+	{
+		cout << "Post processing iteration " << *iteration << ": ";
+
+		load_data(theactin, *iteration);
+
+		theactin.savebmp((*iteration/InterRecordIterations), actin::xaxis);
+		// skipping y and z for now for speed
+		//theactin.savebmp((*iteration/InterRecordIterations), actin::yaxis);
+		//theactin.savebmp((*iteration/InterRecordIterations), actin::zaxis);
+
+		cout << endl;
     }
 }
 
-/*
-#define FP_BITS(fp) (*(DWORD *)&(fp))
 
-static unsigned int fast_sqrt_table[0x10000];  // declare table of square roots 
-
-
-
-typedef union FastSqrtUnion
-{
-  float f;
-  unsigned int i;
-} FastSqrtUnion;
-
-void build_sqrt_table()
-{
-  unsigned int i;
-  FastSqrtUnion s;
-  
-  for (i = 0; i <= 0x7FFF; i++)
-  {
-    
-    // Build a float with the bit pattern i as mantissa
-    //  and an exponent of 0, stored as 127
-    
-    s.i = (i << 8) | (0x7F << 23);
-    s.f = (float)sqrt(s.f);
-    
-    // Take the square root then strip the first 7 bits of
-    //  the mantissa into the table
-    
-    fast_sqrt_table[i + 0x8000] = (s.i & 0x7FFFFF);
-    
-    // Repeat the process, this time with an exponent of 1, 
-    //  stored as 128
-    
-    s.i = (i << 8) | (0x80 << 23);
-    s.f = (float)sqrt(s.f);
-    
-    fast_sqrt_table[i] = (s.i & 0x7FFFFF);
-  }
-}
-
-
-inline double fastsqrt(float n)
-{
-  if (FP_BITS(n) == 0)
-    return 0.0;                 // check for square root of 0
-  
-  FP_BITS(n) = fast_sqrt_table[(FP_BITS(n) >> 8) & 0xFFFF] | ((((FP_BITS(n) - 0x3F800000) >> 1) + 0x3F800000) & 0x7F800000);
-  
-  return n;
-}
-
-float sse_sqrt(float n)
-{
-	__asm {
-		movd        mm0,[n]
-        pfrsqrt     mm1,mm0
-        movq        mm2,mm1         // save first 1/sqrt approximation for later
-        pfmul       mm1,mm1         // compute 1/(sqrt(x)^2) for pfrsqit1
-        pfrsqit1    mm1,mm0         // iterate for accuracy
-        pfrcpit2    mm1,mm2         // mm1 = 1 / sqrt(x)
-        pfmul       mm0,mm1         // sqrt(x) = x / sqrt(x)
-		movd        [n],mm0
-	}
-		return n;
-}
-
-*/
 /*
 
 
