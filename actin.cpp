@@ -2401,9 +2401,9 @@ void actin::set_sym_break_axes(void)
 	vect CofM;
 	vect sym_break_direction;
 
-	rotationmatrix tmp_rotation, final_rotation;	
+	rotationmatrix tmp_rotation, tmp_rotation2;	
 
-	double x_angle, y_angle; //, z_angle;
+	double x_angle, y_angle, z_angle;
 	double x_inertia = 0, y_inertia = 0;
 	double z_in_angle;
 
@@ -2412,25 +2412,26 @@ void actin::set_sym_break_axes(void)
 	find_center(sym_break_direction);  // which way did the bead go?
 
 	x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
-	y_angle = atan2(sym_break_direction.x,sym_break_direction.z);
-	//z_angle = atan2(sym_break_direction.x,sym_break_direction.y);
+	y_angle = -atan2(sym_break_direction.z,sym_break_direction.x);
+	z_angle = atan2(sym_break_direction.y,sym_break_direction.x);
 
 	// make a temp rotation matrix in that direction:
 
 	//tmp_rotation.rotatematrix(0, y_angle, 0); // just rotate y
 	tmp_rotation.rotatematrix(x_angle, y_angle, 0); // now pointing upwards
+	tmp_rotation2.rotatematrix(x_angle, y_angle, 0);
 
-	//cout << "old sym_break_direction: " 
-	//	<< sym_break_direction.x << "," 
-	//	<< sym_break_direction.y << "," 
-	//	<< sym_break_direction.z << endl;
+	cout << endl << "old sym_break_direction: " 
+		<< sym_break_direction.x << "," 
+		<< sym_break_direction.y << "," 
+		<< sym_break_direction.z << endl;
 
-	//tmp_rotation.rotate(sym_break_direction);
+	tmp_rotation.rotate(sym_break_direction);
 
-	//cout << "new sym_break_direction: " 
-	//	<< sym_break_direction.x << "," 
-	//	<< sym_break_direction.y << "," 
-	//	<< sym_break_direction.z << endl;
+	cout << "new sym_break_direction: " 
+		<< sym_break_direction.x << "," 
+		<< sym_break_direction.y << "," 
+		<< sym_break_direction.z << endl;
 
 
 	// find CofM
@@ -2475,12 +2476,18 @@ void actin::set_sym_break_axes(void)
 		 << " sqrt(y_inertia): " << sqrt(y_inertia) 
 		 << " z_in_angle: " << 180*z_in_angle << endl; 
 
+
+	//tmp_rotation.rotatematrix(0, 0, z_in_angle); // now pointing upwards
+	//tmp_rotation2.rotatematrix(0, 0, z_in_angle);
+
 	//camera_rotation.rotatematrix(x_angle, y_angle, -z_in_angle);
 	//camera_rotation.rotatematrix(0, 0, z_in_angle);
-	camera_rotation.rotatematrix(x_angle, y_angle, 0);
+	//camera_rotation.rotatematrix(x_angle, y_angle, 0);
+	
+	camera_rotation = tmp_rotation;
 
 	//reverse_camera_rotation.rotatematrix(0, 0, - z_in_angle);
-	reverse_camera_rotation.rotatematrix(-x_angle, -y_angle, 0);
+	reverse_camera_rotation = tmp_rotation2;
 
 }
 
