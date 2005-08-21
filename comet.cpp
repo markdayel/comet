@@ -247,13 +247,18 @@ int main(int argc, char* argv[])
 #endif
 
 
-
+if (!rewritesymbreak)
+{	// don't drop priority if re-writing bitmaps
+	// because calling thread already has low priority
+	// and this would drop it further
+	// so process would halt on 1 cpu machine
 
 #ifndef _WIN32
 	nice(10);
 #else
 	//SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_LOWEST);
 #endif
+}
 
   	NUM_THREADS = atoi(argv[1]);
 
@@ -306,7 +311,7 @@ int main(int argc, char* argv[])
 	
 	pthread_mutex_lock(&filessavelock_mutex);
 
-	int truethreadnum = 0;
+//	int truethreadnum = 0;
 
 	for (int i = 0; i < NUM_THREADS; i++)
 		{
@@ -354,8 +359,8 @@ int main(int argc, char* argv[])
 		//sem_trywait(&compressfiles_thread_go[0]);
         //sem_trywait(&compressfiles_data_done[0]);
 
-		pthread_create(&threads[truethreadnum++], &thread_attr, actin::compressfilesthread, 
-					(void *) &compressfiles_thread_data_array[0]);
+		//pthread_create(&threads[truethreadnum++], &thread_attr, actin::compressfilesthread, 
+		//			(void *) &compressfiles_thread_data_array[0]);
 
 	// main parameters:
 
@@ -614,9 +619,9 @@ int main(int argc, char* argv[])
 	}
 
 	// create main objects
-
-	actin theactin;
-	nucleator nuc_object(NUCSHAPE, &theactin);
+	// create as static otherwise exit() doesn't call their destructors (!)
+	static actin theactin;
+	static nucleator nuc_object(NUCSHAPE, &theactin);
 
 	if (rewritesymbreak)
 	{
@@ -745,11 +750,6 @@ if (NUCSHAPE == nucleator::capsule)
 	// Breakout if we are post processing
 	if( !postprocess_iterations.empty() )
 	{
-#ifndef _WIN32
-	nice(8);  // slightly higher priority than normal in case running on 1 cpu
-#else
-	//SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_LOWEST);
-#endif
 		postprocess(nuc_object, theactin, postprocess_iterations );
 	    exit(EXIT_SUCCESS); // FIXME: early finish, move to two fcns (ML)
 	}
@@ -1017,10 +1017,17 @@ srand( rand_num_seed );
 
 			if (theactin.brokensymmetry)
 			{	// only save bitmaps if symmetry broken, 
-				// 'cause we'll write them later anyway
-				theactin.savebmp((i/InterRecordIterations), actin::xaxis);
-				theactin.savebmp((i/InterRecordIterations), actin::yaxis);
-				theactin.savebmp((i/InterRecordIterations), actin::zaxis);
+				// 'cause we'll write the others later
+
+				// write the bitmaps, calling imagemagick in background
+				// note: this *could* cause a problem if it gets around to the next one before this
+				// has finished (because we're sharing x,y,z temp bitmap files)
+				// bit this is probably impossible, since we're only calling this
+				// once symmetry broken, and by then things are very slow
+
+				theactin.savebmp((i/InterRecordIterations), actin::xaxis, actin::runbg);
+				theactin.savebmp((i/InterRecordIterations), actin::yaxis, actin::runbg);
+				theactin.savebmp((i/InterRecordIterations), actin::zaxis, actin::runbg);
 
 				cout << "\r";
 				cout.flush();
@@ -1042,23 +1049,23 @@ srand( rand_num_seed );
 			}
 
 
-
-
 			nuc_object.segs.clearsurfaceimpacts();
 			nuc_object.segs.clearnodes();
 
 			theactin.clearstats();
 
-			if ((i/InterRecordIterations)>(starting_iter/InterRecordIterations))  
-			{  // wait for last save to complete...
-				pthread_mutex_lock(&filesdonelock_mutex);
-				//sem_wait(&compressfiles_data_done[0]);  // wait for the last data write
-			}
+			theactin.compressfilesdowork(i/InterRecordIterations);
 
-			compressfiles_thread_data_array[0].startnode = (i/InterRecordIterations);
-			//sem_post(&compressfiles_thread_go[0]);
-			pthread_mutex_unlock(&filesdonelock_mutex);  // allow thread to grab done lock
-			pthread_mutex_unlock(&filessavelock_mutex);  // start the thread
+			//if ((i/InterRecordIterations)>(starting_iter/InterRecordIterations))  
+			//{  // wait for last save to complete...
+			//	pthread_mutex_lock(&filesdonelock_mutex);
+			//	//sem_wait(&compressfiles_data_done[0]);  // wait for the last data write
+			//}
+
+			//compressfiles_thread_data_array[0].startnode = (i/InterRecordIterations);
+			////sem_post(&compressfiles_thread_go[0]);
+			//pthread_mutex_unlock(&filesdonelock_mutex);  // allow thread to grab done lock
+			//pthread_mutex_unlock(&filessavelock_mutex);  // start the thread
 
 			lastlinksformed = theactin.linksformed;
 			lastlinksbroken = theactin.linksbroken;
@@ -1108,6 +1115,7 @@ srand( rand_num_seed );
 
 	//pthread_exit (NULL);
 
+	
 	exit(EXIT_SUCCESS);
 }
 
@@ -1263,9 +1271,9 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 		//nuc_object.segs.savereport(i/InterRecordIterations);
 		//nuc_object.segs.saveradialreport(i/InterRecordIterations);
 
-		theactin.savebmp((*iteration/InterRecordIterations), actin::xaxis);
-		theactin.savebmp((*iteration/InterRecordIterations), actin::yaxis);
-		theactin.savebmp((*iteration/InterRecordIterations), actin::zaxis);
+		theactin.savebmp((*iteration/InterRecordIterations), actin::xaxis, actin::runbg);
+		theactin.savebmp((*iteration/InterRecordIterations), actin::yaxis, actin::runbg);
+		theactin.savebmp((*iteration/InterRecordIterations), actin::zaxis, actin::runfg);
 		
 		nuc_object.segs.clearsurfaceimpacts();
 		nuc_object.segs.clearnodes();
@@ -1301,9 +1309,13 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 		//nuc_object.segs.savereport(i/InterRecordIterations);
 		//nuc_object.segs.saveradialreport(i/InterRecordIterations);
 
-		theactin.savebmp((i/InterRecordIterations), actin::xaxis);
-		theactin.savebmp((i/InterRecordIterations), actin::yaxis);
-		theactin.savebmp((i/InterRecordIterations), actin::zaxis);
+
+		// run the last one in foreground to slow things down
+		// so don't overload system with too many bg processes
+
+		theactin.savebmp((i/InterRecordIterations), actin::xaxis, actin::runbg);
+		theactin.savebmp((i/InterRecordIterations), actin::yaxis, actin::runbg);
+		theactin.savebmp((i/InterRecordIterations), actin::zaxis, actin::runfg);
 		
 		nuc_object.segs.clearsurfaceimpacts();
 		nuc_object.segs.clearnodes();

@@ -154,16 +154,20 @@ actin::actin(void)
 
 	// setup the bitmap file:
 
-	sprintf(temp_BMP_filename, "%stemp_%i.bmp", TEMPDIR, (unsigned)time( NULL ));
+	sprintf(temp_BMP_filename_x, "%sx_temp_%i.bmp", TEMPDIR, (unsigned)time( NULL ));
+	sprintf(temp_BMP_filename_y, "%sy_temp_%i.bmp", TEMPDIR, (unsigned)time( NULL ));
+	sprintf(temp_BMP_filename_z, "%sz_temp_%i.bmp", TEMPDIR, (unsigned)time( NULL ));
 
-	outbmpfile.open(temp_BMP_filename, ios::out | ios::binary); // | ios::trunc);
+	outbmpfile_x.open(temp_BMP_filename_x, ios::out | ios::binary | ios::trunc);
+	outbmpfile_y.open(temp_BMP_filename_y, ios::out | ios::binary | ios::trunc);
+	outbmpfile_z.open(temp_BMP_filename_z, ios::out | ios::binary | ios::trunc);
 
-	if (!outbmpfile) 
-	{ cout << "Unable to open file '" << temp_BMP_filename << "' for output"; return;}
+	if ((!outbmpfile_x) || (!outbmpfile_y) || (!outbmpfile_z)) 
+	{ cout << "Unable to open file temp bitmap file for output"; return;}
 
-	outbmpfile.rdbuf()->pubsetbuf(outbmpbuffer,sizeof(outbmpbuffer));
-
-	writebitmapheader(BMP_WIDTH, BMP_HEIGHT);
+	writebitmapheader(outbmpfile_x,BMP_WIDTH, BMP_HEIGHT);
+	writebitmapheader(outbmpfile_y,BMP_WIDTH, BMP_HEIGHT);
+	writebitmapheader(outbmpfile_z,BMP_WIDTH, BMP_HEIGHT);
 
 } 
 
@@ -171,13 +175,21 @@ actin::~actin(void)
 {
 	opruninfo.close();
 	opvelocityinfo.close();
-	outbmpfile.close();
+	outbmpfile_x.close();
+	outbmpfile_y.close();
+	outbmpfile_z.close();
 
 	// delete the temp bitmap file
 
 	char command1[255];
 
-	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename );
+	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_x );
+	system(command1);
+
+	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_y );
+	system(command1);
+
+	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_z );
 	system(command1);
 }
 
@@ -1515,16 +1527,31 @@ int actin::setnodecols(void)
 	return 0;
 }
 
-int actin::savebmp(int filenum, projection proj)
+int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 { 
 	// choose projection letter for filename etc.
 
 	char projletter[] = "z";
+	ofstream *p_outbmpfile;
+	char *temp_BMP_filename;
 
     if (proj == xaxis)
+	{
 		sprintf ( projletter , "x");
-    else if (proj == yaxis)
+		p_outbmpfile = &outbmpfile_x;
+		temp_BMP_filename = temp_BMP_filename_x;
+	}
+	else if (proj == yaxis)
+	{
 		sprintf ( projletter , "y");
+		p_outbmpfile = &outbmpfile_y;
+		temp_BMP_filename = temp_BMP_filename_y;
+	}
+	else
+	{
+		p_outbmpfile = &outbmpfile_z;
+		temp_BMP_filename = temp_BMP_filename_z;
+	}
 
 	cout << "Processing "<< projletter << "-axis BMP";
 	cout.flush();
@@ -1801,14 +1828,14 @@ int actin::savebmp(int filenum, projection proj)
 
 	// write the bitmap file
 		
-	writebitmapfile(imageR, imageG, imageB);
+	writebitmapfile(*p_outbmpfile, imageR, imageG, imageB);
 
 	cout << ".";
 	cout.flush();
 
 	// add the imagemagick overlays
 	
-	char command1[10240], command2[10240];
+	char command1[10240], command2[10240], command3[20480];
 
     stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
 
@@ -1858,8 +1885,15 @@ else
 		"convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", BMP_COMPRESSION, 
 		drawcmd.str().c_str(), BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str() ,  BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
-    system(command1);
-    system(command2);
+if (fgbg == runbg)
+	sprintf(command3, "(%s ; %s)&", command1, command2);
+else
+	sprintf(command3, "(%s ; %s)", command1, command2);
+
+	system(command3);
+
+    //system(command1);
+    //system(command2);
 
 	// opruninfo << endl << command1 << endl << command2 << endl;
 
@@ -1877,7 +1911,7 @@ else
 	return filenum;
 }
 
-void actin::writebitmapheader(const int & bitmapwidth, const int & bitmapheight)
+void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight)
 {
 
 	// bitmap headers etc (see microsoft website):
@@ -2004,7 +2038,7 @@ void actin::writebitmapheader(const int & bitmapwidth, const int & bitmapheight)
 
 }
 
-void actin::writebitmapfile(const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB)
+void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB)
 {  // re-scale for byte output and save image data
 
 #define BYTE unsigned char
@@ -2201,6 +2235,33 @@ void * actin::compressfilesthread(void* threadarg)
 	}	  
 	return (void*) NULL;
 }
+
+void actin::compressfilesdowork(const int & filenum)
+{
+	char command1[255];
+
+
+	// report files
+		
+	sprintf(command1, "(gzip -q -f -9 %s*report*.txt 2>/dev/null; mv %s*report*.gz %s 2>/dev/null) &"
+		,TEMPDIR,TEMPDIR, REPORTDIR);
+	system(command1);
+
+	// save data file
+
+	sprintf(command1 , "(gzip -q -f -9 %s*data*.txt 2>/dev/null; mv %s*data*.gz %s 2>/dev/null) &",
+		TEMPDIR, TEMPDIR, DATADIR);
+	system(command1);
+
+	// wrl file
+
+	sprintf(command1 , "( gzip -f -9 %snodes%05i.wrl ; mv %snodes%05i.wrl.gz %snodes%05i.wrz) &",
+						TEMPDIR, filenum, TEMPDIR,filenum, VRMLDIR,filenum );
+	system(command1);
+
+}
+
+
 
 int actin::find_center(vect &center)
 {

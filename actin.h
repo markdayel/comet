@@ -70,6 +70,13 @@ public:
 		yaxis = 1,
 		zaxis = 2
 	};
+	enum processfgbg 
+	{
+		runfg = 0,
+		runbg = 1
+	};
+
+	
 	actin(void);
 	~actin(void);
 	int nucleate();
@@ -81,7 +88,7 @@ public:
 	
 	ofstream opruninfo;
 	ofstream opvelocityinfo;
-	ofstream outbmpfile;
+	ofstream outbmpfile_x,outbmpfile_y,outbmpfile_z;
 
 	int highestnodecount;
 
@@ -119,10 +126,10 @@ public:
 
 	ofstream::pos_type bitmap_start;
 
-	void writebitmapfile(const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
-	void writebitmapheader(const int & bitmapwidth, const int & bitmapheight);
+	void writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
+	void writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight);
 	
-	int savebmp(int filenum, projection proj);
+	int savebmp(int filenum, projection proj, processfgbg fgbg);
 
 	segments segs;
 
@@ -135,7 +142,9 @@ public:
 	int linksbroken;
 
 	
-	char temp_BMP_filename[255];
+	char temp_BMP_filename_x[255],
+		temp_BMP_filename_y[255],
+		temp_BMP_filename_z[255];
 
 	int doreportiteration;
 	int doreportmaxnodes;
@@ -170,6 +179,8 @@ public:
 	static void *linkforcesthread(void* threadarg);
 	static void *repulsiveforcesthread(void* threadarg);
 	static void *compressfilesthread(void* threadarg);
+	void compressfilesdowork(const int & filenum);
+
 
 	int squash(double thickness);
 	//int repulsiveforces(void);
