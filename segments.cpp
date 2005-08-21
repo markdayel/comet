@@ -144,7 +144,6 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	clearnodes();
 
 
-
 	// define force lines co-ords
 
 	linestartx.resize(3);
@@ -153,7 +152,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	lineunitvecx.resize(3);
 	lineunitvecy.resize(3);
 
-	for (int axis = 0; axis < 2; ++axis)
+	for (int axis = 0; axis < 3; ++axis)
 	{
 		linestartx[axis].resize(num_segs);
 		linestarty[axis].resize(num_segs);
@@ -409,8 +408,8 @@ void segments::addnode(const nodes& node)
 	rot_pos = node;
 	rot_unit = node.unit_vec_posn;
 
-	//p_actin->camera_rotation.rotate(rot_pos); 
-	//p_actin->camera_rotation.rotate(rot_unit); 
+	p_actin->camera_rotation.rotate(rot_pos); 
+	p_actin->camera_rotation.rotate(rot_unit); 
 
 	getsegmentnum(rot_pos, xseg, yseg, zseg);
 	getsegmentdist(rot_pos, xdist, ydist, zdist);
@@ -682,13 +681,13 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 
 		if (linelen > 0.9 * RADIUS)
 		{
-			linex*= 0.9 * RADIUS / linelen;
-			liney*= 0.9 * RADIUS / linelen;			
+			linex *= 0.9 * RADIUS / linelen;
+			liney *= 0.9 * RADIUS / linelen;			
 		}
 
 		// don't plot zero length lines
-		if ((p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
-			(p_actin->pixels(starty) == p_actin->pixels(starty + liney)))
+		if ( (p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
+			 (p_actin->pixels(starty) == p_actin->pixels(starty + liney)) )
 			continue;
 
 		numlinesplotted++;
@@ -728,7 +727,7 @@ void segments::savereport(const int& filenum) const
 
 	bool capsuleside;
 
-	sprintf ( filename , "report%05i.txt", filenum );
+	sprintf ( filename , "%sreport%05i.txt",TEMPDIR, filenum );
 
 	ofstream opreport(filename, ios::out | ios::trunc);
 	if (!opreport) 
@@ -736,7 +735,7 @@ void segments::savereport(const int& filenum) const
 
 	// write header
 	
-	opreport << "Axis,segment,distseg,x,y,z,Radius,area,capsuleside,numnodes,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
+	opreport << "Axis,segment,distseg,x,y,z,Radius,area,capsuleside,numnodes,RepForceRadial,RepForceTrans,LinkForceRadial,LinkForceTrans,LinksBroken" << endl;
 
 
 	for(int dist = 0; dist<num_dist_segs; ++dist)
@@ -787,7 +786,8 @@ void segments::savereport(const int& filenum) const
 					<< rep_radial[axis][seg][dist] << ","
 					<< rep_transverse[axis][seg][dist] << ","
 					<< link_radial[axis][seg][dist] << ","
-					<< link_transverse[axis][seg][dist] << endl;
+					<< link_transverse[axis][seg][dist] << ","
+					<< links_broken[axis][seg][dist] << endl;
 //					<< disp_radial[axis][seg][dist] << ","
 //					<< disp_transverse[axis][seg][dist] << ",";
 
@@ -812,7 +812,7 @@ void segments::saveradialreport(const int& filenum) const
 
 	char filename [255];
 
-	sprintf ( filename , "report_radial%05i.txt", filenum );
+	sprintf ( filename , "%sreport_radial%05i.txt", TEMPDIR, filenum );
 
 	ofstream opradialreport(filename, ios::out | ios::trunc);
 	if (!opradialreport) 

@@ -214,6 +214,11 @@ int nodes::save_data(ofstream &ostr)
 	 << x << "," << y << "," << z << "," 
 	 << harbinger << "," << polymer << "," 
 	 << colour.r << "," << colour.g << "," << colour.b << ","
+	 << linkforce_transverse[0] << "," 
+	 << linkforce_radial[0] << "," 
+	 << repforce_transverse[0] << "," 
+	 << repforce_radial[0] << "," 
+	 << links_broken[0] << "," 
 	 << creation_iter_num << ":";
     
     // now the links
@@ -238,6 +243,11 @@ int nodes::load_data(ifstream &istrm)
 	  >> x >> ch >> y >> ch >> z >> ch
 	  >> harbinger >> ch >> polymer >> ch
 	  >> colour.r >> ch >> colour.g >> ch >> colour.b >> ch
+	  >> linkforce_transverse[0] >> ch 
+	  >> linkforce_radial[0] >> ch 
+	  >> repforce_transverse[0] >> ch 
+	  >> repforce_radial[0] >> ch 
+	  >> links_broken[0] >> ch 
 	  >> creation_iter_num >> ch;
     
     // check we are ready to read links

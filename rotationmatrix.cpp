@@ -3,12 +3,17 @@
 
 rotationmatrix::rotationmatrix(void)
 {
-    xx = yy = zz = 1;
-    xy = xz = yx = yz = zx = zy = 0;
+	settoidentity();
 }
 
 rotationmatrix::~rotationmatrix(void)
 {
+}
+
+void rotationmatrix::settoidentity(void)
+{
+	 xx = yy = zz = 1;
+    xy = xz = yx = yz = zx = zy = 0;
 }
 
 rotationmatrix::rotationmatrix(double angle, axis a)

@@ -1,0 +1,6 @@
+nice /home/socr/b/mark/ffmpeg -hq -me full -qscale 1 -y -i bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -qscale 1 -y -i bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -qscale 1 -y -i bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -qscale 1 -y -i bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -qscale 1 -y -i bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -qscale 1 -y -i bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 z_forces.mov

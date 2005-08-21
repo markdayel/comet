@@ -81,11 +81,14 @@ public:
 	
 	ofstream opruninfo;
 	ofstream opvelocityinfo;
+	ofstream outbmpfile;
+
 	int highestnodecount;
 
 	Dbl2d imageR, imageG, imageB;
 
-	rotationmatrix actin_rotation, camera_rotation, reverse_camera_rotation;
+	rotationmatrix actin_rotation, camera_rotation, //camera_rotation2,
+			reverse_camera_rotation;//, reverse_camera_rotation2;
 
 	vector <Dbl2d> reportdat;
 
@@ -114,8 +117,10 @@ public:
 
 	int applyforces(void);	
 
-	void writebitmapfile(const char* filename, 
-							const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
+	ofstream::pos_type bitmap_start;
+
+	void writebitmapfile(const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
+	void writebitmapheader(const int & bitmapwidth, const int & bitmapheight);
 	
 	int savebmp(int filenum, projection proj);
 
@@ -125,8 +130,12 @@ public:
 	int linkforces();
 	Colour newnodescolour;
 	static int iteration_num;
+	int symbreakiter;
 	int linksformed;
 	int linksbroken;
+
+	
+	char temp_BMP_filename[255];
 
 	int doreportiteration;
 	int doreportmaxnodes;
@@ -177,6 +186,8 @@ public:
 	int load_data(ifstream &ifstrm);
 	void setdontupdates(void);
 	void set_sym_break_axes(void);
+	void load_sym_break_axes(void);
+	void save_sym_break_axes(void);
 	void clearstats(void);
 
 	inline int pixels(const double & coord) const
@@ -190,8 +201,6 @@ public:
 	}
 
 
-
-	void writebitmapfile(void);
 };
 
 #endif

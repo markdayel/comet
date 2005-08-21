@@ -31,6 +31,26 @@ removed without prior written permission from the author.
 #endif
 
 
+#ifndef _WIN32
+
+	//#include <unistd.h>
+	#define VRMLDIR "vrml/"
+	#define DATADIR "data/"
+	#define REPORTDIR "reports/"
+	#define BITMAPDIR "bitmaps/"
+	#define TEMPDIR "temp/"
+
+
+#else
+	
+	#define VRMLDIR "vrml\\"
+	#define DATADIR "data\\"
+	#define REPORTDIR "reports\\"
+	#define BITMAPDIR "bitmaps\\"
+	#define TEMPDIR "temp\\"
+
+#endif
+
 // defines
 
 // #define FORCES_BOTH_WAYS 1
@@ -84,6 +104,8 @@ using namespace std;
 #include "pthread.h"
 #include "semaphore.h"
 //#include "sched.h"
+
+//extern char temp_BMP_filename[];
 
 extern bool USE_THREADS;
 

@@ -16,6 +16,8 @@ class rotationmatrix
     rotationmatrix(double angle, axis a);
     
     ~rotationmatrix(void);
+
+	void settoidentity(void);
     
     double xx,xy,xz;
     double yx,yy,yz;

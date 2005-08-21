@@ -115,6 +115,7 @@ actin::actin(void)
 	linksformed = 0;
 	linksbroken = 0;
 	nexttocrosslink = 0;
+	symbreakiter = 0;
 
 	newnodescolour.setcol(0);
 
@@ -149,13 +150,35 @@ actin::actin(void)
 			}
 		}
 
+//GetProcessId(GetCurrentThread());
+
+	// setup the bitmap file:
+
+	sprintf(temp_BMP_filename, "%stemp_%i.bmp", TEMPDIR, (unsigned)time( NULL ));
+
+	outbmpfile.open(temp_BMP_filename, ios::out | ios::binary); // | ios::trunc);
+
+	if (!outbmpfile) 
+	{ cout << "Unable to open file '" << temp_BMP_filename << "' for output"; return;}
+
+	outbmpfile.rdbuf()->pubsetbuf(outbmpbuffer,sizeof(outbmpbuffer));
+
+	writebitmapheader(BMP_WIDTH, BMP_HEIGHT);
+
 } 
 
 actin::~actin(void)
 {
 	opruninfo.close();
 	opvelocityinfo.close();
+	outbmpfile.close();
 
+	// delete the temp bitmap file
+
+	char command1[255];
+
+	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename );
+	system(command1);
 }
 
 int actin::nucleate()
@@ -390,7 +413,7 @@ int actin::savevrml(int filenum)
     //_strtime( time );
     //_strdate( date );
 
-	sprintf ( filename , "nodes%05i.wrl", filenum );
+	sprintf ( filename , "%snodes%05i.wrl", TEMPDIR,filenum );
 
 	ofstream opvrml(filename, ios::out | ios::trunc);
 	if (!opvrml) 
@@ -1560,6 +1583,8 @@ int actin::savebmp(int filenum, projection proj)
 
 	p_nuc->nucleator_rotation.rotate(meanx,meany,meanz);
 	camera_rotation.rotate(meanx,meany,meanz); 
+	//camera_rotation2.rotate(meanx,meany,meanz); 
+
 	
 	// precalculate gaussian
 
@@ -1639,6 +1664,7 @@ int actin::savebmp(int filenum, projection proj)
 
 		p_nuc->nucleator_rotation.rotate(rot);
 		camera_rotation.rotate(rot);
+		//camera_rotation2.rotate(rot);
 
 		if (proj == xaxis)  // choose projection
 		{
@@ -1725,6 +1751,7 @@ int actin::savebmp(int filenum, projection proj)
 		rot = *point;
 		p_nuc->nucleator_rotation.rotate(rot);
 		camera_rotation.rotate(rot); 
+		//camera_rotation2.rotate(rot); 
 
 		if (proj == xaxis)  // choose projection
 		{
@@ -1765,14 +1792,16 @@ int actin::savebmp(int filenum, projection proj)
 	p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
 					   p_nuc->segs.link_transverse, proj);
 
-	char filename[255];
+	//char filename[255];
+	
+	//sprintf ( filename , "temp.bmp");
 
-	sprintf ( filename , "%s_proj_%05i.bmp", projletter , filenum );
+	// sprintf ( filename , "%s_proj_%05i.bmp", projletter , filenum );
 
 
 	// write the bitmap file
 		
-	writebitmapfile(filename, imageR, imageG, imageB);
+	writebitmapfile(imageR, imageG, imageB);
 
 	cout << ".";
 	cout.flush();
@@ -1781,7 +1810,11 @@ int actin::savebmp(int filenum, projection proj)
 	
 	char command1[10240], command2[10240];
 
-    stringstream tmp_drawcmd, drawcmd;
+    stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
+
+	// todo figure out how to clear a stringstream so don't have
+	// to use as disposable objects
+	// .clear() or .str("") don't seem to work.
 
 	int scalebarlength = pixels(1.0);
 
@@ -1791,17 +1824,14 @@ int actin::savebmp(int filenum, projection proj)
 	// check have lines to draw before adding them
 	// else ImageMagick intermittently crashes
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd,proj,1) > 0)		
-		drawcmd << "\" -stroke blue -draw \"" << tmp_drawcmd.str();
-	tmp_drawcmd.clear();
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj,1) > 0)		
+		drawcmd << "\" -stroke blue -draw \"" << tmp_drawcmd1.str();
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd,proj,0.2) > 0)	// scaled impact forces
-		drawcmd << "\" -stroke red -draw \"" << tmp_drawcmd.str();	
-	tmp_drawcmd.clear();
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.2) > 0)	// scaled impact forces
+		drawcmd << "\" -stroke red -draw \"" << tmp_drawcmd2.str();	
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd,proj,0.05) > 0)	// scaled impact forces
-		drawcmd << "\" -stroke yellow -draw \"" << tmp_drawcmd.str();	
-	tmp_drawcmd.clear();
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj,0.05) > 0)	// scaled impact forces
+		drawcmd << "\" -stroke yellow -draw \"" << tmp_drawcmd3.str();
 
 	drawcmd << "\"";
 
@@ -1811,36 +1841,35 @@ int actin::savebmp(int filenum, projection proj)
 if (NO_IMAGE_TEXT)
 {	
 		sprintf(command1,
-		"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s_proj_%05i.%s",
-		     BMP_COMPRESSION, scalebarlength+5, filename, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+		"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s%s_proj_%05i.%s",
+		     BMP_COMPRESSION, scalebarlength+5, temp_BMP_filename, BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 }
 else 
 {
 		sprintf(command1,
 		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \
 				\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-				%s %s_proj_%05i.%s",  BMP_COMPRESSION,
+				%s %s%s_proj_%05i.%s",  BMP_COMPRESSION,
 		scalebarlength+5,projletter,filenum,
-		(int)((1000/(double)imageGmax)+0.5),  filename, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+		(int)((1000/(double)imageGmax)+0.5),  temp_BMP_filename, BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 }
 
 	sprintf(command2,
-		"convert -quality %i %s %s_proj_%05i.%s %s_forces_%05i.%s", BMP_COMPRESSION, 
-		drawcmd.str().c_str(), projletter, filenum, BMP_OUTPUT_FILETYPE.c_str() ,  projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+		"convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", BMP_COMPRESSION, 
+		drawcmd.str().c_str(), BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str() ,  BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
     system(command1);
     system(command2);
 
-	opruninfo << endl << command1 << endl << command2 << endl;
+	// opruninfo << endl << command1 << endl << command2 << endl;
 
-
-#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
-	sprintf(command2 , "del %s 2>/dev/null", filename);
-#else
-	sprintf(command2 , "rm -f %s 2>/dev/null", filename);
-#endif
-
-	system(command2);	
+//#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
+//	sprintf(command2 , "del %s 2>/dev/null", filename);
+//#else
+//	sprintf(command2 , "rm -f %s 2>/dev/null", filename);
+//#endif
+//
+//	system(command2);	
 
 	cout << ". ";
 	cout.flush();
@@ -1848,15 +1877,9 @@ else
 	return filenum;
 }
 
-
-
-void actin::writebitmapfile(const char* filename, 
-							const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB)
+void actin::writebitmapheader(const int & bitmapwidth, const int & bitmapheight)
 {
 
-	const int bitmapwidth = (int) imageR.size();
-	const int bitmapheight = (int) imageR[0].size();
-	
 	// bitmap headers etc (see microsoft website):
 
 	// define data structures for bitmap header:
@@ -1967,40 +1990,58 @@ void actin::writebitmapfile(const char* filename,
 		fileInfo->bmiColors[i].rgbReserved = (BYTE) 0;
 	}
 
-	ofstream outbmpfile(filename, ios::out | ios::binary | ios::trunc);
-	if (!outbmpfile) 
-	{ cout << "Unable to open file '" << filename << "' for output"; return;}
+	outbmpfile.seekp(0); // move to start
 
-	outbmpfile.rdbuf()->pubsetbuf(outbmpbuffer,sizeof(outbmpbuffer));
-
-	// save headers
+    // save headers
 
 	outbmpfile.write((char*)fileHeader,sizeof(BITMAPFILEHEADER));
 	outbmpfile.write((char*)fileInfo,sizeof(BITMAPINFO) + 256*sizeof(RGBQUAD));
 
-	// re-scale for byte output and save image data
+	bitmap_start = outbmpfile.tellp();  // keep a note of where the picture data starts
+
+	free(fileHeader);
+	free(fileInfo);
+
+}
+
+void actin::writebitmapfile(const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB)
+{  // re-scale for byte output and save image data
+
+#define BYTE unsigned char
+
+#pragma pack(push,1)  // align the structs to byte boundaries
+
+	typedef struct tagRGB 
+	{
+		BYTE    B; 
+		BYTE    G; 
+		BYTE    R; 
+	} RGB; 
+
+#pragma pack(pop)
+
 
 	RGB *line;
-	line = new RGB[bitmapwidth];
+	line = new RGB[BMP_WIDTH];
+
+	outbmpfile.seekp(bitmap_start); // move to start
 
 	// write out the data, line by line (note: y is backwards)
-	for (int y = (bitmapheight-1); y>=0; y--)
+	for (int y = (BMP_HEIGHT-1); y>=0; y--)
 		{
 		//outbmpfile.write(picbuff + (bitmapwidth*y), bitmapwidth);
-		for (int x = 0; x<bitmapwidth; x++)
+		for (int x = 0; x<BMP_WIDTH; x++)
 			{
 			line[x].B=(unsigned char)(255 * imageB[x][y]);
 			line[x].G=(unsigned char)(255 * imageG[x][y]);
 			line[x].R=(unsigned char)(255 * imageR[x][y]);
 			}
-			outbmpfile.write((char*)line,bitmapwidth*3);
+			outbmpfile.write((char*)line,BMP_WIDTH*3);
 		}
 
-	outbmpfile.close();
+	outbmpfile.flush();
 
 	delete [] line;
-	free(fileHeader);
-	free(fileInfo);
 
 }
 
@@ -2086,19 +2127,26 @@ void * actin::compressfilesthread(void* threadarg)
 		//sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
 		//system(command1);
 
-		sprintf(command1, "gzip -q -f -9 report*.txt 2>/dev/null" );
+		sprintf(command1, "gzip -q -f -9 %sreport*.txt 2>/dev/null" ,TEMPDIR);
 		system(command1);
 
-		sprintf(command1 , "gzip -q -f -9 data*.txt 2>/dev/null" );
+		sprintf(command1 , "gzip -q -f -9 %sdata*.txt 2>/dev/null",TEMPDIR);
 		system(command1);
 
 		// gzip the wrl file:
 
-		sprintf(command1 , "gzip -f -9 nodes%05i.wrl",dat->startnode );
+		sprintf(command1 , "gzip -f -9 %snodes%05i.wrl",TEMPDIR, dat->startnode );
 		system(command1);
 
-		sprintf(command1 , "mv nodes%05i.wrl.gz nodes%05i.wrz",dat->startnode, dat->startnode );
+		sprintf(command1 , "mv %snodes%05i.wrl.gz %snodes%05i.wrz", TEMPDIR,dat->startnode, VRMLDIR, dat->startnode );
 		system(command1);
+
+		sprintf(command1 , "mv %s*report*.gz %s",TEMPDIR, REPORTDIR);
+		system(command1);
+
+		sprintf(command1 , "mv %s*data*.gz %s", TEMPDIR, DATADIR);
+		system(command1);
+
 
 //		// convert bmps to jpgs:
 //#ifndef NO_IMAGEMAGICK
@@ -2280,6 +2328,8 @@ int actin::save_data(ofstream &ofstrm)
 
 int actin::load_data(ifstream &ifstr)
 {
+
+
     // clear the nodegrid
     clear_nodegrid();
     
@@ -2362,7 +2412,7 @@ int actin::load_data(ifstream &ifstr)
 	     << endl;
 	return 1;
     }
-    crosslinknodesdelay.clear();
+    //crosslinknodesdelay.clear();
     crosslinknodesdelay.resize(numcrosslinkdelay);
     // load each delay
     for(vector<int>::iterator i = crosslinknodesdelay.begin(); 
@@ -2378,7 +2428,6 @@ int actin::load_data(ifstream &ifstr)
 	return 1;
     }
     p_nuc->load_data(ifstr);
-    
     
     return 0;
 }
@@ -2402,94 +2451,272 @@ void actin::set_sym_break_axes(void)
 	vect sym_break_direction;
 
 	rotationmatrix tmp_rotation, tmp_rotation2;	
+	rotationmatrix final_rotation;
 
-	double x_angle, y_angle, z_angle;
-	double x_inertia = 0, y_inertia = 0;
-	double z_in_angle;
+	double x_angle, y_angle; //, z_angle;
+	//double x_inertia = 0, y_inertia = 0;
+	//double z_in_angle;
 
-	int numnodes;
+	//int numnodes;
 
 	find_center(sym_break_direction);  // which way did the bead go?
 
+	//cout << endl << "old sym_break_direction: " 
+	//<< sym_break_direction.x << "," 
+	//<< sym_break_direction.y << "," 
+	//<< sym_break_direction.z << endl;
+
 	x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
-	y_angle = -atan2(sym_break_direction.z,sym_break_direction.x);
-	z_angle = atan2(sym_break_direction.y,sym_break_direction.x);
 
-	// make a temp rotation matrix in that direction:
-
-	//tmp_rotation.rotatematrix(0, y_angle, 0); // just rotate y
-	tmp_rotation.rotatematrix(x_angle, y_angle, 0); // now pointing upwards
-	tmp_rotation2.rotatematrix(x_angle, y_angle, 0);
-
-	cout << endl << "old sym_break_direction: " 
-		<< sym_break_direction.x << "," 
-		<< sym_break_direction.y << "," 
-		<< sym_break_direction.z << endl;
-
+	tmp_rotation.rotatematrix(x_angle, 0 , 0);
 	tmp_rotation.rotate(sym_break_direction);
 
-	cout << "new sym_break_direction: " 
-		<< sym_break_direction.x << "," 
-		<< sym_break_direction.y << "," 
-		<< sym_break_direction.z << endl;
+	tmp_rotation.settoidentity();
+
+	y_angle = -atan2(sym_break_direction.x,sym_break_direction.z);
+
+	tmp_rotation.rotatematrix(0, y_angle , 0); // now pointing upwards
+	tmp_rotation.rotate(sym_break_direction);
+
+		//cout << "new sym_break_direction: " 
+		//<< sym_break_direction.x << "," 
+		//<< sym_break_direction.y << "," 
+		//<< sym_break_direction.z << endl;
 
 
-	// find CofM
+	tmp_rotation.settoidentity();
 
-	numnodes=0;
+	tmp_rotation.rotatematrix(y_angle , rotationmatrix::yaxis);
+	tmp_rotation.rotatematrix(x_angle , rotationmatrix::xaxis);
 
-	for (int i=0; i<highestnodecount; ++i)
+
+
+	//tmp_rotation.rotatematrix(x_angle,y_angle,0);
+
+	//find_center(sym_break_direction);  // which way did the bead go?
+	//tmp_rotation.rotate(sym_break_direction);
+
+	//cout << "combined xy new sym_break_direction: " 
+	//	<< sym_break_direction.x << "," 
+	//	<< sym_break_direction.y << "," 
+	//	<< sym_break_direction.z << endl;
+
+	// we now have tmp_rotation which will transform the bead direction to be along the z axis
+	// need to determine the z rotation by the principlal axis
+
+	double theta, chi, maxchi, maxchiangle;
+
+	maxchi = 0;
+	maxchiangle = 0;
+
+	for(theta = -PI; theta < PI; theta+=PI/180)
 	{
-		if (!node[i].polymer)
-			continue;
+		chi = 0;
 
-		CofM += node[i];
+		tmp_rotation2.settoidentity();
+		tmp_rotation2.rotatematrix(0,0,theta);
 
-		++numnodes;
+		for (int i=0; i<highestnodecount; ++i)
+		{
+			if ((!node[i].polymer) || (node[i].harbinger))
+				continue;
+
+			tmp_nodepos = node[i];
+			tmp_rotation.rotate(tmp_nodepos);  // rotate points to bring in line with sym break dir'n
+			tmp_rotation2.rotate(tmp_nodepos);	// rotate z
+
+			// only look at front of bead (i.e. new z<0, in direction of movement)
+			//if (tmp_nodepos.z<0)
+			{
+				chi += tmp_nodepos.y * tmp_nodepos.y; // sum the squares of distance from the axis
+			}
+			
+		}
+
+		if (chi > maxchi)
+		{
+			maxchi = chi;
+			maxchiangle = theta;
+		}
 
 	}
 
-	CofM *= (1/ (double) numnodes);
+	// now have all the angles
+	// need to assemble them in the right (reverse) order z,y,x
+	// to get the rotation matrix
 
-	tmp_rotation.rotate(CofM);
+	camera_rotation.settoidentity();
 
+	camera_rotation.rotatematrix(maxchiangle, rotationmatrix::zaxis);
+	camera_rotation.rotatematrix(y_angle, rotationmatrix::yaxis);
+	camera_rotation.rotatematrix(x_angle, rotationmatrix::xaxis);
 
-	for (int i=0; i<highestnodecount; ++i)
-	{
-		if (!node[i].polymer)
-			continue;
+	reverse_camera_rotation.settoidentity();
+	//reverse_camera_rotation2.settoidentity();
 
-		tmp_nodepos = node[i];
-		tmp_rotation.rotate(tmp_nodepos);  // rotate points to bring in line with sym break dir'n
+	reverse_camera_rotation.rotatematrix(-maxchiangle, rotationmatrix::zaxis);
+	reverse_camera_rotation.rotatematrix(-y_angle, rotationmatrix::yaxis);
+	reverse_camera_rotation.rotatematrix(-x_angle, rotationmatrix::xaxis);
 
+	cout << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << "," << y_angle*180/PI << "," << maxchiangle*180/PI << endl;
 
-		// determine principal axis
-
-		x_inertia+=(tmp_nodepos.x-CofM.x)*(tmp_nodepos.x-CofM.x);
-		y_inertia+=(tmp_nodepos.y-CofM.y)*(tmp_nodepos.y-CofM.y);
-		
-	}
-
-	z_in_angle = atan2(sqrt(x_inertia),sqrt(y_inertia));
-
-	cout << "sqrt(x_inertia): " << sqrt(x_inertia) 
-		 << " sqrt(y_inertia): " << sqrt(y_inertia) 
-		 << " z_in_angle: " << 180*z_in_angle << endl; 
-
-
-	//tmp_rotation.rotatematrix(0, 0, z_in_angle); // now pointing upwards
-	//tmp_rotation2.rotatematrix(0, 0, z_in_angle);
-
-	//camera_rotation.rotatematrix(x_angle, y_angle, -z_in_angle);
-	//camera_rotation.rotatematrix(0, 0, z_in_angle);
-	//camera_rotation.rotatematrix(x_angle, y_angle, 0);
-	
-	camera_rotation = tmp_rotation;
-
-	//reverse_camera_rotation.rotatematrix(0, 0, - z_in_angle);
-	reverse_camera_rotation = tmp_rotation2;
+	symbreakiter = iteration_num;
 
 }
+//
+//void actin::set_sym_break_axes(void)
+//{
+//
+//	vect tmp_nodepos;
+//
+//	//vect  CofM;
+//
+//	vect sym_break_direction;
+//
+//	rotationmatrix tmp_rotation, tmp_rotation2;	
+//
+//	double x_angle, y_angle;//, z_angle;
+//
+//	//double x_inertia = 0, y_inertia = 0;
+//	
+//	//double z_in_angle;
+//
+//	//int numnodes;
+//
+//	find_center(sym_break_direction);  // which way did the bead go?
+//
+//	x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
+//	y_angle = atan2(sym_break_direction.x,sym_break_direction.z);
+//	//z_angle = atan2(sym_break_direction.x,sym_break_direction.y);
+//
+//	// make a temp rotation matrix in that direction:
+//
+//	//tmp_rotation.rotatematrix(0, y_angle, 0); // just rotate y
+//	//tmp_rotation.rotatematrix(x_angle, y_angle, 0); // now pointing upwards
+//
+//	//cout << "old sym_break_direction: " 
+//	//	<< sym_break_direction.x << "," 
+//	//	<< sym_break_direction.y << "," 
+//	//	<< sym_break_direction.z << endl;
+//
+//	//tmp_rotation.rotate(sym_break_direction);
+//
+//	//cout << "new sym_break_direction: " 
+//	//	<< sym_break_direction.x << "," 
+//	//	<< sym_break_direction.y << "," 
+//	//	<< sym_break_direction.z << endl;
+//
+//
+//	// find CofM
+//
+//	//numnodes=0;
+//
+//	//for (int i=0; i<highestnodecount; ++i)
+//	//{
+//	//	if (!node[i].polymer)
+//	//		continue;
+//
+//	//	CofM += node[i];
+//
+//	//	++numnodes;
+//
+//	//}
+//
+//	//CofM *= (1/ (double) numnodes);
+//
+//	//tmp_rotation.rotate(CofM);
+//
+//	double theta, chi, maxchi, maxchiangle;
+//
+//	maxchi = 0;
+//
+//	for(theta = -PI; theta < PI; theta+=PI/180)
+//	{
+//		chi = 0;
+//
+//		tmp_rotation.settoidentity();
+//		tmp_rotation.rotatematrix(x_angle,y_angle,0);
+//		tmp_rotation2.rotatematrix(0,0,theta);
+//
+//		for (int i=0; i<highestnodecount; ++i)
+//		{
+//			if ((!node[i].polymer) || (node[i].harbinger))
+//				continue;
+//
+//			tmp_nodepos = node[i];
+//			tmp_rotation.rotate(tmp_nodepos);  // rotate points to bring in line with sym break dir'n
+//			tmp_rotation2.rotate(tmp_nodepos);	// rotate z
+//
+//			// only look at front of bead (i.e. new z<0, in direction of movement)
+//			if (tmp_nodepos.z<0)
+//			{
+//				chi += tmp_nodepos.x * tmp_nodepos.x; // sum the squares pf distance from the axis
+//			}
+//			
+//		}
+//
+//		if (chi > maxchi)
+//		{
+//			maxchi = chi;
+//			maxchiangle = theta;
+//		}
+//
+//	}
+//
+//	
+//
+//	camera_rotation.settoidentity();
+//	camera_rotation2.settoidentity();
+//
+//	camera_rotation.rotatematrix(x_angle, y_angle, 0);
+//	camera_rotation2.rotatematrix(0, 0, maxchiangle);
+//
+//	reverse_camera_rotation.settoidentity();
+//	reverse_camera_rotation2.settoidentity();
+//
+//	reverse_camera_rotation.rotatematrix(-x_angle, -y_angle, 0);
+//	reverse_camera_rotation2.rotatematrix(0, 0, -maxchiangle);
+//
+//
+//	cout << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << "," << y_angle*180/PI << "," << maxchiangle*180/PI << endl;
+//
+//	symbreakiter = iteration_num;
+//
+//}
+
+void actin::save_sym_break_axes(void)
+{
+	ofstream opsymbreak("sym_break_axis.txt", ios::out | ios::trunc);
+	if (!opsymbreak) 
+	{ cout << "Unable to open file 'sym_break_axis.txt' for output"; return;}
+
+	opsymbreak  << symbreakiter << " "
+				<< camera_rotation << " "
+				<< reverse_camera_rotation << endl;
+
+	opsymbreak.close();
+
+	//cout << "'sym_break_axis.txt' file written" << endl;
+}
+
+void actin::load_sym_break_axes(void)
+{
+	ifstream ipsymbreak("sym_break_axis.txt", ios::in);
+
+	if (!ipsymbreak) 
+	{ 
+		cout << "Unable to open file 'sym_break_axis.txt' for input, skipping." << endl;
+	}
+	else
+	{
+		ipsymbreak  >> symbreakiter 
+					>> camera_rotation 
+					>> reverse_camera_rotation;
+
+		ipsymbreak.close();
+	}
+}
+
 
 void actin::clearstats(void)
 {

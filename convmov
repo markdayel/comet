@@ -1,0 +1,117 @@
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run1/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run1_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run2/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run2_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run3/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run3_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run4/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run4_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run5/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run5_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run6/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run6_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run7/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run7_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run8/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run8_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run9/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run9_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run10/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run10_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run11/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run11_x_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run12/bitmaps/x_proj_%05d.png -vcodec mpeg4 -strict 100 run12_x_proj.mov 
+
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run1/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run1_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run2/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run2_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run3/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run3_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run4/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run4_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run5/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run5_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run6/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run6_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run7/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run7_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run8/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run8_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run9/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run9_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run10/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run10_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run11/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run11_y_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run12/bitmaps/y_proj_%05d.png -vcodec mpeg4 -strict 100 run12_y_proj.mov 
+
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run1/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run1_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run2/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run2_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run3/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run3_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run4/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run4_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run5/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run5_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run6/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run6_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run7/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run7_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run8/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run8_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run9/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run9_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run10/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run10_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run11/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run11_z_proj.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run12/bitmaps/z_proj_%05d.png -vcodec mpeg4 -strict 100 run12_z_proj.mov 
+
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run1/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run1_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run2/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run2_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run3/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run3_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run4/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run4_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run5/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run5_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run6/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run6_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run7/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run7_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run8/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run8_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run9/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run9_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run10/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run10_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run11/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run11_x_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run12/bitmaps/x_forces_%05d.png -vcodec mpeg4 -strict 100 run12_x_forces.mov 
+
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run1/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run1_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run2/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run2_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run3/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run3_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run4/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run4_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run5/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run5_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run6/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run6_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run7/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run7_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run8/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run8_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run9/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run9_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run10/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run10_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run11/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run11_y_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run12/bitmaps/y_forces_%05d.png -vcodec mpeg4 -strict 100 run12_y_forces.mov 
+
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run1/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run1_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run2/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run2_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run3/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run3_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run4/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run4_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run5/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run5_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run6/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run6_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run7/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run7_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run8/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run8_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run9/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run9_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run10/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run10_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run11/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run11_z_forces.mov &
+nice /home/socr/b/mark/ffmpeg -hq -me full -y  -qscale 1 -i run12/bitmaps/z_forces_%05d.png -vcodec mpeg4 -strict 100 run12_z_forces.mov 
+
+
+rm -f run*.log
+cp -f run1/cometparams.ini ./run1_cometparams.ini
+cp -f run1/comet_run_info.txt ./run1_comet_run_info.txt
+cp -f run1/velocities.txt ./run1_velocities.txt
+cp -f run2/cometparams.ini ./run2_cometparams.ini
+cp -f run2/comet_run_info.txt ./run2_comet_run_info.txt
+cp -f run2/velocities.txt ./run2_velocities.txt
+cp -f run3/cometparams.ini ./run3_cometparams.ini
+cp -f run3/comet_run_info.txt ./run3_comet_run_info.txt
+cp -f run3/velocities.txt ./run3_velocities.txt
+cp -f run4/cometparams.ini ./run4_cometparams.ini
+cp -f run4/comet_run_info.txt ./run4_comet_run_info.txt
+cp -f run4/velocities.txt ./run4_velocities.txt
+cp -f run5/cometparams.ini ./run5_cometparams.ini
+cp -f run5/comet_run_info.txt ./run5_comet_run_info.txt
+cp -f run5/velocities.txt ./run5_velocities.txt
+cp -f run6/cometparams.ini ./run6_cometparams.ini
+cp -f run6/comet_run_info.txt ./run6_comet_run_info.txt
+cp -f run6/velocities.txt ./run6_velocities.txt
+cp -f run7/cometparams.ini ./run7_cometparams.ini
+cp -f run7/comet_run_info.txt ./run7_comet_run_info.txt
+cp -f run7/velocities.txt ./run7_velocities.txt
+cp -f run8/cometparams.ini ./run8_cometparams.ini
+cp -f run8/comet_run_info.txt ./run8_comet_run_info.txt
+cp -f run8/velocities.txt ./run8_velocities.txt
+cp -f run9/cometparams.ini ./run9_cometparams.ini
+cp -f run9/comet_run_info.txt ./run9_comet_run_info.txt
+cp -f run9/velocities.txt ./run9_velocities.txt
+cp -f run10/cometparams.ini ./run10_cometparams.ini
+cp -f run10/velocities.txt ./run10_velocities.txt
+cp -f run10/comet_run_info.txt ./run10_comet_run_info.txt
+cp -f run11/cometparams.ini ./run11_cometparams.ini
+cp -f run11/comet_run_info.txt ./run11_comet_run_info.txt
+cp -f run11/velocities.txt ./run11_velocities.txt
+cp -f run12/cometparams.ini ./run12_cometparams.ini
+cp -f run12/comet_run_info.txt ./run12_comet_run_info.txt
+cp -f run12/velocities.txt ./run12_velocities.txt
+
