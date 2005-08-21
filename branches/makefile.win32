@@ -1,0 +1,17 @@
+PROG = comet
+SRCS = actin.cpp Colour.cpp comet.cpp links.cpp nodes.cpp nucleator.cpp rotationmatrix.cpp
+OBJS = $(SRCS:.cpp=.o)
+LIBS =  -lm -lpthread
+CXXFLAGS = -O5 -ffast-math -march=athlon-xp -mfpmath=sse -fomit-frame-pointer -malign-double -fprefetch-loop-arrays -finline-functions -g
+#CXXFLAGS = -O5 -ffast-math -march=athlon-xp -mfpmath=sse -malign-double -fprefetch-loop-arrays -finline-functions -g
+#CXXFLAGS = -march=athlon-xp -mfpmath=sse -g
+CXX = c++ 
+$(PROG): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LIBS)
+
+clean:
+	rm -f $(OBJS)
+
+distclean: clean
+	rm -f $(PROG)
+
