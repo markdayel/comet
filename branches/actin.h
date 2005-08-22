@@ -107,15 +107,13 @@ public:
 	//vector <double> link_radial_histogram;
 	//vector <double> link_transverse_histogram;
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
-	
+	int applyforces(void);	
 	int collisiondetection(void);
 	void ejectfromnucleator(void);
 	void move_and_rotate(void);
 
-	int applyforces(void);	
-
 	void writebitmapfile(const char* filename, 
-							const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
+	const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
 	
 	int savebmp(int filenum, projection proj);
 
@@ -148,17 +146,23 @@ public:
 	//inline static int dorepulsion(const int& node_i,const int& node_j, const double& distsqr, const int& threadnum);
 	//static inline int dorepulsion(nodes& node_i,nodes& node_j,
 	//						  const double& dist,const int& threadnum);
-	static void *collisiondetectionthread(void* threadarg);
-	static void *collisiondetectiondowork(thread_data* dat);
+	
+	// -- ML Thread
+	//static void *collisiondetectionthread(void* threadarg);
+	//static void *linkforcesthread(void* threadarg);	
+	static void *collisiondetectiondowork(void* arg, pthread_mutex_t *mutex);
+	static void *linkforcesdowork(void* arg, pthread_mutex_t *mutex);
+	static void *applyforcesdowork(void* threadarg, pthread_mutex_t *mutex);
+	// --
+	
 	static bool isinthread;
 	//static Bool2d repulsedone;
 
-	static void *applyforcesthread(void* threadarg);
+
 	static vector <nodes*> linkremovefrom;
 	static vector <nodes*> linkremoveto;
 	//vector <int> linkformfrom;
 	vector <linkform> linkformto;
-	static void *linkforcesthread(void* threadarg);
 	static void *repulsiveforcesthread(void* threadarg);
 	static void *compressfilesthread(void* threadarg);
 

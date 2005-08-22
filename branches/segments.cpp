@@ -143,8 +143,6 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 	clearnodes();
 
-
-
 	// define force lines co-ords
 
 	linestartx.resize(3);
@@ -153,15 +151,15 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	lineunitvecx.resize(3);
 	lineunitvecy.resize(3);
 
-	for (int axis = 0; axis < 2; ++axis)
+	for (int axis = 0; axis < 3; ++axis)
 	{
 		linestartx[axis].resize(num_segs);
 		linestarty[axis].resize(num_segs);
 
 		lineunitvecx[axis].resize(num_segs);
 		lineunitvecy[axis].resize(num_segs);
+		
 	}
-
 
 	double startx,starty, theta;
 	double dist;

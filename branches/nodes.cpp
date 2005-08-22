@@ -54,8 +54,8 @@ nodes::nodes(void)
 	repforce_transverse.resize(NUM_THREADS);
 	repforce_radial.resize(NUM_THREADS);
 	links_broken.resize(NUM_THREADS);
-//	dispforce_transverse.resize(NUM_THREADS);
-//	dispforce_radial.resize(NUM_THREADS);
+//	dispforce_transverse.resize(NUM_THREADS*4);
+//	dispforce_radial.resize(NUM_THREADS*4);
 	nucleator_impacts.resize(NUM_THREADS);
 
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
