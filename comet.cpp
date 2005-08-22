@@ -14,6 +14,8 @@ removed without prior written permission from the author.
 
 #include "stdafx.h"
 #include "comet.h"
+#include "threadtaskteam.h"
+
 // #include "nucleator.h"
 // #include "string.h"
 
@@ -110,8 +112,18 @@ int XLINK_NEAREST = 1;
 double VIEW_HEIGHT = 12;
 
 bool USE_THREADS;
-
 int NUM_THREADS;
+//-- ThreadTaskTeam
+taskteam collision_tteam;
+taskteam linkforces_tteam;
+taskteam applyforces_tteam;
+pthread_mutex_t removelinks_mutex;
+pthread_mutex_t nodedone_mutex;
+bool USETHREAD_COLLISION   = true;
+bool USETHREAD_APPLYFORCES = true;
+bool USETHREAD_LINKFORCES  = true;
+// --
+
 pthread_attr_t thread_attr;
 
 vector<pthread_t>  threads;
@@ -297,7 +309,20 @@ if (!rewritesymbreak)
 			cout << "Running in multithreaded mode with " << NUM_THREADS << " threads per stage" << endl;
 		USE_THREADS = true;
 	}
+	// -- Threading TaskTeam, create and intialise the team
+	collision_tteam.create_team(NUM_THREADS);
+	collision_tteam.set_taskfcn(&actin::collisiondetectiondowork);
 
+	linkforces_tteam.create_team(NUM_THREADS);
+	linkforces_tteam.set_taskfcn(&actin::linkforcesdowork);
+
+	applyforces_tteam.create_team(NUM_THREADS);
+	applyforces_tteam.set_taskfcn(&actin::applyforcesdowork);
+
+	pthread_mutex_init(&nodedone_mutex, NULL);
+	pthread_mutex_init(&removelinks_mutex, NULL);
+        // --
+	
 	threads.resize(NUM_THREADS*5);
 
 	collisiondetectiongolock_mutex.resize(NUM_THREADS*5);
@@ -473,6 +498,33 @@ if (!rewritesymbreak)
 			{
 				ss >> LINK_FORCE;
 				continue;
+			}
+			else if (tag == "USETHREAD_COLLISION") 
+			{
+			    ss >> buff2;
+			    if(buff2=="true")
+				USETHREAD_COLLISION=true;
+			    else
+				USETHREAD_COLLISION=false;
+			    continue;
+			}
+			else if (tag == "USETHREAD_LINKFORCES") 
+			{
+			    ss >> buff2;
+			    if(buff2=="true")
+				USETHREAD_LINKFORCES=true;
+			    else
+				USETHREAD_LINKFORCES=false;
+			    continue;
+			}
+			else if (tag == "USETHREAD_APPLYFORCES") 
+			{
+			    ss >> buff2;
+			    if(buff2=="true")
+				USETHREAD_APPLYFORCES=true;
+			    else
+				USETHREAD_APPLYFORCES=false;
+			    continue;
 			} 
 			else if (tag == "P_NUC") 
 			{

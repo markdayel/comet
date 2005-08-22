@@ -22,6 +22,7 @@ prior written permission from the author.
 #include "nodes.h"
 #include "nucleator.h"
 #include "Colour.h"
+#include "threadtaskteam.h"
 //#include "stdafx.h"
 
 typedef vector<nodes*> Nodes1d;
@@ -166,9 +167,16 @@ public:
 	//inline static int dorepulsion(const int& node_i,const int& node_j, const double& distsqr, const int& threadnum);
 	//static inline int dorepulsion(nodes& node_i,nodes& node_j,
 	//						  const double& dist,const int& threadnum);
-	static void *collisiondetectionthread(void* threadarg);
-	static void *collisiondetectiondowork(thread_data* dat);
+	// -- Threading, comment these out
+	// static void *collisiondetectionthread(void* threadarg);
+	// static void *collisiondetectiondowork(thread_data* dat);
+        // --
 	static bool isinthread;
+	// -- Threading add worker functions
+	static void *collisiondetectiondowork(void* arg, pthread_mutex_t *mutex);
+	static void *linkforcesdowork(void* arg, pthread_mutex_t *mutex);
+	static void *applyforcesdowork(void* threadarg, pthread_mutex_t *mutex);
+	// --
 	//static Bool2d repulsedone;
 
 	static void *applyforcesthread(void* threadarg);

@@ -103,13 +103,24 @@ using namespace std;
 
 #include "pthread.h"
 #include "semaphore.h"
+#include "threadtaskteam.h"
 //#include "sched.h"
 
 //extern char temp_BMP_filename[];
 
 extern bool USE_THREADS;
-
 extern int NUM_THREADS;
+//-- Threading
+extern taskteam collision_tteam;
+extern taskteam linkforces_tteam;
+extern taskteam applyforces_tteam;
+extern bool USETHREAD_LINKFORCES;
+extern bool USETHREAD_APPLYFORCES;
+extern bool USETHREAD_COLLISION;
+extern pthread_mutex_t removelinks_mutex;
+extern pthread_mutex_t nodedone_mutex;
+//-- 
+
 extern pthread_attr_t thread_attr;
 
 extern vector<pthread_t>  threads;

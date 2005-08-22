@@ -15,6 +15,7 @@ removed without prior written permission from the author.
 #include "stdafx.h"
 #include "actin.h"
 #include "rotationmatrix.h"
+#include <assert.h>
 
 actin::actin(void)
 {
@@ -728,716 +729,418 @@ void actin::move_and_rotate()
 	return;
 }
 
+// - - - - - - - - - - - - - - 
+// -- FROM THREADING BRANCH 
+// Collisiondetection
 int actin::collisiondetection(void)
 {
-
-	for (int i=0; i<highestnodecount; i++)
+    fill(donenode.begin(), donenode.end(), false);
+    
+    int numthreadnodes, start, end, higestorderednode;
+    
+    higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
+    numthreadnodes = higestorderednode / NUM_THREADS;
+    
+    // do collision detection
+    //int numtodo = 0;
+    
+    if(USE_THREADS && USETHREAD_COLLISION)
+    {
+	for (int i = 0; i < NUM_THREADS; i++)
 	{
-		donenode[i] = false;
+	    start = i * numthreadnodes;
+	    end = (i+1) * numthreadnodes;
+	    
+	    collision_thread_data_array[i].startnode = start;
+	    collision_thread_data_array[i].endnode = end;
+	    collision_thread_data_array[i].threadnum = i;
+	    
+	    if (i<NUM_THREADS-1)
+	    {
+		collision_thread_data_array[i].endnode = end;
+		//numtodo+=end-start;
+	    }
+	    else
+	    {	// put remainder in last thread (cludge for now)
+		collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
+		//numtodo+=end-start + highestnodecount % NUM_THREADS;
+		assert(collision_thread_data_array[i].endnode == higestorderednode);
+	    };
+	    
+	    // add this task to the team
+	    collision_tteam.add_task(&collision_thread_data_array[i]);
 	}
+	collision_tteam.do_work();
+    } else {
+        // if not using threads, do in one go:
+	collision_thread_data_array[0].startnode = 0;
+	collision_thread_data_array[0].endnode = higestorderednode;
+	collision_thread_data_array[0].threadnum = 0;
+	collisiondetectiondowork(&collision_thread_data_array[0], NULL);
+    }
+    
+    return 0;
+}
 
+void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
+{
+    // cast arg
+    thread_data* dat;
+    dat = (thread_data*) arg;
+    
+    vect nodeposvec;
+    double distsqr,dist;
+    double force;
+    vect tomove;
+    vect disp;
+    
+    for (int i=dat->startnode; i<dat->endnode; i++)
+    {	
+	if( (donenode[nodesbygridpoint[i]]) ||
+	    (node[nodesbygridpoint[i]].dontupdate) ||	    
+	    (!node[nodesbygridpoint[i]].polymer) )
+	{
+	    continue;  // skip nodes already done
+	}
 	
-	int numthreadnodes, start, end, higestorderednode;
+	// find nodes on same gridpoint, and nodes within repulsive range
+	if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0)
+	    continue;	// find nodes within 1 grid point
+	
+	// skip if zero
+	
+	// loop over nodes on same gridpoint:
+	for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
+	    sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
+	    sameGPnode++) {
+	    
+	    if(donenode[(*sameGPnode)->nodenum])
+		continue;  // skip if done
+	    
+	    if( ( (*sameGPnode)->nodenum < dat->startnode) ||
+		( (*sameGPnode)->nodenum >= dat->endnode) )
+		continue;    // skip if out of range of this thread
 
-	higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
-
-	numthreadnodes = higestorderednode / NUM_THREADS;
-
-// do collision detection
-
-//int numtodo = 0;
-
-	if (USE_THREADS)
-	{
-
-		for (int i = 0; i < NUM_THREADS; i++)
-		{
-			start = i * numthreadnodes;
-			end = (i+1) * numthreadnodes;
-
-			collision_thread_data_array[i].startnode = start;
-			collision_thread_data_array[i].endnode = end;
-			collision_thread_data_array[i].threadnum = i;
-
-			if (i<NUM_THREADS-1)
-			{
-				collision_thread_data_array[i].endnode = end;
-				//numtodo+=end-start;
-			}
-			else
-			{	// put remainder in last thread (cludge for now)
-				collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
-				//numtodo+=end-start + highestnodecount % NUM_THREADS;
-			};			
-		}
-// check
-		/*
-		if (rand() < RAND_MAX * 0.01)
-		{
-			for (int i = 0; i < NUM_THREADS; i++)
-			{
-				cout << collision_thread_data_array[i].startnode << " to " <<
-					collision_thread_data_array[i].endnode << "...";
-			}
-			cout << "higestorderednode " << higestorderednode << endl;
-		}
-*/
-
-
-	// check
-		/*if (numtodo != highestnodecount)
-		{
-			cout << "numtodo not match :" << numtodo << " should be" << highestnodecount << endl;
-			for (int i = 0; i < NUM_THREADS; i++)
-			{
-				cout << "Thread " << i << " start: " << collision_thread_data_array[i].startnode
-					<< " end " << collision_thread_data_array[i].endnode << endl;
-			}
-			cout.flush();
-		}*/
-
-// thread test: call sequentially within this thread
-
-		for (int i = 0; i < NUM_THREADS; i++)
-		{
-			collisiondetectiondowork(&collision_thread_data_array[i]);
-		}
-
-
-/*
-		// release thread blocks to start threads:
-
-	for (int i = 0; i < NUM_THREADS; i++)
-		{
-			//sem_post(&collision_thread_go[i]);
-			// start the thread:
-			pthread_mutex_unlock(&collisiondetectiongolock_mutex[i]);
-		}
-
-
-	// re-sync when done:
-	for (int i = 0; i < NUM_THREADS; i++)
-		{
-			// grab done locks for all threads:
-			pthread_mutex_lock(&collisiondetectiondonelock_mutex[i]);
-		}
-
-	// relock 'go'
-
-	for (int i = 0; i < NUM_THREADS; i++)
-		{
-			// grab done locks for all threads:
-			pthread_mutex_lock(&collisiondetectiongolock_mutex[i]);
-		}
-
-	// and let children take the 'done' locks again
-
-	for (int i = 0; i < NUM_THREADS; i++)
-		{
-			// grab done locks for all threads:
-			pthread_mutex_unlock(&collisiondetectiondonelock_mutex[i]);
-		}
-*/
-/*
-if (!collisionthreaddone1)
-	cout << "Thread 0 still going!" << endl;
-if (!collisionthreaddone2)
-	cout << "Thread 1 still going!" << endl;
-if (!collisionthreaddone3)
-	cout << "Thread 2 still going!" << endl;
-if (!collisionthreaddone4)
-	cout << "Thread 3 still going!" << endl;
-*/
-	}
-	else
-	{  // if not using threads, do in one go:
-		collision_thread_data_array[0].startnode = 0;
-		collision_thread_data_array[0].endnode = higestorderednode;
-		collision_thread_data_array[0].threadnum = 0;
-		collisiondetectiondowork(&collision_thread_data_array[0]);
-	}
-
-
-
-
-
-	return 0;
-}
-/*
-void * actin::collisiondetectionthread(void* threadarg)
-{
-
-	struct thread_data *dat;
-	dat = (struct thread_data *) threadarg;
-
-	cout << "Starting collision detection thread " << dat->threadnum << endl;
-
-	while (true)
-	{	
-		pthread_mutex_lock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // go only if released by main thread
-		pthread_mutex_lock(&collisiondetectiongolock_mutex[dat->threadnum]);  // lock main thread
-		// release the go lock so can be taken by main thread again:
-		pthread_mutex_unlock(&collisiondetectiongolock_mutex[dat->threadnum]);
-
-		if (dat->threadnum == 0)
-			collisionthreaddone1 = false;
-		if (dat->threadnum == 1)
-			collisionthreaddone2 = false;
-		if (dat->threadnum == 2)
-			collisionthreaddone3 = false;
-		if (dat->threadnum == 3)
-			collisionthreaddone4 = false;
-
-//	cout << "Thread running " << dat->threadnum << endl;
-
-		collisiondetectiondowork(dat);
-
-		if (dat->threadnum == 0)
-			collisionthreaddone1 = true;
-		if (dat->threadnum == 1)
-			collisionthreaddone2 = true;
-		if (dat->threadnum == 2)
-			collisionthreaddone3 = true;
-		if (dat->threadnum == 3)
-			collisionthreaddone4 = true;
-
-
-		pthread_mutex_unlock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // release main thread block waiting for data
-	}  
-
-	return (void*) NULL;
-}
-*/
-
-void * actin::collisiondetectiondowork(thread_data* dat)
-{
-	vect nodeposvec;
-	double distsqr,dist;
-	double force;
-	vect tomove;
-
-	vect disp;
-
-	for (int i=dat->startnode; i<dat->endnode; i++)
-	{	
-		if ((node[nodesbygridpoint[i]].dontupdate) ||
-			(donenode[nodesbygridpoint[i]]) ||
-			(!node[nodesbygridpoint[i]].polymer))
-		{
-			continue;  // skip nodes already done
+	    // REVISIT ML: remove this mutex, should never conflict
+	    pthread_mutex_lock(&nodedone_mutex);
+	    donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
+	    pthread_mutex_unlock(&nodedone_mutex);
+	    
+	    // of these nodes, calculate euclidian dist
+	    nodeposvec = (*(*sameGPnode));	// get xyz of our node
+	    for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
+		 nearnode<recti_near_nodes[dat->threadnum].end();
+		 nearnode++) {
+		if ((*sameGPnode)==(*nearnode))
+		    continue;  // skip if self
+		
+                //if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
+		//	continue;  // skip if done opposite pair
+		
+		// this check should not be necessary?:
+		// if (( (*sameGPnode)->nodenum < dat->startnode) ||
+		//    ( (*sameGPnode)->nodenum >= dat->endnode) )
+		//    continue;    // skip if out of range of this thread  
+		assert( (*sameGPnode)->nodenum >= dat->startnode );
+		assert( (*sameGPnode)->nodenum <  dat->endnode   );
+		
+		disp = (*(*nearnode)) - nodeposvec; 
+		distsqr = disp.sqrlength();
+		
+		if (distsqr < 2 * SQRT_ACCURACY_LOSS)
+		{	
+		    continue;
 		}
 		
-		// find nodes on same gridpoint, and nodes within repulsive range
-
-		if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0) continue;	// find nodes within 1 grid point
-												
-		// skip if zero
-
-		// loop over nodes on same gridpoint:
-		for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end() ; sameGPnode++ )
+		//dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
+		//dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
+		
+		if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
 		{
-
-			if (donenode[(*sameGPnode)->nodenum])
-				continue;  // skip if done
-			
-			if (( (*sameGPnode)->nodenum < dat->startnode) ||
-				( (*sameGPnode)->nodenum >= dat->endnode) )
-				 continue;    // skip if out of range of this thread
-
-			donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
-
-			// of these nodes, calculate euclidian dist
-
-			nodeposvec = (*(*sameGPnode));	// get xyz of our node
-
-			for (vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); nearnode<recti_near_nodes[dat->threadnum].end() ; nearnode++ )
-			{
-				if ((*sameGPnode)==(*nearnode)) continue;  // skip if self
-				//if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
-				//	continue;  // skip if done opposite pair
-				
-				// this check should not be necessary?:
-
-				if (( (*sameGPnode)->nodenum < dat->startnode) ||
-					( (*sameGPnode)->nodenum >= dat->endnode) )
-					continue;    // skip if out of range of this thread  
-
-				
-				disp = (*(*nearnode)) - nodeposvec; 
-
-				distsqr = disp.sqrlength();
-
-				if (distsqr < 2 * SQRT_ACCURACY_LOSS)
-				{	
-					continue;
-				}
-
-				//dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
-				//dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
-				
-				if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
-					{
-						// calc dist between nodes
-
-						dist = sqrt(distsqr); 
-
-						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
-
-					//if (dist > NODE_INCOMPRESSIBLE_RADIUS)
-					//{
-					//	force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
-					//		(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * (dist-NODE_INCOMPRESSIBLE_RADIUS )) ;
-					//}
-					//else
-					//{
-					//	force =  NODE_REPULSIVE_MAG ;
-					//}  // fix force if below node incompressible distance
-
-					tomove = disp * ( 2 * force / dist);
-					
-					(*sameGPnode)->rep_force_vec[0] -= tomove ;
-//
-//#ifndef NO_CALC_STATS
-//
-					(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial[0], (*sameGPnode)->repforce_transverse[0]);
-//
-
-//#endif
-
-//					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
-//					{
-//					                            
-//						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
-//						scale = (double)NODE_INCOMPRESSIBLE_RADIUS / (double)4.0*dist;  
-//
-//						tomove = disp * (2*scale);	// these are the vector half components (in direction from i to j)
-//
-//
-//						(*sameGPnode)->repulsion_displacement_vec[0] = -tomove;
-//
-////#ifndef NO_CALC_STATS
-////
-////						(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->dispforce_radial[0], (*sameGPnode)->dispforce_transverse[0]);
-////
-////#endif
-//					}
-				}
-
-			}
+		    // calc dist between nodes
+		    dist = sqrt(distsqr); 
+		    force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+		    tomove = disp * ( 2 * force / dist);
+		    
+		    (*sameGPnode)->rep_force_vec[0] -= tomove ;
+		    (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial[0], (*sameGPnode)->repforce_transverse[0]);
+		    
 		}
+	    }
 	}
-return (void*) NULL;
+    }
+    return (void*) NULL;
 }
 
-//int actin::findnearbynodes(const int& ournodenum, const int& adjgridpoints, const int& threadnum)
 int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
-{	// create list of nodes on the same gridpoint, and on adjacent gridpoints (including same GP)
-	// 	
-	// N.B. a good fraction of the total CPU time is spent in this function
-	// may be worth linearizing the loop or poss amalgamating with the calling
-	// functions so that creating and reading the list of gridpoints is not necessary
+{
+    // create list of nodes on the same gridpoint, and on adjacent gridpoints (including same GP)
+    // 	
+    // N.B. a good fraction of the total CPU time is spent in this function
+    // may be worth linearizing the loop or poss amalgamating with the calling
+    // functions so that creating and reading the list of gridpoints is not necessary
 
-nodes *nodeptr, *startnodeptr;
-
-// save repeatedly dereferencing pointer by threadnum in inner loops:
-// (maybe compiler does this anyway?)
-Nodes1d *p_recti_near_nodeslist = &recti_near_nodes[threadnum];
-Nodes1d *p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
-
-p_recti_near_nodeslist->resize(0);
-p_nodes_on_same_gridpoint->resize(0); 
-
-if (!ournode.polymer)
-		return 0;
-
-int gridx = ournode.gridx;
-int gridy = ournode.gridy;
-int gridz = ournode.gridz;
-
-if ((gridx < 0) || (gridx > GRIDSIZE) ||
+    if(!ournode.polymer) // bail early
+	return 0;
+    
+    nodes *nodeptr, *startnodeptr;
+    
+    // save repeatedly dereferencing pointer by threadnum in inner loops:
+    // (maybe compiler does this anyway?)
+    Nodes1d *p_recti_near_nodeslist = &recti_near_nodes[threadnum];
+    Nodes1d *p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
+        
+    int gridx = ournode.gridx;
+    int gridy = ournode.gridy;
+    int gridz = ournode.gridz;
+    
+    if ((gridx < 0) || (gridx > GRIDSIZE) ||
 	(gridy < 0) || (gridy > GRIDSIZE) ||
 	(gridz < 0) || (gridz > GRIDSIZE))
-		return 0;
+	return 0;
 
-int minx,miny,minz,maxx,maxy,maxz;
+    p_recti_near_nodeslist->resize(0);
+    p_nodes_on_same_gridpoint->resize(0);
 
-minx = gridx-adjgridpoints;
-miny = gridy-adjgridpoints;
-minz = gridz-adjgridpoints;
+    int minx,miny,minz,maxx,maxy,maxz;
+    
+    minx = gridx-adjgridpoints;
+    miny = gridy-adjgridpoints;
+    minz = gridz-adjgridpoints;
+    
+    maxx = gridx+adjgridpoints;
+    maxy = gridy+adjgridpoints;
+    maxz = gridz+adjgridpoints;
+    
+    // truncate if out of grid bounds:
+    if (minx < 0)
+	minx = 0;
+    
+    if (miny < 0)
+	miny = 0;
 
-maxx = gridx+adjgridpoints;
-maxy = gridy+adjgridpoints;
-maxz = gridz+adjgridpoints;
+    if (minz < 0)
+	minz = 0;
+    
+    if (maxx > GRIDSIZE)
+	maxx = GRIDSIZE;
 
-// truncate if out of grid bounds:
+    if (maxy > GRIDSIZE)
+	maxy = GRIDSIZE;
 
-if (minx < 0) minx = 0;
-if (miny < 0) miny = 0;
-if (minz < 0) minz = 0;
-
-if (maxx > GRIDSIZE) maxx = GRIDSIZE;
-if (maxy > GRIDSIZE) maxy = GRIDSIZE;
-if (maxz > GRIDSIZE) maxz = GRIDSIZE;
-
-// do adjgridpoints by adjgridpoints scan on grid
-
-for (int x = minx; x != maxx; ++x)  
-	for (int y = miny; y != maxy; ++y)
-		for (int z = minz; z != maxz; ++z)
-		{
+    if (maxz > GRIDSIZE)
+	maxz = GRIDSIZE;
+    
+    // do adjgridpoints by adjgridpoints scan on grid
+    
+    for (int x = minx; x != maxx; ++x) {
+	for (int y = miny; y != maxy; ++y) {
+	    for (int z = minz; z != maxz; ++z) {
+		
 		nodeptr=nodegrid[x][y][z];
 		startnodeptr=nodeptr;
-			if (nodeptr!=0) 
-			{
-				do
-				{
-					p_recti_near_nodeslist->push_back(nodeptr);
-					nodeptr = nodeptr->nextnode;					
-				}
-				while (nodeptr!=startnodeptr);  //until back to start
-				
-			}
-		}
-
-	// nodes on same gridpoint:
-
-	nodeptr=nodegrid[gridx][gridy][gridz];
-	startnodeptr=nodeptr;
-	if (nodeptr!=0) 
-	{
-		do
-		{
-			p_nodes_on_same_gridpoint->push_back(nodeptr);
+		if (nodeptr!=0) {
+		    do {
+			p_recti_near_nodeslist->push_back(nodeptr);
 			nodeptr = nodeptr->nextnode;					
+		    } while(nodeptr!=startnodeptr);  // until back to start
 		}
-		while (nodeptr!=startnodeptr);  //until back to start
-		
+	    }
 	}
-
-	return (int) p_recti_near_nodeslist->size();
+    }
+    // nodes on same gridpoint:
+    
+    nodeptr=nodegrid[gridx][gridy][gridz];
+    startnodeptr=nodeptr;
+    if(nodeptr!=0) {
+	do {
+	    p_nodes_on_same_gridpoint->push_back(nodeptr);
+	    nodeptr = nodeptr->nextnode;					
+	} while (nodeptr!=startnodeptr);  // until back to start
+    }
+    
+    return (int) p_recti_near_nodeslist->size();
 }
 
-//inline int actin::dorepulsion(nodes& node_i,nodes& node_j,
-//							  const double& dist,const int& threadnum)
-//{						// defunct, now in collisiondetectiondowork
-//	if (&node_i==&node_j)
-//		return 0;
-//
-//	double scale;
-//
-//	vect disp;
-//
-//	disp = node_j - node_i;
-//
-//	scale = (NODE_INCOMPRESSIBLE_RADIUS / 4)*dist;  
-//
-//	disp *= scale;
-//
-//
-//#ifdef FORCES_BOTH_WAYS
-//
-//	node_i.repulsion_displacement_vec[threadnum] -= disp;
-//	node_j.repulsion_displacement_vec[threadnum] += disp;
-//
-//#else
-//
-//	node_i.repulsion_displacement_vec[threadnum] -= disp*2;
-//
-//#endif
-//
-//
-//	return 0;
-//}
-
+// ApplyForces
 int actin::applyforces(void)  // this just applys previously calculated forces (in dorepulsion())
 {
 #ifndef SEED_INSIDE
-	int numthreadnodes, start, end;
-
-	numthreadnodes = highestnodecount / NUM_THREADS;
-
-if (!GRASS_IS_GREEN) // (USE_THREADS)  // switch this off for now...
-	{
-		for (int i = 0; i < NUM_THREADS; i++)
-		{
-			start = i * numthreadnodes;
-			end = (i+1) * numthreadnodes;
-
-			applyforces_thread_data_array[i].startnode = start;
-			applyforces_thread_data_array[i].endnode = end;
-			applyforces_thread_data_array[i].threadnum = i;
-
-			if (i<NUM_THREADS-1)
-			{
-				applyforces_thread_data_array[i].endnode = end;
-			}
-			else
-			{	// put remainder in last thread (cludge for now)
-				applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
-			};
-		}
-
-		// release thread blocks to start threads:
-	for (int i = 0; i < NUM_THREADS; i++)
-		{
-			sem_post(&applyforces_thread_go[i]);
-		}
-
-		// and wait 'till complete:
-	for (int i = 0; i < NUM_THREADS; i++)
-		{
-			sem_wait(&applyforces_data_done[i]);
-		}
-
+    int numthreadnodes, start, end;
+    
+    numthreadnodes = highestnodecount / NUM_THREADS;
+    
+    if(USE_THREADS && USETHREAD_APPLYFORCES)  // switch this off for now...
+    {
+	for(int i=0; i<NUM_THREADS; i++){
+	    start = i * numthreadnodes;
+	    end = (i+1) * numthreadnodes;
+	    
+	    applyforces_thread_data_array[i].startnode = start;
+	    applyforces_thread_data_array[i].endnode = end;
+	    applyforces_thread_data_array[i].threadnum = i;
+	    
+	    if (i<NUM_THREADS-1)
+	    {
+		applyforces_thread_data_array[i].endnode = end;
+	    }
+	    else
+	    {	// put remainder in last thread (cludge for now)
+		applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+	    };
+	    applyforces_tteam.add_task(&applyforces_thread_data_array[i]);
 	}
-	else
-	{
-		for (int i=0; i<highestnodecount; i++)
-			{
-				for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
-				{
-					if ((!node[i].dontupdate) && node[i].polymer)
-						node[i].applyforces(threadnum);
-				}
-			}
-	}
+	applyforces_tteam.do_work();
+    } else {
+	applyforces_thread_data_array[0].startnode = 0;
+	applyforces_thread_data_array[0].endnode = highestnodecount;
+	applyforces_thread_data_array[0].threadnum = 0;
+	applyforcesdowork(&applyforces_thread_data_array[0], NULL);
 
-	for (int i=0; i<highestnodecount; i++)
-	{
-		if ((!node[i].dontupdate) && node[i].polymer)
-			node[i].updategrid(); // move the point on the grid if need to
-								  // and update the unit vector position
-	}
+	// REVISIT: remove this, old method
+	//for(int i=0; i<highestnodecount; i++){
+	//    for(int threadnum = 0; threadnum < NUM_THREADS; threadnum++) {
+	//	if((!node[i].dontupdate) && node[i].polymer)
+	//	    node[i].applyforces(threadnum);
+	//    }
+	//}
+    }
+    
+    for (int i=0; i<highestnodecount; i++)
+    {
+	if( (!node[i].dontupdate) && node[i].polymer)
+	    node[i].updategrid(); // move the point on the grid if need to
+	                          // and update the unit vector position
+    }
 #endif
-	return 0;
+    return 0;
 }
 
-void * actin::applyforcesthread(void* threadarg)
+void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
 {
-	struct thread_data *dat;
-	dat = (struct thread_data *) threadarg;
-
-	//cout << "Thread " << dat->threadnum << " started" << endl;
-	//cout.flush();
-
-	while (GRASS_IS_GREEN)
-	{	
-
-		sem_wait(&applyforces_thread_go[dat->threadnum]);  // go only if released by main thread
-
-		//applyforcesdetectiondowork(dat);
-
-		// sum forces etc. over all threads
-		for (int i=dat->startnode; i<dat->endnode; i++)
-			{
-			for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
-			{
-				node[i].applyforces(threadnum);
-			}
-			//node[i].updategrid(); // move the point on the grid if need to
-		}
-
-		sem_post(&applyforces_data_done[dat->threadnum]);  // release main thread block waiting for data
-
-	}  
-
-	return (void*) NULL;
+    // cast arg
+    thread_data* dat;
+    dat = (thread_data*) arg;
+    
+    // sum forces etc. over all threads
+    for(int i=dat->startnode; i<dat->endnode; i++)
+    {
+	if((!node[i].dontupdate) && node[i].polymer)
+	    node[i].applyforces(dat->threadnum);
+    }
+    return NULL;
 }
 
 int actin::linkforces()
-{
-	double dist;
-	double force;
-	vect nodeposvec, disp;
-	vect tomove;
-	
-	// remove the links for ones that were broken last time
-	for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
-	{
-		linkremovefrom[i]->removelink(linkremoveto[i]);  // remove the back link
-		linkremoveto[i]->removelink(linkremovefrom[i]);  // and remove from the list
-	}
-
-	// reset the lists of broken links:
-	linkremovefrom.resize(0);
-	linkremoveto.resize(0);
-	
-	int numthreadnodes, start, end;
-
-	numthreadnodes = highestnodecount / NUM_THREADS;
-
-if (!GRASS_IS_GREEN) // USE_THREADS)
-	{
-		for (int i = 0; i < NUM_THREADS; i++)
-		{
-			start = i * numthreadnodes;
-			end = (i+1) * numthreadnodes;
-
-			linkforces_thread_data_array[i].startnode = start;
-			linkforces_thread_data_array[i].endnode = end;
-			linkforces_thread_data_array[i].threadnum = i;
-
-			if (i<NUM_THREADS-1)
-			{
-				linkforces_thread_data_array[i].endnode = end;
-			}
-			else
-			{	// put remainder in last thread (cludge for now)
-				linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
-			};
-		}
-
-	// release thread blocks to start threads:
+{   
+    // remove the links for ones that were broken last time
+    for(unsigned int i=0; i<linkremovefrom.size(); i++)
+    {
+	linkremovefrom[i]->removelink(linkremoveto[i]);  // remove the back link
+	linkremoveto[i]->removelink(linkremovefrom[i]);  // and remove from the list
+    }
+    
+    // reset the lists of broken links:
+    linkremovefrom.resize(0);
+    linkremoveto.resize(0);
+    
+    int numthreadnodes, start, end;
+    
+    numthreadnodes = highestnodecount / NUM_THREADS;
+    if(USE_THREADS && USETHREAD_LINKFORCES)
+    {
 	for (int i = 0; i < NUM_THREADS; i++)
-		{
-			sem_post(&linkforces_thread_go[i]);
-		}
-
-	}
-	else
 	{
-		// go through all nodes
-		for (int n=0; n<highestnodecount; n++)
-		{  	
-			if ((node[n].dontupdate) || (!node[n].polymer))
-				continue;
-
-			nodeposvec = node[n];
-
-			// go through links for each node
-			for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
-			{	 
-				if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
-				{			
-					
-					disp = nodeposvec - *(i->linkednodeptr);
-
-					dist = disp.length();;
-
-					//if (dist < 0)
-					//	continue;
-
-					force = i->getlinkforces(dist);
-
-					if (i->broken)
-					{	// broken link: store which ones to break:
-						linkremovefrom.push_back(&node[n]);
-						linkremoveto.push_back(i->linkednodeptr);
-						node[n].links_broken[0]++;
-					}
-					else
-					{
-						tomove = disp * (2* force/dist);  
-												  // we're scaling the force by vector disp
-												  // to get the direction, so we need to
-												  // divide by the length of disp (i.e. dist)
-												  // to prevent the length amplifying the force
-
-//#ifdef FORCES_BOTH_WAYS
-//						node[n].link_force_vec[0] += tomove/2;
-//						i->linkednodeptr->link_force_vec[0] -= tomove/2;
-//#else
-						node[n].link_force_vec[0] += tomove;
-
-//#ifndef NO_CALC_STATS
-//
-						if (force < 0) // put tension into link forces
-						{
-							node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
-						}
-						else	// but put compression into link forces
-						{
-							node[n].adddirectionalmags(tomove, node[n].repforce_radial[0], node[n].repforce_transverse[0]);
-						}
-
-
-
-//						//node[n].linkforce_radial[0]     += fabs(  node[n].unit_vec_posn.dot(disp)  * (2 * force * scale) ) ;
-//
-//						//node[n].linkforce_transverse[0] += fabs( (node[n].unit_vec_posn.cross(disp)).length()  * (2 * force * scale));
-//
-//						//cout << node[n].linkforce_radial[0] << " " <<  node[n].linkforce_transverse[0] << endl;
-//#endif
-						
-
-					}
-				}
-			}
-		}
+	    start = i * numthreadnodes;
+	    end = (i+1) * numthreadnodes;
+	    
+	    linkforces_thread_data_array[i].startnode = start;
+	    linkforces_thread_data_array[i].endnode = end;
+	    linkforces_thread_data_array[i].threadnum = i;
+	    
+	    if (i<NUM_THREADS-1)
+	    {
+		linkforces_thread_data_array[i].endnode = end;
+	    }
+	    else
+	    {	// put remainder in last thread (cludge for now)
+		linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+	    };
+	    linkforces_tteam.add_task(&linkforces_thread_data_array[i]);
 	}
-
-
-
-	return 0;
+	linkforces_tteam.do_work();	
+    }
+    else
+    {
+        // if not using threads, do in one go:
+	linkforces_thread_data_array[0].startnode = 0;
+	linkforces_thread_data_array[0].endnode = highestnodecount;
+	linkforces_thread_data_array[0].threadnum = 0;
+	linkforcesdowork(&linkforces_thread_data_array[0], NULL);
+    }
+    return 0;
 }
 
-/*
-void * actin::linkforcesthread(void* threadarg)
+// LinkForces
+void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
 {
-	struct thread_data *dat;
-	dat = (struct thread_data *) threadarg;
-
-	double xdist, ydist, zdist, dist;
-	double force;
-	vect nodeposvec;
-
-	//cout << "Thread " << dat->threadnum << " started" << endl;
-	//cout.flush();
-
-	while (true)
-	{	
-
-		sem_wait(&linkforces_thread_go[dat->threadnum]);  // go only if released by main thread
-
-		for (int n=dat->startnode; n<dat->endnode; n++)
-			{  	
-				if (!node[n].polymer)
-					continue;
-				
-				nodeposvec.x = node[n].x;	// get xyz of our node
-				nodeposvec.y = node[n].y;
-				nodeposvec.z = node[n].z;
-
-				// go through links for each node
-				for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
-				{	 
-					if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
-					{			
-						xdist = nodeposvec.x - i->linkednodeptr->x;
-						ydist = nodeposvec.y - i->linkednodeptr->y;
-						zdist = nodeposvec.z - i->linkednodeptr->z;
-
-						dist = calcdist(xdist,ydist,zdist);
-
-						if (dist < 0)
-							continue;
-
-						force = i->getlinkforces(dist);
-
-						if (i->broken)
-						{	// broken link
-							pthread_mutex_lock(&linkstoremove_mutex);  // lock the mutex
-							linkremovefrom.push_back(&node[n]);
-							linkremoveto.push_back(i->linkednodeptr);
-							pthread_mutex_unlock(&linkstoremove_mutex);  //unlock
-						}
-						else
-						{
-							node[n].link_force_vec[dat->threadnum].x += force * (xdist/dist);
-							node[n].link_force_vec[dat->threadnum].y += force * (ydist/dist);
-							node[n].link_force_vec[dat->threadnum].z += force * (zdist/dist);
-						}
-					}
-				}
-			}
-
-		sem_post(&linkforces_data_done[dat->threadnum]);  // release main thread block waiting for data
-
-	}  
-
-	return (void*) NULL;
+    // cast arg
+    thread_data* dat;
+    dat = (thread_data*) arg;
+    
+    double dist;
+    double force;
+    vect nodeposvec, disp;
+    vect tomove;
+    
+    // go through all nodes
+    for(int n=(dat->startnode); n<(dat->endnode); n++)
+    {  	
+	if ((node[n].dontupdate) || (!node[n].polymer))
+	    continue;
+	
+	nodeposvec = node[n];
+	
+	// go through links for each node
+	for(vector<links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
+	{
+	    assert( !(i->broken) ); // if link not broken  (shouldn't be here if broken anyway)
+	    disp = nodeposvec - *(i->linkednodeptr);
+	    dist = disp.length();;
+	    
+	    //if (dist < 0)
+	    //	continue;
+	    
+	    force = i->getlinkforces(dist);
+	    
+	    if(i->broken) {
+		// broken link: store which ones to break:
+		pthread_mutex_lock(&removelinks_mutex);   // lock the mutex
+		linkremovefrom.push_back(&node[n]);
+		linkremoveto.push_back(i->linkednodeptr);
+		node[n].links_broken[0]++;
+		pthread_mutex_unlock(&removelinks_mutex); // lock the mutex
+	    } else {
+		tomove = disp * (2* force/dist);  
+		// we're scaling the force by vector disp
+		// to get the direction, so we need to
+		// divide by the length of disp (i.e. dist)
+		// to prevent the length amplifying the force		
+		node[n].link_force_vec[0] += tomove;
+		
+		if (force < 0) { // put tension into link forces		    
+		    node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
+		} else {	// but put compression into link forces
+		    node[n].adddirectionalmags(tomove, node[n].repforce_radial[0], node[n].repforce_transverse[0]);
+		}
+		
+	    }
+	}
+    }
+    return NULL;
 }
-*/
+// -- END from threading branch
+// - - - - - - - - - - - - - - 
 
 int actin::setnodecols(void)
 {
@@ -2795,5 +2498,716 @@ void actin::clear_node_stats(void)
 
 }
 
+/*
+void * actin::collisiondetectionthread(void* threadarg)
+{
+
+	struct thread_data *dat;
+	dat = (struct thread_data *) threadarg;
+
+	cout << "Starting collision detection thread " << dat->threadnum << endl;
+
+	while (true)
+	{	
+		pthread_mutex_lock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // go only if released by main thread
+		pthread_mutex_lock(&collisiondetectiongolock_mutex[dat->threadnum]);  // lock main thread
+		// release the go lock so can be taken by main thread again:
+		pthread_mutex_unlock(&collisiondetectiongolock_mutex[dat->threadnum]);
+
+		if (dat->threadnum == 0)
+			collisionthreaddone1 = false;
+		if (dat->threadnum == 1)
+			collisionthreaddone2 = false;
+		if (dat->threadnum == 2)
+			collisionthreaddone3 = false;
+		if (dat->threadnum == 3)
+			collisionthreaddone4 = false;
+
+//	cout << "Thread running " << dat->threadnum << endl;
+
+		collisiondetectiondowork(dat);
+
+		if (dat->threadnum == 0)
+			collisionthreaddone1 = true;
+		if (dat->threadnum == 1)
+			collisionthreaddone2 = true;
+		if (dat->threadnum == 2)
+			collisionthreaddone3 = true;
+		if (dat->threadnum == 3)
+			collisionthreaddone4 = true;
 
 
+		pthread_mutex_unlock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // release main thread block waiting for data
+	}  
+
+	return (void*) NULL;
+}
+*/
+
+ // ---------------------------------------------------
+ // R61 Threading code for comparision with above block
+ // PENDING REMOVAL
+ // int actin::collisiondetection(void)
+ // {
+ //
+ // 	for (int i=0; i<highestnodecount; i++)
+ // 	{
+ // 		donenode[i] = false;
+ // 	}
+ //
+ //
+ // 	int numthreadnodes, start, end, higestorderednode;
+ //
+ // 	higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
+ //
+ // 	numthreadnodes = higestorderednode / NUM_THREADS;
+ //
+ // // do collision detection
+ //
+ // //int numtodo = 0;
+ //
+ // 	if (USE_THREADS)
+ // 	{
+ //
+ // 		for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			start = i * numthreadnodes;
+ // 			end = (i+1) * numthreadnodes;
+ //
+ // 			collision_thread_data_array[i].startnode = start;
+ // 			collision_thread_data_array[i].endnode = end;
+ // 			collision_thread_data_array[i].threadnum = i;
+ //
+ // 			if (i<NUM_THREADS-1)
+ // 			{
+ // 				collision_thread_data_array[i].endnode = end;
+ // 				//numtodo+=end-start;
+ // 			}
+ // 			else
+ // 			{	// put remainder in last thread (cludge for now)
+ // 				collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
+ // 				//numtodo+=end-start + highestnodecount % NUM_THREADS;
+ // 			};			
+ // 		}
+ // // check
+ // 		/*
+ // 		if (rand() < RAND_MAX * 0.01)
+ // 		{
+ // 			for (int i = 0; i < NUM_THREADS; i++)
+ // 			{
+ // 				cout << collision_thread_data_array[i].startnode << " to " <<
+ // 					collision_thread_data_array[i].endnode << "...";
+ // 			}
+ // 			cout << "higestorderednode " << higestorderednode << endl;
+ // 		}
+ // */
+ //
+ //
+ // 	// check
+ // 		/*if (numtodo != highestnodecount)
+ // 		{
+ // 			cout << "numtodo not match :" << numtodo << " should be" << highestnodecount << endl;
+ // 			for (int i = 0; i < NUM_THREADS; i++)
+ // 			{
+ // 				cout << "Thread " << i << " start: " << collision_thread_data_array[i].startnode
+ // 					<< " end " << collision_thread_data_array[i].endnode << endl;
+ // 			}
+ // 			cout.flush();
+ // 		}*/
+ //
+ // // thread test: call sequentially within this thread
+ //
+ // 		for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			collisiondetectiondowork(&collision_thread_data_array[i]);
+ // 		}
+ //
+ //
+ // /*
+ // 		// release thread blocks to start threads:
+ //
+ // 	for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			//sem_post(&collision_thread_go[i]);
+ // 			// start the thread:
+ // 			pthread_mutex_unlock(&collisiondetectiongolock_mutex[i]);
+ // 		}
+ //
+ //
+ // 	// re-sync when done:
+ // 	for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			// grab done locks for all threads:
+ // 			pthread_mutex_lock(&collisiondetectiondonelock_mutex[i]);
+ // 		}
+ //
+ // 	// relock 'go'
+ //
+ // 	for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			// grab done locks for all threads:
+ // 			pthread_mutex_lock(&collisiondetectiongolock_mutex[i]);
+ // 		}
+ //
+ // 	// and let children take the 'done' locks again
+ //
+ // 	for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			// grab done locks for all threads:
+ // 			pthread_mutex_unlock(&collisiondetectiondonelock_mutex[i]);
+ // 		}
+ // */
+ // /*
+ // if (!collisionthreaddone1)
+ // 	cout << "Thread 0 still going!" << endl;
+ // if (!collisionthreaddone2)
+ // 	cout << "Thread 1 still going!" << endl;
+ // if (!collisionthreaddone3)
+ // 	cout << "Thread 2 still going!" << endl;
+ // if (!collisionthreaddone4)
+ // 	cout << "Thread 3 still going!" << endl;
+ // */
+ // 	}
+ // 	else
+ // 	{  // if not using threads, do in one go:
+ // 		collision_thread_data_array[0].startnode = 0;
+ // 		collision_thread_data_array[0].endnode = higestorderednode;
+ // 		collision_thread_data_array[0].threadnum = 0;
+ // 		collisiondetectiondowork(&collision_thread_data_array[0]);
+ // 	}
+ // 	return 0;
+ // }
+ //
+ // void * actin::collisiondetectiondowork(thread_data* dat)
+ // {
+ // 	vect nodeposvec;
+ // 	double distsqr,dist;
+ // 	double force;
+ // 	vect tomove;
+ //
+ // 	vect disp;
+ //
+ // 	for (int i=dat->startnode; i<dat->endnode; i++)
+ // 	{	
+ // 		if ((node[nodesbygridpoint[i]].dontupdate) ||
+ // 			(donenode[nodesbygridpoint[i]]) ||
+ // 			(!node[nodesbygridpoint[i]].polymer))
+ // 		{
+ // 			continue;  // skip nodes already done
+ // 		}
+ //
+ // 		// find nodes on same gridpoint, and nodes within repulsive range
+ //
+ // 		if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0) continue;	// find nodes within 1 grid point
+ //
+ // 		// skip if zero
+ //
+ // 		// loop over nodes on same gridpoint:
+ // 		for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end() ; sameGPnode++ )
+ // 		{
+ //
+ // 			if (donenode[(*sameGPnode)->nodenum])
+ // 				continue;  // skip if done
+ //
+ // 			if (( (*sameGPnode)->nodenum < dat->startnode) ||
+ // 				( (*sameGPnode)->nodenum >= dat->endnode) )
+ // 				 continue;    // skip if out of range of this thread
+ //
+ // 			donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
+ //
+ // 			// of these nodes, calculate euclidian dist
+ //
+ // 			nodeposvec = (*(*sameGPnode));	// get xyz of our node
+ //
+ // 			for (vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); nearnode<recti_near_nodes[dat->threadnum].end() ; nearnode++ )
+ // 			{
+ // 				if ((*sameGPnode)==(*nearnode)) continue;  // skip if self
+ // 				//if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
+ // 				//	continue;  // skip if done opposite pair
+ //
+ // 				// this check should not be necessary?:
+ //
+ // 				if (( (*sameGPnode)->nodenum < dat->startnode) ||
+ // 					( (*sameGPnode)->nodenum >= dat->endnode) )
+ // 					continue;    // skip if out of range of this thread  
+ //
+ //
+ // 				disp = (*(*nearnode)) - nodeposvec; 
+ //
+ // 				distsqr = disp.sqrlength();
+ //
+ // 				if (distsqr < 2 * SQRT_ACCURACY_LOSS)
+ // 				{	
+ // 					continue;
+ // 				}
+ //
+ // 				//dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
+ // 				//dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
+ //
+ // 				if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
+ // 					{
+ // 						// calc dist between nodes
+ //
+ // 						dist = sqrt(distsqr); 
+ //
+ // 						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+ //
+ // 					//if (dist > NODE_INCOMPRESSIBLE_RADIUS)
+ // 					//{
+ // 					//	force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
+ // 					//		(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * (dist-NODE_INCOMPRESSIBLE_RADIUS )) ;
+ // 					//}
+ // 					//else
+ // 					//{
+ // 					//	force =  NODE_REPULSIVE_MAG ;
+ // 					//}  // fix force if below node incompressible distance
+ //
+ // 					tomove = disp * ( 2 * force / dist);
+ //
+ // 					(*sameGPnode)->rep_force_vec[0] -= tomove ;
+ // //
+ // //#ifndef NO_CALC_STATS
+ // //
+ // 					(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial[0], (*sameGPnode)->repforce_transverse[0]);
+ // //
+ //
+ // //#endif
+ //
+ // //					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
+ // //					{
+ // //					                            
+ // //						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
+ // //						scale = (double)NODE_INCOMPRESSIBLE_RADIUS / (double)4.0*dist;  
+ // //
+ // //						tomove = disp * (2*scale);	// these are the vector half components (in direction from i to j)
+ // //
+ // //
+ // //						(*sameGPnode)->repulsion_displacement_vec[0] = -tomove;
+ // //
+ // ////#ifndef NO_CALC_STATS
+ // ////
+ // ////						(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->dispforce_radial[0], (*sameGPnode)->dispforce_transverse[0]);
+ // ////
+ // ////#endif
+ // //					}
+ // 				}
+ //
+ // 			}
+ // 		}
+ // 	}
+ // return (void*) NULL;
+ // }
+ //
+ //int actin::findnearbynodes(const int& ournodenum, const int& adjgridpoints, const int& threadnum)
+ // int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
+ // {	// create list of nodes on the same gridpoint, and on adjacent gridpoints (including same GP)
+ // 	// 	
+ // 	// N.B. a good fraction of the total CPU time is spent in this function
+ // 	// may be worth linearizing the loop or poss amalgamating with the calling
+ // 	// functions so that creating and reading the list of gridpoints is not necessary
+ //
+ // nodes *nodeptr, *startnodeptr;
+ //
+ // // save repeatedly dereferencing pointer by threadnum in inner loops:
+ // // (maybe compiler does this anyway?)
+ // Nodes1d *p_recti_near_nodeslist = &recti_near_nodes[threadnum];
+ // Nodes1d *p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
+ //
+ // p_recti_near_nodeslist->resize(0);
+ // p_nodes_on_same_gridpoint->resize(0); 
+ //
+ // if (!ournode.polymer)
+ // 		return 0;
+ //
+ // int gridx = ournode.gridx;
+ // int gridy = ournode.gridy;
+ // int gridz = ournode.gridz;
+ //
+ // if ((gridx < 0) || (gridx > GRIDSIZE) ||
+ // 	(gridy < 0) || (gridy > GRIDSIZE) ||
+ // 	(gridz < 0) || (gridz > GRIDSIZE))
+ // 		return 0;
+ //
+ // int minx,miny,minz,maxx,maxy,maxz;
+ //
+ // minx = gridx-adjgridpoints;
+ // miny = gridy-adjgridpoints;
+ // minz = gridz-adjgridpoints;
+ //
+ // maxx = gridx+adjgridpoints;
+ // maxy = gridy+adjgridpoints;
+ // maxz = gridz+adjgridpoints;
+ //
+ // // truncate if out of grid bounds:
+ //
+ // if (minx < 0) minx = 0;
+ // if (miny < 0) miny = 0;
+ // if (minz < 0) minz = 0;
+ //
+ // if (maxx > GRIDSIZE) maxx = GRIDSIZE;
+ // if (maxy > GRIDSIZE) maxy = GRIDSIZE;
+ // if (maxz > GRIDSIZE) maxz = GRIDSIZE;
+ //
+ // // do adjgridpoints by adjgridpoints scan on grid
+ //
+ // for (int x = minx; x != maxx; ++x)  
+ // 	for (int y = miny; y != maxy; ++y)
+ // 		for (int z = minz; z != maxz; ++z)
+ // 		{
+ // 		nodeptr=nodegrid[x][y][z];
+ // 		startnodeptr=nodeptr;
+ // 			if (nodeptr!=0) 
+ // 			{
+ // 				do
+ // 				{
+ // 					p_recti_near_nodeslist->push_back(nodeptr);
+ // 					nodeptr = nodeptr->nextnode;					
+ // 				}
+ // 				while (nodeptr!=startnodeptr);  //until back to start
+ //
+ // 			}
+ // 		}
+ //
+ // 	// nodes on same gridpoint:
+ //
+ // 	nodeptr=nodegrid[gridx][gridy][gridz];
+ // 	startnodeptr=nodeptr;
+ // 	if (nodeptr!=0) 
+ // 	{
+ // 		do
+ // 		{
+ // 			p_nodes_on_same_gridpoint->push_back(nodeptr);
+ // 			nodeptr = nodeptr->nextnode;					
+ // 		}
+ // 		while (nodeptr!=startnodeptr);  //until back to start
+ //		
+ // 	}
+ //
+ // 	return (int) p_recti_near_nodeslist->size();
+ // }
+ //
+ //
+ // int actin::applyforces(void)  // this just applys previously calculated forces (in dorepulsion())
+ // {
+ // #ifndef SEED_INSIDE
+ // 	int numthreadnodes, start, end;
+ //
+ // 	numthreadnodes = highestnodecount / NUM_THREADS;
+ //
+ // if (!GRASS_IS_GREEN) // (USE_THREADS)  // switch this off for now...
+ // 	{
+ // 		for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			start = i * numthreadnodes;
+ // 			end = (i+1) * numthreadnodes;
+ //
+ // 			applyforces_thread_data_array[i].startnode = start;
+ // 			applyforces_thread_data_array[i].endnode = end;
+ // 			applyforces_thread_data_array[i].threadnum = i;
+ //
+ // 			if (i<NUM_THREADS-1)
+ // 			{
+ // 				applyforces_thread_data_array[i].endnode = end;
+ // 			}
+ // 			else
+ // 			{	// put remainder in last thread (cludge for now)
+ // 				applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+ // 			};
+ // 		}
+ //
+ // 		// release thread blocks to start threads:
+ // 	for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			sem_post(&applyforces_thread_go[i]);
+ // 		}
+ //
+ // 		// and wait 'till complete:
+ // 	for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			sem_wait(&applyforces_data_done[i]);
+ // 		}
+ //
+ // 	}
+ // 	else
+ // 	{
+ // 		for (int i=0; i<highestnodecount; i++)
+ // 			{
+ // 				for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
+ // 				{
+ // 					if ((!node[i].dontupdate) && node[i].polymer)
+ // 						node[i].applyforces(threadnum);
+ // 				}
+ // 			}
+ // 	}
+ //
+ // 	for (int i=0; i<highestnodecount; i++)
+ // 	{
+ // 		if ((!node[i].dontupdate) && node[i].polymer)
+ // 			node[i].updategrid(); // move the point on the grid if need to
+ // 								  // and update the unit vector position
+ // 	}
+ // #endif
+ // 	return 0;
+ // }
+ //
+ // void * actin::applyforcesthread(void* threadarg)
+ // {
+ // 	struct thread_data *dat;
+ // 	dat = (struct thread_data *) threadarg;
+ //
+ // 	//cout << "Thread " << dat->threadnum << " started" << endl;
+ // 	//cout.flush();
+ //
+ // 	while (GRASS_IS_GREEN)
+ // 	{	
+ //
+ // 		sem_wait(&applyforces_thread_go[dat->threadnum]);  // go only if released by main thread
+ //
+ // 		//applyforcesdetectiondowork(dat);
+ //
+ // 		// sum forces etc. over all threads
+ // 		for (int i=dat->startnode; i<dat->endnode; i++)
+ // 			{
+ // 			for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
+ // 			{
+ // 				node[i].applyforces(threadnum);
+ // 			}
+ // 			//node[i].updategrid(); // move the point on the grid if need to
+ // 		}
+ //
+ // 		sem_post(&applyforces_data_done[dat->threadnum]);  // release main thread block waiting for data
+ //
+ // 	}  
+ //
+ // 	return (void*) NULL;
+ // }
+ //
+ // int actin::linkforces()
+ // {
+ // 	double dist;
+ // 	double force;
+ // 	vect nodeposvec, disp;
+ // 	vect tomove;
+ //
+ // 	// remove the links for ones that were broken last time
+ // 	for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
+ // 	{
+ // 		linkremovefrom[i]->removelink(linkremoveto[i]);  // remove the back link
+ // 		linkremoveto[i]->removelink(linkremovefrom[i]);  // and remove from the list
+ // 	}
+ //
+ // 	// reset the lists of broken links:
+ // 	linkremovefrom.resize(0);
+ // 	linkremoveto.resize(0);
+ //
+ // 	int numthreadnodes, start, end;
+ //
+ // 	numthreadnodes = highestnodecount / NUM_THREADS;
+ //
+ // if (!GRASS_IS_GREEN) // USE_THREADS)
+ // 	{
+ // 		for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			start = i * numthreadnodes;
+ // 			end = (i+1) * numthreadnodes;
+ //
+ // 			linkforces_thread_data_array[i].startnode = start;
+ // 			linkforces_thread_data_array[i].endnode = end;
+ // 			linkforces_thread_data_array[i].threadnum = i;
+ //
+ // 			if (i<NUM_THREADS-1)
+ // 			{
+ // 				linkforces_thread_data_array[i].endnode = end;
+ // 			}
+ // 			else
+ // 			{	// put remainder in last thread (cludge for now)
+ // 				linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+ // 			};
+ // 		}
+ //
+ // 	// release thread blocks to start threads:
+ // 	for (int i = 0; i < NUM_THREADS; i++)
+ // 		{
+ // 			sem_post(&linkforces_thread_go[i]);
+ // 		}
+ //
+ // 	}
+ // 	else
+ // 	{
+ // 		// go through all nodes
+ // 		for (int n=0; n<highestnodecount; n++)
+ // 		{  	
+ // 			if ((node[n].dontupdate) || (!node[n].polymer))
+ // 				continue;
+ //
+ // 			nodeposvec = node[n];
+ //
+ // 			// go through links for each node
+ // 			for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
+ // 			{	 
+ // 				if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
+ // 				{			
+ //
+ // 					disp = nodeposvec - *(i->linkednodeptr);
+ //
+ // 					dist = disp.length();;
+ //
+ // 					//if (dist < 0)
+ // 					//	continue;
+ //
+ // 					force = i->getlinkforces(dist);
+ //
+ // 					if (i->broken)
+ // 					{	// broken link: store which ones to break:
+ // 						linkremovefrom.push_back(&node[n]);
+ // 						linkremoveto.push_back(i->linkednodeptr);
+ // 						node[n].links_broken[0]++;
+ // 					}
+ // 					else
+ // 					{
+ // 						tomove = disp * (2* force/dist);  
+ // 												  // we're scaling the force by vector disp
+ // 												  // to get the direction, so we need to
+ // 												  // divide by the length of disp (i.e. dist)
+ // 												  // to prevent the length amplifying the force
+ //
+ // //#ifdef FORCES_BOTH_WAYS
+ // //						node[n].link_force_vec[0] += tomove/2;
+ // //						i->linkednodeptr->link_force_vec[0] -= tomove/2;
+ // //#else
+ // 						node[n].link_force_vec[0] += tomove;
+ //
+ // //#ifndef NO_CALC_STATS
+ // //
+ // 						if (force < 0) // put tension into link forces
+ // 						{
+ // 							node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
+ // 						}
+ // 						else	// but put compression into link forces
+ // 						{
+ // 							node[n].adddirectionalmags(tomove, node[n].repforce_radial[0], node[n].repforce_transverse[0]);
+ // 						}
+ //
+ //
+ //
+ // //						//node[n].linkforce_radial[0]     += fabs(  node[n].unit_vec_posn.dot(disp)  * (2 * force * scale) ) ;
+ // //
+ // //						//node[n].linkforce_transverse[0] += fabs( (node[n].unit_vec_posn.cross(disp)).length()  * (2 * force * scale));
+ // //
+ // //						//cout << node[n].linkforce_radial[0] << " " <<  node[n].linkforce_transverse[0] << endl;
+ // //#endif
+ //						
+ //
+ // 					}
+ // 				}
+ // 			}
+ // 		}
+ // 	}
+ //
+ //
+ //
+ // 	return 0;
+ // }
+ // R61 Threading code for comparision with above block
+ // PENDING REMOVAL
+ // ---------------------------------------------------
+
+/* NOT USED COMMENTED OUT PRIOR TO r61
+void * actin::linkforcesthread(void* threadarg)
+{
+	struct thread_data *dat;
+	dat = (struct thread_data *) threadarg;
+
+	double xdist, ydist, zdist, dist;
+	double force;
+	vect nodeposvec;
+
+	//cout << "Thread " << dat->threadnum << " started" << endl;
+	//cout.flush();
+
+	while (true)
+	{	
+
+		sem_wait(&linkforces_thread_go[dat->threadnum]);  // go only if released by main thread
+
+		for (int n=dat->startnode; n<dat->endnode; n++)
+			{  	
+				if (!node[n].polymer)
+					continue;
+				
+				nodeposvec.x = node[n].x;	// get xyz of our node
+				nodeposvec.y = node[n].y;
+				nodeposvec.z = node[n].z;
+
+				// go through links for each node
+				for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
+				{	 
+					if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
+					{			
+						xdist = nodeposvec.x - i->linkednodeptr->x;
+						ydist = nodeposvec.y - i->linkednodeptr->y;
+						zdist = nodeposvec.z - i->linkednodeptr->z;
+
+						dist = calcdist(xdist,ydist,zdist);
+
+						if (dist < 0)
+							continue;
+
+						force = i->getlinkforces(dist);
+
+						if (i->broken)
+						{	// broken link
+							pthread_mutex_lock(&linkstoremove_mutex);  // lock the mutex
+							linkremovefrom.push_back(&node[n]);
+							linkremoveto.push_back(i->linkednodeptr);
+							pthread_mutex_unlock(&linkstoremove_mutex);  //unlock
+						}
+						else
+						{
+							node[n].link_force_vec[dat->threadnum].x += force * (xdist/dist);
+							node[n].link_force_vec[dat->threadnum].y += force * (ydist/dist);
+							node[n].link_force_vec[dat->threadnum].z += force * (zdist/dist);
+						}
+					}
+				}
+			}
+
+		sem_post(&linkforces_data_done[dat->threadnum]);  // release main thread block waiting for data
+
+	}  
+
+	return (void*) NULL;
+}
+
+inline int actin::dorepulsion(nodes& node_i,nodes& node_j,
+			      const double& dist,const int& threadnum)
+{			      // defunct, now in collisiondetectiondowork
+    if (&node_i==&node_j)
+	return 0;
+    
+    double scale;
+    
+    vect disp;
+    
+    disp = node_j - node_i;
+    
+    scale = (NODE_INCOMPRESSIBLE_RADIUS / 4)*dist;  
+    
+    disp *= scale;
+    
+    
+#ifdef FORCES_BOTH_WAYS
+ 
+    node_i.repulsion_displacement_vec[threadnum] -= disp;
+    node_j.repulsion_displacement_vec[threadnum] += disp;
+    
+#else
+    
+    node_i.repulsion_displacement_vec[threadnum] -= disp*2;
+    
+ #endif
+    
+    
+    return 0;
+}
+*/
