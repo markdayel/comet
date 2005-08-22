@@ -56,7 +56,7 @@ nodes::nodes(void)
 	links_broken.resize(NUM_THREADS);
 //	dispforce_transverse.resize(NUM_THREADS);
 //	dispforce_radial.resize(NUM_THREADS);
-	nucleator_impacts.resize(NUM_THREADS);
+	//nucleator_impacts.resize(NUM_THREADS);
 
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
 	{
@@ -219,6 +219,7 @@ int nodes::save_data(ofstream &ostr)
 	 << repforce_transverse[0] << "," 
 	 << repforce_radial[0] << "," 
 	 << links_broken[0] << "," 
+	 << nucleator_impacts << ","
 	 << creation_iter_num << ":";
     
     // now the links
@@ -248,6 +249,7 @@ int nodes::load_data(ifstream &istrm)
 	  >> repforce_transverse[0] >> ch 
 	  >> repforce_radial[0] >> ch 
 	  >> links_broken[0] >> ch 
+	  >> nucleator_impacts >> ch
 	  >> creation_iter_num >> ch;
     
     // check we are ready to read links

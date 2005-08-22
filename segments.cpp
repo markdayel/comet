@@ -86,7 +86,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		surfaceimpacts[axis].resize(num_segs);
 	}
 
-	clearsurfaceimpacts();
+	//clearsurfaceimpacts();
 
 
 	// allocate and zero the 2d vectors
@@ -141,7 +141,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	radial_link_transverse.resize(num_radial_bins);	
 	radial_links_broken.resize(num_radial_bins);	
 
-	clearnodes();
+	clearbins();
 
 
 	// define force lines co-ords
@@ -450,6 +450,9 @@ void segments::addnode(const nodes& node)
 
 	}
 
+	surfaceimpacts[0][xseg] += xfactor * node.nucleator_impacts;
+	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts;
+	surfaceimpacts[2][zseg] += zfactor * node.nucleator_impacts;
 	
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
 	{
@@ -461,6 +464,8 @@ void segments::addnode(const nodes& node)
 			link_radial[0][xseg][xdist] += xfactor * node.linkforce_radial[threadnum];
 		link_transverse[0][xseg][xdist] += xfactor * node.linkforce_transverse[threadnum];
 		   links_broken[0][xseg][xdist] += xfactor * node.links_broken[threadnum];
+
+               
 //			disp_radial[0][xseg][xdist] += node.dispforce_radial[threadnum];
 //		disp_transverse[0][xseg][xdist] += node.dispforce_transverse[threadnum];
 		}
@@ -473,6 +478,8 @@ void segments::addnode(const nodes& node)
 			link_radial[1][yseg][ydist] += yfactor * node.linkforce_radial[threadnum];
 		link_transverse[1][yseg][ydist] += yfactor * node.linkforce_transverse[threadnum];
 		   links_broken[1][yseg][ydist] += yfactor * node.links_broken[threadnum];
+
+
 //			disp_radial[1][yseg][ydist] += node.dispforce_radial[threadnum];
 //		disp_transverse[1][yseg][ydist] += node.dispforce_transverse[threadnum];
 		}
@@ -485,6 +492,8 @@ void segments::addnode(const nodes& node)
 			link_radial[2][zseg][zdist] += zfactor * node.linkforce_radial[threadnum];
 		link_transverse[2][zseg][zdist] += zfactor * node.linkforce_transverse[threadnum];
 		   links_broken[2][zseg][zdist] += zfactor * node.links_broken[threadnum];
+
+
 //			disp_radial[2][zseg][zdist] += node.dispforce_radial[threadnum];
 //		disp_transverse[2][zseg][zdist] += node.dispforce_transverse[threadnum];
 		}
@@ -507,60 +516,65 @@ void segments::addnode(const nodes& node)
 
 }
 
-void segments::addsurfaceimpact(const nodes& node, const double& mag)
+void segments::addsurfaceimpact(nodes& node, const double& mag)
 {	// add a surface impact
 	
-    int xseg,yseg,zseg;
-	vect rot_pos, rot_unit;
+	
+	node.nucleator_impacts += mag;
 
-	rot_pos = node;
-	rot_unit = node.unit_vec_posn;
+ //   int xseg,yseg,zseg;
+	//vect rot_pos, rot_unit;
 
-	//p_actin->camera_rotation.rotate(rot_pos); 
-	//p_actin->camera_rotation.rotate(rot_unit); 
+	//rot_pos = node;
+	//rot_unit = node.unit_vec_posn;
 
-	getsegmentnum(rot_pos, xseg, yseg, zseg);
+	////p_actin->camera_rotation.rotate(rot_pos); 
+	////p_actin->camera_rotation.rotate(rot_unit); 
 
-    surfaceimpacts[0][xseg]+= mag * calcdist(rot_unit.x,rot_unit.y);
-	surfaceimpacts[1][yseg]+= mag * calcdist(rot_unit.x,rot_unit.z);
+	//getsegmentnum(rot_pos, xseg, yseg, zseg);
 
-	if (p_nuc->geometry == nucleator::sphere)
-	{
-		surfaceimpacts[2][zseg]+= mag * calcdist(rot_unit.x,rot_unit.y);	
-	}
-	else
-	{
-		if (node.onseg)
-		{  // on cylinder, don't scale by z component
-			surfaceimpacts[2][zseg]+= mag;
-		}
-		else
-		{	// on ends
+ //   surfaceimpacts[0][xseg]+= mag * calcdist(rot_unit.x,rot_unit.y);
+	//surfaceimpacts[1][yseg]+= mag * calcdist(rot_unit.x,rot_unit.z);
 
-			surfaceimpacts[2][zseg]+= mag * calcdist(rot_unit.x,rot_unit.y);	
-		}
+	//if (p_nuc->geometry == nucleator::sphere)
+	//{
+	//	surfaceimpacts[2][zseg]+= mag * calcdist(rot_unit.x,rot_unit.y);	
+	//}
+	//else
+	//{
+	//	if (node.onseg)
+	//	{  // on cylinder, don't scale by z component
+	//		surfaceimpacts[2][zseg]+= mag;
+	//	}
+	//	else
+	//	{	// on ends
 
-	}
+	//		surfaceimpacts[2][zseg]+= mag * calcdist(rot_unit.x,rot_unit.y);	
+	//	}
+
+	//}
 
 }
 
-void segments::clearsurfaceimpacts(void)
+//void segments::clearsurfaceimpacts(void)
+//{
+//	for (int axis = 0; axis < 3; ++axis)
+//	{
+//		for(int i = 0; i<num_segs; ++i)
+//		{
+//			surfaceimpacts[axis][i]=0;
+//		}
+//	}
+//}
+
+void segments::clearbins(void)
 {
 	for (int axis = 0; axis < 3; ++axis)
 	{
 		for(int i = 0; i<num_segs; ++i)
 		{
-			surfaceimpacts[axis][i]=0;
-		}
-	}
-}
+		surfaceimpacts[axis][i]=0;
 
-void segments::clearnodes(void)
-{
-	for (int axis = 0; axis < 3; ++axis)
-	{
-		for(int i = 0; i<num_segs; ++i)
-		{
 			for(int j = 0; j<num_dist_segs; ++j)
 			{
 				       numnodes[axis][i][j]=0;

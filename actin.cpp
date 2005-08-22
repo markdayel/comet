@@ -2779,7 +2779,7 @@ void actin::load_sym_break_axes(void)
 }
 
 
-void actin::clearstats(void)
+void actin::clear_node_stats(void)
 {
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
 	{

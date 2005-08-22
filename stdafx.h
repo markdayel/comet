@@ -266,7 +266,7 @@ extern double colormap[];
 // compile-time options:
 
 #define GRIDBOUNDS (double)40	  // size of grid in um
-#define GRIDRES (double)0.2	  // low res grid range
+#define GRIDRES (double)0.5	  // low res grid range
 
 const int MAXNODES = 50000;			// max nodes
 //const double GLOBAL_DAMPING = 

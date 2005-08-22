@@ -176,6 +176,13 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations);
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
+#ifndef _WIN32
+	#include "kbhit.h"
+	#define kbhit keyb.kbhit
+    #define getch keyb.getch
+#else
+	#include <conio.h>
+#endif
 
 // main 
 
@@ -193,6 +200,9 @@ int main(int argc, char* argv[])
 	// make directories
 
 	char command1[255];
+#ifndef _WIN32
+keyboard keyb;
+#endif
 
 #ifndef _WIN32
 
@@ -212,7 +222,10 @@ int main(int argc, char* argv[])
 
 	bool rewritesymbreak = false;
 	if(argc == 2 &&  strcmp(argv[1], "sym") == 0 ) 
+	{
 		rewritesymbreak = true;
+	}
+
 
 	vector<int> postprocess_iterations;
 	postprocess_iterations.resize(0);
@@ -229,6 +242,13 @@ int main(int argc, char* argv[])
 
             // REVISIT: continue to setup using the cometparams.ini file
 	    // or perhaps breakout here? (ML)
+	}
+	else if (!rewritesymbreak)
+	{	// not re-writing symmetry breaking bitmaps or post-processing
+		// so this is a new calculation and no other process is using temp bmp files
+		// and can clear them
+		sprintf(command1, "rm -f %s*.bmp 2>/dev/null", TEMPDIR);
+		system(command1);
 	}
 
 
@@ -251,7 +271,7 @@ if (!rewritesymbreak)
 {	// don't drop priority if re-writing bitmaps
 	// because calling thread already has low priority
 	// and this would drop it further
-	// so process would halt on 1 cpu machine
+	// so process would halt on single cpu machine
 
 #ifndef _WIN32
 	nice(10);
@@ -796,8 +816,7 @@ if (NUCSHAPE == nucleator::capsule)
 		system(command1);
 		sprintf(command1, "rm -f %s*.wrl %s*.txt 2>/dev/null", TEMPDIR, TEMPDIR );
 		system(command1);
-		//sprintf(command1, "rm -f %s*.bmp 2>/dev/null", TEMPDIR,TEMPDIR,TEMPDIR );
-		//system(command1);
+
 		cout << "done." << endl;
 #endif
 
@@ -840,15 +859,43 @@ if (NUCSHAPE == nucleator::capsule)
 
 	//exit(0);
 
+	int filenum = 0;
+
     char last_symbreak_bmp_filename[255] = "";
 	
 
-	cout << "Starting iterations..." << endl << endl;
+	cout << "Starting iterations..." << endl;
+	cout << "(Press 'q' to abort run)" << endl << endl;
 
 	cout << "Itternum|TotNode|NewLinks|RemLinks|Center_X|Center_Y|Center_Z|Direction                 |Rotations|Displmnts|SnpshTm|SaveNum" << endl << endl;
 
 	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++)
 	{
+		filenum = (int)(i/InterRecordIterations);
+
+		if (kbhit())
+		{
+			int ch = getch();
+			if (( ch=='q' ) || ( ch=='Q'))
+			{
+				cout << endl << "Abort run(y/n)?";
+				cout.flush();
+				int ch;
+
+				do { ch = getch(); } while (( ch=='q' ) || ( ch=='Q'));
+
+				if (( ch=='y' ) || ( ch=='Y'))
+				{
+					cout << "y - Run aborted" << endl;
+					cout.flush();
+					break;
+				}
+				else
+				{
+					cout << "\r";
+				}
+			}
+		}
 
 		/*if ((i % 10) == 1)
 			srand( rand_num_seed );*/
@@ -891,6 +938,8 @@ if (NUCSHAPE == nucleator::capsule)
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime) << "\r";
 
 			cout.flush();
+
+
 		}
 
 		theactin.iterate();
@@ -938,10 +987,10 @@ srand( rand_num_seed );
 			<< "|ND " << setw(6) <<  theactin.debug_num_displace	
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
 
-			cout << "|S " << setw(3) <<  (int)(i/InterRecordIterations)  
+			cout << "|S " << setw(3) <<  (int)filenum  
 				<< "/" << NUMBER_RECORDINGS;
 
-			if (strlen(last_symbreak_bmp_filename)!=0)
+			if ((strlen(last_symbreak_bmp_filename)!=0) || (!theactin.brokensymmetry))
 				cout << " *";
 			
 			cout << endl;
@@ -957,16 +1006,16 @@ srand( rand_num_seed );
 			<< "|z " << setw(6) << setprecision(3) << center.z
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
 			//<< "|H" <<  setw(6) << theactin.harbinger;
-			theactin.opruninfo << "|S" << setw(3) <<  (int)(i/InterRecordIterations)  
+			theactin.opruninfo << "|S" << setw(3) <<  (int)filenum  
 				<< "/" << NUMBER_RECORDINGS << endl ;
 
 			//theactin.setnodecols();
-			//theactin.save((i/InterRecordIterations));
-			theactin.savevrml((i/InterRecordIterations));
-			//theactin.savedata((i/InterRecordIterations));
+			//theactin.save(filenum);
+			theactin.savevrml(filenum);
+			//theactin.savedata(filenum);
 			
 			// test the load/save of data:
-			//theactin.loaddata((i/InterRecordIterations));
+			//theactin.loaddata(filenum);
 
 			//load_data(theactin, i);
 			//save_data(theactin, i+1);			
@@ -986,14 +1035,14 @@ srand( rand_num_seed );
 
 				// call another instance to write bitmaps
 				// fix this to do in same process when threading working
-				cout << "Spawning new background process to write bitmaps 1--" << (i/InterRecordIterations)-1 
+				cout << "Spawning new background process to write bitmaps 1--" << filenum-1 
 					<< " and continuing..." << endl;
 
 				sprintf(command1, "%s sym 1>/dev/null 2>/dev/null &", argv[0]);
 				system(command1);
 
 				sprintf(last_symbreak_bmp_filename, "%sz_forces_%05i.%s",BITMAPDIR, 
-							(i/InterRecordIterations)-1 ,BMP_OUTPUT_FILETYPE.c_str());
+							filenum-1 ,BMP_OUTPUT_FILETYPE.c_str());
 
 				// kludge to move the last save
 				// so we can re-load to the point we left off
@@ -1012,8 +1061,13 @@ srand( rand_num_seed );
 			
 			nuc_object.segs.addallnodes();  // put node data into segment bins
 
-			nuc_object.segs.savereport(i/InterRecordIterations);
-			nuc_object.segs.saveradialreport(i/InterRecordIterations);
+			nuc_object.segs.savereport(filenum);
+			nuc_object.segs.saveradialreport(filenum);
+
+	//theactin.savebmp(filenum, actin::xaxis, actin::runbg);
+	//theactin.savebmp(filenum, actin::yaxis, actin::runbg);
+	//theactin.savebmp(filenum, actin::zaxis, actin::runbg);
+	//cout << "\r";
 
 			if (theactin.brokensymmetry)
 			{	// only save bitmaps if symmetry broken, 
@@ -1025,9 +1079,9 @@ srand( rand_num_seed );
 				// bit this is probably impossible, since we're only calling this
 				// once symmetry broken, and by then things are very slow
 
-				theactin.savebmp((i/InterRecordIterations), actin::xaxis, actin::runbg);
-				theactin.savebmp((i/InterRecordIterations), actin::yaxis, actin::runbg);
-				theactin.savebmp((i/InterRecordIterations), actin::zaxis, actin::runbg);
+				theactin.savebmp(filenum, actin::xaxis, actin::runbg);
+				theactin.savebmp(filenum, actin::yaxis, actin::runbg);
+				theactin.savebmp(filenum, actin::zaxis, actin::runbg);
 
 				cout << "\r";
 				cout.flush();
@@ -1049,20 +1103,20 @@ srand( rand_num_seed );
 			}
 
 
-			nuc_object.segs.clearsurfaceimpacts();
-			nuc_object.segs.clearnodes();
+			//nuc_object.segs.clearsurfaceimpacts();
+			nuc_object.segs.clearbins();  // clear the aggregate stats
 
-			theactin.clearstats();
+			theactin.clear_node_stats();  // clear the stats data in the nodes
 
-			theactin.compressfilesdowork(i/InterRecordIterations);
+			theactin.compressfilesdowork(filenum);
 
-			//if ((i/InterRecordIterations)>(starting_iter/InterRecordIterations))  
+			//if (filenum>(starting_iter/InterRecordIterations))  
 			//{  // wait for last save to complete...
 			//	pthread_mutex_lock(&filesdonelock_mutex);
 			//	//sem_wait(&compressfiles_data_done[0]);  // wait for the last data write
 			//}
 
-			//compressfiles_thread_data_array[0].startnode = (i/InterRecordIterations);
+			//compressfiles_thread_data_array[0].startnode = filenum;
 			////sem_post(&compressfiles_thread_go[0]);
 			//pthread_mutex_unlock(&filesdonelock_mutex);  // allow thread to grab done lock
 			//pthread_mutex_unlock(&filessavelock_mutex);  // start the thread
@@ -1254,11 +1308,15 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations)
 {
 
+	int filenum;
+
     for(vector<int>::iterator iteration = postprocess_iterations.begin(); 
 		iteration != postprocess_iterations.end(); ++iteration)
 	{
+		filenum = (int)(*iteration/InterRecordIterations);
+
 		//cout << "Post processing iteration " << *iteration << ": ";
-		cout << "Post processing frame " << (*iteration/InterRecordIterations) << "/" 
+		cout << "Post processing frame " << filenum << "/" 
 			 << (*postprocess_iterations.end()/InterRecordIterations) << ": ";
 
 		load_data(theactin, *iteration);
@@ -1271,12 +1329,12 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 		//nuc_object.segs.savereport(i/InterRecordIterations);
 		//nuc_object.segs.saveradialreport(i/InterRecordIterations);
 
-		theactin.savebmp((*iteration/InterRecordIterations), actin::xaxis, actin::runbg);
-		theactin.savebmp((*iteration/InterRecordIterations), actin::yaxis, actin::runbg);
-		theactin.savebmp((*iteration/InterRecordIterations), actin::zaxis, actin::runfg);
+		theactin.savebmp(filenum, actin::xaxis, actin::runbg);
+		theactin.savebmp(filenum, actin::yaxis, actin::runbg);
+		theactin.savebmp(filenum, actin::zaxis, actin::runfg);
 		
-		nuc_object.segs.clearsurfaceimpacts();
-		nuc_object.segs.clearnodes();
+		//nuc_object.segs.clearsurfaceimpacts();
+		nuc_object.segs.clearbins();
 
 		cout << endl;
     }
@@ -1285,6 +1343,8 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 {
 
+	int filenum;
+
 	theactin.load_sym_break_axes();
 
 	//cout << " InterRecordIterations " << InterRecordIterations
@@ -1292,8 +1352,10 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 
     for(int i = InterRecordIterations; i< theactin.symbreakiter; i+=InterRecordIterations)
 	{
+		filenum = (int)(i/InterRecordIterations);
+
 		//cout << "Post processing iteration " << *iteration << ": ";
-		cout << "Writing bitmaps for frame " << (i/InterRecordIterations) << "/" 
+		cout << "Writing bitmaps for frame " << filenum << "/" 
 			 << (theactin.symbreakiter/InterRecordIterations)-1 << ": ";
 		cout.flush();
 
@@ -1313,18 +1375,19 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 		// run the last one in foreground to slow things down
 		// so don't overload system with too many bg processes
 
-		theactin.savebmp((i/InterRecordIterations), actin::xaxis, actin::runbg);
-		theactin.savebmp((i/InterRecordIterations), actin::yaxis, actin::runbg);
-		theactin.savebmp((i/InterRecordIterations), actin::zaxis, actin::runfg);
+		theactin.savebmp(filenum, actin::xaxis, actin::runbg);
+		theactin.savebmp(filenum, actin::yaxis, actin::runbg);
+		theactin.savebmp(filenum, actin::zaxis, actin::runfg);
 		
-		nuc_object.segs.clearsurfaceimpacts();
-		nuc_object.segs.clearnodes();
+		//nuc_object.segs.clearsurfaceimpacts();
+		nuc_object.segs.clearbins();
 
 		cout << "\r";
 		cout.flush();
     }
 	cout << endl;
 }
+
 
 
 /*

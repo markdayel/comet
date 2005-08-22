@@ -1,6 +1,7 @@
-PROG = comet
+PROG = comet2
 SRCS = actin.cpp Colour.cpp comet.cpp links.cpp nodes.cpp \
-       nucleator.cpp rotationmatrix.cpp 
+       nucleator.cpp rotationmatrix.cpp segments.cpp \
+       kbhit.cpp
 OBJS = $(SRCS:.cpp=.o)
 #LIBS =  -lm -lpthread
 #LIBS =  -lcxml -lpthread

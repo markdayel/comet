@@ -199,7 +199,7 @@ public:
 	void set_sym_break_axes(void);
 	void load_sym_break_axes(void);
 	void save_sym_break_axes(void);
-	void clearstats(void);
+	void clear_node_stats(void);
 
 	inline int pixels(const double & coord) const
 	{  // convert simulation distance into pixel distance

@@ -55,7 +55,7 @@ public:
 			 links_broken;
 			 //dispforce_transverse, dispforce_radial;  
 	
-	vector <vect> nucleator_impacts;
+	double nucleator_impacts;
 
 	int gridx, gridy, gridz;
 	vect delta;
@@ -102,9 +102,9 @@ public:
 	{  
 		double tmp_dotmag; 
 		
-		tmp_dotmag= fabs(unit_vec_posn.dot(displacement));
+		tmp_dotmag = fabs(unit_vec_posn.dot(displacement));
 
-		dotmag += tmp_dotmag;
+		dotmag   += tmp_dotmag;
 		crossmag += displacement.length() - tmp_dotmag;
 	}
 
@@ -115,10 +115,12 @@ public:
 		repforce_transverse[threadnum]  = 
 		repforce_radial[threadnum]      = 
 		links_broken[threadnum]			= 0;
+
+		nucleator_impacts  = 0;
 //		dispforce_transverse[threadnum] = 
 //		dispforce_radial[threadnum]     = 0;
 
-		nucleator_impacts[threadnum].zero();
+		
 	}
 
 	void setunitvec(void)
