@@ -453,7 +453,7 @@ void segments::addnode(const nodes& node)
 	surfaceimpacts[0][xseg] += xfactor * node.nucleator_impacts;
 	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts;
 	surfaceimpacts[2][zseg] += zfactor * node.nucleator_impacts;
-	
+
 	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
 	{
 		if (xdist!=-1)
@@ -688,6 +688,8 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 	
 		unscaledlen = surfaceimpacts[axis][i] * FORCEBAR_SCALE * scale / seg_area;
 
+		//cout << "surfaceimpacts[" << axis <<"][" <<i<<"]" << surfaceimpacts[axis][i] << endl;
+
 		linex = unscaledlen * lineunitvecx[axis][i];
 		liney = unscaledlen * lineunitvecy[axis][i];
 
@@ -722,7 +724,7 @@ void segments::addallnodes()
 {
 	for (int i=0; i<p_actin->highestnodecount; i++)
 	{
-		if ((p_actin->node[i].polymer) && (!p_actin->node[i].harbinger))  // is point valid?
+		if ((p_actin->node[i].polymer))  // is point valid?
 		{
 			addnode(p_actin->node[i]);
 		}

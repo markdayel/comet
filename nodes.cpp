@@ -251,6 +251,9 @@ int nodes::load_data(ifstream &istrm)
 	  >> links_broken[0] >> ch 
 	  >> nucleator_impacts >> ch
 	  >> creation_iter_num >> ch;
+
+	//if (nucleator_impacts>0.00001)
+	//	cout << "Loaded nucleator impact " <<nucleator_impacts << endl;
     
     // check we are ready to read links
     if(ch!=':' ){
@@ -281,6 +284,9 @@ int nodes::load_data(ifstream &istrm)
     // note we don't set pointer or build the grid here
     // because we need to be sure this is the node
     // stored by the actin.  The actin knows that.
+
+	updategrid();
+
     return 0;
 }
 
@@ -293,9 +299,7 @@ void nodes::updategrid(void)
 	int oldgridz = gridz;
 
 	setgridcoords();				// set gridx,y,z by x,y,z position
-	setunitvec();
-
-	
+	setunitvec();	
 
 	if	((gridx != oldgridx) ||		// has the node moved gridpoints?
 		 (gridy != oldgridy) || 

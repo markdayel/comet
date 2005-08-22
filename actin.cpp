@@ -1869,26 +1869,30 @@ if (NO_IMAGE_TEXT)
 {	
 		sprintf(command1,
 		"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s%s_proj_%05i.%s",
-		     BMP_COMPRESSION, scalebarlength+5, temp_BMP_filename, BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+		     BMP_COMPRESSION, scalebarlength+5, temp_BMP_filename, BITMAPDIR, 
+			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 }
 else 
 {
 		sprintf(command1,
-		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \
-				\"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" \
-				%s %s%s_proj_%05i.%s",  BMP_COMPRESSION,
-		scalebarlength+5,projletter,filenum,
-		(int)((1000/(double)imageGmax)+0.5),  temp_BMP_filename, BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" %s %s%s_proj_%05i.%s",
+			BMP_COMPRESSION, scalebarlength+5, projletter, filenum,
+			(int)((1000/(double)imageGmax)+0.5),  temp_BMP_filename, BITMAPDIR,
+			projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 }
 
 	sprintf(command2,
-		"convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", BMP_COMPRESSION, 
-		drawcmd.str().c_str(), BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str() ,  BITMAPDIR, projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+		"convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", 
+		BMP_COMPRESSION, drawcmd.str().c_str(), BITMAPDIR, 
+		projletter, filenum, BMP_OUTPUT_FILETYPE.c_str(), BITMAPDIR, 
+		projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
 if (fgbg == runbg)
-	sprintf(command3, "(%s ; %s)&", command1, command2);
+	sprintf(command3, "(%s ; %s )&", command1, command2);
 else
-	sprintf(command3, "(%s ; %s)", command1, command2);
+	sprintf(command3, "(%s ; %s )", command1, command2);
+
+//cout << command3 << endl;;
 
 	system(command3);
 
@@ -2343,9 +2347,9 @@ void actin::clear_nodegrid()
 {
     // clear the nodegrid
     for(int i=0; i<GRIDSIZE; i++)
-	for(int j=0; j<GRIDSIZE; j++)
-	    for(int k = 0; k <GRIDSIZE; k++)
-		nodegrid[i][j][k] = NULL;
+		for(int j=0; j<GRIDSIZE; j++)
+			for(int k = 0; k <GRIDSIZE; k++)
+				nodegrid[i][j][k] = NULL;
 }
 
 int actin::save_data(ofstream &ofstrm)
@@ -2421,10 +2425,9 @@ int actin::load_data(ifstream &ifstr)
 	return 1;
     }
     // ** Remember the node vector is preallocated to MAXNODES
-    for(int i=0; i < highestnodecount; i++) {
-	node[i].load_data(ifstr);
-	node[i].setgridcoords(); // now we are okay to do pointer
-	node[i].addtogrid();
+    for(int i=0; i < highestnodecount; i++) 
+	{
+		node[i].load_data(ifstr);
     }
 
     // This is not neat, and we have a nasty reliance on the data being
