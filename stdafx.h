@@ -74,6 +74,7 @@ removed without prior written permission from the author.
 
 // standard headers
 
+#include <assert.h>
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -286,6 +287,8 @@ const int MAXNODES = 50000;			// max nodes
 #define HIST_MAX 3.0
 #define HIST_BINS 20
 
+extern const double RECIP_RAND_MAX;
+
 extern int TOTAL_ITERATIONS;  // these variables are global and are calculated from others
 extern int NODE_REPULSIVE_GRIDSEARCH;
 extern int NODE_REPULSIVE_RANGE_GRIDSEARCH;
@@ -314,7 +317,7 @@ extern nucleator::shape NUCSHAPE;  //default to sphere
 #include "links.h"
 #include "actin.h"
 #include "vect.h"
-
+#include "threadtaskteam.h"
 
 
 inline double calcdist(const vect & v1, const vect & v2);

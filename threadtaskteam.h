@@ -3,17 +3,16 @@
 #ifndef THREADTASKTEAM_H_
 #define THREADTASKTEAM_H_
 
-#include <pthread.h>
+#include "pthread.h"
 #include <vector>
 #include <queue>
-#include <assert.h>
 
 class taskteam 
 {
 protected:
     std::vector<pthread_t> workers;
     std::queue<void*> tasks;
-    
+
     pthread_mutex_t mutex;
     pthread_cond_t start;
     pthread_cond_t finish;

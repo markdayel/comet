@@ -1,6 +1,7 @@
 
 #include "threadtaskteam.h"
 
+#include <assert.h>
 #include <cmath>
 #include <iostream>
 

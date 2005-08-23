@@ -29,6 +29,8 @@ double GAUSSFWHM =  0.266;
 
 bool NUCLEATOR_FORCES = true;
 
+const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);
+
 int BMP_WIDTH = 800;
 int BMP_HEIGHT = 600;
 
@@ -212,6 +214,7 @@ int main(int argc, char* argv[])
 	// make directories
 
 	char command1[255];
+
 #ifndef _WIN32
 keyboard keyb;
 #endif
@@ -874,43 +877,6 @@ if (NUCSHAPE == nucleator::capsule)
 
 	}
 
-	// test rotation
-	//double a,b,c;
-	//double a1,b1,c1;
-	//rotationmatrix temp;
-	//vect tempvec;
-
-	//tempvec.x=0;
-	//tempvec.y=0;
-	//tempvec.z=1;
-
-	//temp.getangles(a,b,c);
-	//cout << "Initial: " << a*180/PI << "," << b*180/PI << "," << c*180/PI << endl;
-	//cout << "VecInitial: " << tempvec.x << "," << tempvec.y << "," << tempvec.z << endl;
-
-	//a1 = 2 * PI * (double) rand() / (double) RAND_MAX - PI;
-	//b1 = 2 * PI * (double) rand() / (double) RAND_MAX - PI;
-	//c1 = 2 * PI * (double) rand() / (double) RAND_MAX - PI;
-
-	//cout << "Rotate by: " << a*180/PI << "," << b*180/PI << "," << c*180/PI << endl;
-
-	//temp.rotatematrix(a1,b1,c1);
-	//	
-	//temp.getangles(a,b,c);
-	//cout << "After rotn: " << a*180/PI << "," << b*180/PI << "," << c*180/PI << endl;
-
- //   temp.rotate(tempvec);
-	//cout << "VecRotated: " << tempvec.x << "," << tempvec.y << "," << tempvec.z << endl;
-
-	//theactin.p_nuc->position = -tempvec;
-	//theactin.set_sym_break_axes();
-
-	//theactin.camera_rotation.rotate(tempvec);
-
-	//cout << "VecRotatedcamerarotn: " << tempvec.x << "," << tempvec.y << "," << tempvec.z << endl;
-
-	//exit(0);
-
 	int filenum = 0;
 
     char last_symbreak_bmp_filename[255] = "";
@@ -1228,9 +1194,10 @@ srand( rand_num_seed );
 
 string get_datafilename(const int iteration)
 {
-    stringstream filename;
-    filename << "data_" << iteration << ".txt";
-    return filename.str();
+	//stringstream filenamestr;
+    char filename[255];
+	sprintf(filename , "data_%07i.txt", iteration);
+    return filename;
     
 }
 
@@ -1381,8 +1348,8 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 		//nuc_object.segs.savereport(i/InterRecordIterations);
 		//nuc_object.segs.saveradialreport(i/InterRecordIterations);
 
-		theactin.savebmp(filenum, actin::xaxis, actin::runbg);
-		theactin.savebmp(filenum, actin::yaxis, actin::runbg);
+		theactin.savebmp(filenum, actin::xaxis, actin::runfg);  // was bg
+		theactin.savebmp(filenum, actin::yaxis, actin::runfg);	// was bg
 		theactin.savebmp(filenum, actin::zaxis, actin::runfg);
 		
 		//nuc_object.segs.clearsurfaceimpacts();
@@ -1427,8 +1394,8 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 		// run the last one in foreground to slow things down
 		// so don't overload system with too many bg processes
 
-		theactin.savebmp(filenum, actin::xaxis, actin::runbg);
-		theactin.savebmp(filenum, actin::yaxis, actin::runbg);
+		theactin.savebmp(filenum, actin::xaxis, actin::runfg);  // was bg
+		theactin.savebmp(filenum, actin::yaxis, actin::runfg);	// was bg
 		theactin.savebmp(filenum, actin::zaxis, actin::runfg);
 		
 		//nuc_object.segs.clearsurfaceimpacts();

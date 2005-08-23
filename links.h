@@ -34,52 +34,11 @@ public:
 	bool broken;
 	int breakcount;
 	bool breaklastiter;
-	//inline double getlinkforces(const double& distsq);
 	double theta;
 	double phi;
 
-	inline double getlinkforces(const double& dist) 
-	{  // return force (nominally in pN)
-		double force;//=0.0;
-		double stress_over_breakage;
-		// is link loose or taut?
-
-		if (dist > (orig_dist*LINK_TAUT_RATIO))
-		{  // filaments taut:  go to high strain regime
-
-			force =		- ( LINK_FORCE * (dist - orig_dist) +
-					LINK_TAUT_FORCE * (dist - (orig_dist*LINK_TAUT_RATIO)))
-							* orig_dist_recip;
-
-			if ((-force) > LINK_BREAKAGE_FORCE)
-			{
-				stress_over_breakage = (-force)/LINK_BREAKAGE_FORCE;
-				breakcount++;
-
-				if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) > 
-						( ((double) rand()) / (double)(RAND_MAX) ) )
-				//if ((++breakcount>MAX_LINK_BREAKCOUNT) && breaklastiter)
-				{
-					broken = true;
-					force = 0;  
-				}
-
-			}
-			else
-			{
-				breakcount = 0;
-			}
-
-		}
-		else
-		{  // loose: entropic spring
-
-			force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
-
-		}
-
-		return force;
-	}
+	double getlinkforces(const double& dist);
+	
 };
 
 #endif

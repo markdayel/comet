@@ -130,13 +130,13 @@ int nucleator::addnodessphere(void)
 
 	int nodestoadd = (int) floatingnodestoadd;
 
-	if (( floatingnodestoadd - nodestoadd ) > ( (double) rand()) / (double)RAND_MAX)
+	if (( floatingnodestoadd - nodestoadd ) * RAND_MAX > rand() )
 		nodestoadd++;
 
 	for (int i=0; i< nodestoadd; i++)
 	{
-			z = (((double) rand()) / (double)(RAND_MAX/2)) - 1 ;		// random number -1 to 1
-			theta = (2 * PI * ((double) rand()) / (double)(RAND_MAX));  // circle vector
+			z = (2 * rand() * RECIP_RAND_MAX ) - 1 ;		// random number -1 to 1
+			theta = (2 * PI * rand() * RECIP_RAND_MAX);  // circle vector
 			
 			if (z*z<1) // avoid floating exception due to rounding errors causing -ve sqrt
 			{
@@ -156,10 +156,10 @@ int nucleator::addnodessphere(void)
 				if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
 					if ((y<0) || (fabs(x+z)>0.5)) continue;
 				if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
-					if (z < (radius) *( (double) rand() / (double)(RAND_MAX/2) - 1))
+					if (z < (radius) *( 2 * rand() * RECIP_RAND_MAX - 1))
 						continue;
 				if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
-					if (z < (radius) *( (double) rand() / (double)(RAND_MAX/4) - 3))
+					if (z < (radius) *( 4 * rand() * RECIP_RAND_MAX - 3))
 						continue;
 			    if (ASYMMETRIC_NUCLEATION==4) { // fixed random location
 				static double fixed_x = x;
@@ -192,7 +192,7 @@ int nucleator::addnodescapsule(void)
 
 	int nodestoadd = (int) floatingnodestoadd;
 
-	if (( floatingnodestoadd - nodestoadd ) > ( (double) rand()) / (double)RAND_MAX)
+	if (( floatingnodestoadd - nodestoadd ) > ( rand() * RECIP_RAND_MAX ))
 		nodestoadd++;
 
 	for (int i=0; i< nodestoadd; i++)
@@ -207,10 +207,10 @@ int nucleator::addnodescapsule(void)
 
 		//onseg = (((2 * rad)/(2 * rad + 3 * segment)) < (((double) rand()) / (double)(RAND_MAX)));
 
-		z = (((double) rand()) / (double)(RAND_MAX/2)) - 1 ;  // random number -1 to 1
-		theta = (2 * PI * ((double) rand()) / (double)(RAND_MAX));  // circle vector
+		z = ( 2 * rand() * RECIP_RAND_MAX ) - 1 ;  // random number -1 to 1
+		theta = (2 * PI * rand() * RECIP_RAND_MAX);  // circle vector
 		
-		onseg = ( (CAPSULE_HALF_LINEAR /(radius+CAPSULE_HALF_LINEAR)) > ( ((double) rand()) / (double)(RAND_MAX) ) ); // on ends or on segment?
+		onseg = ( (CAPSULE_HALF_LINEAR /(radius+CAPSULE_HALF_LINEAR)) > ( rand() * RECIP_RAND_MAX )); // on ends or on segment?
 		
 		if (onseg)
 		{
@@ -244,10 +244,10 @@ int nucleator::addnodescapsule(void)
 			if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
 				if (z<0) continue;
 			if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
-				if (z < (CAPSULE_HALF_LINEAR + rad) *( (double) rand() / (double)(RAND_MAX/2) - 1))
+				if (z < (CAPSULE_HALF_LINEAR + rad) *( 2*  rand() * RECIP_RAND_MAX - 1))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
-				if (z < (CAPSULE_HALF_LINEAR + rad) *( (double) rand() / (double)(RAND_MAX/4) - 3))
+				if (z < (CAPSULE_HALF_LINEAR + rad) *( 4 * rand() * RECIP_RAND_MAX - 3))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==4)  // caps only
 				if (fabs(z) < (CAPSULE_HALF_LINEAR))
@@ -256,7 +256,7 @@ int nucleator::addnodescapsule(void)
 				if ( (fabs(z) < (CAPSULE_HALF_LINEAR)) || ((x<0)&&(z>0)) || ((x>0)&&(z<0)) )
 					continue;
 			if (ASYMMETRIC_NUCLEATION==6)  // caps only
-				if (fabs(z) < 0.5 * (CAPSULE_HALF_LINEAR + rad) *( (double) rand() / (double)(RAND_MAX/4) - 3))
+				if (fabs(z) < 0.5 * (CAPSULE_HALF_LINEAR + rad) * ( 4 * rand() * RECIP_RAND_MAX - 3))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==7)  // half caps one side
 				if ( (fabs(z) < (0.7*CAPSULE_HALF_LINEAR)) || ((x>0)&&(z>0)) || ((x<0)&&(z<0)) || (z>0))
