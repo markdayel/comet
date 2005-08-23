@@ -734,7 +734,7 @@ void actin::move_and_rotate()
 // Collisiondetection
 int actin::collisiondetection(void)
 {
-    fill(donenode.begin(), donenode.end(), false);
+    fill(donenode.begin(), donenode.begin()+highestnodecount, false);
 
 	int numthreadnodes, start, end, higestorderednode;
 
