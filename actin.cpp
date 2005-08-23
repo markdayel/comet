@@ -735,204 +735,205 @@ void actin::move_and_rotate()
 int actin::collisiondetection(void)
 {
     fill(donenode.begin(), donenode.begin()+highestnodecount, false);
-
-	int numthreadnodes, start, end, higestorderednode;
-
-	higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
-	numthreadnodes = higestorderednode / NUM_THREADS;
-
-// do collision detection
-//int numtodo = 0;
-
+    
+    int numthreadnodes, start, end, higestorderednode;
+    
+    higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
+    numthreadnodes = higestorderednode / NUM_THREADS;
+    
+    // do collision detection
+    //int numtodo = 0;
     if(USE_THREADS && USETHREAD_COLLISION)
+    {
+	for (int i = 0; i < NUM_THREADS; i++)
 	{
-		for (int i = 0; i < NUM_THREADS; i++)
-		{
-			start = i * numthreadnodes;
-			end = (i+1) * numthreadnodes;
-
-			collision_thread_data_array[i].startnode = start;
-			collision_thread_data_array[i].endnode = end;
-			collision_thread_data_array[i].threadnum = i;
-
-			if (i<NUM_THREADS-1)
-			{
-				collision_thread_data_array[i].endnode = end;
-				//numtodo+=end-start;
-			}
-			else
-			{	// put remainder in last thread (cludge for now)
-				collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
-				//numtodo+=end-start + highestnodecount % NUM_THREADS;
+	    start = i * numthreadnodes;
+	    end = (i+1) * numthreadnodes;
+	    
+	    collision_thread_data_array[i].startnode = start;
+	    collision_thread_data_array[i].endnode = end;
+	    collision_thread_data_array[i].threadnum = i;
+	    
+	    if (i<NUM_THREADS-1)
+	    {
+		collision_thread_data_array[i].endnode = end;
+		//numtodo+=end-start;
+	    }
+	    else
+	    {	// put remainder in last thread (cludge for now)
+		collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
+		//numtodo+=end-start + highestnodecount % NUM_THREADS;
 		assert(collision_thread_data_array[i].endnode == higestorderednode);
-			};			
-
+	    };			
+	    
 	    // add this task to the team
 	    collision_tteam.add_task(&collision_thread_data_array[i]);
-			}
+	}
 	collision_tteam.do_work();
     } else {
         // if not using threads, do in one go:
-		collision_thread_data_array[0].startnode = 0;
-		collision_thread_data_array[0].endnode = higestorderednode;
-		collision_thread_data_array[0].threadnum = 0;
+	collision_thread_data_array[0].startnode = 0;
+	collision_thread_data_array[0].endnode = higestorderednode;
+	collision_thread_data_array[0].threadnum = 0;
 	collisiondetectiondowork(&collision_thread_data_array[0], NULL);
-	}
-
-	return 0;
+    }
+    
+    return 0;
 }
 
 void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
-	{	
+{	
     // cast arg
     thread_data* dat;
     dat = (thread_data*) arg;
-
-	vect nodeposvec;
-	double distsqr,dist;
-	double force;
-	vect tomove;
-	vect disp;
-
-	for (int i=dat->startnode; i<dat->endnode; i++)
-	{	
+    
+    vect nodeposvec;
+    double distsqr,dist;
+    double force;
+    vect tomove;
+    vect disp;
+    
+    for (int i=dat->startnode; i<dat->endnode; i++)
+    {	
 	if( (donenode[nodesbygridpoint[i]]) ||
 	    (node[nodesbygridpoint[i]].dontupdate) ||	    
-			(!node[nodesbygridpoint[i]].polymer))
-		{
-			continue;  // skip nodes already done
-		}
-		
-		// find nodes on same gridpoint, and nodes within repulsive range
+	    (!node[nodesbygridpoint[i]].polymer))
+	{
+	    continue;  // skip nodes already done
+	}
+	
+	// find nodes on same gridpoint, and nodes within repulsive range
 	if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0)
 	    continue;	// find nodes within 1 grid point
+	
+	// skip if zero
 
-		// skip if zero
-
-		// loop over nodes on same gridpoint:
+	// loop over nodes on same gridpoint:
 	for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
 	    sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
 	    sameGPnode++) {
-
-			if (donenode[(*sameGPnode)->nodenum])
-				continue;  // skip if done
-			
+	    
+	    if (donenode[(*sameGPnode)->nodenum])
+		continue;  // skip if done
+	    
 			if (( (*sameGPnode)->nodenum < dat->startnode) ||
-				( (*sameGPnode)->nodenum >= dat->endnode) )
-				 continue;    // skip if out of range of this thread
+			    ( (*sameGPnode)->nodenum >= dat->endnode) )
+			    continue;    // skip if out of range of this thread
 
-	    // REVISIT ML: remove this mutex, should never conflict
-	    //pthread_mutex_lock(&nodedone_mutex);
+			// REVISIT ML: remove this mutex, should never conflict
+			//pthread_mutex_lock(&nodedone_mutex);
 			donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
-	    //pthread_mutex_unlock(&nodedone_mutex);
-
+			//pthread_mutex_unlock(&nodedone_mutex);
+			
 			// of these nodes, calculate euclidian dist
 			nodeposvec = (*(*sameGPnode));	// get xyz of our node
-	    for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
-		 nearnode<recti_near_nodes[dat->threadnum].end();
-		 nearnode++) {
-		if ((*sameGPnode)==(*nearnode))
-		    continue;  // skip if self
-
-				//if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
-				//	continue;  // skip if done opposite pair
+			for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
+			     nearnode<recti_near_nodes[dat->threadnum].end();
+			     nearnode++) {
+			    if ((*sameGPnode)==(*nearnode))
+				continue;  // skip if self
+			    
+			    //if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
+			    //	continue;  // skip if done opposite pair
+			    
+			    // this check should not be necessary?:
+			    // if (( (*sameGPnode)->nodenum < dat->startnode) ||
+			    //    ( (*sameGPnode)->nodenum >= dat->endnode) )
+			    //    continue;    // skip if out of range of this thread  
+			    assert( (*sameGPnode)->nodenum >= dat->startnode );
+			    assert( (*sameGPnode)->nodenum <  dat->endnode   );
+			    
+			    disp = (*(*nearnode)) - nodeposvec; 
+			    distsqr = disp.sqrlength();
+			    
+			    if (distsqr < 2 * SQRT_ACCURACY_LOSS)
+			    {	
+				continue;
+			    }
+			    
+			    //dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
+			    //dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
+			    
+			    if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
+			    {
+				// calc dist between nodes
+				dist = sqrt(distsqr); 
+				force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+				tomove = disp * ( 2 * force / dist);
 				
-				// this check should not be necessary?:
-		// if (( (*sameGPnode)->nodenum < dat->startnode) ||
-		//    ( (*sameGPnode)->nodenum >= dat->endnode) )
-		//    continue;    // skip if out of range of this thread  
-		assert( (*sameGPnode)->nodenum >= dat->startnode );
-		assert( (*sameGPnode)->nodenum <  dat->endnode   );
-
-				disp = (*(*nearnode)) - nodeposvec; 
-				distsqr = disp.sqrlength();
-
-				if (distsqr < 2 * SQRT_ACCURACY_LOSS)
-				{	
-					continue;
-				}
-
-				//dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
-				//dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
+				(*sameGPnode)->rep_force_vec[dat->threadnum] -= tomove ;
+				(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial[dat->threadnum],
+								  (*sameGPnode)->repforce_transverse[dat->threadnum]);
 				
-				if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
-					{
-						// calc dist between nodes
-						dist = sqrt(distsqr); 
-						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
-					tomove = disp * ( 2 * force / dist);
-					
-					(*sameGPnode)->rep_force_vec[0] -= tomove ;
-					(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial[0], (*sameGPnode)->repforce_transverse[0]);
-
-				}
+			    }
 			}
-		}
 	}
-return (void*) NULL;
+    }
+    return (void*) NULL;
 }
 
 int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
 {
     // create list of nodes on the same gridpoint, and on adjacent gridpoints (including same GP)
-	// 	
-	// N.B. a good fraction of the total CPU time is spent in this function
-	// may be worth linearizing the loop or poss amalgamating with the calling
-	// functions so that creating and reading the list of gridpoints is not necessary
-
-    if(!ournode.polymer) // bail early
-	return 0;
+    // 	
+    // N.B. a good fraction of the total CPU time is spent in this function
+    // may be worth linearizing the loop or poss amalgamating with the calling
+    // functions so that creating and reading the list of gridpoints is not necessary
     
-nodes *nodeptr, *startnodeptr;
 
+    
+    nodes *nodeptr, *startnodeptr;
+    
 // save repeatedly dereferencing pointer by threadnum in inner loops:
 // (maybe compiler does this anyway?)
-Nodes1d *p_recti_near_nodeslist = &recti_near_nodes[threadnum];
-Nodes1d *p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
-
-int gridx = ournode.gridx;
-int gridy = ournode.gridy;
-int gridz = ournode.gridz;
-
-if ((gridx < 0) || (gridx > GRIDSIZE) ||
-	(gridy < 0) || (gridy > GRIDSIZE) ||
-	(gridz < 0) || (gridz > GRIDSIZE))
-		return 0;
+    Nodes1d *p_recti_near_nodeslist = &recti_near_nodes[threadnum];
+    Nodes1d *p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
 
     p_recti_near_nodeslist->resize(0);
     p_nodes_on_same_gridpoint->resize(0);
-
-int minx,miny,minz,maxx,maxy,maxz;
-
-minx = gridx-adjgridpoints;
-miny = gridy-adjgridpoints;
-minz = gridz-adjgridpoints;
-
-maxx = gridx+adjgridpoints;
-maxy = gridy+adjgridpoints;
-maxz = gridz+adjgridpoints;
-
-// truncate if out of grid bounds:
+    
+    if(!ournode.polymer) // bail early
+	return 0;
+    
+    int gridx = ournode.gridx;
+    int gridy = ournode.gridy;
+    int gridz = ournode.gridz;
+    
+    if ((gridx < 0) || (gridx > GRIDSIZE) ||
+	(gridy < 0) || (gridy > GRIDSIZE) ||
+	(gridz < 0) || (gridz > GRIDSIZE))
+	return 0;
+    
+    int minx,miny,minz,maxx,maxy,maxz;
+    
+    minx = gridx-adjgridpoints;
+    miny = gridy-adjgridpoints;
+    minz = gridz-adjgridpoints;
+    
+    maxx = gridx+adjgridpoints;
+    maxy = gridy+adjgridpoints;
+    maxz = gridz+adjgridpoints;
+    
+    // truncate if out of grid bounds:
     if (minx < 0)
 	minx = 0;
-
+    
     if (miny < 0)
 	miny = 0;
-
+    
     if (minz < 0)
 	minz = 0;
-
+    
     if (maxx > GRIDSIZE)
 	maxx = GRIDSIZE;
 
     if (maxy > GRIDSIZE)
 	maxy = GRIDSIZE;
-
+    
     if (maxz > GRIDSIZE)
 	maxz = GRIDSIZE;
     
-// do adjgridpoints by adjgridpoints scan on grid
-
+    // do adjgridpoints by adjgridpoints scan on grid
     for (int x = minx; x != maxx; ++x) {
 	for (int y = miny; y != maxy; ++y) {
 	    for (int z = minz; z != maxz; ++z) {
@@ -941,79 +942,79 @@ maxz = gridz+adjgridpoints;
 		startnodeptr=nodeptr;
 		if (nodeptr!=0) {
 		    do {
-					p_recti_near_nodeslist->push_back(nodeptr);
-					nodeptr = nodeptr->nextnode;					
+			p_recti_near_nodeslist->push_back(nodeptr);
+			nodeptr = nodeptr->nextnode;					
 		    } while(nodeptr!=startnodeptr);  // until back to start
-				}
-			}
 		}
+	    }
+	}
     }
-	// nodes on same gridpoint:
-
-	nodeptr=nodegrid[gridx][gridy][gridz];
-	startnodeptr=nodeptr;
+    // nodes on same gridpoint:
+    
+    nodeptr=nodegrid[gridx][gridy][gridz];
+    startnodeptr=nodeptr;
     if(nodeptr!=0) {
 	do {
-			p_nodes_on_same_gridpoint->push_back(nodeptr);
-			nodeptr = nodeptr->nextnode;					
+	    p_nodes_on_same_gridpoint->push_back(nodeptr);
+	    nodeptr = nodeptr->nextnode;					
 	} while (nodeptr!=startnodeptr);  // until back to start
-		}
-		
-	return (int) p_recti_near_nodeslist->size();
+    }
+    
+    return (int) p_recti_near_nodeslist->size();
 }
 
 // ApplyForces
 int actin::applyforces(void)  // this just applys previously calculated forces (in dorepulsion())
 {
 #ifndef SEED_INSIDE
-	int numthreadnodes, start, end;
-
-	numthreadnodes = highestnodecount / NUM_THREADS;
-
+    int numthreadnodes, start, end;
+    
+    numthreadnodes = highestnodecount / NUM_THREADS;
+    
     if(USE_THREADS && USETHREAD_APPLYFORCES)  // switch this off for now...
-	{
+    {
 	for(int i=0; i<NUM_THREADS; i++){
-			start = i * numthreadnodes;
-			end = (i+1) * numthreadnodes;
-
-			applyforces_thread_data_array[i].startnode = start;
-			applyforces_thread_data_array[i].endnode = end;
-			applyforces_thread_data_array[i].threadnum = i;
-
-			if (i<NUM_THREADS-1)
-			{
-				applyforces_thread_data_array[i].endnode = end;
-			}
-			else
-			{	// put remainder in last thread (cludge for now)
-				applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
-			};
+	    start = i * numthreadnodes;
+	    end = (i+1) * numthreadnodes;
+	    
+	    applyforces_thread_data_array[i].startnode = start;
+	    applyforces_thread_data_array[i].endnode = end;
+	    applyforces_thread_data_array[i].threadnum = i;
+	    
+	    if (i<NUM_THREADS-1)
+	    {
+		applyforces_thread_data_array[i].endnode = end;
+	    }
+	    else
+	    {	// put remainder in last thread (cludge for now)
+		applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+	    };
 	    applyforces_tteam.add_task(&applyforces_thread_data_array[i]);
-		}
+	}
 	applyforces_tteam.do_work();
     } else {
 	applyforces_thread_data_array[0].startnode = 0;
 	applyforces_thread_data_array[0].endnode = highestnodecount;
 	applyforces_thread_data_array[0].threadnum = 0;
 	applyforcesdowork(&applyforces_thread_data_array[0], NULL);
-
-	// REVISIT: remove this, old method
+	
+	// REVISIT: remove this, old method now moved into dowork fcn
 	//for(int i=0; i<highestnodecount; i++){
 	//    for(int threadnum = 0; threadnum < NUM_THREADS; threadnum++) {
 	//	if((!node[i].dontupdate) && node[i].polymer)
 	//	    node[i].applyforces(threadnum);
 	//    }
 	//}
-		}
-
-		for (int i=0; i<highestnodecount; i++)
-			{
-					if ((!node[i].dontupdate) && node[i].polymer)
-			node[i].updategrid(); // move the point on the grid if need to
-								  // and update the unit vector position
-	}
+    }
+    
+    for (int i=0; i<highestnodecount; i++)
+    {
+	if ((!node[i].dontupdate) && node[i].polymer)
+	    node[i].updategrid(); // move the point on the grid if need to
+	// and update the unit vector position
+    }
 #endif
-	return 0;
+    return 0;
 }
 
 void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
@@ -1021,69 +1022,69 @@ void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
     // cast arg
     thread_data* dat;
     dat = (thread_data*) arg;
-
-		// sum forces etc. over all threads
-		for (int i=dat->startnode; i<dat->endnode; i++)
-			{
+    
+    // sum forces etc. over all threads
+    for (int i=dat->startnode; i<dat->endnode; i++)
+    {
 	if((!node[i].dontupdate) && node[i].polymer)
 	    node[i].applyforces(dat->threadnum);
-			}
+    }
     return NULL;
-		}
+}
 
 int actin::linkforces()
 {
-	// remove the links for ones that were broken last time
-	for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
-	{
-		linkremovefrom[i]->removelink(linkremoveto[i]);  // remove the back link
-		linkremoveto[i]->removelink(linkremovefrom[i]);  // and remove from the list
-	}
-
-	// reset the lists of broken links:
-	linkremovefrom.resize(0);
-	linkremoveto.resize(0);
-	
-	int numthreadnodes, start, end;
-
-	numthreadnodes = highestnodecount / NUM_THREADS;
+    // remove the links for ones that were broken last time
+    for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
+    {
+	linkremovefrom[i]->removelink(linkremoveto[i]);  // remove the back link
+	linkremoveto[i]->removelink(linkremovefrom[i]);  // and remove from the list
+    }
+    
+    // reset the lists of broken links:
+    linkremovefrom.resize(0);
+    linkremoveto.resize(0);
+    
+    int numthreadnodes, start, end;
+    
+    numthreadnodes = highestnodecount / NUM_THREADS;
     if(USE_THREADS && USETHREAD_LINKFORCES)
+    {
+	for (int i = 0; i < NUM_THREADS; i++)
 	{
-		for (int i = 0; i < NUM_THREADS; i++)
-		{
-			start = i * numthreadnodes;
-			end = (i+1) * numthreadnodes;
-
-			linkforces_thread_data_array[i].startnode = start;
-			linkforces_thread_data_array[i].endnode = end;
-			linkforces_thread_data_array[i].threadnum = i;
-
-			if (i<NUM_THREADS-1)
-			{
-				linkforces_thread_data_array[i].endnode = end;
-			}
-			else
-			{	// put remainder in last thread (cludge for now)
-				linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
-			};
+	    start = i * numthreadnodes;
+	    end = (i+1) * numthreadnodes;
+	    
+	    linkforces_thread_data_array[i].startnode = start;
+	    linkforces_thread_data_array[i].endnode = end;
+	    linkforces_thread_data_array[i].threadnum = i;
+	    
+	    if (i<NUM_THREADS-1)
+	    {
+		linkforces_thread_data_array[i].endnode = end;
+	    }
+	    else
+	    {	// put remainder in last thread (cludge for now)
+		linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+	    };
 	    linkforces_tteam.add_task(&linkforces_thread_data_array[i]);
-		}
+	}
 	linkforces_tteam.do_work();	
     }
     else
-		{
+    {
         // if not using threads, do in one go:
 	linkforces_thread_data_array[0].startnode = 0;
 	linkforces_thread_data_array[0].endnode = highestnodecount;
 	linkforces_thread_data_array[0].threadnum = 0;
 	linkforcesdowork(&linkforces_thread_data_array[0], NULL);
-		}
+    }
     return 0;
 }
 
 // LinkForces
 void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
-	{
+{
     // cast arg
     thread_data* dat;
     dat = (thread_data*) arg;
@@ -1093,54 +1094,54 @@ void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
     vect nodeposvec, disp;
     vect tomove;
     
-		// go through all nodes
+    // go through all nodes
     for(int n=(dat->startnode); n<(dat->endnode); n++)
-		{  	
-			if ((node[n].dontupdate) || (!node[n].polymer))
-				continue;
-
-			nodeposvec = node[n];
-
-			// go through links for each node
-			for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
-			{	 
+    {  	
+	if ((node[n].dontupdate) || (!node[n].polymer))
+	    continue;
+	
+	nodeposvec = node[n];
+	
+	// go through links for each node
+	for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
+	{	 
 	    assert( !(i->broken) ); // if link not broken  (shouldn't be here if broken anyway)
-					disp = nodeposvec - *(i->linkednodeptr);
-					dist = disp.length();
-
-					//if (dist < 0)
-					//	continue;
-
-					force = i->getlinkforces(dist);
-
+	    disp = nodeposvec - *(i->linkednodeptr);
+	    dist = disp.length();
+	    
+	    //if (dist < 0)
+	    //	continue;
+	    
+	    force = i->getlinkforces(dist);
+	    
 	    if(i->broken) {
 		// broken link: store which ones to break:
 		pthread_mutex_lock(&removelinks_mutex);   // lock the mutex
-						linkremovefrom.push_back(&node[n]);
-						linkremoveto.push_back(i->linkednodeptr);
-						node[n].links_broken[0]++;
+		linkremovefrom.push_back(&node[n]);
+		linkremoveto.push_back(i->linkednodeptr);
+		node[n].links_broken[dat->threadnum]++;
 		pthread_mutex_unlock(&removelinks_mutex); // lock the mutex
 	    } else {
-						tomove = disp * (2* force/dist);  
-												  // we're scaling the force by vector disp
-												  // to get the direction, so we need to
-												  // divide by the length of disp (i.e. dist)
-												  // to prevent the length amplifying the force
-
-						node[n].link_force_vec[0] += tomove;
-
-						if (force < 0) // put tension into link forces
-						{
-							node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
+		tomove = disp * (2* force/dist);  
+		// we're scaling the force by vector disp
+		// to get the direction, so we need to
+		// divide by the length of disp (i.e. dist)
+		// to prevent the length amplifying the force
+		
+		node[n].link_force_vec[dat->threadnum] += tomove;
+		
+		if (force < 0) // put tension into link forces
+		{
+		    node[n].adddirectionalmags(tomove, node[n].linkforce_radial[dat->threadnum], node[n].linkforce_transverse[dat->threadnum]);
 		} else {	// but put compression into link forces
-							node[n].adddirectionalmags(tomove, node[n].repforce_radial[0], node[n].repforce_transverse[0]);
-						}
-
-					}
-				}
-			}
-    return NULL;
+		    node[n].adddirectionalmags(tomove, node[n].repforce_radial[dat->threadnum], node[n].repforce_transverse[dat->threadnum]);
 		}
+		
+	    }
+	}
+    }
+    return NULL;
+}
 // -- END from threading branch
 // - - - - - - - - - - - - - - 
 
