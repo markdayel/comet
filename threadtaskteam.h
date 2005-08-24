@@ -17,7 +17,7 @@ protected:
     pthread_cond_t start;
     pthread_cond_t finish;
     bool ready;
-    int ntasks_todo;
+    size_t ntasks_todo;
     void* (*taskfcn)(void *args, pthread_mutex_t *mutex);
       
     void lockteam();

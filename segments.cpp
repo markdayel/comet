@@ -272,6 +272,14 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	straight_seg_area =  straight_seg_len;
 	// capsule_z_seg_area = 
 
+    numnodes_scalefactor = 0.1;
+	rep_radial_scalefactor = 0.1;
+	rep_transverse_scalefactor = 0.1;
+	link_radial_scalefactor = 0.1;
+	link_transverse_scalefactor = 0.1;
+	links_broken_scalefactor = 0.1;
+    surfaceimpacts_scalefactor = 0.1;
+
 }
 
 void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const
@@ -454,65 +462,65 @@ void segments::addnode(const nodes& node)
 	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts;
 	surfaceimpacts[2][zseg] += zfactor * node.nucleator_impacts;
 
-	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+
+	if (xdist!=-1)
 	{
-		if (xdist!=-1)
-		{
 
-			 rep_radial[0][xseg][xdist] += xfactor * node.repforce_radial[threadnum];
-		 rep_transverse[0][xseg][xdist] += xfactor * node.repforce_transverse[threadnum];
-			link_radial[0][xseg][xdist] += xfactor * node.linkforce_radial[threadnum];
-		link_transverse[0][xseg][xdist] += xfactor * node.linkforce_transverse[threadnum];
-		   links_broken[0][xseg][xdist] += xfactor * node.links_broken[threadnum];
+			rep_radial[0][xseg][xdist] += xfactor * node.repforce_radial;
+		rep_transverse[0][xseg][xdist] += xfactor * node.repforce_transverse;
+		link_radial[0][xseg][xdist] += xfactor * node.linkforce_radial;
+	link_transverse[0][xseg][xdist] += xfactor * node.linkforce_transverse;
+		links_broken[0][xseg][xdist] += xfactor * node.links_broken;
 
-               
-//			disp_radial[0][xseg][xdist] += node.dispforce_radial[threadnum];
-//		disp_transverse[0][xseg][xdist] += node.dispforce_transverse[threadnum];
-		}
+            
+//			disp_radial[0][xseg][xdist] += node.dispforce_radial;
+//		disp_transverse[0][xseg][xdist] += node.dispforce_transverse;
+	}
 
 
-		if (ydist!=-1)
-		{
-			 rep_radial[1][yseg][ydist] += yfactor * node.repforce_radial[threadnum];
-		 rep_transverse[1][yseg][ydist] += yfactor * node.repforce_transverse[threadnum];
-			link_radial[1][yseg][ydist] += yfactor * node.linkforce_radial[threadnum];
-		link_transverse[1][yseg][ydist] += yfactor * node.linkforce_transverse[threadnum];
-		   links_broken[1][yseg][ydist] += yfactor * node.links_broken[threadnum];
+	if (ydist!=-1)
+	{
+			rep_radial[1][yseg][ydist] += yfactor * node.repforce_radial;
+		rep_transverse[1][yseg][ydist] += yfactor * node.repforce_transverse;
+		link_radial[1][yseg][ydist] += yfactor * node.linkforce_radial;
+	link_transverse[1][yseg][ydist] += yfactor * node.linkforce_transverse;
+		links_broken[1][yseg][ydist] += yfactor * node.links_broken;
 
 
-//			disp_radial[1][yseg][ydist] += node.dispforce_radial[threadnum];
-//		disp_transverse[1][yseg][ydist] += node.dispforce_transverse[threadnum];
-		}
+//			disp_radial[1][yseg][ydist] += node.dispforce_radial;
+//		disp_transverse[1][yseg][ydist] += node.dispforce_transverse;
+	}
 
 
-		if (zdist!=-1)
-		{
-			 rep_radial[2][zseg][zdist] += zfactor * node.repforce_radial[threadnum];
-		 rep_transverse[2][zseg][zdist] += zfactor * node.repforce_transverse[threadnum];
-			link_radial[2][zseg][zdist] += zfactor * node.linkforce_radial[threadnum];
-		link_transverse[2][zseg][zdist] += zfactor * node.linkforce_transverse[threadnum];
-		   links_broken[2][zseg][zdist] += zfactor * node.links_broken[threadnum];
+	if (zdist!=-1)
+	{
+			rep_radial[2][zseg][zdist] += zfactor * node.repforce_radial;
+		rep_transverse[2][zseg][zdist] += zfactor * node.repforce_transverse;
+		link_radial[2][zseg][zdist] += zfactor * node.linkforce_radial;
+	link_transverse[2][zseg][zdist] += zfactor * node.linkforce_transverse;
+		links_broken[2][zseg][zdist] += zfactor * node.links_broken;
 
+    }
 
 //			disp_radial[2][zseg][zdist] += node.dispforce_radial[threadnum];
 //		disp_transverse[2][zseg][zdist] += node.dispforce_transverse[threadnum];
-		}
+	
 	
 
 
-		dist = (int) (radius / radialdist);
+	dist = (int) (radius / radialdist);
 
-		if (dist >= num_radial_bins)
-			continue;
-
-		radial_numnodes[dist]++;
-		radial_rep_radial[dist] += node.repforce_radial[threadnum]; 
-		radial_rep_transverse[dist] += node.repforce_transverse[threadnum]; 
-		radial_link_radial[dist] += node.linkforce_radial[threadnum];
-		radial_link_transverse[dist] += node.linkforce_transverse[threadnum];
-		radial_links_broken[dist] += node.links_broken[threadnum];
+	if ((dist < num_radial_bins) && (dist > 0))
+    {
+	    radial_numnodes[dist]++;
+	    radial_rep_radial[dist] += node.repforce_radial; 
+	    radial_rep_transverse[dist] += node.repforce_transverse; 
+	    radial_link_radial[dist] += node.linkforce_radial;
+	    radial_link_transverse[dist] += node.linkforce_transverse;
+	    radial_links_broken[dist] += node.links_broken;
+    }
 	
-	}
+
 
 }
 
@@ -686,7 +694,8 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 			seg_area = curved_seg_area;
 		}
 	
-		unscaledlen = surfaceimpacts[axis][i] * FORCEBAR_SCALE * scale / seg_area;
+		unscaledlen = surfaceimpacts[axis][i] * scale
+                            / (seg_area * surfaceimpacts_scalefactor);
 
 		//cout << "surfaceimpacts[" << axis <<"][" <<i<<"]" << surfaceimpacts[axis][i] << endl;
 
@@ -956,7 +965,7 @@ void segments::getsegmentposition(double& x, double& y, double& z, const int & s
 //}
 
 void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
-					   const Dbl3d & var, const int& axis)
+					   const Dbl3d & var, const double& scale, const int& axis)
 {
 
 	const int offsetx = bins_bitmap_width / 2;			// center these pixels
@@ -979,13 +988,13 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 	// set max value:
 
-	for (int ax = 0; ax < 3; ++ax)
-		for(int seg = 0; seg<num_segs; ++seg)
-			for(int dist = 0; dist<num_dist_segs; ++dist)
-			{
-				if (var[ax][seg][dist] > maxval)
-					maxval = var[ax][seg][dist];
-			}
+	//for (int ax = 0; ax < 3; ++ax)
+	//	for(int seg = 0; seg<num_segs; ++seg)
+	//		for(int dist = 0; dist<num_dist_segs; ++dist)
+	//		{
+	//			if (var[ax][seg][dist] > maxval)
+	//				maxval = var[ax][seg][dist];
+	//		}
 
 	//for(int seg = 0; seg<num_segs; ++seg)
 	//	for(int dist = 0; dist<num_dist_segs; ++dist)
@@ -1061,7 +1070,7 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 			if (dist == -1)
 				continue;
 
-			value = var[axis][seg][dist] / maxval;  // scaled between 0 and 1
+			value = var[axis][seg][dist] / scale;  // scaled between 0 and 1
 
 			if (value < 0.00001)	// skip if zero
 				continue;
@@ -1096,3 +1105,82 @@ const int keyyorig = centery - (keyheight / 2);
 	}
 
 }
+
+void segments::set_scale_factors(void)
+{
+    for (int ax = 0; ax < 3; ++ax)
+	    for(int seg = 0; seg<num_segs; ++seg)
+        {
+
+            if (surfaceimpacts[ax][seg] > surfaceimpacts_scalefactor)
+				surfaceimpacts_scalefactor = surfaceimpacts[ax][seg];
+
+		    for(int dist = 0; dist<num_dist_segs; ++dist)
+		    {
+			    if (numnodes[ax][seg][dist] > numnodes_scalefactor)
+				    numnodes_scalefactor = numnodes[ax][seg][dist];
+
+                if (rep_radial[ax][seg][dist] > rep_radial_scalefactor)
+				    rep_radial_scalefactor = rep_radial[ax][seg][dist];
+
+                if (rep_transverse[ax][seg][dist] > rep_transverse_scalefactor)
+				    rep_transverse_scalefactor = rep_transverse[ax][seg][dist];
+
+                if (link_radial[ax][seg][dist] > link_radial_scalefactor)
+				    link_radial_scalefactor = link_radial[ax][seg][dist];
+
+                if (link_transverse[ax][seg][dist] > link_transverse_scalefactor)
+				    link_transverse_scalefactor = link_transverse[ax][seg][dist];
+
+                if (links_broken[ax][seg][dist] > links_broken_scalefactor)
+				    links_broken_scalefactor = links_broken[ax][seg][dist];
+
+			}
+        }
+
+}
+
+
+void segments::save_scalefactors(void)
+{
+	ofstream opscalefact("segscalefactors.txt", ios::out | ios::trunc);
+	if (!opscalefact) 
+	{ cout << "Unable to open file 'sym_break_axis.txt' for output"; return;}
+
+	opscalefact  << surfaceimpacts_scalefactor << " "
+				<< numnodes_scalefactor << " "
+				<< rep_radial_scalefactor << " "
+                << rep_transverse_scalefactor << " "
+                << link_radial_scalefactor << " "
+                << link_transverse_scalefactor << " "
+                << links_broken_scalefactor << endl;
+
+
+
+	opscalefact.close();
+
+	//cout << "'sym_break_axis.txt' file written" << endl;
+}
+
+void segments::load_scalefactors(void)
+{
+	ifstream ipscalefact("segscalefactors.txt", ios::in);
+
+	if (!ipscalefact) 
+	{ 
+		cout << "Unable to open file 'segscalefactors.txt' for input, skipping." << endl;
+	}
+	else
+	{
+	    ipscalefact  >> surfaceimpacts_scalefactor 
+				    >> numnodes_scalefactor 
+				    >> rep_radial_scalefactor 
+                    >> rep_transverse_scalefactor 
+                    >> link_radial_scalefactor 
+                    >> link_transverse_scalefactor 
+                    >> links_broken_scalefactor;
+
+		ipscalefact.close();
+	}
+}
+

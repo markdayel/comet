@@ -496,11 +496,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 		node*=scale;
 		
-		if (NUCLEATOR_FORCES)
-		{
-			//segs.addsurfaceimpact(node,(rad-r));
-            node.nucleator_impacts += (rad-r);
-		}
+        node.nucleator_impacts += (rad-r);
 
 		break;
 		}
@@ -517,12 +513,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 				node.x*=scale;
 				node.y*=scale;
 				
-				if (NUCLEATOR_FORCES)
-				{
-                    node.nucleator_impacts += (rad-r);
-					//segs.addsurfaceimpact(node,(rad-r));
-				}
-
+                node.nucleator_impacts += (rad-r);
 			}
 			else
 			{	// on the ends
@@ -545,13 +536,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 				else
 					node.z = z2 + (CAPSULE_HALF_LINEAR);
 			
-
-				if (NUCLEATOR_FORCES)
-				{
-					node.nucleator_impacts += (rad-r);
-                    //segs.addsurfaceimpact(node,(rad-r));
-				}
-
+				node.nucleator_impacts += (rad-r);
 			}
 
 			break;

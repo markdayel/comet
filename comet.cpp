@@ -120,7 +120,7 @@ taskteam collision_tteam;
 taskteam linkforces_tteam;
 taskteam applyforces_tteam;
 pthread_mutex_t removelinks_mutex;
-pthread_mutex_t nodedone_mutex;
+//pthread_mutex_t nodedone_mutex;
 bool USETHREAD_COLLISION   = true;
 bool USETHREAD_APPLYFORCES = true;
 bool USETHREAD_LINKFORCES  = true;
@@ -131,18 +131,18 @@ pthread_attr_t thread_attr;
 vector<pthread_t>  threads;
 
 vector<struct thread_data>  collision_thread_data_array;
-vector<sem_t> collision_thread_go;
-vector<sem_t> collision_data_done;
+//vector<sem_t> collision_thread_go;
+//vector<sem_t> collision_data_done;
 
 vector<struct thread_data>  linkforces_thread_data_array;
-vector<sem_t> linkforces_thread_go;
-vector<sem_t> linkforces_data_done;
+//vector<sem_t> linkforces_thread_go;
+//vector<sem_t> linkforces_data_done;
 
 vector<struct thread_data>  applyforces_thread_data_array;
-vector<sem_t> applyforces_thread_go;
-vector<sem_t> applyforces_data_done;
+//vector<sem_t> applyforces_thread_go;
+//vector<sem_t> applyforces_data_done;
 
-vector<struct thread_data>  compressfiles_thread_data_array;
+//vector<struct thread_data>  compressfiles_thread_data_array;
 //vector<sem_t> compressfiles_thread_go;
 //vector<sem_t> compressfiles_data_done;
 
@@ -153,8 +153,8 @@ vector<struct thread_data>  compressfiles_thread_data_array;
 
 //pthread_mutex_t beadmovelock_mutex;
 
-vector<pthread_mutex_t> collisiondetectiongolock_mutex;
-vector<pthread_mutex_t> collisiondetectiondonelock_mutex;
+//vector<pthread_mutex_t> collisiondetectiongolock_mutex;
+//vector<pthread_mutex_t> collisiondetectiondonelock_mutex;
 
 //debug threads:
 //bool actin::collisionthreaddone1;
@@ -313,103 +313,104 @@ if (!rewritesymbreak)
 			cout << "Running in multithreaded mode with " << NUM_THREADS << " threads per stage" << endl;
 		USE_THREADS = true;
 	}
+
 	// -- Threading TaskTeam, create and intialise the team
 	collision_tteam.create_team(NUM_THREADS);
 	collision_tteam.set_taskfcn(&actin::collisiondetectiondowork);
+	collision_thread_data_array.resize(NUM_THREADS+1);
 
 	linkforces_tteam.create_team(NUM_THREADS);
 	linkforces_tteam.set_taskfcn(&actin::linkforcesdowork);
+	linkforces_thread_data_array.resize(NUM_THREADS+1);
 
 	applyforces_tteam.create_team(NUM_THREADS);
 	applyforces_tteam.set_taskfcn(&actin::applyforcesdowork);
+	applyforces_thread_data_array.resize(NUM_THREADS+1);
 
-	pthread_mutex_init(&nodedone_mutex, NULL);
+	//pthread_mutex_init(&nodedone_mutex, NULL);
 	pthread_mutex_init(&removelinks_mutex, NULL);
         // --
 	
-	threads.resize(NUM_THREADS*5);
-
-	collisiondetectiongolock_mutex.resize(NUM_THREADS*5);
-	collisiondetectiondonelock_mutex.resize(NUM_THREADS*5);
-
-	collision_thread_data_array.resize(NUM_THREADS+1);
-	collision_thread_go.resize(NUM_THREADS+1);
-	collision_data_done.resize(NUM_THREADS+1);
-
-	linkforces_thread_data_array.resize(NUM_THREADS+1);
-	linkforces_thread_go.resize(NUM_THREADS+1);
-	linkforces_data_done.resize(NUM_THREADS+1);
-
-	applyforces_thread_data_array.resize(NUM_THREADS+1);
-	applyforces_thread_go.resize(NUM_THREADS+1);
-	applyforces_data_done.resize(NUM_THREADS+1);
-
-	compressfiles_thread_data_array.resize(NUM_THREADS+1);
-//	compressfiles_thread_go.resize(NUM_THREADS+1);
-//	compressfiles_data_done.resize(NUM_THREADS+1);
-
-	pthread_attr_init(&thread_attr);
-	pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
-
-	//pthread_mutex_init(&linkstoremove_mutex,NULL);
-
-	//pthread_mutex_init(&filessavelock_mutex,NULL);
-	//pthread_mutex_init(&filesdonelock_mutex,NULL);
-
-	//pthread_mutex_init(&beadmovelock_mutex,NULL);
-	
-	//pthread_mutex_lock(&filessavelock_mutex);
-
-//	int truethreadnum = 0;
-
-	for (int i = 0; i < NUM_THREADS; i++)
-		{
-		
-			collision_thread_data_array[i].threadnum = i;
-			sem_init(&collision_thread_go[i],0,0);
-			sem_init(&collision_data_done[i],0,0);
-			
-			linkforces_thread_data_array[i].threadnum = i;
-			sem_init(&linkforces_thread_go[i],0,0);
-			sem_init(&linkforces_data_done[i],0,0);
-
-			applyforces_thread_data_array[i].threadnum = i;
-			sem_init(&applyforces_thread_go[i],0,0);
-			sem_init(&applyforces_data_done[i],0,0);
-
-			if (USE_THREADS)  // only create threads if more than one cpu
-			{
-				// initialise the mutexes
-				pthread_mutex_init(&collisiondetectiongolock_mutex[i],NULL);
-				pthread_mutex_init(&collisiondetectiondonelock_mutex[i],NULL);
-
-				// start the child threads in halted state by locking 'go' mutex:
-				pthread_mutex_lock(&collisiondetectiongolock_mutex[i]);
-
-				// start the threads
-				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::collisiondetectionthread, 
-				//					(void *) &collision_thread_data_array[i]);
-
-				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::linkforcesthread, 
-				//					(void *) &linkforces_thread_data_array[i]);
-
-				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::applyforcesthread, 
-				//					(void *) &applyforces_thread_data_array[i]);
-			}
-		}
-
-		// always create compress files thread
-
-		compressfiles_thread_data_array[0].threadnum = 0;
-		//sem_init(&compressfiles_thread_go[0],0,0);
-		//sem_init(&compressfiles_data_done[0],0,0);
-
-		// make sure semaphores are stopped
-		//sem_trywait(&compressfiles_thread_go[0]);
-        //sem_trywait(&compressfiles_data_done[0]);
-
-		//pthread_create(&threads[truethreadnum++], &thread_attr, actin::compressfilesthread, 
-		//			(void *) &compressfiles_thread_data_array[0]);
+//	threads.resize(NUM_THREADS*5);
+//
+//	collisiondetectiongolock_mutex.resize(NUM_THREADS*5);
+//	collisiondetectiondonelock_mutex.resize(NUM_THREADS*5);
+//
+//	collision_thread_go.resize(NUM_THREADS+1);
+//	collision_data_done.resize(NUM_THREADS+1);
+//
+//	linkforces_thread_go.resize(NUM_THREADS+1);
+//	linkforces_data_done.resize(NUM_THREADS+1);
+//
+//	applyforces_thread_go.resize(NUM_THREADS+1);
+//	applyforces_data_done.resize(NUM_THREADS+1);
+//
+//	compressfiles_thread_data_array.resize(NUM_THREADS+1);
+////	compressfiles_thread_go.resize(NUM_THREADS+1);
+////	compressfiles_data_done.resize(NUM_THREADS+1);
+//
+//	pthread_attr_init(&thread_attr);
+//	pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
+//
+//	//pthread_mutex_init(&linkstoremove_mutex,NULL);
+//
+//	//pthread_mutex_init(&filessavelock_mutex,NULL);
+//	//pthread_mutex_init(&filesdonelock_mutex,NULL);
+//
+//	//pthread_mutex_init(&beadmovelock_mutex,NULL);
+//	
+//	//pthread_mutex_lock(&filessavelock_mutex);
+//
+////	int truethreadnum = 0;
+//
+//	for (int i = 0; i < NUM_THREADS; i++)
+//		{
+//		
+//			collision_thread_data_array[i].threadnum = i;
+//			sem_init(&collision_thread_go[i],0,0);
+//			sem_init(&collision_data_done[i],0,0);
+//			
+//			linkforces_thread_data_array[i].threadnum = i;
+//			sem_init(&linkforces_thread_go[i],0,0);
+//			sem_init(&linkforces_data_done[i],0,0);
+//
+//			applyforces_thread_data_array[i].threadnum = i;
+//			sem_init(&applyforces_thread_go[i],0,0);
+//			sem_init(&applyforces_data_done[i],0,0);
+//
+//			if (USE_THREADS)  // only create threads if more than one cpu
+//			{
+//				// initialise the mutexes
+//				pthread_mutex_init(&collisiondetectiongolock_mutex[i],NULL);
+//				pthread_mutex_init(&collisiondetectiondonelock_mutex[i],NULL);
+//
+//				// start the child threads in halted state by locking 'go' mutex:
+//				pthread_mutex_lock(&collisiondetectiongolock_mutex[i]);
+//
+//				// start the threads
+//				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::collisiondetectionthread, 
+//				//					(void *) &collision_thread_data_array[i]);
+//
+//				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::linkforcesthread, 
+//				//					(void *) &linkforces_thread_data_array[i]);
+//
+//				//pthread_create(&threads[truethreadnum++], &thread_attr, actin::applyforcesthread, 
+//				//					(void *) &applyforces_thread_data_array[i]);
+//			}
+//		}
+//
+//		// always create compress files thread
+//
+//		compressfiles_thread_data_array[0].threadnum = 0;
+//		//sem_init(&compressfiles_thread_go[0],0,0);
+//		//sem_init(&compressfiles_data_done[0],0,0);
+//
+//		// make sure semaphores are stopped
+//		//sem_trywait(&compressfiles_thread_go[0]);
+//        //sem_trywait(&compressfiles_data_done[0]);
+//
+//		//pthread_create(&threads[truethreadnum++], &thread_attr, actin::compressfilesthread, 
+//		//			(void *) &compressfiles_thread_data_array[0]);
 
 	// main parameters:
 
@@ -1050,6 +1051,7 @@ srand( rand_num_seed );
 				// set camera rotation for save 
 				theactin.set_sym_break_axes();
 				theactin.save_sym_break_axes();
+                nuc_object.segs.save_scalefactors();
 			
 				// reprocess bitmaps etc.
 
@@ -1080,6 +1082,8 @@ srand( rand_num_seed );
 			save_data(theactin, i);
 			
 			nuc_object.segs.addallnodes();  // put node data into segment bins
+
+            nuc_object.segs.set_scale_factors();
 
 			nuc_object.segs.savereport(filenum);
 			nuc_object.segs.saveradialreport(filenum);
@@ -1165,27 +1169,27 @@ srand( rand_num_seed );
 	cout << endl << "Time : " << (endtime-starttime) << " seconds" << endl;	
 	theactin.opruninfo << endl << "Time : " << (endtime-starttime) << " seconds" << endl;	
 
-	// Clean up threads
-	pthread_attr_destroy(&thread_attr);
+	//// Clean up threads
+	//pthread_attr_destroy(&thread_attr);
 
-	//pthread_mutex_destroy(&filesdonelock_mutex);  // allow thread to grab done lock
-	//pthread_mutex_destroy(&filessavelock_mutex);
-	//pthread_mutex_destroy(&linkstoremove_mutex);
+	////pthread_mutex_destroy(&filesdonelock_mutex);  // allow thread to grab done lock
+	////pthread_mutex_destroy(&filessavelock_mutex);
+	////pthread_mutex_destroy(&linkstoremove_mutex);
 
-	for (int i = 0; i < NUM_THREADS; ++i)
-	{
-		sem_destroy(&collision_thread_go[i]);
-		sem_destroy(&collision_data_done[i]);
+	//for (int i = 0; i < NUM_THREADS; ++i)
+	//{
+	//	sem_destroy(&collision_thread_go[i]);
+	//	sem_destroy(&collision_data_done[i]);
 
-		sem_destroy(&linkforces_thread_go[i]);
-		sem_destroy(&linkforces_data_done[i]);
+	//	sem_destroy(&linkforces_thread_go[i]);
+	//	sem_destroy(&linkforces_data_done[i]);
 
-		sem_destroy(&applyforces_thread_go[i]);
-		sem_destroy(&applyforces_data_done[i]);
+	//	sem_destroy(&applyforces_thread_go[i]);
+	//	sem_destroy(&applyforces_data_done[i]);
 
-		//sem_destroy(&compressfiles_thread_go[i]);
-		//sem_destroy(&compressfiles_data_done[i]);
-	}
+	//	//sem_destroy(&compressfiles_thread_go[i]);
+	//	//sem_destroy(&compressfiles_data_done[i]);
+	//}
 
 	//pthread_exit (NULL);
 
@@ -1367,6 +1371,7 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 	int filenum;
 
 	theactin.load_sym_break_axes();
+    nuc_object.segs.load_scalefactors();
 
 	//cout << " InterRecordIterations " << InterRecordIterations
 	//	 << " theactin.symbreakiter " << theactin.symbreakiter << endl;

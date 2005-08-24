@@ -797,80 +797,80 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
     
     for (int i=dat->startnode; i<dat->endnode; i++)
     {	
-	if( (donenode[nodesbygridpoint[i]]) ||
-	    (node[nodesbygridpoint[i]].dontupdate) ||	    
-	    (!node[nodesbygridpoint[i]].polymer))
-	{
-	    continue;  // skip nodes already done
-	}
-	
-	// find nodes on same gridpoint, and nodes within repulsive range
-	if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0)
-	    continue;	// find nodes within 1 grid point
-	
-	// skip if zero
+	    if( (donenode[nodesbygridpoint[i]]) ||
+	        (node[nodesbygridpoint[i]].dontupdate) ||	    
+	        (!node[nodesbygridpoint[i]].polymer))
+	    {
+	        continue;  // skip nodes already done
+	    }
+    	
+	    // find nodes on same gridpoint, and nodes within repulsive range
+	    if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0)
+	        continue;	// find nodes within 1 grid point
+    	
+	    // skip if zero
 
-	// loop over nodes on same gridpoint:
-	for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
-	    sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
-	    sameGPnode++) 
-    {
-	    
-	    if (donenode[(*sameGPnode)->nodenum])
-		continue;  // skip if done
-	    
-			if (( (*sameGPnode)->nodenum < dat->startnode) ||
-			    ( (*sameGPnode)->nodenum >= dat->endnode) )
-			    continue;    // skip if out of range of this thread
+	    // loop over nodes on same gridpoint:
+	    for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
+	        sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
+	        sameGPnode++) 
+        {
+    	    
+	        if (donenode[(*sameGPnode)->nodenum])
+		    continue;  // skip if done
+    	    
+			    if (( (*sameGPnode)->nodenum < dat->startnode) ||
+			        ( (*sameGPnode)->nodenum >= dat->endnode) )
+			        continue;    // skip if out of range of this thread
 
-			// REVISIT ML: remove this mutex, should never conflict
-			//pthread_mutex_lock(&nodedone_mutex);
-			donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
-			//pthread_mutex_unlock(&nodedone_mutex);
-			
-			// of these nodes, calculate euclidian dist
-			nodeposvec = (*(*sameGPnode));	// get xyz of our node
-			for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
-			     nearnode<recti_near_nodes[dat->threadnum].end();
-			     nearnode++) {
-			    if ((*sameGPnode)==(*nearnode))
-				continue;  // skip if self
-			    
-			    //if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
-			    //	continue;  // skip if done opposite pair
-			    
-			    // this check should not be necessary?:
-			    // if (( (*sameGPnode)->nodenum < dat->startnode) ||
-			    //    ( (*sameGPnode)->nodenum >= dat->endnode) )
-			    //    continue;    // skip if out of range of this thread  
-			    assert( (*sameGPnode)->nodenum >= dat->startnode );
-			    assert( (*sameGPnode)->nodenum <  dat->endnode   );
-			    
-			    disp = (*(*nearnode)) - nodeposvec; 
-			    distsqr = disp.sqrlength();
-			    
-			    if (distsqr < 2 * SQRT_ACCURACY_LOSS)
-			    {	
-				continue;
+			    // REVISIT ML: remove this mutex, should never conflict
+			    //pthread_mutex_lock(&nodedone_mutex);
+			    donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
+			    //pthread_mutex_unlock(&nodedone_mutex);
+    			
+			    // of these nodes, calculate euclidian dist
+			    nodeposvec = (*(*sameGPnode));	// get xyz of our node
+			    for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
+			        nearnode<recti_near_nodes[dat->threadnum].end();
+			        nearnode++) {
+			        if ((*sameGPnode)==(*nearnode))
+				    continue;  // skip if self
+    			    
+			        //if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
+			        //	continue;  // skip if done opposite pair
+    			    
+			        // this check should not be necessary?:
+			        // if (( (*sameGPnode)->nodenum < dat->startnode) ||
+			        //    ( (*sameGPnode)->nodenum >= dat->endnode) )
+			        //    continue;    // skip if out of range of this thread  
+			        assert( (*sameGPnode)->nodenum >= dat->startnode );
+			        assert( (*sameGPnode)->nodenum <  dat->endnode   );
+    			    
+			        disp = (*(*nearnode)) - nodeposvec; 
+			        distsqr = disp.sqrlength();
+    			    
+			        if (distsqr < 2 * SQRT_ACCURACY_LOSS)
+			        {	
+				    continue;
+			        }
+    			    
+			        //dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
+			        //dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
+    			    
+			        if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
+			        {
+				    // calc dist between nodes
+				    dist = sqrt(distsqr); 
+				    force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+				    tomove = disp * ( 2 * force / dist);
+    				
+				    (*sameGPnode)->rep_force_vec -= tomove ;
+				    (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial,
+								    (*sameGPnode)->repforce_transverse);
+    				
+			        }
 			    }
-			    
-			    //dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
-			    //dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
-			    
-			    if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
-			    {
-				// calc dist between nodes
-				dist = sqrt(distsqr); 
-				force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
-				tomove = disp * ( 2 * force / dist);
-				
-				(*sameGPnode)->rep_force_vec[dat->threadnum] -= tomove ;
-				(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial[dat->threadnum],
-								  (*sameGPnode)->repforce_transverse[dat->threadnum]);
-				
-			    }
-			}
-	}
+	    }
     }
     return (void*) NULL;
 }
@@ -1019,7 +1019,7 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
     
     for (int i=0; i<highestnodecount; i++)
     {
-	if ((!node[i].dontupdate) && node[i].polymer)
+	//if ((!node[i].dontupdate) && node[i].polymer)
 	    node[i].updategrid(); // move the point on the grid if need to
 	// and update the unit vector position
     }
@@ -1036,12 +1036,10 @@ void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
     // sum forces etc. over all threads
     for (int i=dat->startnode; i<dat->endnode; ++i)
     {
-        for(int threadnum=0; threadnum<NUM_THREADS; ++threadnum)
-        {
+
 	    if((!node[i].dontupdate) && node[i].polymer)
-	        node[i].applyforces(threadnum); // note this is the num of the thread that put the
+	        node[i].applyforces(); // note this is the num of the thread that put the
                                             // data there, not our thread
-        }
     }
     return NULL;
 }
@@ -1133,7 +1131,7 @@ void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
 		pthread_mutex_lock(&removelinks_mutex);   // lock the mutex
 		linkremovefrom.push_back(&node[n]);
 		linkremoveto.push_back(i->linkednodeptr);
-		node[n].links_broken[dat->threadnum]++;
+		node[n].links_broken++;
 		pthread_mutex_unlock(&removelinks_mutex); // lock the mutex
 	    } else {
 		tomove = disp * (2* force/dist);  
@@ -1142,13 +1140,13 @@ void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
 		// divide by the length of disp (i.e. dist)
 		// to prevent the length amplifying the force
 		
-		node[n].link_force_vec[dat->threadnum] += tomove;
+		node[n].link_force_vec += tomove;
 		
 		if (force < 0) // put tension into link forces
 		{
-		    node[n].adddirectionalmags(tomove, node[n].linkforce_radial[dat->threadnum], node[n].linkforce_transverse[dat->threadnum]);
+		    node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
 		} else {	// but put compression into link forces
-		    node[n].adddirectionalmags(tomove, node[n].repforce_radial[dat->threadnum], node[n].repforce_transverse[dat->threadnum]);
+		    node[n].adddirectionalmags(tomove, node[n].repforce_radial, node[n].repforce_transverse);
 		}
 		
 	    }
@@ -1172,8 +1170,8 @@ int actin::setnodecols(void)
 
 	for (int i=0; i<highestnodecount; i++)
 	{
-		if (node[i].link_force_vec[0].x>0.0001)
-			val = sqrt(node[i].linkforce_transverse[0]);
+		if (node[i].link_force_vec.x>0.0001)
+			val = sqrt(node[i].linkforce_transverse);
 		else
 			val = 0;
 	
@@ -1186,8 +1184,8 @@ int actin::setnodecols(void)
 
 	for (int i=0; i<highestnodecount; i++)
 	{
-		if (node[i].link_force_vec[0].x>0.0001)
-			val = sqrt(node[i].linkforce_transverse[0]);
+		if (node[i].link_force_vec.x>0.0001)
+			val = sqrt(node[i].linkforce_transverse);
 		else
 			val = 0;
 		//node[i].colour.setcol((double)node[i].creation_iter_num/(double)TOTAL_ITERATIONS);
@@ -1538,7 +1536,7 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 	// write the bins graphics
 
 	p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
-					   p_nuc->segs.link_transverse, proj);
+				    p_nuc->segs.link_transverse, p_nuc->segs.link_transverse_scalefactor, proj);
 
 	// write the bitmap file
 		
@@ -1882,17 +1880,17 @@ int actin::sortnodesbygridpoint(void)
 
     // temp cludge, put back in nodesbygridpoint for now.
 
-   	nodenumber = 0;
+   	//nodenumber = 0;
 
-    for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
-    {
+    //for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+    //{
 
-        for(vector <nodes*>::iterator i = nodes_by_thread[threadnum].begin(); 
-		    i != nodes_by_thread[threadnum].end(); ++i)
-        {
-            nodesbygridpoint[nodenumber++]=(*i)->nodenum;
-        }
-    }
+    //    for(vector <nodes*>::iterator i = nodes_by_thread[threadnum].begin(); 
+		  //  i != nodes_by_thread[threadnum].end(); ++i)
+    //    {
+    //        nodesbygridpoint[nodenumber++]=(*i)->nodenum;
+    //    }
+    //}
 
 
 	return 0;
@@ -2539,13 +2537,11 @@ void actin::load_sym_break_axes(void)
 
 void actin::clear_node_stats(void)
 {
-	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+
+	for (int i=0; i<highestnodecount; ++i)
 	{
-		for (int i=0; i<highestnodecount; ++i)
-		{
-			if (!node[i].dontupdate)
-				node[i].clearstats(threadnum);
-		}
+		if (!node[i].dontupdate)
+			node[i].clearstats();
 	}
 
 }

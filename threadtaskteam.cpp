@@ -1,6 +1,7 @@
 
 #include "threadtaskteam.h"
 
+#include "stdafx.h"
 #include <assert.h>
 #include <cmath>
 #include <iostream>
@@ -133,7 +134,7 @@ void* taskteam::do_thread_work(void* arg)
 {
     int err;
     
-    while(1) {
+    while(GRASS_IS_GREEN) {
 	
 		lockteam();	
 		// wait until there is some work to do

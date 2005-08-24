@@ -44,14 +44,14 @@ public:
 	//int zrank;
 	//vect lastpos;
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
-	vector <vect> link_force_vec;  // index is the threadnum
+	vect link_force_vec;  // index is the threadnum
 	
-	vector <vect> rep_force_vec;
+	vect rep_force_vec;
 	vect nuc_repulsion_displacement_vec;
 	//vect momentum_vec;
 	vector <links> listoflinks;
 
-	vector <double> linkforce_transverse, linkforce_radial,  // index is the threadnum
+	double linkforce_transverse, linkforce_radial,  // index is the threadnum
 			 repforce_transverse, repforce_radial,
 			 links_broken;
 			 //dispforce_transverse, dispforce_radial;  
@@ -81,19 +81,17 @@ public:
 	bool dontupdate;
 
 	//inline int applyforces(const int &threadnum);
-	inline void applyforces(const int &threadnum)
+	inline void applyforces()
 	{	
-		delta = (link_force_vec[threadnum] + rep_force_vec[threadnum]) * DELTA_T * FORCE_SCALE_FACT;
-				//+ repulsion_displacement_vec[threadnum];
+		delta = (link_force_vec + rep_force_vec) * DELTA_T * FORCE_SCALE_FACT;
+				//+ nuc_repulsion_displacement_vec;
 
 		*this+=delta;
 
-		rep_force_vec[threadnum].zero();
-		link_force_vec[threadnum].zero();
+		rep_force_vec.zero();
+		link_force_vec.zero();
 		nuc_repulsion_displacement_vec.zero();
-		//repulsion_displacement_vec[threadnum].zero();
 
-		//return 0;
 	}
 
 	void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
@@ -112,15 +110,14 @@ public:
 		crossmag += displacement.length() - tmp_dotmag;
 	}
 
-	inline void clearstats(const int &threadnum)
+	inline void clearstats()
 	{
-		linkforce_transverse[threadnum] = 
-		linkforce_radial[threadnum]     = 
-		repforce_transverse[threadnum]  = 
-		repforce_radial[threadnum]      = 
-		links_broken[threadnum]			= 0;
-
-		nucleator_impacts  = 0;
+		linkforce_transverse = 
+		linkforce_radial     = 
+		repforce_transverse  = 
+		repforce_radial      = 
+		links_broken	     =
+ 		nucleator_impacts    = 0;
 //		dispforce_transverse[threadnum] = 
 //		dispforce_radial[threadnum]     = 0;
 

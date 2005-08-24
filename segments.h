@@ -62,9 +62,12 @@ public:
 	void saveradialreport(const int& filenum) const;
 
 	void write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
-					   const Dbl3d & var, const int& axis);
+					   const Dbl3d & var, const double& scale, const int& axis);
 
 	void setbitmapcoords();
+
+    void load_scalefactors(void);
+    void save_scalefactors(void);
 
 	//void clearsurfaceimpacts(void);
 	void clearbins(void);
@@ -117,6 +120,15 @@ public:
 //		disp_radial,
 //		disp_transverse;
 
+    double 	numnodes_scalefactor,
+		    rep_radial_scalefactor,
+		    rep_transverse_scalefactor,
+		    link_radial_scalefactor,
+		    link_transverse_scalefactor, 
+		    links_broken_scalefactor,
+            surfaceimpacts_scalefactor;
+
+
 	double radialdist;
 	int num_radial_bins;
 
@@ -132,6 +144,7 @@ public:
 
 	//Int4d segment_pixel;
 
+    void set_scale_factors(void);
 };
 
 #endif

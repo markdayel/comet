@@ -28,16 +28,16 @@ nodes::nodes(void)
 	
 	//repulsion_displacement_vec = new vect[NUM_THREADS+1];
 	//repulsion_displacement_vec.resize(NUM_THREADS+1);
-	link_force_vec.resize(NUM_THREADS+1);
-	rep_force_vec.resize(NUM_THREADS+1);
+	//link_force_vec.resize(NUM_THREADS+1);
+	//rep_force_vec.resize(NUM_THREADS+1);
 
-	for (int i = 0; i < NUM_THREADS; ++i)
-	{
+	//for (int i = 0; i < NUM_THREADS; ++i)
+	//{
 		//repulsion_displacement_vec[i].zero();
-		link_force_vec[i].zero();
-		rep_force_vec[i].zero();
+		link_force_vec.zero();
+		rep_force_vec.zero();
 		nuc_repulsion_displacement_vec.zero();
-	}
+	//}
 
 	unit_vec_posn.zero();
 
@@ -50,19 +50,18 @@ nodes::nodes(void)
 	harbinger = false;
 	dontupdate = false;
 
-	linkforce_transverse.resize(NUM_THREADS);
-	linkforce_radial.resize(NUM_THREADS);
-	repforce_transverse.resize(NUM_THREADS);
-	repforce_radial.resize(NUM_THREADS);
-	links_broken.resize(NUM_THREADS);
+	//linkforce_transverse.resize(NUM_THREADS);
+	//linkforce_radial.resize(NUM_THREADS);
+	//repforce_transverse.resize(NUM_THREADS);
+	//repforce_radial.resize(NUM_THREADS);
+	//links_broken.resize(NUM_THREADS);
 //	dispforce_transverse.resize(NUM_THREADS);
 //	dispforce_radial.resize(NUM_THREADS);
 	//nucleator_impacts.resize(NUM_THREADS);
 
-	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
-	{
-		clearstats(threadnum);
-	}
+
+	clearstats();
+	
 
     donecollision = false;
     donelinkforces = false;
@@ -78,20 +77,20 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 	//repulsion_displacement_vec =  new vect[NUM_THREADS+1];
 
 	//repulsion_displacement_vec.resize(NUM_THREADS+1);
-	link_force_vec.resize(NUM_THREADS+1);
-	rep_force_vec.resize(NUM_THREADS+1);
+	//link_force_vec.resize(NUM_THREADS+1);
+	//rep_force_vec.resize(NUM_THREADS+1);
 
-	for (int i = 0; i < NUM_THREADS; ++i)
-	{
+	//for (int i = 0; i < NUM_THREADS; ++i)
+	//{
 		//repulsion_displacement_vec[i].zero();
-		link_force_vec[i].zero();
-		rep_force_vec[i].zero();
-	}
+		link_force_vec.zero();
+		rep_force_vec.zero();
+		nuc_repulsion_displacement_vec.zero();
+	//}
 
-	for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
-	{
-		clearstats(threadnum);
-	}
+
+	clearstats();
+
 
 //	momentum_vec.x = momentum_vec.y = momentum_vec.z = 0.0;	
 	colour.setcol(0);
@@ -221,11 +220,11 @@ int nodes::save_data(ofstream &ostr)
 	 << x << "," << y << "," << z << "," 
 	 << harbinger << "," << polymer << "," 
 	 << colour.r << "," << colour.g << "," << colour.b << ","
-	 << linkforce_transverse[0] << "," 
-	 << linkforce_radial[0] << "," 
-	 << repforce_transverse[0] << "," 
-	 << repforce_radial[0] << "," 
-	 << links_broken[0] << "," 
+	 << linkforce_transverse << "," 
+	 << linkforce_radial << "," 
+	 << repforce_transverse << "," 
+	 << repforce_radial << "," 
+	 << links_broken << "," 
 	 << nucleator_impacts << ","
 	 << creation_iter_num << ":";
     
@@ -251,11 +250,11 @@ int nodes::load_data(ifstream &istrm)
 	  >> x >> ch >> y >> ch >> z >> ch
 	  >> harbinger >> ch >> polymer >> ch
 	  >> colour.r >> ch >> colour.g >> ch >> colour.b >> ch
-	  >> linkforce_transverse[0] >> ch 
-	  >> linkforce_radial[0] >> ch 
-	  >> repforce_transverse[0] >> ch 
-	  >> repforce_radial[0] >> ch 
-	  >> links_broken[0] >> ch 
+	  >> linkforce_transverse >> ch 
+	  >> linkforce_radial >> ch 
+	  >> repforce_transverse >> ch 
+	  >> repforce_radial >> ch 
+	  >> links_broken >> ch 
 	  >> nucleator_impacts >> ch
 	  >> creation_iter_num >> ch;
 
