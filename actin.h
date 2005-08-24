@@ -100,10 +100,10 @@ public:
 
 	vector <Dbl2d> reportdat;
 
-	static bool collisionthreaddone1;
-	static bool collisionthreaddone2;
-	static bool collisionthreaddone3;
-	static bool collisionthreaddone4;
+	//static bool collisionthreaddone1;
+	//static bool collisionthreaddone2;
+	//static bool collisionthreaddone3;
+	//static bool collisionthreaddone4;
 
 	char outbmpbuffer[1024000];
 	
@@ -157,6 +157,7 @@ public:
 	static vector <nodes> node;
 	static vector <bool> donenode;	
 	static vector <bool> repdonenode;
+    static Nodes2d nodes_by_thread;
 	static Nodes2d recti_near_nodes;
 	static Nodes2d nodes_on_same_gridpoint;
 	static Nodes1d nodes_within_nucleator;	
@@ -185,8 +186,8 @@ public:
 	//vector <int> linkformfrom;
 	vector <linkform> linkformto;
 	static void *linkforcesthread(void* threadarg);
-	static void *repulsiveforcesthread(void* threadarg);
-	static void *compressfilesthread(void* threadarg);
+	//static void *repulsiveforcesthread(void* threadarg);
+	//static void *compressfilesthread(void* threadarg);
 	void compressfilesdowork(const int & filenum);
 
 

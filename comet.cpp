@@ -146,21 +146,21 @@ vector<struct thread_data>  compressfiles_thread_data_array;
 //vector<sem_t> compressfiles_thread_go;
 //vector<sem_t> compressfiles_data_done;
 
-pthread_mutex_t linkstoremove_mutex;
+//pthread_mutex_t linkstoremove_mutex;
 
-pthread_mutex_t filessavelock_mutex;
-pthread_mutex_t filesdonelock_mutex;
+//pthread_mutex_t filessavelock_mutex;
+//pthread_mutex_t filesdonelock_mutex;
 
-pthread_mutex_t beadmovelock_mutex;
+//pthread_mutex_t beadmovelock_mutex;
 
 vector<pthread_mutex_t> collisiondetectiongolock_mutex;
 vector<pthread_mutex_t> collisiondetectiondonelock_mutex;
 
 //debug threads:
-bool actin::collisionthreaddone1;
-bool actin::collisionthreaddone2;
-bool actin::collisionthreaddone3;
-bool actin::collisionthreaddone4;
+//bool actin::collisionthreaddone1;
+//bool actin::collisionthreaddone2;
+//bool actin::collisionthreaddone3;
+//bool actin::collisionthreaddone4;
 
 
 // these variables need to be static/global for sharing across threads:
@@ -170,6 +170,7 @@ vector <nodes>	actin::node;
 vector <bool>   actin::donenode;	
 vector <bool>   actin::repdonenode;	
 //Bool2d actin::repulsedone;
+Nodes2d actin::nodes_by_thread;
 Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
 Nodes1d actin::nodes_within_nucleator;
@@ -350,14 +351,14 @@ if (!rewritesymbreak)
 	pthread_attr_init(&thread_attr);
 	pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
 
-	pthread_mutex_init(&linkstoremove_mutex,NULL);
+	//pthread_mutex_init(&linkstoremove_mutex,NULL);
 
-	pthread_mutex_init(&filessavelock_mutex,NULL);
-	pthread_mutex_init(&filesdonelock_mutex,NULL);
+	//pthread_mutex_init(&filessavelock_mutex,NULL);
+	//pthread_mutex_init(&filesdonelock_mutex,NULL);
 
-	pthread_mutex_init(&beadmovelock_mutex,NULL);
+	//pthread_mutex_init(&beadmovelock_mutex,NULL);
 	
-	pthread_mutex_lock(&filessavelock_mutex);
+	//pthread_mutex_lock(&filessavelock_mutex);
 
 //	int truethreadnum = 0;
 
@@ -791,7 +792,6 @@ if (NUCSHAPE == nucleator::capsule)
 
 	unsigned int starttime, endtime, lasttime ,nowtime, lastitertime;
 
-	lastitertime = starttime = (unsigned) time( NULL );
 
 	lasttime=0;
 
@@ -886,6 +886,8 @@ if (NUCSHAPE == nucleator::capsule)
 	cout << "(Press 'q' to abort run)" << endl << endl;
 
 	cout << "Itternum|TotNode|NewLinks|RemLinks|Center_X|Center_Y|Center_Z|Direction                 |Rotations|Displmnts|SnpshTm|SaveNum" << endl << endl;
+
+	lastitertime = starttime = (unsigned) time( NULL );
 
 	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++)
 	{
@@ -1152,7 +1154,7 @@ srand( rand_num_seed );
 	}
 
 	//sem_wait(&compressfiles_data_done[0]); // wait for the last data write
-	pthread_mutex_lock(&filesdonelock_mutex);
+//	pthread_mutex_lock(&filesdonelock_mutex);
 
 	cout << endl << "Done " << endl << endl;
 
@@ -1166,9 +1168,9 @@ srand( rand_num_seed );
 	// Clean up threads
 	pthread_attr_destroy(&thread_attr);
 
-	pthread_mutex_destroy(&filesdonelock_mutex);  // allow thread to grab done lock
-	pthread_mutex_destroy(&filessavelock_mutex);
-	pthread_mutex_destroy(&linkstoremove_mutex);
+	//pthread_mutex_destroy(&filesdonelock_mutex);  // allow thread to grab done lock
+	//pthread_mutex_destroy(&filessavelock_mutex);
+	//pthread_mutex_destroy(&linkstoremove_mutex);
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{

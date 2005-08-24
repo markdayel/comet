@@ -386,7 +386,7 @@ int segments::dist_to_seg(const double & dist) const
 	
 	int dist_seg = (int) (dist / dist_step);
 
-	return (dist_seg>num_dist_segs)?(-1):(dist_seg);
+	return (dist_seg>=num_dist_segs)?(-1):(dist_seg);
 }
 
 
@@ -502,7 +502,7 @@ void segments::addnode(const nodes& node)
 
 		dist = (int) (radius / radialdist);
 
-		if (dist > num_radial_bins)
+		if (dist >= num_radial_bins)
 			continue;
 
 		radial_numnodes[dist]++;
@@ -516,11 +516,11 @@ void segments::addnode(const nodes& node)
 
 }
 
-void segments::addsurfaceimpact(nodes& node, const double& mag)
-{	// add a surface impact
-	
-	
-	node.nucleator_impacts += mag;
+//void segments::addsurfaceimpact(nodes& node, const double& mag)
+//{	// add a surface impact
+//	
+//	
+//	node.nucleator_impacts += mag;
 
  //   int xseg,yseg,zseg;
 	//vect rot_pos, rot_unit;
@@ -554,7 +554,7 @@ void segments::addsurfaceimpact(nodes& node, const double& mag)
 
 	//}
 
-}
+//}
 
 //void segments::clearsurfaceimpacts(void)
 //{

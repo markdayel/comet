@@ -471,8 +471,8 @@ bool nucleator::iswithinnucleator(const double& x, const double& y, const double
 bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 {  // returns true if succeeds, false if fails due to too great node ejection
 
-if (USE_THREADS)
-	pthread_mutex_lock(&beadmovelock_mutex); // lock the beadmove mutex
+//if (USE_THREADS)
+//	pthread_mutex_lock(&beadmovelock_mutex); // lock the beadmove mutex
 
 	// node has entered nucleator,
 	// return co-ords of node pushed to surface...
@@ -498,7 +498,8 @@ if (USE_THREADS)
 		
 		if (NUCLEATOR_FORCES)
 		{
-			segs.addsurfaceimpact(node,(rad-r));
+			//segs.addsurfaceimpact(node,(rad-r));
+            node.nucleator_impacts += (rad-r);
 		}
 
 		break;
@@ -518,7 +519,8 @@ if (USE_THREADS)
 				
 				if (NUCLEATOR_FORCES)
 				{
-					segs.addsurfaceimpact(node,(rad-r));
+                    node.nucleator_impacts += (rad-r);
+					//segs.addsurfaceimpact(node,(rad-r));
 				}
 
 			}
@@ -546,7 +548,8 @@ if (USE_THREADS)
 
 				if (NUCLEATOR_FORCES)
 				{
-					segs.addsurfaceimpact(node,(rad-r));
+					node.nucleator_impacts += (rad-r);
+                    //segs.addsurfaceimpact(node,(rad-r));
 				}
 
 			}
@@ -594,8 +597,8 @@ if (ROTATION)
 //	cout << setprecision(20) << torque.x << " " << torque.y << " " << torque.z << endl;
 //}
 
-if (USE_THREADS)
-	pthread_mutex_unlock(&beadmovelock_mutex); // unlock the beadmove mutex
+//if (USE_THREADS)
+//	pthread_mutex_unlock(&beadmovelock_mutex); // unlock the beadmove mutex
 
 	return true; // sucessful node ejection
 }

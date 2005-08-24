@@ -93,11 +93,13 @@ actin::actin(void)
 
 	recti_near_nodes.resize(NUM_THREADS*4);
     nodes_on_same_gridpoint.resize(NUM_THREADS*4);
+    nodes_by_thread.resize(NUM_THREADS*4);
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
 		recti_near_nodes[i].reserve(5000);
 		nodes_on_same_gridpoint[i].reserve(MAXNODES);
+        nodes_by_thread[i].reserve(MAXNODES);
 	}
 
 	nodes_within_nucleator.reserve(10000);
@@ -811,7 +813,8 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 	// loop over nodes on same gridpoint:
 	for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
 	    sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
-	    sameGPnode++) {
+	    sameGPnode++) 
+    {
 	    
 	    if (donenode[(*sameGPnode)->nodenum])
 		continue;  // skip if done
@@ -973,30 +976,37 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
     
     if(USE_THREADS && USETHREAD_APPLYFORCES)  // switch this off for now...
     {
-	for(int i=0; i<NUM_THREADS; i++){
-	    start = i * numthreadnodes;
-	    end = (i+1) * numthreadnodes;
-	    
-	    applyforces_thread_data_array[i].startnode = start;
-	    applyforces_thread_data_array[i].endnode = end;
-	    applyforces_thread_data_array[i].threadnum = i;
+	    for(int i=0; i<NUM_THREADS; i++)
+        {
+	        start = i * numthreadnodes;
+	        end = (i+1) * numthreadnodes;
+    	    
+	        applyforces_thread_data_array[i].startnode = start;
+	        applyforces_thread_data_array[i].endnode = end;
+	        applyforces_thread_data_array[i].threadnum = i;
 	    
 	    if (i<NUM_THREADS-1)
 	    {
-		applyforces_thread_data_array[i].endnode = end;
+		    applyforces_thread_data_array[i].endnode = end;
 	    }
 	    else
 	    {	// put remainder in last thread (cludge for now)
-		applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
-	    };
+		    applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+	    }
+
 	    applyforces_tteam.add_task(&applyforces_thread_data_array[i]);
-	}
+    }
+
 	applyforces_tteam.do_work();
-    } else {
-	applyforces_thread_data_array[0].startnode = 0;
-	applyforces_thread_data_array[0].endnode = highestnodecount;
-	applyforces_thread_data_array[0].threadnum = 0;
-	applyforcesdowork(&applyforces_thread_data_array[0], NULL);
+    } 
+    else 
+    {
+	    applyforces_thread_data_array[0].startnode = 0;
+	    applyforces_thread_data_array[0].endnode = highestnodecount;
+	    applyforces_thread_data_array[0].threadnum = 0;
+
+        applyforcesdowork(&applyforces_thread_data_array[0], NULL);
+
 	
 	// REVISIT: remove this, old method now moved into dowork fcn
 	//for(int i=0; i<highestnodecount; i++){
@@ -1024,10 +1034,14 @@ void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
     dat = (thread_data*) arg;
     
     // sum forces etc. over all threads
-    for (int i=dat->startnode; i<dat->endnode; i++)
+    for (int i=dat->startnode; i<dat->endnode; ++i)
     {
-	if((!node[i].dontupdate) && node[i].polymer)
-	    node[i].applyforces(dat->threadnum);
+        for(int threadnum=0; threadnum<NUM_THREADS; ++threadnum)
+        {
+	    if((!node[i].dontupdate) && node[i].polymer)
+	        node[i].applyforces(threadnum); // note this is the num of the thread that put the
+                                            // data there, not our thread
+        }
     }
     return NULL;
 }
@@ -1526,13 +1540,6 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 	p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
 					   p_nuc->segs.link_transverse, proj);
 
-	//char filename[255];
-	
-	//sprintf ( filename , "temp.bmp");
-
-	// sprintf ( filename , "%s_proj_%05i.bmp", projletter , filenum );
-
-
 	// write the bitmap file
 		
 	writebitmapfile(*p_outbmpfile, imageR, imageG, imageB);
@@ -1569,37 +1576,37 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 
 	drawcmd << "\"";
 
-// drawing image text takes forever on alpha and OSX
-// so have option to bypass
+    // drawing image text takes forever on alpha and OSX
+    // so have option to bypass
 
-if (NO_IMAGE_TEXT)
-{	
+    if (NO_IMAGE_TEXT)
+    {	
 		sprintf(command1,
 		"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s%s_proj_%05i.%s",
-		     BMP_COMPRESSION, scalebarlength+5, temp_BMP_filename, BITMAPDIR, 
-			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
-}
-else 
-{
+		    BMP_COMPRESSION, scalebarlength+5, temp_BMP_filename, BITMAPDIR, 
+			projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+    }
+    else 
+    {
 		sprintf(command1,
 		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" %s %s%s_proj_%05i.%s",
 			BMP_COMPRESSION, scalebarlength+5, projletter, filenum,
 			(int)((1000/(double)imageGmax)+0.5),  temp_BMP_filename, BITMAPDIR,
 			projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
-}
+    }
 
-	sprintf(command2,
-		"convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", 
-		BMP_COMPRESSION, drawcmd.str().c_str(), BITMAPDIR, 
-		projletter, filenum, BMP_OUTPUT_FILETYPE.c_str(), BITMAPDIR, 
-		projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+	    sprintf(command2,
+		    "convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", 
+		    BMP_COMPRESSION, drawcmd.str().c_str(), BITMAPDIR, 
+		    projletter, filenum, BMP_OUTPUT_FILETYPE.c_str(), BITMAPDIR, 
+		    projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
-if (fgbg == runbg)
-	sprintf(command3, "(%s ; %s )&", command1, command2);
-else
-	sprintf(command3, "(%s ; %s )", command1, command2);
+    if (fgbg == runbg)
+	    sprintf(command3, "(%s ; %s )&", command1, command2);
+    else
+	    sprintf(command3, "(%s ; %s )", command1, command2);
 
-//cout << command3 << endl;;
+    //cout << command3 << endl;;
 
 	system(command3);
 
@@ -1608,13 +1615,13 @@ else
 
 	// opruninfo << endl << command1 << endl << command2 << endl;
 
-//#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
-//	sprintf(command2 , "del %s 2>/dev/null", filename);
-//#else
-//	sprintf(command2 , "rm -f %s 2>/dev/null", filename);
-//#endif
-//
-//	system(command2);	
+    //#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
+    //	sprintf(command2 , "del %s 2>/dev/null", filename);
+    //#else
+    //	sprintf(command2 , "rm -f %s 2>/dev/null", filename);
+    //#endif
+    //
+    //	system(command2);	
 
 	cout << ". ";
 	cout.flush();
@@ -1817,6 +1824,14 @@ int actin::sortnodesbygridpoint(void)
 		donenode[i] = false;
 	}
 
+    int threadnum;
+
+    for (threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+    {
+        nodes_by_thread[threadnum].resize(0);
+    }
+
+
 	//nodesbygridpoint.swap(nodesbygridpoint_temp);  // store the old order
 	//nodesbygridpoint.resize(0);	// blank the new
 
@@ -1824,6 +1839,9 @@ int actin::sortnodesbygridpoint(void)
 
 	// int i;
 	int nodenumber = 0;
+    size_t minsize;
+    
+    threadnum = 0;
 
 	for (int i=0; i<highestnodecount; ++i)
 	{	// collect the nodes in gridpoint order...
@@ -1832,120 +1850,150 @@ int actin::sortnodesbygridpoint(void)
 		if (donenode[i]) //|| (!node[i].polymer))
 			continue;
 
-		nodeptr=nodegrid[node[i].gridx][node[i].gridy][node[i].gridz];
+        nodeptr=nodegrid[node[i].gridx][node[i].gridy][node[i].gridz];
 		startnodeptr=nodeptr;
-			if (nodeptr!=0) 
+
+		if (nodeptr!=0) 
+		{
+			do
 			{
-				do
-				{
-					nodesbygridpoint[nodenumber++]=nodeptr->nodenum;
-					donenode[nodeptr->nodenum] = true;  // mark node as done
-					nodeptr = nodeptr->nextnode;					
-				}
-				while (nodeptr!=startnodeptr);  //until back to start
+				nodesbygridpoint[nodenumber++]=nodeptr->nodenum;
+                nodes_by_thread[threadnum].push_back(nodeptr);
+				donenode[nodeptr->nodenum] = true;  // mark node as done
+
+				nodeptr = nodeptr->nextnode;					
 			}
+			while (nodeptr!=startnodeptr);  //until back to start
 		}
+
+        // find smallest thread queue and put next on in there
+
+        minsize = MAXNODES;
+
+        for (int tn = 0; tn < NUM_THREADS; ++tn)
+        {
+            if (nodes_by_thread[tn].size() < minsize)
+            {
+                minsize = nodes_by_thread[tn].size();
+                threadnum = tn;
+            }
+        }
+	}
+
+    // temp cludge, put back in nodesbygridpoint for now.
+
+   	nodenumber = 0;
+
+    for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+    {
+
+        for(vector <nodes*>::iterator i = nodes_by_thread[threadnum].begin(); 
+		    i != nodes_by_thread[threadnum].end(); ++i)
+        {
+            nodesbygridpoint[nodenumber++]=(*i)->nodenum;
+        }
+    }
 
 
 	return 0;
 }
 
-void * actin::compressfilesthread(void* threadarg)
-{
-	struct thread_data *dat;
-	dat = (struct thread_data *) threadarg;
-
-	while (GRASS_IS_GREEN)
-	{	
-		//sem_wait(&compressfiles_thread_go[0]);  // go only if released by main thread
-
-		pthread_mutex_lock(&filessavelock_mutex);
-		pthread_mutex_lock(&filesdonelock_mutex);
-
-		char command1[255];//,command2[255];
-
-		// gzip the text data:
-
-		//sprintf(command1, "gzip -f -9 nodes%05i.txt",dat->startnode);
-		//system(command1);
-
-		//sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
-		//system(command1);
-
-		sprintf(command1, "gzip -q -f -9 %sreport*.txt 2>/dev/null" ,TEMPDIR);
-		system(command1);
-
-		sprintf(command1 , "gzip -q -f -9 %sdata*.txt 2>/dev/null",TEMPDIR);
-		system(command1);
-
-		// gzip the wrl file:
-
-		sprintf(command1 , "gzip -f -9 %snodes%05i.wrl",TEMPDIR, dat->startnode );
-		system(command1);
-
-		sprintf(command1 , "mv %snodes%05i.wrl.gz %snodes%05i.wrz", TEMPDIR,dat->startnode, VRMLDIR, dat->startnode );
-		system(command1);
-
-		sprintf(command1 , "mv %s*report*.gz %s",TEMPDIR, REPORTDIR);
-		system(command1);
-
-		sprintf(command1 , "mv %s*data*.gz %s", TEMPDIR, DATADIR);
-		system(command1);
-
-
-//		// convert bmps to jpgs:
-//#ifndef NO_IMAGEMAGICK
-//			
-//		sprintf(command1 , "convert -quality 75 x_proj_%05i.bmp x_proj_%05i.png", dat->startnode, dat->startnode );
-//		system(command1);
-//		sprintf(command1 , "convert -quality 75 y_proj_%05i.bmp y_proj_%05i.png", dat->startnode, dat->startnode );
-//		system(command1);
-//		sprintf(command1 , "convert -quality 75 z_proj_%05i.bmp z_proj_%05i.png", dat->startnode, dat->startnode );
+//void * actin::compressfilesthread(void* threadarg)
+//{
+//	struct thread_data *dat;
+//	dat = (struct thread_data *) threadarg;
+//
+//	while (GRASS_IS_GREEN)
+//	{	
+//		//sem_wait(&compressfiles_thread_go[0]);  // go only if released by main thread
+//
+//		pthread_mutex_lock(&filessavelock_mutex);
+//		pthread_mutex_lock(&filesdonelock_mutex);
+//
+//		char command1[255];//,command2[255];
+//
+//		// gzip the text data:
+//
+//		//sprintf(command1, "gzip -f -9 nodes%05i.txt",dat->startnode);
+//		//system(command1);
+//
+//		//sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
+//		//system(command1);
+//
+//		sprintf(command1, "gzip -q -f -9 %sreport*.txt 2>/dev/null" ,TEMPDIR);
 //		system(command1);
 //
-//		sprintf(command1 , "convert -quality 75 x_forces_%05i.bmp x_forces_%05i.png", dat->startnode, dat->startnode );
-//		system(command1);
-//		sprintf(command1 , "convert -quality 75 y_forces_%05i.bmp y_forces_%05i.png", dat->startnode, dat->startnode );
-//		system(command1);
-//		sprintf(command1 , "convert -quality 75 z_forces_%05i.bmp z_forces_%05i.png", dat->startnode, dat->startnode );
+//		sprintf(command1 , "gzip -q -f -9 %sdata*.txt 2>/dev/null",TEMPDIR);
 //		system(command1);
 //
-//#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
-//		sprintf(command2 , "del x_proj_%05i.bmp 2>/dev/null", dat->startnode);
-//		system(command2);
-//		sprintf(command2 , "del y_proj_%05i.bmp 2>/dev/null", dat->startnode);
-//		system(command2);
-//		sprintf(command2 , "del z_proj_%05i.bmp 2>/dev/null", dat->startnode);
-//		system(command2);
-//		//sprintf(command2 , "del x_forces_%05i.bmp 2>/dev/null", dat->startnode);
-//		//system(command2);
-//		//sprintf(command2 , "del y_forces_%05i.bmp 2>/dev/null", dat->startnode);
-//		//system(command2);
-//		//sprintf(command2 , "del z_forces_%05i.bmp 2>/dev/null", dat->startnode);
-//		system(command2);
-//#else
-//		sprintf(command2 , "rm -f x_proj_%05i.bmp 2>/dev/null", dat->startnode);
-//		system(command2);
-//		sprintf(command2 , "rm -f y_proj_%05i.bmp 2>/dev/null", dat->startnode);
-//		system(command2);
-//		sprintf(command2 , "rm -f z_proj_%05i.bmp 2>/dev/null", dat->startnode);
-//		system(command2);
-//		//sprintf(command2 , "rm -f x_forces_%05i.bmp 2>/dev/null", dat->startnode);
-//		//system(command2);
-//		//sprintf(command2 , "rm -f y_forces_%05i.bmp 2>/dev/null", dat->startnode);
-//		//system(command2);
-//		//sprintf(command2 , "rm -f z_forces_%05i.bmp 2>/dev/null", dat->startnode);
-//		system(command2);
-//#endif
-	
-//#endif
-
-		pthread_mutex_unlock(&filesdonelock_mutex);
-
-		//sem_post(&compressfiles_data_done[0]);  // release main thread block waiting for data
-	}	  
-	return (void*) NULL;
-}
+//		// gzip the wrl file:
+//
+//		sprintf(command1 , "gzip -f -9 %snodes%05i.wrl",TEMPDIR, dat->startnode );
+//		system(command1);
+//
+//		sprintf(command1 , "mv %snodes%05i.wrl.gz %snodes%05i.wrz", TEMPDIR,dat->startnode, VRMLDIR, dat->startnode );
+//		system(command1);
+//
+//		sprintf(command1 , "mv %s*report*.gz %s",TEMPDIR, REPORTDIR);
+//		system(command1);
+//
+//		sprintf(command1 , "mv %s*data*.gz %s", TEMPDIR, DATADIR);
+//		system(command1);
+//
+//
+////		// convert bmps to jpgs:
+////#ifndef NO_IMAGEMAGICK
+////			
+////		sprintf(command1 , "convert -quality 75 x_proj_%05i.bmp x_proj_%05i.png", dat->startnode, dat->startnode );
+////		system(command1);
+////		sprintf(command1 , "convert -quality 75 y_proj_%05i.bmp y_proj_%05i.png", dat->startnode, dat->startnode );
+////		system(command1);
+////		sprintf(command1 , "convert -quality 75 z_proj_%05i.bmp z_proj_%05i.png", dat->startnode, dat->startnode );
+////		system(command1);
+////
+////		sprintf(command1 , "convert -quality 75 x_forces_%05i.bmp x_forces_%05i.png", dat->startnode, dat->startnode );
+////		system(command1);
+////		sprintf(command1 , "convert -quality 75 y_forces_%05i.bmp y_forces_%05i.png", dat->startnode, dat->startnode );
+////		system(command1);
+////		sprintf(command1 , "convert -quality 75 z_forces_%05i.bmp z_forces_%05i.png", dat->startnode, dat->startnode );
+////		system(command1);
+////
+////#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
+////		sprintf(command2 , "del x_proj_%05i.bmp 2>/dev/null", dat->startnode);
+////		system(command2);
+////		sprintf(command2 , "del y_proj_%05i.bmp 2>/dev/null", dat->startnode);
+////		system(command2);
+////		sprintf(command2 , "del z_proj_%05i.bmp 2>/dev/null", dat->startnode);
+////		system(command2);
+////		//sprintf(command2 , "del x_forces_%05i.bmp 2>/dev/null", dat->startnode);
+////		//system(command2);
+////		//sprintf(command2 , "del y_forces_%05i.bmp 2>/dev/null", dat->startnode);
+////		//system(command2);
+////		//sprintf(command2 , "del z_forces_%05i.bmp 2>/dev/null", dat->startnode);
+////		system(command2);
+////#else
+////		sprintf(command2 , "rm -f x_proj_%05i.bmp 2>/dev/null", dat->startnode);
+////		system(command2);
+////		sprintf(command2 , "rm -f y_proj_%05i.bmp 2>/dev/null", dat->startnode);
+////		system(command2);
+////		sprintf(command2 , "rm -f z_proj_%05i.bmp 2>/dev/null", dat->startnode);
+////		system(command2);
+////		//sprintf(command2 , "rm -f x_forces_%05i.bmp 2>/dev/null", dat->startnode);
+////		//system(command2);
+////		//sprintf(command2 , "rm -f y_forces_%05i.bmp 2>/dev/null", dat->startnode);
+////		//system(command2);
+////		//sprintf(command2 , "rm -f z_forces_%05i.bmp 2>/dev/null", dat->startnode);
+////		system(command2);
+////#endif
+//	
+////#endif
+//
+//		pthread_mutex_unlock(&filesdonelock_mutex);
+//
+//		//sem_post(&compressfiles_data_done[0]);  // release main thread block waiting for data
+//	}	  
+//	return (void*) NULL;
+//}
 
 void actin::compressfilesdowork(const int & filenum)
 {

@@ -36,6 +36,7 @@ nodes::nodes(void)
 		//repulsion_displacement_vec[i].zero();
 		link_force_vec[i].zero();
 		rep_force_vec[i].zero();
+		nuc_repulsion_displacement_vec.zero();
 	}
 
 	unit_vec_posn.zero();
@@ -62,6 +63,9 @@ nodes::nodes(void)
 	{
 		clearstats(threadnum);
 	}
+
+    donecollision = false;
+    donelinkforces = false;
 }
 
 nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
@@ -97,6 +101,9 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 	dontupdate = false;
 
 	polymerize(set_x,  set_y,  set_z);
+
+    donecollision = false;
+    donelinkforces = false;
 	
 }
 
@@ -438,7 +445,7 @@ int nodes::removelink(nodes* link)
 
 	//int templinksbroken = ptheactin->linksbroken;
 
-	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
+	for (vector <links>::iterator i=listoflinks.end()-1; i>=listoflinks.begin() ; --i )
 	{	 
 		if (i->linkednodeptr==link)
 		{

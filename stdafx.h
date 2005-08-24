@@ -142,12 +142,12 @@ extern vector<struct thread_data>  compressfiles_thread_data_array;
 //extern vector<sem_t> compressfiles_thread_go;
 //extern vector<sem_t> compressfiles_data_done;
 
-extern pthread_mutex_t linkstoremove_mutex;
+//extern pthread_mutex_t linkstoremove_mutex;
 
-extern pthread_mutex_t filessavelock_mutex;
-extern pthread_mutex_t filesdonelock_mutex;
+//extern pthread_mutex_t filessavelock_mutex;
+//extern pthread_mutex_t filesdonelock_mutex;
 
-extern pthread_mutex_t beadmovelock_mutex;
+//extern pthread_mutex_t beadmovelock_mutex;
 
 extern vector<pthread_mutex_t> collisiondetectiongolock_mutex;
 extern vector<pthread_mutex_t> collisiondetectiondonelock_mutex;

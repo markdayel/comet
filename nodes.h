@@ -45,8 +45,9 @@ public:
 	//vect lastpos;
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
 	vector <vect> link_force_vec;  // index is the threadnum
-	//vector <vect> repulsion_displacement_vec;
+	
 	vector <vect> rep_force_vec;
+	vect nuc_repulsion_displacement_vec;
 	//vect momentum_vec;
 	vector <links> listoflinks;
 
@@ -56,6 +57,8 @@ public:
 			 //dispforce_transverse, dispforce_radial;  
 	
 	double nucleator_impacts;
+
+    bool donecollision, donelinkforces;
 
 	int gridx, gridy, gridz;
 	vect delta;
@@ -87,6 +90,7 @@ public:
 
 		rep_force_vec[threadnum].zero();
 		link_force_vec[threadnum].zero();
+		nuc_repulsion_displacement_vec.zero();
 		//repulsion_displacement_vec[threadnum].zero();
 
 		//return 0;

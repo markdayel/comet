@@ -46,7 +46,7 @@ public:
 
 	void addnode(const nodes& node);
 	void addallnodes();
-	void addsurfaceimpact(nodes& node, const double& mag);
+	//void addsurfaceimpact(nodes& node, const double& mag);
 
 	void getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const;
 	void getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const;
