@@ -118,7 +118,7 @@ extern taskteam applyforces_tteam;
 extern bool USETHREAD_LINKFORCES;
 extern bool USETHREAD_APPLYFORCES;
 extern bool USETHREAD_COLLISION;
-extern pthread_mutex_t removelinks_mutex;
+//extern pthread_mutex_t removelinks_mutex;
 //extern pthread_mutex_t nodedone_mutex;
 //-- 
 

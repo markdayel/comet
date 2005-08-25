@@ -181,8 +181,8 @@ public:
 	//static Bool2d repulsedone;
 
 	static void *applyforcesthread(void* threadarg);
-	static vector <nodes*> linkremovefrom;
-	static vector <nodes*> linkremoveto;
+	static Nodes2d linkremovefrom;
+	static Nodes2d linkremoveto;
 	//vector <int> linkformfrom;
 	vector <linkform> linkformto;
 	static void *linkforcesthread(void* threadarg);

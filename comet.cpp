@@ -119,7 +119,7 @@ int NUM_THREADS;
 taskteam collision_tteam;
 taskteam linkforces_tteam;
 taskteam applyforces_tteam;
-pthread_mutex_t removelinks_mutex;
+//pthread_mutex_t removelinks_mutex;
 //pthread_mutex_t nodedone_mutex;
 bool USETHREAD_COLLISION   = true;
 bool USETHREAD_APPLYFORCES = true;
@@ -179,8 +179,8 @@ vector <int> actin::nodesbygridpoint_temp;
 int actin::iteration_num;
 
 bool actin::isinthread;
-vector <nodes*> actin::linkremovefrom;
-vector <nodes*> actin::linkremoveto;
+Nodes2d actin::linkremovefrom;
+Nodes2d actin::linkremoveto;
 
 int InterRecordIterations = 0;
 
@@ -328,7 +328,7 @@ if (!rewritesymbreak)
 	applyforces_thread_data_array.resize(NUM_THREADS+1);
 
 	//pthread_mutex_init(&nodedone_mutex, NULL);
-	pthread_mutex_init(&removelinks_mutex, NULL);
+	//pthread_mutex_init(&removelinks_mutex, NULL);
         // --
 	
 //	threads.resize(NUM_THREADS*5);

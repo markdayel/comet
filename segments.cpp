@@ -984,7 +984,7 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 	double value;
 
-	double maxval = SQRT_ACCURACY_LOSS;
+//	double maxval = SQRT_ACCURACY_LOSS;
 
 	// set max value:
 

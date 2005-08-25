@@ -95,15 +95,27 @@ actin::actin(void)
     nodes_on_same_gridpoint.resize(NUM_THREADS*4);
     nodes_by_thread.resize(NUM_THREADS*4);
 
+    linkremovefrom.resize(NUM_THREADS);
+    linkremoveto.resize(NUM_THREADS);
+
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
 		recti_near_nodes[i].reserve(5000);
 		nodes_on_same_gridpoint[i].reserve(MAXNODES);
         nodes_by_thread[i].reserve(MAXNODES);
+
+        linkremovefrom[i].reserve(MAXNODES);
+        linkremoveto[i].reserve(MAXNODES);
+
+        linkremovefrom[i].resize(0);
+        linkremoveto[i].resize(0);
 	}
 
 	nodes_within_nucleator.reserve(10000);
 	linkformto.reserve(100*MAX_LINKS_PER_NODE);
+
+
+
 
 	/*repulsedone.resize(MAXNODES);
 	for (int i=0; i!=(MAXNODES); i++)   // this crashes:  why??
@@ -505,22 +517,23 @@ int actin::iterate()  // this is the main iteration loop call
 	// in mean time it is a 'harbinger'
 	// affected only by node collision repulsion and nucleator repulsion
 
-	crosslinknodesdelay[iteration_num%CROSSLINKDELAY] = numnewnodes;
-	crosslinknewnodes(crosslinknodesdelay[(iteration_num+1)%CROSSLINKDELAY]);
+	crosslinknodesdelay[iteration_num % CROSSLINKDELAY] = numnewnodes;
+	crosslinknewnodes(crosslinknodesdelay[(iteration_num + 1) % CROSSLINKDELAY]);
 	
-	sortnodesbygridpoint();	// sort the nodes so they can be divided sanely between threads
+	//if (USE_THREADS)
+        sortnodesbygridpoint(); // sort the nodes so they can be divided sanely between threads
 
-	collisiondetection();	// calc node-to-node repulsion
-	linkforces();			// and link forces
+	collisiondetection();	    // calc node-to-node repulsion
+	linkforces();			    // and link forces
 
-	ejectfromnucleator();	// do forcable node ejection
+	ejectfromnucleator();	    // do forcable node ejection
 	
-	move_and_rotate();		// move and rotation of the actin based on 
-							// nucleator ejection data
-							// Note: whole grid update (in applyforces()) 
-							// must come immediately after move/rotate
+	move_and_rotate();		    // move and rotation of the actin based on 
+							    // nucleator ejection data
+							    // Note: whole grid update (in applyforces()) 
+							    // must come immediately after move/rotate
 
-	applyforces(); // move the nodes by the forces and update the grid
+	applyforces();              // move the nodes by the forces and update the grid
 
 	iteration_num++;
 
@@ -882,9 +895,7 @@ int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const
     // N.B. a good fraction of the total CPU time is spent in this function
     // may be worth linearizing the loop or poss amalgamating with the calling
     // functions so that creating and reading the list of gridpoints is not necessary
-    
-
-    
+        
     nodes *nodeptr, *startnodeptr;
     
 // save repeatedly dereferencing pointer by threadnum in inner loops:
@@ -919,38 +930,42 @@ int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const
     
     // truncate if out of grid bounds:
     if (minx < 0)
-	minx = 0;
+    	minx = 0;
     
     if (miny < 0)
-	miny = 0;
+	    miny = 0;
     
     if (minz < 0)
-	minz = 0;
+	    minz = 0;
     
     if (maxx > GRIDSIZE)
-	maxx = GRIDSIZE;
+	    maxx = GRIDSIZE;
 
     if (maxy > GRIDSIZE)
-	maxy = GRIDSIZE;
+	    maxy = GRIDSIZE;
     
     if (maxz > GRIDSIZE)
-	maxz = GRIDSIZE;
+	    maxz = GRIDSIZE;
     
     // do adjgridpoints by adjgridpoints scan on grid
-    for (int x = minx; x != maxx; ++x) {
-	for (int y = miny; y != maxy; ++y) {
-	    for (int z = minz; z != maxz; ++z) {
-		
-		nodeptr=nodegrid[x][y][z];
-		startnodeptr=nodeptr;
-		if (nodeptr!=0) {
-		    do {
-			p_recti_near_nodeslist->push_back(nodeptr);
-			nodeptr = nodeptr->nextnode;					
-		    } while(nodeptr!=startnodeptr);  // until back to start
-		}
-	    }
-	}
+    for (int x = minx; x != maxx; ++x) 
+    {
+	    for (int y = miny; y != maxy; ++y) 
+            {
+	            for (int z = minz; z != maxz; ++z) 
+                {
+            	    nodeptr=nodegrid[x][y][z];
+		            startnodeptr=nodeptr;
+		            if (nodeptr!=0) 
+                    {
+		                do 
+                        {
+			                p_recti_near_nodeslist->push_back(nodeptr);
+			                nodeptr = nodeptr->nextnode;					
+		                } while (nodeptr!=startnodeptr);  // until back to start
+		            }
+	            }
+	        }
     }
     // nodes on same gridpoint:
     
@@ -1047,16 +1062,18 @@ void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
 int actin::linkforces()
 {
     // remove the links for ones that were broken last time
-    for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
+    for(int threadnum=0; threadnum<NUM_THREADS; ++threadnum)
     {
-	linkremovefrom[i]->removelink(linkremoveto[i]);  // remove the back link
-	linkremoveto[i]->removelink(linkremovefrom[i]);  // and remove from the list
+        for (unsigned int i=0; i<linkremovefrom[threadnum].size() ; ++i )
+        {
+            linkremovefrom[threadnum][i]->removelink(linkremoveto[threadnum][i]);  // remove the back link
+	        linkremoveto[threadnum][i]->removelink(linkremovefrom[threadnum][i]);  // and remove from the list
+        }
+        // reset the lists of broken links:
+        linkremovefrom[threadnum].resize(0);
+        linkremoveto[threadnum].resize(0);
     }
-    
-    // reset the lists of broken links:
-    linkremovefrom.resize(0);
-    linkremoveto.resize(0);
-    
+   
     int numthreadnodes, start, end;
     
     numthreadnodes = highestnodecount / NUM_THREADS;
@@ -1073,23 +1090,24 @@ int actin::linkforces()
 	    
 	    if (i<NUM_THREADS-1)
 	    {
-		linkforces_thread_data_array[i].endnode = end;
+    		linkforces_thread_data_array[i].endnode = end;
 	    }
 	    else
 	    {	// put remainder in last thread (cludge for now)
-		linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
-	    };
+		    linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+	    }
+
 	    linkforces_tteam.add_task(&linkforces_thread_data_array[i]);
 	}
-	linkforces_tteam.do_work();	
+	    linkforces_tteam.do_work();	
     }
     else
     {
         // if not using threads, do in one go:
-	linkforces_thread_data_array[0].startnode = 0;
-	linkforces_thread_data_array[0].endnode = highestnodecount;
-	linkforces_thread_data_array[0].threadnum = 0;
-	linkforcesdowork(&linkforces_thread_data_array[0], NULL);
+	    linkforces_thread_data_array[0].startnode = 0;
+	    linkforces_thread_data_array[0].endnode = highestnodecount;
+	    linkforces_thread_data_array[0].threadnum = 0;
+	    linkforcesdowork(&linkforces_thread_data_array[0], NULL);
     }
     return 0;
 }
@@ -1126,28 +1144,30 @@ void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
 	    
 	    force = i->getlinkforces(dist);
 	    
-	    if(i->broken) {
-		// broken link: store which ones to break:
-		pthread_mutex_lock(&removelinks_mutex);   // lock the mutex
-		linkremovefrom.push_back(&node[n]);
-		linkremoveto.push_back(i->linkednodeptr);
-		node[n].links_broken++;
-		pthread_mutex_unlock(&removelinks_mutex); // lock the mutex
-	    } else {
-		tomove = disp * (2* force/dist);  
-		// we're scaling the force by vector disp
-		// to get the direction, so we need to
-		// divide by the length of disp (i.e. dist)
-		// to prevent the length amplifying the force
-		
-		node[n].link_force_vec += tomove;
-		
-		if (force < 0) // put tension into link forces
-		{
-		    node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
-		} else {	// but put compression into link forces
-		    node[n].adddirectionalmags(tomove, node[n].repforce_radial, node[n].repforce_transverse);
-		}
+	    if(i->broken) 
+        {
+		    // broken link: store which ones to break:
+		    //pthread_mutex_lock(&removelinks_mutex);   // lock the mutex
+            linkremovefrom[dat->threadnum].push_back(&node[n]);
+		    linkremoveto[dat->threadnum].push_back(i->linkednodeptr);
+		    node[n].links_broken++;
+		    //pthread_mutex_unlock(&removelinks_mutex); // lock the mutex
+	    } else 
+        {
+		    tomove = disp * (2* force/dist);  
+		    // we're scaling the force by vector disp
+		    // to get the direction, so we need to
+		    // divide by the length of disp (i.e. dist)
+		    // to prevent the length amplifying the force
+    		
+		    node[n].link_force_vec += tomove;
+    		
+		    if (force < 0) // put tension into link forces
+		    {
+		        node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
+		    } else {	// but put compression into link forces
+		        node[n].adddirectionalmags(tomove, node[n].repforce_radial, node[n].repforce_transverse);
+		    }
 		
 	    }
 	}
@@ -1864,7 +1884,7 @@ int actin::sortnodesbygridpoint(void)
 			while (nodeptr!=startnodeptr);  //until back to start
 		}
 
-        // find smallest thread queue and put next on in there
+        // find smallest thread queue and put next one in there
 
         minsize = MAXNODES;
 
