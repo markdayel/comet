@@ -44,8 +44,8 @@ actin::actin(void)
 	node.resize(MAXNODES);
 	donenode.resize(MAXNODES);
 	repdonenode.resize(MAXNODES);
-	nodesbygridpoint.resize(MAXNODES);
-	nodesbygridpoint_temp.resize(MAXNODES);
+	//nodesbygridpoint.resize(MAXNODES);
+	//nodesbygridpoint_temp.resize(MAXNODES);
 	crosslinknodesdelay.resize(CROSSLINKDELAY);
 
 	doreportiteration = 9999999;
@@ -61,8 +61,8 @@ actin::actin(void)
 	{
 		node[i].nodenum=i;
 		node[i].ptheactin=this;
-		nodesbygridpoint[i] = i;
-		nodesbygridpoint_temp[i] = i;
+		//nodesbygridpoint[i] = i;
+		//nodesbygridpoint_temp[i] = i;
 		if (i<10000)
 			node[i].listoflinks.reserve(64);
 	}
@@ -100,21 +100,21 @@ actin::actin(void)
 
 	for (int i = 0; i < NUM_THREADS; ++i)
 	{
-		recti_near_nodes[i].reserve(5000);
+		recti_near_nodes[i].reserve(MAXNODES);
 		nodes_on_same_gridpoint[i].reserve(MAXNODES);
         nodes_by_thread[i].reserve(MAXNODES);
-
         linkremovefrom[i].reserve(MAXNODES);
         linkremoveto[i].reserve(MAXNODES);
 
+        recti_near_nodes[i].resize(0);
+        nodes_on_same_gridpoint[i].resize(0);
+        nodes_by_thread[i].resize(0);
         linkremovefrom[i].resize(0);
         linkremoveto[i].resize(0);
 	}
 
 	nodes_within_nucleator.reserve(10000);
 	linkformto.reserve(100*MAX_LINKS_PER_NODE);
-
-
 
 
 	/*repulsedone.resize(MAXNODES);
@@ -520,7 +520,7 @@ int actin::iterate()  // this is the main iteration loop call
 	crosslinknodesdelay[iteration_num % CROSSLINKDELAY] = numnewnodes;
 	crosslinknewnodes(crosslinknodesdelay[(iteration_num + 1) % CROSSLINKDELAY]);
 	
-	if (USE_THREADS)
+	//if (numnewnodes > 0)
         sortnodesbygridpoint(); // sort the nodes so they can be divided sanely between threads
 
 	collisiondetection();	    // calc node-to-node repulsion
@@ -530,6 +530,7 @@ int actin::iterate()  // this is the main iteration loop call
 	
 	move_and_rotate();		    // move and rotation of the actin based on 
 							    // nucleator ejection data
+
 							    // Note: whole grid update (in applyforces()) 
 							    // must come immediately after move/rotate
 
@@ -751,47 +752,67 @@ int actin::collisiondetection(void)
 {
     fill(donenode.begin(), donenode.begin()+highestnodecount, false);
     
-    int numthreadnodes, start, end, higestorderednode;
-    
-    higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
-    numthreadnodes = higestorderednode / NUM_THREADS;
-    
     // do collision detection
-    //int numtodo = 0;
+
     if(USE_THREADS && USETHREAD_COLLISION)
     {
-	for (int i = 0; i < NUM_THREADS; i++)
-	{
-	    start = i * numthreadnodes;
-	    end = (i+1) * numthreadnodes;
-	    
-	    collision_thread_data_array[i].startnode = start;
-	    collision_thread_data_array[i].endnode = end;
-	    collision_thread_data_array[i].threadnum = i;
-	    
-	    if (i<NUM_THREADS-1)
+	    for (int i = 0; i < NUM_THREADS; i++)
 	    {
-		collision_thread_data_array[i].endnode = end;
-		//numtodo+=end-start;
+            collision_thread_data_array[i].startnode = 0;
+	        collision_thread_data_array[i].endnode = 0;
+	        collision_thread_data_array[i].threadnum = i;
+    	    
+	        collision_tteam.add_task(&collision_thread_data_array[i]);
 	    }
-	    else
-	    {	// put remainder in last thread (cludge for now)
-		collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
-		//numtodo+=end-start + highestnodecount % NUM_THREADS;
-		assert(collision_thread_data_array[i].endnode == higestorderednode);
-	    };			
-	    
-	    // add this task to the team
-	    collision_tteam.add_task(&collision_thread_data_array[i]);
-	}
-	collision_tteam.do_work();
-    } else {
+
+	    collision_tteam.do_work();
+    } 
+    else 
+    {
         // if not using threads, do in one go:
-	collision_thread_data_array[0].startnode = 0;
-	collision_thread_data_array[0].endnode = higestorderednode;
-	collision_thread_data_array[0].threadnum = 0;
-	collisiondetectiondowork(&collision_thread_data_array[0], NULL);
+	    collision_thread_data_array[0].startnode = 0;
+	    collision_thread_data_array[0].endnode = 0;
+	    collision_thread_data_array[0].threadnum = 0;
+	    collisiondetectiondowork(&collision_thread_data_array[0], NULL);
     }
+ 
+    // do collision detection
+    //int numtodo = 0;
+ //   if(USE_THREADS && USETHREAD_COLLISION)
+ //   {
+	//for (int i = 0; i < NUM_THREADS; i++)
+	//{
+	//    start = i * numthreadnodes;
+	//    end = (i+1) * numthreadnodes;
+	//    
+	//    collision_thread_data_array[i].startnode = start;
+	//    collision_thread_data_array[i].endnode = end;
+	//    collision_thread_data_array[i].threadnum = i;
+	//    
+	//    if (i<NUM_THREADS-1)
+	//    {
+	//	collision_thread_data_array[i].endnode = end;
+	//	//numtodo+=end-start;
+	//    }
+	//    else
+	//    {	// put remainder in last thread (cludge for now)
+	//	collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
+	//	//numtodo+=end-start + highestnodecount % NUM_THREADS;
+	//	assert(collision_thread_data_array[i].endnode == higestorderednode);
+	//    };			
+	//    
+	//    // add this task to the team
+	//    collision_tteam.add_task(&collision_thread_data_array[i]);
+	//}
+	//collision_tteam.do_work();
+ //   } else {
+ //       // if not using threads, do in one go:
+	//collision_thread_data_array[0].startnode = 0;
+	//collision_thread_data_array[0].endnode = higestorderednode;
+	//collision_thread_data_array[0].threadnum = 0;
+	//collisiondetectiondowork(&collision_thread_data_array[0], NULL);
+ //   }
+
     
     return 0;
 }
@@ -807,86 +828,77 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
     double force;
     vect tomove;
     vect disp;
-    
-    for (int i=dat->startnode; i<dat->endnode; i++)
+
+    int thisnodenum, sameGPnodenum;
+
+    for(vector <nodes*>::iterator thisnode=nodes_by_thread[dat->threadnum].begin(); 
+	        thisnode<nodes_by_thread[dat->threadnum].end();
+	        ++thisnode) 
     {	
-	    if( (donenode[nodesbygridpoint[i]]) ||
-	        (node[nodesbygridpoint[i]].dontupdate) ||	    
-	        (!node[nodesbygridpoint[i]].polymer))
+        thisnodenum = (*thisnode)->nodenum;
+
+	    if(donenode[thisnodenum])
 	    {
 	        continue;  // skip nodes already done
 	    }
     	
 	    // find nodes on same gridpoint, and nodes within repulsive range
-	    if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0)
+        // skip if zero
+	    if (findnearbynodes(**thisnode,NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0)
 	        continue;	// find nodes within 1 grid point
-    	
-	    // skip if zero
 
 	    // loop over nodes on same gridpoint:
 	    for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
 	        sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
 	        sameGPnode++) 
         {
+
+            sameGPnodenum = (*sameGPnode)->nodenum;
     	    
-	        if (donenode[(*sameGPnode)->nodenum])
+	        if (donenode[sameGPnodenum])
 		      continue;  // skip if done
     	    
-			    if (( (*sameGPnode)->nodenum < dat->startnode) ||
-			        ( (*sameGPnode)->nodenum >= dat->endnode) )
-			        continue;    // skip if out of range of this thread
+			// REVISIT ML: remove this mutex, should never conflict
+			//pthread_mutex_lock(&nodedone_mutex);
+			donenode[sameGPnodenum] = true;  // mark node as done
+			//pthread_mutex_unlock(&nodedone_mutex);
+    		
+			// of these nodes, calculate euclidian dist
+			nodeposvec = **sameGPnode;	// get xyz of our node
 
-			    // REVISIT ML: remove this mutex, should never conflict
-			    //pthread_mutex_lock(&nodedone_mutex);
-			    donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
-			    //pthread_mutex_unlock(&nodedone_mutex);
+			for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
+			    nearnode<recti_near_nodes[dat->threadnum].end();
+			    nearnode++) {
+
+			    if ( *sameGPnode == *nearnode)
+				    continue;  // skip if self
     			
-			    // of these nodes, calculate euclidian dist
-			    nodeposvec = (*(*sameGPnode));	// get xyz of our node
-
-			    for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
-			        nearnode<recti_near_nodes[dat->threadnum].end();
-			        nearnode++) {
-			        if ((*sameGPnode)==(*nearnode))
-				       continue;  // skip if self
-    			    
-			        //if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
-			        //	continue;  // skip if done opposite pair
-    			    
-			        // this check should not be necessary?:
-			        // if (( (*sameGPnode)->nodenum < dat->startnode) ||
-			        //    ( (*sameGPnode)->nodenum >= dat->endnode) )
-			        //    continue;    // skip if out of range of this thread  
-			        assert( (*sameGPnode)->nodenum >= dat->startnode );
-			        assert( (*sameGPnode)->nodenum <  dat->endnode   );
-    			    
-			        disp = (*(*nearnode)) - nodeposvec; 
-			        distsqr = disp.sqrlength();
-    			    
-			        if (distsqr < 2 * SQRT_ACCURACY_LOSS)
-			        {	
-		    		    continue;
-			        }
-    			    
-			        //dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
-			        //dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
-    			    
-			        if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
-			        {
-				        // calc dist between nodes
-				        dist = sqrt(distsqr); 
-
-				        force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
-
-				        tomove = disp * ( 2 * force / dist);
-        				
-				        (*sameGPnode)->rep_force_vec -= tomove ;
-
-				        (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial,
-								        (*sameGPnode)->repforce_transverse);
-    				
-			        }
+  			
+			    disp = **nearnode - nodeposvec; 
+			    distsqr = disp.sqrlength();
+    			
+			    if (distsqr < 2 * SQRT_ACCURACY_LOSS)
+			    {	
+		    		continue;
 			    }
+    			
+    			
+			    if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
+			    {
+				    // calc dist between nodes
+				    dist = sqrt(distsqr); 
+
+				    force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+
+				    tomove = disp * ( 2 * force / dist);
+        			
+				    (*sameGPnode)->rep_force_vec -= tomove ;
+
+				    (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial,
+								    (*sameGPnode)->repforce_transverse);
+    			
+			    }
+			}
 	    }
     }
     return (void*) NULL;
@@ -1057,8 +1069,10 @@ void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
     {
 
 	    if((!node[i].dontupdate) && node[i].polymer)
-	        node[i].applyforces(); // note this is the num of the thread that put the
-                                            // data there, not our thread
+        {
+	        node[i].applyforces();  // note this is the num of the thread that put the
+                                    // data there, not our thread
+        }
     }
     return NULL;
 }
@@ -1841,8 +1855,9 @@ int actin::squash(double thickness)
 }
 
 
-int actin::sortnodesbygridpoint(void)
+void actin::sortnodesbygridpoint(void)
 {
+
 	nodes* nodeptr, *startnodeptr;
 
 	for (int i=0; i<highestnodecount; i++)
@@ -1857,23 +1872,30 @@ int actin::sortnodesbygridpoint(void)
         nodes_by_thread[threadnum].resize(0);
     }
 
-
 	//nodesbygridpoint.swap(nodesbygridpoint_temp);  // store the old order
 	//nodesbygridpoint.resize(0);	// blank the new
 
-	// mark: todo: alter so that not restarting from scratch (use lowestnodeupdate)
 
 	// int i;
-	int nodenumber = 0;
+	//int nodenumber = 0;
+    int tn;
     size_t minsize;
     
+
+    int lowestnodetoupdate = 0;
+
+    if (highestnodecount > NODES_TO_UPDATE)
+	{
+        lowestnodetoupdate = highestnodecount - NODES_TO_UPDATE;
+	}
+
+
     threadnum = 0;
 
-	for (int i=0; i<highestnodecount; ++i)
+	for (int i=lowestnodetoupdate; i<highestnodecount; ++i)
 	{	// collect the nodes in gridpoint order...
 
-		//i = nodesbygridpoint_temp[j]; // get reference for old set
-		if (donenode[i]) //|| (!node[i].polymer))
+		if ((donenode[i]) || (!node[i].polymer))
 			continue;
 
         nodeptr=nodegrid[node[i].gridx][node[i].gridy][node[i].gridz];
@@ -1883,7 +1905,6 @@ int actin::sortnodesbygridpoint(void)
 		{
 			do
 			{
-				nodesbygridpoint[nodenumber++]=nodeptr->nodenum;
                 nodes_by_thread[threadnum].push_back(nodeptr);
 				donenode[nodeptr->nodenum] = true;  // mark node as done
 
@@ -1896,7 +1917,7 @@ int actin::sortnodesbygridpoint(void)
 
         minsize = MAXNODES;
 
-        for (int tn = 0; tn < NUM_THREADS; ++tn)
+        for (tn = 0; tn < NUM_THREADS; ++tn)
         {
             if (nodes_by_thread[tn].size() < minsize)
             {
@@ -1906,22 +1927,7 @@ int actin::sortnodesbygridpoint(void)
         }
 	}
 
-    // temp cludge, put back in nodesbygridpoint for now.
-
-   	//nodenumber = 0;
-
-    //for (int threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
-    //{
-
-    //    for(vector <nodes*>::iterator i = nodes_by_thread[threadnum].begin(); 
-		  //  i != nodes_by_thread[threadnum].end(); ++i)
-    //    {
-    //        nodesbygridpoint[nodenumber++]=(*i)->nodenum;
-    //    }
-    //}
-
-
-	return 0;
+	return;
 }
 
 //void * actin::compressfilesthread(void* threadarg)

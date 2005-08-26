@@ -161,8 +161,8 @@ public:
 	static Nodes2d recti_near_nodes;
 	static Nodes2d nodes_on_same_gridpoint;
 	static Nodes1d nodes_within_nucleator;	
-	static vector <int> nodesbygridpoint;
-	static vector <int> nodesbygridpoint_temp;
+	//static vector <int> nodesbygridpoint;
+	//static vector <int> nodesbygridpoint_temp;
 	//static inline int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
 	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
 	//inline static int dorepulsion(const int& node_i,const int& node_j, const double& distsqr, const int& threadnum);
@@ -193,7 +193,7 @@ public:
 
 	int squash(double thickness);
 	//int repulsiveforces(void);
-	int sortnodesbygridpoint(void);
+	void sortnodesbygridpoint(void);
 	int nexttocrosslink;
 	int find_center(vect &center);
 	//int save_linkstats(int filenum);

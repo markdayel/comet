@@ -176,8 +176,8 @@ Nodes2d actin::nodes_by_thread;
 Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
 Nodes1d actin::nodes_within_nucleator;
-vector <int> actin::nodesbygridpoint;
-vector <int> actin::nodesbygridpoint_temp;
+//vector <int> actin::nodesbygridpoint;
+//vector <int> actin::nodesbygridpoint_temp;
 int actin::iteration_num;
 
 bool actin::isinthread;
