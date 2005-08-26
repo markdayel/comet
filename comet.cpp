@@ -184,6 +184,8 @@ bool actin::isinthread;
 Nodes2d actin::linkremovefrom;
 Nodes2d actin::linkremoveto;
 
+bool REWRITESYMBREAK = false;
+
 int InterRecordIterations = 0;
 
 int load_data(actin &theactin, int iteration);
@@ -238,10 +240,10 @@ keyboard keyb;
 	system(command1);
 #endif
 
-	bool rewritesymbreak = false;
+	
 	if(argc == 2 &&  strcmp(argv[1], "sym") == 0 ) 
 	{
-		rewritesymbreak = true;
+		REWRITESYMBREAK = true;
 	}
 
 
@@ -261,7 +263,7 @@ keyboard keyb;
             // REVISIT: continue to setup using the cometparams.ini file
 	    // or perhaps breakout here? (ML)
 	}
-	else if (!rewritesymbreak)
+	else if (!REWRITESYMBREAK)
 	{	// not re-writing symmetry breaking bitmaps or post-processing
 		// so this is a new calculation and no other process is using temp bmp files
 		// and can clear them
@@ -285,7 +287,7 @@ keyboard keyb;
 #endif
 
 
-if (!rewritesymbreak)
+if (!REWRITESYMBREAK)
 {	// don't drop priority if re-writing bitmaps
 	// because calling thread already has low priority
 	// and this would drop it further
@@ -716,7 +718,7 @@ if (!rewritesymbreak)
 	static actin theactin;
 	static nucleator nuc_object(NUCSHAPE, &theactin);
 
-	if (rewritesymbreak)
+	if (REWRITESYMBREAK)
 	{
 		rewrite_symbreak_bitmaps(nuc_object, theactin);
 		exit(EXIT_SUCCESS);
@@ -1101,8 +1103,8 @@ srand( rand_num_seed );
 
             nuc_object.segs.set_scale_factors();
 
-			nuc_object.segs.savereport(filenum);
-			nuc_object.segs.saveradialreport(filenum);
+			//nuc_object.segs.savereport(filenum);
+			//nuc_object.segs.saveradialreport(filenum);
 
 	//theactin.savebmp(filenum, actin::xaxis, actin::runbg);
 	//theactin.savebmp(filenum, actin::yaxis, actin::runbg);
@@ -1366,6 +1368,9 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 					
 		nuc_object.segs.addallnodes();  // put node data into segment bins
 
+        nuc_object.segs.savereport(filenum);
+		nuc_object.segs.saveradialreport(filenum);
+
 		// put these in later after rotation done
 		//nuc_object.segs.savereport(i/InterRecordIterations);
 		//nuc_object.segs.saveradialreport(i/InterRecordIterations);
@@ -1373,7 +1378,7 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 		theactin.savebmp(filenum, actin::xaxis, actin::runfg);  // was bg
 		theactin.savebmp(filenum, actin::yaxis, actin::runfg);	// was bg
 		theactin.savebmp(filenum, actin::zaxis, actin::runfg);
-		
+        	
 		//nuc_object.segs.clearsurfaceimpacts();
 		nuc_object.segs.clearbins();
 
@@ -1409,10 +1414,8 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 					
 		nuc_object.segs.addallnodes();  // put node data into segment bins
 
-		// put these in later after rotation done
-		//nuc_object.segs.savereport(i/InterRecordIterations);
-		//nuc_object.segs.saveradialreport(i/InterRecordIterations);
-
+        nuc_object.segs.savereport(filenum);
+		nuc_object.segs.saveradialreport(filenum);
 
 		// run the last one in foreground to slow things down
 		// so don't overload system with too many bg processes

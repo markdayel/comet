@@ -20,9 +20,16 @@ removed without prior written permission from the author.
 actin::actin(void)
 {
 
-	opruninfo.open("comet_run_info.txt", ios::out | ios::trunc);
-	if (!opruninfo) 
-	{ cout << "Unable to open file " << "comet_run_info.txt" << " for output"; return;}
+    if (!REWRITESYMBREAK)
+    {
+	    opruninfo.open("comet_run_info.txt", ios::out | ios::trunc);
+	    if (!opruninfo) 
+	    { cout << "Unable to open file " << "comet_run_info.txt" << " for output"; return;}
+    }
+    else
+    {
+	    opruninfo.open("/dev/null", ios::out | ios::trunc);
+    }
 
 	opruninfo << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
 
@@ -30,12 +37,22 @@ actin::actin(void)
 	cout << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
 	cout.flush();
 
-	opvelocityinfo.open("velocities.txt", ios::out | ios::trunc);
-	if (!opvelocityinfo) 
-	{
-	    cout << "Unable to open file " << "velocities.txt" << " for output";
-	    return;
-	}
+
+    if (!REWRITESYMBREAK)
+    {
+	    opvelocityinfo.open("velocities.txt", ios::out | ios::trunc);
+	    if (!opvelocityinfo) 
+	    {
+	        cout << "Unable to open file " << "velocities.txt" << " for output";
+	        return;
+	    }
+    }
+    else
+    {
+	    opvelocityinfo.open("/dev/null", ios::out | ios::trunc);
+    }
+
+
 
 	opvelocityinfo << "time,x,y,z,vel" << endl;
 
@@ -1879,7 +1896,7 @@ void actin::sortnodesbygridpoint(void)
 	// int i;
 	//int nodenumber = 0;
     int tn;
-    size_t minsize;
+    size_t threadsize, minsize;
     
 
     int lowestnodetoupdate = 0;
@@ -1919,9 +1936,10 @@ void actin::sortnodesbygridpoint(void)
 
         for (tn = 0; tn < NUM_THREADS; ++tn)
         {
-            if (nodes_by_thread[tn].size() < minsize)
+            threadsize = nodes_by_thread[tn].size();
+            if (threadsize < minsize)
             {
-                minsize = nodes_by_thread[tn].size();
+                minsize = threadsize;
                 threadnum = tn;
             }
         }

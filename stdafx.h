@@ -200,6 +200,8 @@ int threadnum;
 
 // global variables:
 
+extern bool REWRITESYMBREAK;
+
 extern bool GRASS_IS_GREEN;  // this is a kludge to get rid of compiler warnings
 
 extern double TOTAL_SIMULATION_TIME;  

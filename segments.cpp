@@ -379,7 +379,7 @@ void segments::getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdi
 
 			xdist = dist_to_seg(calcdist(rot_pos.y, rot_pos.z + CAPSULE_HALF_LINEAR) - RADIUS); 
 			ydist = dist_to_seg(calcdist(rot_pos.x, rot_pos.z + CAPSULE_HALF_LINEAR) - RADIUS); 
-			
+	
 		}
 
 	}
@@ -675,7 +675,6 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 	{	// capsule z axis, no linear section to plot
 		segstodraw = 2 * num_cap_segs;
 	}
-
 	
 	for (int i=0; i<segstodraw; ++i)
 	{
@@ -774,8 +773,6 @@ void segments::savereport(const int& filenum) const
 
 				getsegmentposition(x, y, z, seg, dist, axis);
 
-				//p_actin->camera_rotation.rotate(x,y,z); 
-
 				capsuleside = false;
 
 				if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
@@ -794,6 +791,11 @@ void segments::savereport(const int& filenum) const
 						radius = calcdist(x , fabs(y) - CAPSULE_HALF_LINEAR) - RADIUS;
 					}
 				}
+
+                // rotate *after* determining radius
+
+                p_actin->camera_rotation.rotate(x,y,z);
+
 
 // Axis,segment,distseg,x,y,z,Radius,numnodes,area,capsuleside,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
 
