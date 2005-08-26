@@ -520,7 +520,7 @@ int actin::iterate()  // this is the main iteration loop call
 	crosslinknodesdelay[iteration_num % CROSSLINKDELAY] = numnewnodes;
 	crosslinknewnodes(crosslinknodesdelay[(iteration_num + 1) % CROSSLINKDELAY]);
 	
-	//if (USE_THREADS)
+	if (USE_THREADS)
         sortnodesbygridpoint(); // sort the nodes so they can be divided sanely between threads
 
 	collisiondetection();	    // calc node-to-node repulsion
@@ -830,7 +830,7 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
         {
     	    
 	        if (donenode[(*sameGPnode)->nodenum])
-		    continue;  // skip if done
+		      continue;  // skip if done
     	    
 			    if (( (*sameGPnode)->nodenum < dat->startnode) ||
 			        ( (*sameGPnode)->nodenum >= dat->endnode) )
@@ -843,11 +843,12 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
     			
 			    // of these nodes, calculate euclidian dist
 			    nodeposvec = (*(*sameGPnode));	// get xyz of our node
+
 			    for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
 			        nearnode<recti_near_nodes[dat->threadnum].end();
 			        nearnode++) {
 			        if ((*sameGPnode)==(*nearnode))
-				    continue;  // skip if self
+				       continue;  // skip if self
     			    
 			        //if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
 			        //	continue;  // skip if done opposite pair
@@ -864,7 +865,7 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
     			    
 			        if (distsqr < 2 * SQRT_ACCURACY_LOSS)
 			        {	
-				    continue;
+		    		    continue;
 			        }
     			    
 			        //dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
@@ -872,14 +873,17 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
     			    
 			        if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
 			        {
-				    // calc dist between nodes
-				    dist = sqrt(distsqr); 
-				    force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
-				    tomove = disp * ( 2 * force / dist);
-    				
-				    (*sameGPnode)->rep_force_vec -= tomove ;
-				    (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial,
-								    (*sameGPnode)->repforce_transverse);
+				        // calc dist between nodes
+				        dist = sqrt(distsqr); 
+
+				        force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+
+				        tomove = disp * ( 2 * force / dist);
+        				
+				        (*sameGPnode)->rep_force_vec -= tomove ;
+
+				        (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial,
+								        (*sameGPnode)->repforce_transverse);
     				
 			        }
 			    }
@@ -1583,13 +1587,17 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 	// check have lines to draw before adding them
 	// else ImageMagick intermittently crashes
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj,1) > 0)		
+    // scaled impact forces
+    // note the values are already scaled to have a max of 1 from the symmetry breaking
+    // so we're scaling the 3 colors mainly to show the range of small values
+	
+    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj,8) > 0)		
 		drawcmd << "\" -stroke blue -draw \"" << tmp_drawcmd1.str();
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.2) > 0)	// scaled impact forces
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,2) > 0)	
 		drawcmd << "\" -stroke red -draw \"" << tmp_drawcmd2.str();	
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj,0.05) > 0)	// scaled impact forces
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj,0.5) > 0)	
 		drawcmd << "\" -stroke yellow -draw \"" << tmp_drawcmd3.str();
 
 	drawcmd << "\"";

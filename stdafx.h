@@ -222,6 +222,8 @@ extern double NODE_INCOMPRESSIBLE_RADIUS;// repulsion is zero here
 
 extern double LINK_BREAKAGE_FORCE;  // breakage force per link
 extern double LINK_FORCE;
+extern bool USE_BREAKAGE_STRAIN;
+extern double LINK_BREAKAGE_STRAIN;
 extern double P_LINK_BREAK_IF_OVER;  // probablility that force will break link if over the link breakage force
 extern double P_XLINK;
 extern double P_NUC;

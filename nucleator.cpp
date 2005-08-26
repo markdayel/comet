@@ -135,47 +135,47 @@ int nucleator::addnodessphere(void)
 
 	for (int i=0; i< nodestoadd; i++)
 	{
-			z = (2 * rand() * RECIP_RAND_MAX ) - 1 ;		// random number -1 to 1
-			theta = (2 * PI * rand() * RECIP_RAND_MAX);  // circle vector
-			
-			if (z*z<1) // avoid floating exception due to rounding errors causing -ve sqrt
-			{
-				r = radius * sqrt(1 - z*z);		// radius of circle
-			}
-			else
-			{
-				r = radius;  
-			}
+		z = (2 * rand() * RECIP_RAND_MAX ) - 1 ;		// random number -1 to 1
+		theta = (2 * PI * rand() * RECIP_RAND_MAX);  // circle vector
+		
+		if (z*z<1) // avoid floating exception due to rounding errors causing -ve sqrt
+		{
+			r = radius * sqrt(1 - z*z);		// radius of circle
+		}
+		else
+		{
+			r = radius;  
+		}
 
-			x =  r * cos(theta) * NUCPOINT_SCALE;				// x and y of point
-			y =  r * sin(theta) * NUCPOINT_SCALE;
-			z*=  radius * NUCPOINT_SCALE;					// z just scaled by radius
+		x =  r * cos(theta) * NUCPOINT_SCALE;				// x and y of point
+		y =  r * sin(theta) * NUCPOINT_SCALE;
+		z*=  radius * NUCPOINT_SCALE;					// z just scaled by radius
 
-			if (ASYMMETRIC_NUCLEATION!=0)
-			{
-				if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
-					if ((y<0) || (fabs(x+z)>0.5)) continue;
-				if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
-					if (z < (radius) *( 2 * rand() * RECIP_RAND_MAX - 1))
-						continue;
-				if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
-					if (z < (radius) *( 4 * rand() * RECIP_RAND_MAX - 3))
-						continue;
-			    if (ASYMMETRIC_NUCLEATION==4) { // fixed random location
-				static double fixed_x = x;
-				static double fixed_y = y;
-				static double fixed_z = z;
-				x = fixed_x;
-				y = fixed_y;
-				z = fixed_z;				
-			}
-				if (ASYMMETRIC_NUCLEATION==7)  // half caps one side
-					if ( ((y>0)&&(z>0)) || ((y<0)&&(z<0)) || (z<0))
-						continue;
-			}
+		if (ASYMMETRIC_NUCLEATION!=0)
+		{
+			if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
+				if ((y<0) || (fabs(x+z)>0.5)) continue;
+			if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
+				if (z < (radius) *( 2 * rand() * RECIP_RAND_MAX - 1))
+					continue;
+			if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
+				if (z < (radius) *( 4 * rand() * RECIP_RAND_MAX - 3))
+					continue;
+			if (ASYMMETRIC_NUCLEATION==4) { // fixed random location
+			static double fixed_x = x;
+			static double fixed_y = y;
+			static double fixed_z = z;
+			x = fixed_x;
+			y = fixed_y;
+			z = fixed_z;				
+		}
+			if (ASYMMETRIC_NUCLEATION==7)  // half caps one side
+				if ( ((y>0)&&(z>0)) || ((y<0)&&(z<0)) || (z<0))
+					continue;
+		}
 
-			ptheactin->node[ptheactin->highestnodecount++].polymerize(x,y,z);
-			nodesadded++;
+		ptheactin->node[ptheactin->highestnodecount++].polymerize(x,y,z);
+		nodesadded++;
 	}
 	return nodesadded;
 }

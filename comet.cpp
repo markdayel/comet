@@ -68,6 +68,8 @@ double NODE_INCOMPRESSIBLE_RADIUS = 0.2;	// repulsion is zero here
 // double NODE_REPULSIVE_MAG = 1000;   // max repulsion (at dist=0)
 
 double LINK_BREAKAGE_FORCE =  100;	 // breakage force per link
+bool USE_BREAKAGE_STRAIN = false;
+double LINK_BREAKAGE_STRAIN = 1.15;
 double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NODE = 100;
 
@@ -493,6 +495,11 @@ if (!rewritesymbreak)
 			{
 				ss >> LINK_BREAKAGE_FORCE;
 				continue;
+			}
+            else if (tag == "LINK_BREAKAGE_STRAIN") 
+			{
+				ss >> LINK_BREAKAGE_STRAIN;
+				continue;
 			} 
 			else if (tag == "P_LINK_BREAK_IF_OVER") 
 			{
@@ -529,6 +536,15 @@ if (!rewritesymbreak)
 				USETHREAD_APPLYFORCES=true;
 			    else
 				USETHREAD_APPLYFORCES=false;
+			    continue;
+			} 
+        	else if (tag == "USE_BREAKAGE_STRAIN") 
+			{
+			    ss >> buff2;
+			    if(buff2=="true")
+				USE_BREAKAGE_STRAIN=true;
+			    else
+				USE_BREAKAGE_STRAIN=false;
 			    continue;
 			} 
 			else if (tag == "P_NUC") 

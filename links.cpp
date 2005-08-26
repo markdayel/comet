@@ -42,47 +42,67 @@ links::links(nodes* linknodep, double dist)
 }
 
 double links::getlinkforces(const double& dist)
-	{  // return force (nominally in pN)
-		double force;//=0.0;
-		double stress_over_breakage;
-		// is link loose or taut?
+{  // return force (nominally in pN)
+	double force;//=0.0;
+    double strain = dist / orig_dist;
+	double stress_over_breakage;
+	// is link loose or taut?
 
-		if (dist > (orig_dist*LINK_TAUT_RATIO))
-		{  // filaments taut:  go to high strain regime
+    // calculate forces:
 
-			force =		- ( LINK_FORCE * (dist - orig_dist) +
-					LINK_TAUT_FORCE * (dist - (orig_dist*LINK_TAUT_RATIO)))
-							* orig_dist_recip;
+    force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
 
-			if ((-force) > LINK_BREAKAGE_FORCE)
+	if (dist > (orig_dist * LINK_TAUT_RATIO))
+	{  // filaments taut:  go to high strain regime
+
+		force += - ( LINK_TAUT_FORCE  * 
+            (dist - (orig_dist * LINK_TAUT_RATIO)) * orig_dist_recip );
+    }
+
+    // decide if link broken:
+
+    if (USE_BREAKAGE_STRAIN)
+    {
+	    if (strain > LINK_BREAKAGE_STRAIN)
+		{
+			breakcount++;
+
+			if ( breakcount * P_LINK_BREAK_IF_OVER * DELTA_T * RAND_MAX > rand() )
 			{
-				stress_over_breakage = (-force)/LINK_BREAKAGE_FORCE;
-				breakcount++;
-
-				if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) * RAND_MAX > 
-						rand() )
-				//if ((++breakcount>MAX_LINK_BREAKCOUNT) && breaklastiter)
-				{
-					broken = true;
-					force = 0;  
-				}
-
-			}
-			else
-			{
-				breakcount = 0;
+				broken = true;
+				force = 0;  
 			}
 
 		}
 		else
-		{  // loose: entropic spring
+		{
+			breakcount = 0;
+		}
+    }
+    else
+    { // just using force
+		if (-force > LINK_BREAKAGE_FORCE)
+		{
+			stress_over_breakage = -force / LINK_BREAKAGE_FORCE;
+			breakcount++;
 
-			force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
+			if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) * RAND_MAX > 
+					rand() )
+			//if ((++breakcount>MAX_LINK_BREAKCOUNT) && breaklastiter)
+			{
+				broken = true;
+                force = 0;
+			}
 
 		}
+		else
+		{
+			breakcount = 0;
+		}
+    }
 
-		return force;
-	}
+	return force;
+}
 
 //
 //
