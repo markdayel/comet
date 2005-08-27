@@ -1155,9 +1155,16 @@ void segments::save_scalefactors(void)
                 << rep_transverse_scalefactor << " "
                 << link_radial_scalefactor << " "
                 << link_transverse_scalefactor << " "
-                << links_broken_scalefactor << endl;
-
-
+                << links_broken_scalefactor << " "
+                << p_actin->imageRmax[0] << " "
+                << p_actin->imageGmax[0] << " "
+                << p_actin->imageBmax[0] << " "
+                << p_actin->imageRmax[1] << " "
+                << p_actin->imageGmax[1] << " "
+                << p_actin->imageBmax[1] << " "
+                << p_actin->imageRmax[2] << " "
+                << p_actin->imageGmax[2] << " "
+                << p_actin->imageBmax[2] << endl;
 
 	opscalefact.close();
 
@@ -1180,7 +1187,16 @@ void segments::load_scalefactors(void)
                     >> rep_transverse_scalefactor 
                     >> link_radial_scalefactor 
                     >> link_transverse_scalefactor 
-                    >> links_broken_scalefactor;
+                    >> links_broken_scalefactor
+                    >> p_actin->imageRmax[0]
+                    >> p_actin->imageGmax[0]
+                    >> p_actin->imageBmax[0]
+                    >> p_actin->imageRmax[1]
+                    >> p_actin->imageGmax[1]
+                    >> p_actin->imageBmax[1]
+                    >> p_actin->imageRmax[2]
+                    >> p_actin->imageGmax[2]
+                    >> p_actin->imageBmax[2];
 
 		ipscalefact.close();
 	}

@@ -22,9 +22,7 @@ nodes::nodes(void)
 	prevnode = this;
 	
 	x = y = z = 0.0;
-	//lastpos.zero();
 	gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
-	//rep_force_vec.x  = rep_force_vec.y  = rep_force_vec.z  = 0.0;
 	
 	//repulsion_displacement_vec = new vect[NUM_THREADS+1];
 	//repulsion_displacement_vec.resize(NUM_THREADS+1);
@@ -34,15 +32,18 @@ nodes::nodes(void)
 	//for (int i = 0; i < NUM_THREADS; ++i)
 	//{
 		//repulsion_displacement_vec[i].zero();
-		link_force_vec.zero();
-		rep_force_vec.zero();
-		nuc_repulsion_displacement_vec.zero();
+	
 	//}
+
+    link_force_vec.zero();
+	rep_force_vec.zero();
+    viscous_force_vec.zero();
+	nuc_repulsion_displacement_vec.zero();
+    viscous_force_recip_dist_sum = 0;
 
 	unit_vec_posn.zero();
 
-	
-//	momentum_vec.x = momentum_vec.y = momentum_vec.z = 0.0;	
+
 	polymer = false;
 	colour.setcol(0);
 	creation_iter_num = 0;
@@ -50,21 +51,8 @@ nodes::nodes(void)
 	harbinger = false;
 	dontupdate = false;
 
-	//linkforce_transverse.resize(NUM_THREADS);
-	//linkforce_radial.resize(NUM_THREADS);
-	//repforce_transverse.resize(NUM_THREADS);
-	//repforce_radial.resize(NUM_THREADS);
-	//links_broken.resize(NUM_THREADS);
-//	dispforce_transverse.resize(NUM_THREADS);
-//	dispforce_radial.resize(NUM_THREADS);
-	//nucleator_impacts.resize(NUM_THREADS);
-
-
 	clearstats();
 	
-
-    donecollision = false;
-    donelinkforces = false;
 }
 
 nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
@@ -72,27 +60,15 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 	gridx = gridy = gridz = -1;	
     nextnode = this;  // initialise to point to self
 	prevnode = this;
-	//rep_force_vec.x  = rep_force_vec.y  = rep_force_vec.z  = 0.0;
-	//lastpos.zero();
-	//repulsion_displacement_vec =  new vect[NUM_THREADS+1];
 
-	//repulsion_displacement_vec.resize(NUM_THREADS+1);
-	//link_force_vec.resize(NUM_THREADS+1);
-	//rep_force_vec.resize(NUM_THREADS+1);
-
-	//for (int i = 0; i < NUM_THREADS; ++i)
-	//{
-		//repulsion_displacement_vec[i].zero();
-		link_force_vec.zero();
-		rep_force_vec.zero();
-		nuc_repulsion_displacement_vec.zero();
-	//}
-
+	link_force_vec.zero();
+	rep_force_vec.zero();
+    viscous_force_vec.zero();
+	nuc_repulsion_displacement_vec.zero();
+    viscous_force_recip_dist_sum = 0;
 
 	clearstats();
 
-
-//	momentum_vec.x = momentum_vec.y = momentum_vec.z = 0.0;	
 	colour.setcol(0);
 	creation_iter_num = ptheactin->iteration_num;
 	nodelinksbroken =0;
@@ -101,14 +77,10 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 
 	polymerize(set_x,  set_y,  set_z);
 
-    donecollision = false;
-    donelinkforces = false;
-	
 }
 
 nodes::~nodes(void)
 {
-//	delete[] repulsion_displacement_vec;
 }
 
 bool nodes::depolymerize(void) 
@@ -124,7 +96,8 @@ bool nodes::depolymerize(void)
 	}
 
 	// and remove our own links to other nodes
-	ptheactin->linksbroken+=(int) listoflinks.size();
+	ptheactin->linksbroken += (int) listoflinks.size();
+    links_broken += (int) listoflinks.size();
 	listoflinks.resize(0);
 
 	return false;
@@ -157,61 +130,6 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 
 	return true;
 }
-
-//int nodes::save(ofstream *outputstream) 
-//{
-//	*outputstream	<< nodenum << "," << x << "," << y << "," << z 
-//					<< "," << harbinger << "," << polymer << "," 
-//					<< colour.r << "," << colour.g << "," << colour.b << ","
-//					<< creation_iter_num << (unsigned int) listoflinks.size() 
-//				 << "," << endl;
-//
-//	return 0;
-//}
-
-//
-//int nodes::savedata(ofstream *outputstream) 
-//{
-//	*outputstream	<< nodenum << "," << x << "," << y << "," << z 
-//					<< "," << harbinger << "," << polymer << "," 
-//					<< colour.r << "," << colour.g << "," << colour.b << ","
-//					<< creation_iter_num << "," << (unsigned int) listoflinks.size();
-//					
-//	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
-//	{	 
-//		*outputstream << ",";
-//		i->savedata(outputstream);
-//	}
-//	
-//	*outputstream << endl;
-//
-//	return 0;
-//}
-//
-//int nodes::loaddata(ifstream *inputstream) 
-//{
-//	char delim;
-//	unsigned int linklistsize;
-//
-//	*inputstream	>> nodenum >> delim >> x >> delim >> y >> delim >> z 
-//					>> delim >> harbinger >> delim >> polymer >> delim 
-//					>> colour.r >> delim >> colour.g >> delim >> colour.b >> delim
-//					>> creation_iter_num >> delim >> linklistsize ;
-//					
-//	listoflinks.resize(linklistsize);  // is resize right? or should it be reserve?
-//
-//	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
-//	{	 
-//		*inputstream >> delim;
-//		i->loaddata(inputstream);
-//	}
-//
-//	setgridcoords();
-//	addtogrid(); 
-//
-//	return 0;
-//}
-
 
 int nodes::save_data(ofstream &ostr) 
 {

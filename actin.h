@@ -81,7 +81,6 @@ public:
 	actin(void);
 	~actin(void);
 	int nucleate();
-	//int save(int);
 	int saveinfo(void);
 	int iterate(void);
 	int addlinks(const int& linknode1,const int& linknode2);
@@ -91,32 +90,24 @@ public:
 	ofstream opvelocityinfo;
 	ofstream outbmpfile_x,outbmpfile_y,outbmpfile_z;
 
+    int lowestnodetoupdate;
 	int highestnodecount;
 
 	Dbl2d imageR, imageG, imageB;
 
-	rotationmatrix actin_rotation, camera_rotation, //camera_rotation2,
-			reverse_camera_rotation;//, reverse_camera_rotation2;
+    Dbl1d imageRmax, imageGmax, imageBmax;
 
-	vector <Dbl2d> reportdat;
+    bool BMP_intensity_scaling;
 
-	//static bool collisionthreaddone1;
-	//static bool collisionthreaddone2;
-	//static bool collisionthreaddone3;
-	//static bool collisionthreaddone4;
+	rotationmatrix actin_rotation, camera_rotation, 
+			reverse_camera_rotation;
 
-	char outbmpbuffer[1024000];
-	
-	int debug_num_rotate, debug_num_displace;
+	int num_rotate, num_displace;
 
 	int crosslinknewnodes(int numnewnodes);
 
-	//links *link;
-	//vector <nodes*> nodes;
 	vector <int_vect> nucleatorgrid;
 	vector <int> crosslinknodesdelay;
-	//vector <double> link_radial_histogram;
-	//vector <double> link_transverse_histogram;
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
 	int collisiondetection(void);
@@ -130,9 +121,7 @@ public:
 	void writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
 	void writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight);
 	
-	int savebmp(int filenum, projection proj, processfgbg fgbg);
-
-	segments segs;
+	void savebmp(const int &filenum, projection proj, processfgbg fgbg, bool writefile);
 
 	nucleator* p_nuc;
 	int linkforces();
@@ -142,10 +131,9 @@ public:
 	int linksformed;
 	int linksbroken;
 
-	
 	char temp_BMP_filename_x[255],
-		temp_BMP_filename_y[255],
-		temp_BMP_filename_z[255];
+		 temp_BMP_filename_y[255],
+		 temp_BMP_filename_z[255];
 
 	int doreportiteration;
 	int doreportmaxnodes;
@@ -156,19 +144,13 @@ public:
 
 	static vector <nodes> node;
 	static vector <bool> donenode;	
-	static vector <bool> repdonenode;
     static Nodes2d nodes_by_thread;
 	static Nodes2d recti_near_nodes;
 	static Nodes2d nodes_on_same_gridpoint;
 	static Nodes1d nodes_within_nucleator;	
-	//static vector <int> nodesbygridpoint;
-	//static vector <int> nodesbygridpoint_temp;
-	//static inline int findnearbynodes(const int& ournodenum,const int& adjgridpoints,const int& threadnum);
 	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
-	//inline static int dorepulsion(const int& node_i,const int& node_j, const double& distsqr, const int& threadnum);
-	//static inline int dorepulsion(nodes& node_i,nodes& node_j,
-	//						  const double& dist,const int& threadnum);
-	// -- Threading, comment these out
+
+    // -- Threading, comment these out
 	// static void *collisiondetectionthread(void* threadarg);
 	// static void *collisiondetectiondowork(thread_data* dat);
         // --
@@ -183,24 +165,17 @@ public:
 	static void *applyforcesthread(void* threadarg);
 	static Nodes2d linkremovefrom;
 	static Nodes2d linkremoveto;
-	//vector <int> linkformfrom;
 	vector <linkform> linkformto;
 	static void *linkforcesthread(void* threadarg);
-	//static void *repulsiveforcesthread(void* threadarg);
 	//static void *compressfilesthread(void* threadarg);
 	void compressfilesdowork(const int & filenum);
 
 
 	int squash(double thickness);
-	//int repulsiveforces(void);
 	void sortnodesbygridpoint(void);
 	int nexttocrosslink;
 	int find_center(vect &center);
-	//int save_linkstats(int filenum);
-	//void reportsnapshot(int filenum, int highestnode, int reportiteration);
-	//void savereport(int filenum, int highestnode);
-	//int savedata(int filenum);
-	//int loaddata(int filenum);
+
 	void clear_nodegrid();
 	int save_data(ofstream &ofstrm);
 	int load_data(ifstream &ifstrm);

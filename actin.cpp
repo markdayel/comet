@@ -37,7 +37,6 @@ actin::actin(void)
 	cout << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
 	cout.flush();
 
-
     if (!REWRITESYMBREAK)
     {
 	    opvelocityinfo.open("velocities.txt", ios::out | ios::trunc);
@@ -52,34 +51,18 @@ actin::actin(void)
 	    opvelocityinfo.open("/dev/null", ios::out | ios::trunc);
     }
 
-
-
 	opvelocityinfo << "time,x,y,z,vel" << endl;
-
-	// node = new nodes[MAXNODES];
 
 	node.resize(MAXNODES);
 	donenode.resize(MAXNODES);
-	repdonenode.resize(MAXNODES);
-	//nodesbygridpoint.resize(MAXNODES);
-	//nodesbygridpoint_temp.resize(MAXNODES);
 	crosslinknodesdelay.resize(CROSSLINKDELAY);
 
 	doreportiteration = 9999999;
-
-	//reportdat.resize(REPORT_NUM_VARIABLES);
-	//for (int i=0; i!=REPORT_NUM_VARIABLES; i++)  
-	//{
-	//	reportdat[i].resize(REPORT_AVERAGE_ITTERATIONS+1);
-	//}
-
 
 	for (int i=0; i<MAXNODES; i++)
 	{
 		node[i].nodenum=i;
 		node[i].ptheactin=this;
-		//nodesbygridpoint[i] = i;
-		//nodesbygridpoint_temp[i] = i;
 		if (i<10000)
 			node[i].listoflinks.reserve(64);
 	}
@@ -134,12 +117,6 @@ actin::actin(void)
 	linkformto.reserve(100*MAX_LINKS_PER_NODE);
 
 
-	/*repulsedone.resize(MAXNODES);
-	for (int i=0; i!=(MAXNODES); i++)   // this crashes:  why??
-	{
-		repulsedone[i].resize(MAXNODES);
-	}*/
-
 	cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
 
 	highestnodecount = 0;
@@ -148,23 +125,19 @@ actin::actin(void)
 	linksbroken = 0;
 	nexttocrosslink = 0;
 	symbreakiter = 0;
+    lowestnodetoupdate = 0;
 
 	newnodescolour.setcol(0);
 
-	brokensymmetry = false;
 
 	//debug:
 
-	debug_num_rotate = 0;
-	debug_num_displace = 0;
+	num_rotate = 0;
+	num_displace = 0;
 
 	int x,y;
 
-	// bitmap size:
-	//BMP_WIDTH = 800;
-	//BMP_HEIGHT = 600;
-
-	imageR.resize(BMP_WIDTH);
+    imageR.resize(BMP_WIDTH);
 	imageG.resize(BMP_WIDTH);
 	imageB.resize(BMP_WIDTH);
 
@@ -182,7 +155,7 @@ actin::actin(void)
 			}
 		}
 
-//GetProcessId(GetCurrentThread());
+    //GetProcessId(GetCurrentThread());
 
 	// setup the bitmap file:
 
@@ -200,7 +173,21 @@ actin::actin(void)
 	writebitmapheader(outbmpfile_x,BMP_WIDTH, BMP_HEIGHT);
 	writebitmapheader(outbmpfile_y,BMP_WIDTH, BMP_HEIGHT);
 	writebitmapheader(outbmpfile_z,BMP_WIDTH, BMP_HEIGHT);
+    
+    imageRmax.resize(3);
+    imageGmax.resize(3);
+    imageBmax.resize(3);
 
+    for (int proj = 0; proj < 3; ++proj)
+    {
+	    imageRmax[proj] = 1000/INIT_R_GAIN;
+	    imageGmax[proj] = 1000/INIT_G_GAIN;
+	    imageBmax[proj] = 1000/INIT_B_GAIN;  // prevent over sensitivity
+    }
+
+    brokensymmetry = false;
+
+    BMP_intensity_scaling = true;
 } 
 
 actin::~actin(void)
@@ -222,6 +209,9 @@ actin::~actin(void)
 	system(command1);
 
 	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_z );
+	system(command1);
+
+    sprintf(command1, "stty sane" );
 	system(command1);
 }
 
@@ -320,72 +310,7 @@ int actin::crosslinknewnodes(int numnewnodes)
 
 	return numnewnodes;
 }
-//
-//int actin::save(int filenum)
-//{
-//	char filename[255];
-//	//char time[255], date[255];
-//
-//    //_strtime( time );
-//    //_strdate( date );
-//
-//	sprintf ( filename , "nodes%05i.txt", filenum );
-//
-//	ofstream opactindata(filename, ios::out | ios::trunc);
-//	if (!opactindata) 
-//	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-//
-//	// write header
-//	opactindata << "comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
-//	//opactindata << "Data Output " << date << " " << time << endl;
-//	opactindata << "Nodes Data Itteration Number: " << filenum << endl;
-//	opactindata << "Highest Node Count: " << highestnodecount << endl;
-//		opactindata << "nodenum,x,y,z,harbinger,polymer,r,g,b,creationiter,numlinks " << endl;
-//	
-//	p_nuc->save(&opactindata);
-//
-//
-//
-//	// write data
-//	for (int i=0; i<highestnodecount; i++)
-//	{
-//		if (node[i].polymer)
-//		{
-//			node[i].save(&opactindata);
-//		}
-//	}
-//
-//	opactindata.close();
-//
-//
-//
-//	// now save links
-//
-//	sprintf ( filename , "links%05i.txt", filenum );
-//
-//	ofstream oplinkdata(filename, ios::out | ios::trunc);
-//
-//	if (!oplinkdata) 
-//	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-//
-//	// write header
-//	oplinkdata << "comet (compiled " << __DATE__ << " " << __TIME__ << ") Mark J Dayel" << endl;
-//	//oplinkdata << "Data Output " << date << " " << time << endl;
-//	oplinkdata << "Links Data Itteration Number: " << filenum << endl;
-//	oplinkdata << "Highest Node Count: " << highestnodecount << endl;
-//	oplinkdata << "nodenum,numlinks,linknum1,linknum2,..." << endl;
-//
-//	for (int i=0; i<highestnodecount; i++)
-//	{
-//		if (node[i].polymer)
-//		{
-//			node[i].savelinks(&oplinkdata);
-//		}
-//	}
-//	oplinkdata.close();
-//
-//	return 0;
-//}
+
 
 int actin::saveinfo()
 {
@@ -681,7 +606,7 @@ void actin::move_and_rotate()
 	{
 
 		
-		debug_num_rotate++;
+		num_rotate++;
 
 		double x_angle = p_nuc->torque.x / 
 				p_nuc->momentofinertia.x;
@@ -732,7 +657,7 @@ void actin::move_and_rotate()
 	if ((p_nuc->deltanucposn.length() > MIN_DISPLACEMENT_TO_UPDATE))
 	{
 
-		debug_num_displace++;
+		num_displace++;
 
 		// move the nucleator by moving nodes in opposite direction
 		// note this is *before* rotating the deltanucposn vector, since the
@@ -775,6 +700,8 @@ int actin::collisiondetection(void)
     {
 	    for (int i = 0; i < NUM_THREADS; i++)
 	    {
+            // threads use the nodes_by_thread array
+            // so don't need to pass work here
             collision_thread_data_array[i].startnode = 0;
 	        collision_thread_data_array[i].endnode = 0;
 	        collision_thread_data_array[i].threadnum = i;
@@ -842,23 +769,21 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
     
     vect nodeposvec;
     double distsqr,dist;
+    //double recip_dist, force_over_dist;
     double force;
     vect tomove;
     vect disp;
 
-    int thisnodenum, sameGPnodenum;
+    int sameGPnodenum;
 
+    // loop over the nodes given to this thread
     for(vector <nodes*>::iterator thisnode=nodes_by_thread[dat->threadnum].begin(); 
 	        thisnode<nodes_by_thread[dat->threadnum].end();
 	        ++thisnode) 
     {	
-        thisnodenum = (*thisnode)->nodenum;
-
-	    if(donenode[thisnodenum])
-	    {
+        if(donenode[(*thisnode)->nodenum])
 	        continue;  // skip nodes already done
-	    }
-    	
+	   	  
 	    // find nodes on same gridpoint, and nodes within repulsive range
         // skip if zero
 	    if (findnearbynodes(**thisnode,NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0)
@@ -889,35 +814,38 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 
 			    if ( *sameGPnode == *nearnode)
 				    continue;  // skip if self
-    			
-  			
+    			  			
 			    disp = **nearnode - nodeposvec; 
 			    distsqr = disp.sqrlength();
     			
 			    if (distsqr < 2 * SQRT_ACCURACY_LOSS)
-			    {	
 		    		continue;
-			    }
-    			
-    			
-			    if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
+   			
+			    if (distsqr < NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE)
 			    {
 				    // calc dist between nodes
 				    dist = sqrt(distsqr); 
+                    //recip_dist = 1/dist;
 
-				    force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+				    force = NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
+				    //force_over_dist = recip_dist * NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE);
 
-				    tomove = disp * ( 2 * force / dist);
+                    //tomove = disp * ( 2 * force_over_dist);
+                    tomove = disp * ( 2 * force / dist);
         			
 				    (*sameGPnode)->rep_force_vec -= tomove ;
 
 				    (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial,
 								    (*sameGPnode)->repforce_transverse);
+
+                    //(*sameGPnode)->viscous_force_vec -= (*nearnode)->delta * recip_dist;
+                    //(*sameGPnode)->viscous_force_recip_dist_sum += recip_dist;
     			
 			    }
 			}
 	    }
     }
+
     return (void*) NULL;
 }
 
@@ -1020,56 +948,45 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
 #ifndef SEED_INSIDE
     int numthreadnodes, start, end;
     
-    numthreadnodes = highestnodecount / NUM_THREADS;
-    
-    if(USE_THREADS && USETHREAD_APPLYFORCES)  // switch this off for now...
+    numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREADS;
+
+    if (USE_THREADS && USETHREAD_APPLYFORCES)
     {
-	    for(int i=0; i<NUM_THREADS; i++)
-        {
-	        start = i * numthreadnodes;
-	        end = (i+1) * numthreadnodes;
+	    for (int i = 0; i < NUM_THREADS; i++)
+	    {
+	        start = i * numthreadnodes + lowestnodetoupdate;
+	        end = (i+1) * numthreadnodes + lowestnodetoupdate;
     	    
-	        applyforces_thread_data_array[i].startnode = start;
+            if (i==NUM_THREADS-1)
+	        {	// put remainder in last thread (cludge for now)
+		        end += highestnodecount % NUM_THREADS;
+	        }
+
+  	        applyforces_thread_data_array[i].startnode = start;
 	        applyforces_thread_data_array[i].endnode = end;
 	        applyforces_thread_data_array[i].threadnum = i;
 	    
-	    if (i<NUM_THREADS-1)
-	    {
-		    applyforces_thread_data_array[i].endnode = end;
-	    }
-	    else
-	    {	// put remainder in last thread (cludge for now)
-		    applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
-	    }
+	        applyforces_tteam.add_task(&applyforces_thread_data_array[i]);
+        }
 
-	    applyforces_tteam.add_task(&applyforces_thread_data_array[i]);
-    }
-
-	applyforces_tteam.do_work();
+	    applyforces_tteam.do_work();
     } 
     else 
     {
-	    applyforces_thread_data_array[0].startnode = 0;
+	    applyforces_thread_data_array[0].startnode = lowestnodetoupdate;
 	    applyforces_thread_data_array[0].endnode = highestnodecount;
 	    applyforces_thread_data_array[0].threadnum = 0;
 
         applyforcesdowork(&applyforces_thread_data_array[0], NULL);
-
-	
-	// REVISIT: remove this, old method now moved into dowork fcn
-	//for(int i=0; i<highestnodecount; i++){
-	//    for(int threadnum = 0; threadnum < NUM_THREADS; threadnum++) {
-	//	if((!node[i].dontupdate) && node[i].polymer)
-	//	    node[i].applyforces(threadnum);
-	//    }
-	//}
     }
     
+    // note: we have to updategrid() for *all* the nodes, because of
+    // the rotation and translation, and we can't do it in threads because
+    // of the linked list in the nodegrid
+
     for (int i=0; i<highestnodecount; i++)
     {
-	//if ((!node[i].dontupdate) && node[i].polymer)
 	    node[i].updategrid(); // move the point on the grid if need to
-	// and update the unit vector position
     }
 #endif
     return 0;
@@ -1084,7 +1001,6 @@ void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
     // sum forces etc. over all threads
     for (int i=dat->startnode; i<dat->endnode; ++i)
     {
-
 	    if((!node[i].dontupdate) && node[i].polymer)
         {
 	        node[i].applyforces();  // note this is the num of the thread that put the
@@ -1096,6 +1012,7 @@ void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
 
 int actin::linkforces()
 {
+
     // remove the links for ones that were broken last time
     for(int threadnum=0; threadnum<NUM_THREADS; ++threadnum)
     {
@@ -1110,30 +1027,28 @@ int actin::linkforces()
     }
    
     int numthreadnodes, start, end;
-    
-    numthreadnodes = highestnodecount / NUM_THREADS;
-    if(USE_THREADS && USETHREAD_LINKFORCES)
+
+    numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREADS;
+
+    if (USE_THREADS && USETHREAD_LINKFORCES)
     {
-	for (int i = 0; i < NUM_THREADS; i++)
-	{
-	    start = i * numthreadnodes;
-	    end = (i+1) * numthreadnodes;
-	    
-	    linkforces_thread_data_array[i].startnode = start;
-	    linkforces_thread_data_array[i].endnode = end;
-	    linkforces_thread_data_array[i].threadnum = i;
-	    
-	    if (i<NUM_THREADS-1)
+	    for (int i = 0; i < NUM_THREADS; i++)
 	    {
-    		linkforces_thread_data_array[i].endnode = end;
-	    }
-	    else
-	    {	// put remainder in last thread (cludge for now)
-		    linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
+	        start = i * numthreadnodes + lowestnodetoupdate;
+	        end = (i+1) * numthreadnodes + lowestnodetoupdate;
+    	    
+            if (i==NUM_THREADS-1)
+	        {	// put remainder in last thread (cludge for now)
+		        end += highestnodecount % NUM_THREADS;
+	        }
+
+	        linkforces_thread_data_array[i].startnode = start;
+	        linkforces_thread_data_array[i].endnode = end;
+	        linkforces_thread_data_array[i].threadnum = i;
+    	    
+	        linkforces_tteam.add_task(&linkforces_thread_data_array[i]);
 	    }
 
-	    linkforces_tteam.add_task(&linkforces_thread_data_array[i]);
-	}
 	    linkforces_tteam.do_work();	
     }
     else
@@ -1144,6 +1059,7 @@ int actin::linkforces()
 	    linkforces_thread_data_array[0].threadnum = 0;
 	    linkforcesdowork(&linkforces_thread_data_array[0], NULL);
     }
+
     return 0;
 }
 
@@ -1162,50 +1078,48 @@ void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
     // go through all nodes
     for(int n=(dat->startnode); n<(dat->endnode); n++)
     {  	
-	if ((node[n].dontupdate) || (!node[n].polymer))
-	    continue;
-	
-	nodeposvec = node[n];
-	
-	// go through links for each node
-	for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
-	{	 
-	    assert( !(i->broken) ); // if link not broken  (shouldn't be here if broken anyway)
-	    disp = nodeposvec - *(i->linkednodeptr);
-	    dist = disp.length();
-	    
-	    //if (dist < 0)
-	    //	continue;
-	    
-	    force = i->getlinkforces(dist);
-	    
-	    if(i->broken) 
-        {
-		    // broken link: store which ones to break:
-		    //pthread_mutex_lock(&removelinks_mutex);   // lock the mutex
-            linkremovefrom[dat->threadnum].push_back(&node[n]);
-		    linkremoveto[dat->threadnum].push_back(i->linkednodeptr);
-		    node[n].links_broken++;
-		    //pthread_mutex_unlock(&removelinks_mutex); // lock the mutex
-	    } else 
-        {
-		    tomove = disp * (2* force/dist);  
-		    // we're scaling the force by vector disp
-		    // to get the direction, so we need to
-		    // divide by the length of disp (i.e. dist)
-		    // to prevent the length amplifying the force
+	    if ((node[n].dontupdate) || (!node[n].polymer))
+	        continue;
+    	
+	    nodeposvec = node[n];
+    	
+	    // go through links for each node
+	    for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
+	    {	 
+	        assert( !(i->broken) ); // if link not broken  (shouldn't be here if broken anyway)
+
+            disp = nodeposvec - *(i->linkednodeptr);
+	        dist = disp.length();
+    	    
+	        force = i->getlinkforces(dist);
+    	    
+	        if(i->broken) 
+            {
+		        // broken link: store which ones to break:
+		        //pthread_mutex_lock(&removelinks_mutex);   // lock the mutex
+                linkremovefrom[dat->threadnum].push_back(&node[n]);
+		        linkremoveto[dat->threadnum].push_back(i->linkednodeptr);
+		        node[n].links_broken++;
+		        //pthread_mutex_unlock(&removelinks_mutex); // unlock the mutex
+	        } else 
+            {
+		        tomove = disp * (2* force/dist);  
+		        // we're scaling the force by vector disp
+		        // to get the *direction*, so we need to
+		        // divide by the length of disp (i.e. dist)
+		        // to prevent the length amplifying the force
+        		
+		        node[n].link_force_vec += tomove;
+        		
+		        if (force < 0) // put tension into link forces
+		        {
+		            node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
+		        } else {	   // but put compression into repulsive forces
+		            node[n].adddirectionalmags(tomove, node[n].repforce_radial , node[n].repforce_transverse );
+		        }
     		
-		    node[n].link_force_vec += tomove;
-    		
-		    if (force < 0) // put tension into link forces
-		    {
-		        node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
-		    } else {	// but put compression into link forces
-		        node[n].adddirectionalmags(tomove, node[n].repforce_radial, node[n].repforce_transverse);
-		    }
-		
+	        }
 	    }
-	}
     }
     return NULL;
 }
@@ -1300,7 +1214,7 @@ int actin::setnodecols(void)
 	return 0;
 }
 
-int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
+void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool writefile)
 { 
 	// choose projection letter for filename etc.
 
@@ -1342,7 +1256,7 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 
 	double gaussmax = (double) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
 
-	double imageRmax, imageGmax, imageBmax;
+	//double imageRmax[proj], imageGmax[proj], imageBmax[proj];
 
 	for (x = 0; x<BMP_WIDTH; x++)
 		{
@@ -1509,36 +1423,63 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 		}
 	}
 
-	// normalize image
+    if (BMP_intensity_scaling)
+    {
 
-	imageRmax = 1000/INIT_R_GAIN;
-	imageGmax = 1000/INIT_G_GAIN;
-	imageBmax = 1000/INIT_B_GAIN;  // prevent over sensitivity
+	    // normalize image
 
-	for (x = 0; x<BMP_WIDTH; x++)
-	{
-		for (y = 0; y<BMP_HEIGHT; y++)
-		{
-			if (imageR[x][y]>imageRmax)
-					imageRmax=imageR[x][y];
-			if (imageG[x][y]>imageGmax)
-					imageGmax=imageG[x][y];
-			if (imageB[x][y]>imageBmax)
-					imageBmax=imageB[x][y];
-		}
-	}
+	    for (x = 0; x<BMP_WIDTH; x++)
+	    {
+		    for (y = 0; y<BMP_HEIGHT; y++)
+		    {
+			    if (imageR[x][y]>imageRmax[proj])
+					    imageRmax[proj]=imageR[x][y];
+			    if (imageG[x][y]>imageGmax[proj])
+					    imageGmax[proj]=imageG[x][y];
+			    if (imageB[x][y]>imageBmax[proj])
+					    imageBmax[proj]=imageB[x][y];
+		    }
+	    }
 
-	// re-scale from 0 to 1
+        for (x = 0; x<BMP_WIDTH; x++)
+	    {
+		    for (y = 0; y<BMP_HEIGHT; y++)
+		    {
+			    imageR[x][y] /= imageRmax[proj];
+			    imageG[x][y] /= imageGmax[proj];
+			    imageB[x][y] /= imageBmax[proj];
+		    }
+	    }
+    }
+    else
+    {
+        for (x = 0; x<BMP_WIDTH; x++)
+	    {
+		    for (y = 0; y<BMP_HEIGHT; y++)
+		    {
+                if (imageR[x][y] > imageRmax[proj])
+                    imageR[x][y] = imageRmax[proj];
+                else
+                    imageR[x][y] /= imageRmax[proj];
 
-	for (x = 0; x<BMP_WIDTH; x++)
-	{
-		for (y = 0; y<BMP_HEIGHT; y++)
-		{
-			imageR[x][y] /= imageRmax;
-			imageG[x][y] /= imageGmax;
-			imageB[x][y] /= imageBmax;
-		}
-	}
+                if (imageG[x][y] > imageGmax[proj])
+                    imageG[x][y] = imageGmax[proj];
+                else
+                    imageG[x][y] /= imageGmax[proj];
+
+                if (imageB[x][y] > imageBmax[proj])
+                    imageB[x][y] = imageBmax[proj];
+                else
+                    imageB[x][y] /= imageBmax[proj];
+		    }
+	    }
+    }
+
+    // bail out if only doing scaling:
+
+    if (!writefile)
+        return;
+
 
 	if (ROTATION)
 	{ // draw the nucleator points cage only if rotation is turned on
@@ -1579,8 +1520,8 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 		imageR[x+xgmax][y+ygmax] = p_nuc->colour.r;
 		imageG[x+xgmax][y+ygmax] = p_nuc->colour.g;
 		imageB[x+xgmax][y+ygmax] = p_nuc->colour.b;
-		//imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax / 2.0) / 2.0;
-		//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax / 2.0) / 2.0;
+		//imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax[proj] / 2.0) / 2.0;
+		//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax[proj] / 2.0) / 2.0;
 
 	}
 
@@ -1602,7 +1543,8 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 
 	// add the imagemagick overlays
 	
-	char command1[10240], command2[10240], command3[20480];
+	char command1[10240], command3[20480];
+    //char command2[10240];
 
     stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
 
@@ -1639,29 +1581,51 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
     if (NO_IMAGE_TEXT)
     {	
 		sprintf(command1,
-		"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s%s_proj_%05i.%s",
-		    BMP_COMPRESSION, scalebarlength+5, temp_BMP_filename, BITMAPDIR, 
-			projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+		"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s %s%s_proj_%05i.%s",
+		    BMP_COMPRESSION, scalebarlength+5,drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR, 
+			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
     else 
     {
 		sprintf(command1,
-		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" %s %s%s_proj_%05i.%s",
-			BMP_COMPRESSION, scalebarlength+5, projletter, filenum,
-			(int)((1000/(double)imageGmax)+0.5),  temp_BMP_filename, BITMAPDIR,
-			projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" %s %s %s%s_proj_%05i.%s",
+			BMP_COMPRESSION, scalebarlength+5,  projletter, filenum,
+			(int)((1000/(double)imageGmax[proj])+0.5), drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR,
+			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
 
-	    sprintf(command2,
-		    "convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", 
-		    BMP_COMPRESSION, drawcmd.str().c_str(), BITMAPDIR, 
-		    projletter, filenum, BMP_OUTPUT_FILETYPE.c_str(), BITMAPDIR, 
-		    projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+	    //sprintf(command2,
+		   // "convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", 
+		   // BMP_COMPRESSION, drawcmd.str().c_str(), BITMAPDIR, 
+		   // projletter, filenum, BMP_OUTPUT_FILETYPE.c_str(), BITMAPDIR, 
+		   // projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+
+  //  if (NO_IMAGE_TEXT)
+  //  {	
+		//sprintf(command1,
+		//"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s%s_proj_%05i.%s",
+		//    BMP_COMPRESSION, scalebarlength+5, temp_BMP_filename, BITMAPDIR, 
+		//	projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+  //  }
+  //  else 
+  //  {
+		//sprintf(command1,
+		//"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" %s %s%s_proj_%05i.%s",
+		//	BMP_COMPRESSION, scalebarlength+5, projletter, filenum,
+		//	(int)((1000/(double)imageGmax[proj])+0.5),  temp_BMP_filename, BITMAPDIR,
+		//	projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+  //  }
+
+	 //   sprintf(command2,
+		//    "convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", 
+		//    BMP_COMPRESSION, drawcmd.str().c_str(), BITMAPDIR, 
+		//    projletter, filenum, BMP_OUTPUT_FILETYPE.c_str(), BITMAPDIR, 
+		//    projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
     if (fgbg == runbg)
-	    sprintf(command3, "(%s ; %s )&", command1, command2);
+	    sprintf(command3, "%s &", command1);
     else
-	    sprintf(command3, "(%s ; %s )", command1, command2);
+	    sprintf(command3, "%s", command1);
 
     //cout << command3 << endl;;
 
@@ -1683,7 +1647,7 @@ int actin::savebmp(int filenum, projection proj, processfgbg fgbg)
 	cout << ". ";
 	cout.flush();
 
-	return filenum;
+	return;
 }
 
 void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight)
@@ -1898,15 +1862,6 @@ void actin::sortnodesbygridpoint(void)
     int tn;
     size_t threadsize, minsize;
     
-
-    int lowestnodetoupdate = 0;
-
-    if (highestnodecount > NODES_TO_UPDATE)
-	{
-        lowestnodetoupdate = highestnodecount - NODES_TO_UPDATE;
-	}
-
-
     threadnum = 0;
 
 	for (int i=lowestnodetoupdate; i<highestnodecount; ++i)
@@ -1948,103 +1903,6 @@ void actin::sortnodesbygridpoint(void)
 	return;
 }
 
-//void * actin::compressfilesthread(void* threadarg)
-//{
-//	struct thread_data *dat;
-//	dat = (struct thread_data *) threadarg;
-//
-//	while (GRASS_IS_GREEN)
-//	{	
-//		//sem_wait(&compressfiles_thread_go[0]);  // go only if released by main thread
-//
-//		pthread_mutex_lock(&filessavelock_mutex);
-//		pthread_mutex_lock(&filesdonelock_mutex);
-//
-//		char command1[255];//,command2[255];
-//
-//		// gzip the text data:
-//
-//		//sprintf(command1, "gzip -f -9 nodes%05i.txt",dat->startnode);
-//		//system(command1);
-//
-//		//sprintf(command1, "gzip -f -9 links%05i.txt",dat->startnode);
-//		//system(command1);
-//
-//		sprintf(command1, "gzip -q -f -9 %sreport*.txt 2>/dev/null" ,TEMPDIR);
-//		system(command1);
-//
-//		sprintf(command1 , "gzip -q -f -9 %sdata*.txt 2>/dev/null",TEMPDIR);
-//		system(command1);
-//
-//		// gzip the wrl file:
-//
-//		sprintf(command1 , "gzip -f -9 %snodes%05i.wrl",TEMPDIR, dat->startnode );
-//		system(command1);
-//
-//		sprintf(command1 , "mv %snodes%05i.wrl.gz %snodes%05i.wrz", TEMPDIR,dat->startnode, VRMLDIR, dat->startnode );
-//		system(command1);
-//
-//		sprintf(command1 , "mv %s*report*.gz %s",TEMPDIR, REPORTDIR);
-//		system(command1);
-//
-//		sprintf(command1 , "mv %s*data*.gz %s", TEMPDIR, DATADIR);
-//		system(command1);
-//
-//
-////		// convert bmps to jpgs:
-////#ifndef NO_IMAGEMAGICK
-////			
-////		sprintf(command1 , "convert -quality 75 x_proj_%05i.bmp x_proj_%05i.png", dat->startnode, dat->startnode );
-////		system(command1);
-////		sprintf(command1 , "convert -quality 75 y_proj_%05i.bmp y_proj_%05i.png", dat->startnode, dat->startnode );
-////		system(command1);
-////		sprintf(command1 , "convert -quality 75 z_proj_%05i.bmp z_proj_%05i.png", dat->startnode, dat->startnode );
-////		system(command1);
-////
-////		sprintf(command1 , "convert -quality 75 x_forces_%05i.bmp x_forces_%05i.png", dat->startnode, dat->startnode );
-////		system(command1);
-////		sprintf(command1 , "convert -quality 75 y_forces_%05i.bmp y_forces_%05i.png", dat->startnode, dat->startnode );
-////		system(command1);
-////		sprintf(command1 , "convert -quality 75 z_forces_%05i.bmp z_forces_%05i.png", dat->startnode, dat->startnode );
-////		system(command1);
-////
-////#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
-////		sprintf(command2 , "del x_proj_%05i.bmp 2>/dev/null", dat->startnode);
-////		system(command2);
-////		sprintf(command2 , "del y_proj_%05i.bmp 2>/dev/null", dat->startnode);
-////		system(command2);
-////		sprintf(command2 , "del z_proj_%05i.bmp 2>/dev/null", dat->startnode);
-////		system(command2);
-////		//sprintf(command2 , "del x_forces_%05i.bmp 2>/dev/null", dat->startnode);
-////		//system(command2);
-////		//sprintf(command2 , "del y_forces_%05i.bmp 2>/dev/null", dat->startnode);
-////		//system(command2);
-////		//sprintf(command2 , "del z_forces_%05i.bmp 2>/dev/null", dat->startnode);
-////		system(command2);
-////#else
-////		sprintf(command2 , "rm -f x_proj_%05i.bmp 2>/dev/null", dat->startnode);
-////		system(command2);
-////		sprintf(command2 , "rm -f y_proj_%05i.bmp 2>/dev/null", dat->startnode);
-////		system(command2);
-////		sprintf(command2 , "rm -f z_proj_%05i.bmp 2>/dev/null", dat->startnode);
-////		system(command2);
-////		//sprintf(command2 , "rm -f x_forces_%05i.bmp 2>/dev/null", dat->startnode);
-////		//system(command2);
-////		//sprintf(command2 , "rm -f y_forces_%05i.bmp 2>/dev/null", dat->startnode);
-////		//system(command2);
-////		//sprintf(command2 , "rm -f z_forces_%05i.bmp 2>/dev/null", dat->startnode);
-////		system(command2);
-////#endif
-//	
-////#endif
-//
-//		pthread_mutex_unlock(&filesdonelock_mutex);
-//
-//		//sem_post(&compressfiles_data_done[0]);  // release main thread block waiting for data
-//	}	  
-//	return (void*) NULL;
-//}
-
 void actin::compressfilesdowork(const int & filenum)
 {
 	char command1[255];
@@ -2064,7 +1922,7 @@ void actin::compressfilesdowork(const int & filenum)
 
 	// wrl file
 
-	sprintf(command1 , "( gzip -f -9 %snodes%05i.wrl ; mv %snodes%05i.wrl.gz %snodes%05i.wrz) &",
+	sprintf(command1 , "(gzip -f -9 %snodes%05i.wrl 2>/dev/null; mv %snodes%05i.wrl.gz %snodes%05i.wrz 2>/dev/null) &",
 						TEMPDIR, filenum, TEMPDIR,filenum, VRMLDIR,filenum );
 	system(command1);
 
@@ -2079,74 +1937,6 @@ int actin::find_center(vect &center)
 	return 0;
 }
 
-//
-//int actin::savedata(int filenum)
-//{
-//	char filename[255];
-//
-//	sprintf ( filename , "data%05i.txt", filenum );
-//
-//	ofstream opdata(filename, ios::out | ios::trunc);
-//	if (!opdata) 
-//	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-//
-//	opdata << highestnodecount << "," << iteration_num 
-//		<< "," << linksbroken << "," << linksformed << endl;
-//
-//	for (int i=0; i<highestnodecount; i++)
-//	{
-//		node[i].savedata(&opdata);
-//	}
-//
-//	opdata << endl;
-//	opdata << (unsigned int) crosslinknodesdelay.size();
-//
-//	for (vector <int>::iterator i=crosslinknodesdelay.begin(); i<crosslinknodesdelay.end() ; i++ )
-//	{	 
-//		opdata << "," << (*i);
-//	}
-//
-//	opdata.close();
-//
-//	return 0;
-//}
-////
-////int actin::loaddata(int filenum)
-////{
-////
-////	for (int i=0; i!=(GRIDSIZE+1); i++) // clear the nodegrid
-////		for (int j=0; j!=(GRIDSIZE+1); j++)
-////			for (int k=0; k!=(GRIDSIZE+1); k++)
-////				nodegrid[i][j][k]=0;;
-////
-////	char filename[255];
-////	char delim;
-////	unsigned int numcrosslinkdelay;
-////
-////	sprintf ( filename , "data%05i.txt", filenum );
-////
-////	ifstream ipdata(filename);
-////	if (!ipdata) 
-////	{ cout << "Unable to open file " << filename << " for output"; return 1;}
-////
-////	ipdata >> highestnodecount >> delim >> iteration_num 
-////		>> delim >> linksbroken >> delim >> linksformed;
-////
-////	for (int i=0; i<highestnodecount; i++)
-////	{
-////		node[i].loaddata(&ipdata);
-////	}
-////
-////	ipdata >> numcrosslinkdelay;
-////	crosslinknodesdelay.resize(numcrosslinkdelay);
-////
-////	for (vector <int>::iterator i=crosslinknodesdelay.begin(); i<crosslinknodesdelay.end() ; i++ )
-////	{	 
-////		ipdata >> delim >> (*i);
-////	}
-////
-////	return 0;
-////}
 
 void actin::clear_nodegrid()
 {
@@ -2303,13 +2093,19 @@ int actin::load_data(ifstream &ifstr)
 
 void actin::setdontupdates(void)
 {
-	if (highestnodecount > NODES_TO_UPDATE)
+
+    lowestnodetoupdate = 0;
+
+    if (highestnodecount > NODES_TO_UPDATE)
 	{
-	for (int i=0; i<(highestnodecount-NODES_TO_UPDATE); i++)
-		{
-			node[i].dontupdate = true;
-		}
+        lowestnodetoupdate = highestnodecount - NODES_TO_UPDATE;
 	}
+
+	for (int i=0; i<lowestnodetoupdate; i++)
+	{
+		node[i].dontupdate = true;
+	}
+
 }
 
 void actin::set_sym_break_axes(void)
@@ -2432,126 +2228,7 @@ void actin::set_sym_break_axes(void)
 	symbreakiter = iteration_num;
 
 }
-//
-//void actin::set_sym_break_axes(void)
-//{
-//
-//	vect tmp_nodepos;
-//
-//	//vect  CofM;
-//
-//	vect sym_break_direction;
-//
-//	rotationmatrix tmp_rotation, tmp_rotation2;	
-//
-//	double x_angle, y_angle;//, z_angle;
-//
-//	//double x_inertia = 0, y_inertia = 0;
-//	
-//	//double z_in_angle;
-//
-//	//int numnodes;
-//
-//	find_center(sym_break_direction);  // which way did the bead go?
-//
-//	x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
-//	y_angle = atan2(sym_break_direction.x,sym_break_direction.z);
-//	//z_angle = atan2(sym_break_direction.x,sym_break_direction.y);
-//
-//	// make a temp rotation matrix in that direction:
-//
-//	//tmp_rotation.rotatematrix(0, y_angle, 0); // just rotate y
-//	//tmp_rotation.rotatematrix(x_angle, y_angle, 0); // now pointing upwards
-//
-//	//cout << "old sym_break_direction: " 
-//	//	<< sym_break_direction.x << "," 
-//	//	<< sym_break_direction.y << "," 
-//	//	<< sym_break_direction.z << endl;
-//
-//	//tmp_rotation.rotate(sym_break_direction);
-//
-//	//cout << "new sym_break_direction: " 
-//	//	<< sym_break_direction.x << "," 
-//	//	<< sym_break_direction.y << "," 
-//	//	<< sym_break_direction.z << endl;
-//
-//
-//	// find CofM
-//
-//	//numnodes=0;
-//
-//	//for (int i=0; i<highestnodecount; ++i)
-//	//{
-//	//	if (!node[i].polymer)
-//	//		continue;
-//
-//	//	CofM += node[i];
-//
-//	//	++numnodes;
-//
-//	//}
-//
-//	//CofM *= (1/ (double) numnodes);
-//
-//	//tmp_rotation.rotate(CofM);
-//
-//	double theta, chi, maxchi, maxchiangle;
-//
-//	maxchi = 0;
-//
-//	for(theta = -PI; theta < PI; theta+=PI/180)
-//	{
-//		chi = 0;
-//
-//		tmp_rotation.settoidentity();
-//		tmp_rotation.rotatematrix(x_angle,y_angle,0);
-//		tmp_rotation2.rotatematrix(0,0,theta);
-//
-//		for (int i=0; i<highestnodecount; ++i)
-//		{
-//			if ((!node[i].polymer) || (node[i].harbinger))
-//				continue;
-//
-//			tmp_nodepos = node[i];
-//			tmp_rotation.rotate(tmp_nodepos);  // rotate points to bring in line with sym break dir'n
-//			tmp_rotation2.rotate(tmp_nodepos);	// rotate z
-//
-//			// only look at front of bead (i.e. new z<0, in direction of movement)
-//			if (tmp_nodepos.z<0)
-//			{
-//				chi += tmp_nodepos.x * tmp_nodepos.x; // sum the squares pf distance from the axis
-//			}
-//			
-//		}
-//
-//		if (chi > maxchi)
-//		{
-//			maxchi = chi;
-//			maxchiangle = theta;
-//		}
-//
-//	}
-//
-//	
-//
-//	camera_rotation.settoidentity();
-//	camera_rotation2.settoidentity();
-//
-//	camera_rotation.rotatematrix(x_angle, y_angle, 0);
-//	camera_rotation2.rotatematrix(0, 0, maxchiangle);
-//
-//	reverse_camera_rotation.settoidentity();
-//	reverse_camera_rotation2.settoidentity();
-//
-//	reverse_camera_rotation.rotatematrix(-x_angle, -y_angle, 0);
-//	reverse_camera_rotation2.rotatematrix(0, 0, -maxchiangle);
-//
-//
-//	cout << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << "," << y_angle*180/PI << "," << maxchiangle*180/PI << endl;
-//
-//	symbreakiter = iteration_num;
-//
-//}
+
 
 void actin::save_sym_break_axes(void)
 {
@@ -2597,717 +2274,3 @@ void actin::clear_node_stats(void)
 	}
 
 }
-
-/*
-void * actin::collisiondetectionthread(void* threadarg)
-{
-
-	struct thread_data *dat;
-	dat = (struct thread_data *) threadarg;
-
-	cout << "Starting collision detection thread " << dat->threadnum << endl;
-
-	while (true)
-	{	
-		pthread_mutex_lock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // go only if released by main thread
-		pthread_mutex_lock(&collisiondetectiongolock_mutex[dat->threadnum]);  // lock main thread
-		// release the go lock so can be taken by main thread again:
-		pthread_mutex_unlock(&collisiondetectiongolock_mutex[dat->threadnum]);
-
-		if (dat->threadnum == 0)
-			collisionthreaddone1 = false;
-		if (dat->threadnum == 1)
-			collisionthreaddone2 = false;
-		if (dat->threadnum == 2)
-			collisionthreaddone3 = false;
-		if (dat->threadnum == 3)
-			collisionthreaddone4 = false;
-
-//	cout << "Thread running " << dat->threadnum << endl;
-
-		collisiondetectiondowork(dat);
-
-		if (dat->threadnum == 0)
-			collisionthreaddone1 = true;
-		if (dat->threadnum == 1)
-			collisionthreaddone2 = true;
-		if (dat->threadnum == 2)
-			collisionthreaddone3 = true;
-		if (dat->threadnum == 3)
-			collisionthreaddone4 = true;
-
-
-		pthread_mutex_unlock(&collisiondetectiondonelock_mutex[dat->threadnum]);  // release main thread block waiting for data
-	}  
-
-	return (void*) NULL;
-}
-*/
-
- // ---------------------------------------------------
- // R61 Threading code for comparision with above block
- // PENDING REMOVAL
- // int actin::collisiondetection(void)
- // {
- //
- // 	for (int i=0; i<highestnodecount; i++)
- // 	{
- // 		donenode[i] = false;
- // 	}
- //
- //
- // 	int numthreadnodes, start, end, higestorderednode;
- //
- // 	higestorderednode = highestnodecount; // (int) nodesbygridpoint.size();
- //
- // 	numthreadnodes = higestorderednode / NUM_THREADS;
- //
- // // do collision detection
- //
- // //int numtodo = 0;
- //
- // 	if (USE_THREADS)
- // 	{
- //
- // 		for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			start = i * numthreadnodes;
- // 			end = (i+1) * numthreadnodes;
- //
- // 			collision_thread_data_array[i].startnode = start;
- // 			collision_thread_data_array[i].endnode = end;
- // 			collision_thread_data_array[i].threadnum = i;
- //
- // 			if (i<NUM_THREADS-1)
- // 			{
- // 				collision_thread_data_array[i].endnode = end;
- // 				//numtodo+=end-start;
- // 			}
- // 			else
- // 			{	// put remainder in last thread (cludge for now)
- // 				collision_thread_data_array[i].endnode = end + higestorderednode % NUM_THREADS;
- // 				//numtodo+=end-start + highestnodecount % NUM_THREADS;
- // 			};			
- // 		}
- // // check
- // 		/*
- // 		if (rand() < RAND_MAX * 0.01)
- // 		{
- // 			for (int i = 0; i < NUM_THREADS; i++)
- // 			{
- // 				cout << collision_thread_data_array[i].startnode << " to " <<
- // 					collision_thread_data_array[i].endnode << "...";
- // 			}
- // 			cout << "higestorderednode " << higestorderednode << endl;
- // 		}
- // */
- //
- //
- // 	// check
- // 		/*if (numtodo != highestnodecount)
- // 		{
- // 			cout << "numtodo not match :" << numtodo << " should be" << highestnodecount << endl;
- // 			for (int i = 0; i < NUM_THREADS; i++)
- // 			{
- // 				cout << "Thread " << i << " start: " << collision_thread_data_array[i].startnode
- // 					<< " end " << collision_thread_data_array[i].endnode << endl;
- // 			}
- // 			cout.flush();
- // 		}*/
- //
- // // thread test: call sequentially within this thread
- //
- // 		for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			collisiondetectiondowork(&collision_thread_data_array[i]);
- // 		}
- //
- //
- // /*
- // 		// release thread blocks to start threads:
- //
- // 	for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			//sem_post(&collision_thread_go[i]);
- // 			// start the thread:
- // 			pthread_mutex_unlock(&collisiondetectiongolock_mutex[i]);
- // 		}
- //
- //
- // 	// re-sync when done:
- // 	for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			// grab done locks for all threads:
- // 			pthread_mutex_lock(&collisiondetectiondonelock_mutex[i]);
- // 		}
- //
- // 	// relock 'go'
- //
- // 	for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			// grab done locks for all threads:
- // 			pthread_mutex_lock(&collisiondetectiongolock_mutex[i]);
- // 		}
- //
- // 	// and let children take the 'done' locks again
- //
- // 	for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			// grab done locks for all threads:
- // 			pthread_mutex_unlock(&collisiondetectiondonelock_mutex[i]);
- // 		}
- // */
- // /*
- // if (!collisionthreaddone1)
- // 	cout << "Thread 0 still going!" << endl;
- // if (!collisionthreaddone2)
- // 	cout << "Thread 1 still going!" << endl;
- // if (!collisionthreaddone3)
- // 	cout << "Thread 2 still going!" << endl;
- // if (!collisionthreaddone4)
- // 	cout << "Thread 3 still going!" << endl;
- // */
- // 	}
- // 	else
- // 	{  // if not using threads, do in one go:
- // 		collision_thread_data_array[0].startnode = 0;
- // 		collision_thread_data_array[0].endnode = higestorderednode;
- // 		collision_thread_data_array[0].threadnum = 0;
- // 		collisiondetectiondowork(&collision_thread_data_array[0]);
- // 	}
- // 	return 0;
- // }
- //
- // void * actin::collisiondetectiondowork(thread_data* dat)
- // {
- // 	vect nodeposvec;
- // 	double distsqr,dist;
- // 	double force;
- // 	vect tomove;
- //
- // 	vect disp;
- //
- // 	for (int i=dat->startnode; i<dat->endnode; i++)
- // 	{	
- // 		if ((node[nodesbygridpoint[i]].dontupdate) ||
- // 			(donenode[nodesbygridpoint[i]]) ||
- // 			(!node[nodesbygridpoint[i]].polymer))
- // 		{
- // 			continue;  // skip nodes already done
- // 		}
- //
- // 		// find nodes on same gridpoint, and nodes within repulsive range
- //
- // 		if (findnearbynodes(node[nodesbygridpoint[i]],NODE_REPULSIVE_RANGE_GRIDSEARCH,dat->threadnum)==0) continue;	// find nodes within 1 grid point
- //
- // 		// skip if zero
- //
- // 		// loop over nodes on same gridpoint:
- // 		for (vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end() ; sameGPnode++ )
- // 		{
- //
- // 			if (donenode[(*sameGPnode)->nodenum])
- // 				continue;  // skip if done
- //
- // 			if (( (*sameGPnode)->nodenum < dat->startnode) ||
- // 				( (*sameGPnode)->nodenum >= dat->endnode) )
- // 				 continue;    // skip if out of range of this thread
- //
- // 			donenode[(*sameGPnode)->nodenum] = true;  // mark node as done
- //
- // 			// of these nodes, calculate euclidian dist
- //
- // 			nodeposvec = (*(*sameGPnode));	// get xyz of our node
- //
- // 			for (vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); nearnode<recti_near_nodes[dat->threadnum].end() ; nearnode++ )
- // 			{
- // 				if ((*sameGPnode)==(*nearnode)) continue;  // skip if self
- // 				//if (repulsedone[(*nearnode)->nodenum][(*sameGPnode)->nodenum])
- // 				//	continue;  // skip if done opposite pair
- //
- // 				// this check should not be necessary?:
- //
- // 				if (( (*sameGPnode)->nodenum < dat->startnode) ||
- // 					( (*sameGPnode)->nodenum >= dat->endnode) )
- // 					continue;    // skip if out of range of this thread  
- //
- //
- // 				disp = (*(*nearnode)) - nodeposvec; 
- //
- // 				distsqr = disp.sqrlength();
- //
- // 				if (distsqr < 2 * SQRT_ACCURACY_LOSS)
- // 				{	
- // 					continue;
- // 				}
- //
- // 				//dorepulsion((*sameGPnode)->nodenum,(*nearnode)->nodenum,dist,dat->threadnum);
- // 				//dorepulsion(*(*sameGPnode),*(*nearnode),dist,dat->threadnum);
- //
- // 				if ( distsqr < NODE_REPULSIVE_RANGE*NODE_REPULSIVE_RANGE)
- // 					{
- // 						// calc dist between nodes
- //
- // 						dist = sqrt(distsqr); 
- //
- // 						force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / NODE_REPULSIVE_RANGE) * dist;
- //
- // 					//if (dist > NODE_INCOMPRESSIBLE_RADIUS)
- // 					//{
- // 					//	force =  NODE_REPULSIVE_MAG - (NODE_REPULSIVE_MAG / 
- // 					//		(NODE_REPULSIVE_RANGE - NODE_INCOMPRESSIBLE_RADIUS) * (dist-NODE_INCOMPRESSIBLE_RADIUS )) ;
- // 					//}
- // 					//else
- // 					//{
- // 					//	force =  NODE_REPULSIVE_MAG ;
- // 					//}  // fix force if below node incompressible distance
- //
- // 					tomove = disp * ( 2 * force / dist);
- //
- // 					(*sameGPnode)->rep_force_vec[0] -= tomove ;
- // //
- // //#ifndef NO_CALC_STATS
- // //
- // 					(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial[0], (*sameGPnode)->repforce_transverse[0]);
- // //
- //
- // //#endif
- //
- // //					if ( dist < NODE_INCOMPRESSIBLE_RADIUS)
- // //					{
- // //					                            
- // //						// how far to repulse (quarter for each node) (half each, but we will do i to j and j to i)
- // //						scale = (double)NODE_INCOMPRESSIBLE_RADIUS / (double)4.0*dist;  
- // //
- // //						tomove = disp * (2*scale);	// these are the vector half components (in direction from i to j)
- // //
- // //
- // //						(*sameGPnode)->repulsion_displacement_vec[0] = -tomove;
- // //
- // ////#ifndef NO_CALC_STATS
- // ////
- // ////						(*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->dispforce_radial[0], (*sameGPnode)->dispforce_transverse[0]);
- // ////
- // ////#endif
- // //					}
- // 				}
- //
- // 			}
- // 		}
- // 	}
- // return (void*) NULL;
- // }
- //
- //int actin::findnearbynodes(const int& ournodenum, const int& adjgridpoints, const int& threadnum)
- // int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
- // {	// create list of nodes on the same gridpoint, and on adjacent gridpoints (including same GP)
- // 	// 	
- // 	// N.B. a good fraction of the total CPU time is spent in this function
- // 	// may be worth linearizing the loop or poss amalgamating with the calling
- // 	// functions so that creating and reading the list of gridpoints is not necessary
- //
- // nodes *nodeptr, *startnodeptr;
- //
- // // save repeatedly dereferencing pointer by threadnum in inner loops:
- // // (maybe compiler does this anyway?)
- // Nodes1d *p_recti_near_nodeslist = &recti_near_nodes[threadnum];
- // Nodes1d *p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
- //
- // p_recti_near_nodeslist->resize(0);
- // p_nodes_on_same_gridpoint->resize(0); 
- //
- // if (!ournode.polymer)
- // 		return 0;
- //
- // int gridx = ournode.gridx;
- // int gridy = ournode.gridy;
- // int gridz = ournode.gridz;
- //
- // if ((gridx < 0) || (gridx > GRIDSIZE) ||
- // 	(gridy < 0) || (gridy > GRIDSIZE) ||
- // 	(gridz < 0) || (gridz > GRIDSIZE))
- // 		return 0;
- //
- // int minx,miny,minz,maxx,maxy,maxz;
- //
- // minx = gridx-adjgridpoints;
- // miny = gridy-adjgridpoints;
- // minz = gridz-adjgridpoints;
- //
- // maxx = gridx+adjgridpoints;
- // maxy = gridy+adjgridpoints;
- // maxz = gridz+adjgridpoints;
- //
- // // truncate if out of grid bounds:
- //
- // if (minx < 0) minx = 0;
- // if (miny < 0) miny = 0;
- // if (minz < 0) minz = 0;
- //
- // if (maxx > GRIDSIZE) maxx = GRIDSIZE;
- // if (maxy > GRIDSIZE) maxy = GRIDSIZE;
- // if (maxz > GRIDSIZE) maxz = GRIDSIZE;
- //
- // // do adjgridpoints by adjgridpoints scan on grid
- //
- // for (int x = minx; x != maxx; ++x)  
- // 	for (int y = miny; y != maxy; ++y)
- // 		for (int z = minz; z != maxz; ++z)
- // 		{
- // 		nodeptr=nodegrid[x][y][z];
- // 		startnodeptr=nodeptr;
- // 			if (nodeptr!=0) 
- // 			{
- // 				do
- // 				{
- // 					p_recti_near_nodeslist->push_back(nodeptr);
- // 					nodeptr = nodeptr->nextnode;					
- // 				}
- // 				while (nodeptr!=startnodeptr);  //until back to start
- //
- // 			}
- // 		}
- //
- // 	// nodes on same gridpoint:
- //
- // 	nodeptr=nodegrid[gridx][gridy][gridz];
- // 	startnodeptr=nodeptr;
- // 	if (nodeptr!=0) 
- // 	{
- // 		do
- // 		{
- // 			p_nodes_on_same_gridpoint->push_back(nodeptr);
- // 			nodeptr = nodeptr->nextnode;					
- // 		}
- // 		while (nodeptr!=startnodeptr);  //until back to start
- //		
- // 	}
- //
- // 	return (int) p_recti_near_nodeslist->size();
- // }
- //
- //
- // int actin::applyforces(void)  // this just applys previously calculated forces (in dorepulsion())
- // {
- // #ifndef SEED_INSIDE
- // 	int numthreadnodes, start, end;
- //
- // 	numthreadnodes = highestnodecount / NUM_THREADS;
- //
- // if (!GRASS_IS_GREEN) // (USE_THREADS)  // switch this off for now...
- // 	{
- // 		for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			start = i * numthreadnodes;
- // 			end = (i+1) * numthreadnodes;
- //
- // 			applyforces_thread_data_array[i].startnode = start;
- // 			applyforces_thread_data_array[i].endnode = end;
- // 			applyforces_thread_data_array[i].threadnum = i;
- //
- // 			if (i<NUM_THREADS-1)
- // 			{
- // 				applyforces_thread_data_array[i].endnode = end;
- // 			}
- // 			else
- // 			{	// put remainder in last thread (cludge for now)
- // 				applyforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
- // 			};
- // 		}
- //
- // 		// release thread blocks to start threads:
- // 	for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			sem_post(&applyforces_thread_go[i]);
- // 		}
- //
- // 		// and wait 'till complete:
- // 	for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			sem_wait(&applyforces_data_done[i]);
- // 		}
- //
- // 	}
- // 	else
- // 	{
- // 		for (int i=0; i<highestnodecount; i++)
- // 			{
- // 				for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
- // 				{
- // 					if ((!node[i].dontupdate) && node[i].polymer)
- // 						node[i].applyforces(threadnum);
- // 				}
- // 			}
- // 	}
- //
- // 	for (int i=0; i<highestnodecount; i++)
- // 	{
- // 		if ((!node[i].dontupdate) && node[i].polymer)
- // 			node[i].updategrid(); // move the point on the grid if need to
- // 								  // and update the unit vector position
- // 	}
- // #endif
- // 	return 0;
- // }
- //
- // void * actin::applyforcesthread(void* threadarg)
- // {
- // 	struct thread_data *dat;
- // 	dat = (struct thread_data *) threadarg;
- //
- // 	//cout << "Thread " << dat->threadnum << " started" << endl;
- // 	//cout.flush();
- //
- // 	while (GRASS_IS_GREEN)
- // 	{	
- //
- // 		sem_wait(&applyforces_thread_go[dat->threadnum]);  // go only if released by main thread
- //
- // 		//applyforcesdetectiondowork(dat);
- //
- // 		// sum forces etc. over all threads
- // 		for (int i=dat->startnode; i<dat->endnode; i++)
- // 			{
- // 			for (int threadnum = 0; threadnum < NUM_THREADS; threadnum++)
- // 			{
- // 				node[i].applyforces(threadnum);
- // 			}
- // 			//node[i].updategrid(); // move the point on the grid if need to
- // 		}
- //
- // 		sem_post(&applyforces_data_done[dat->threadnum]);  // release main thread block waiting for data
- //
- // 	}  
- //
- // 	return (void*) NULL;
- // }
- //
- // int actin::linkforces()
- // {
- // 	double dist;
- // 	double force;
- // 	vect nodeposvec, disp;
- // 	vect tomove;
- //
- // 	// remove the links for ones that were broken last time
- // 	for (unsigned int i=0; i<linkremovefrom.size() ; i++ )
- // 	{
- // 		linkremovefrom[i]->removelink(linkremoveto[i]);  // remove the back link
- // 		linkremoveto[i]->removelink(linkremovefrom[i]);  // and remove from the list
- // 	}
- //
- // 	// reset the lists of broken links:
- // 	linkremovefrom.resize(0);
- // 	linkremoveto.resize(0);
- //
- // 	int numthreadnodes, start, end;
- //
- // 	numthreadnodes = highestnodecount / NUM_THREADS;
- //
- // if (!GRASS_IS_GREEN) // USE_THREADS)
- // 	{
- // 		for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			start = i * numthreadnodes;
- // 			end = (i+1) * numthreadnodes;
- //
- // 			linkforces_thread_data_array[i].startnode = start;
- // 			linkforces_thread_data_array[i].endnode = end;
- // 			linkforces_thread_data_array[i].threadnum = i;
- //
- // 			if (i<NUM_THREADS-1)
- // 			{
- // 				linkforces_thread_data_array[i].endnode = end;
- // 			}
- // 			else
- // 			{	// put remainder in last thread (cludge for now)
- // 				linkforces_thread_data_array[i].endnode = end + highestnodecount % NUM_THREADS;
- // 			};
- // 		}
- //
- // 	// release thread blocks to start threads:
- // 	for (int i = 0; i < NUM_THREADS; i++)
- // 		{
- // 			sem_post(&linkforces_thread_go[i]);
- // 		}
- //
- // 	}
- // 	else
- // 	{
- // 		// go through all nodes
- // 		for (int n=0; n<highestnodecount; n++)
- // 		{  	
- // 			if ((node[n].dontupdate) || (!node[n].polymer))
- // 				continue;
- //
- // 			nodeposvec = node[n];
- //
- // 			// go through links for each node
- // 			for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
- // 			{	 
- // 				if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
- // 				{			
- //
- // 					disp = nodeposvec - *(i->linkednodeptr);
- //
- // 					dist = disp.length();;
- //
- // 					//if (dist < 0)
- // 					//	continue;
- //
- // 					force = i->getlinkforces(dist);
- //
- // 					if (i->broken)
- // 					{	// broken link: store which ones to break:
- // 						linkremovefrom.push_back(&node[n]);
- // 						linkremoveto.push_back(i->linkednodeptr);
- // 						node[n].links_broken[0]++;
- // 					}
- // 					else
- // 					{
- // 						tomove = disp * (2* force/dist);  
- // 												  // we're scaling the force by vector disp
- // 												  // to get the direction, so we need to
- // 												  // divide by the length of disp (i.e. dist)
- // 												  // to prevent the length amplifying the force
- //
- // //#ifdef FORCES_BOTH_WAYS
- // //						node[n].link_force_vec[0] += tomove/2;
- // //						i->linkednodeptr->link_force_vec[0] -= tomove/2;
- // //#else
- // 						node[n].link_force_vec[0] += tomove;
- //
- // //#ifndef NO_CALC_STATS
- // //
- // 						if (force < 0) // put tension into link forces
- // 						{
- // 							node[n].adddirectionalmags(tomove, node[n].linkforce_radial[0], node[n].linkforce_transverse[0]);
- // 						}
- // 						else	// but put compression into link forces
- // 						{
- // 							node[n].adddirectionalmags(tomove, node[n].repforce_radial[0], node[n].repforce_transverse[0]);
- // 						}
- //
- //
- //
- // //						//node[n].linkforce_radial[0]     += fabs(  node[n].unit_vec_posn.dot(disp)  * (2 * force * scale) ) ;
- // //
- // //						//node[n].linkforce_transverse[0] += fabs( (node[n].unit_vec_posn.cross(disp)).length()  * (2 * force * scale));
- // //
- // //						//cout << node[n].linkforce_radial[0] << " " <<  node[n].linkforce_transverse[0] << endl;
- // //#endif
- //						
- //
- // 					}
- // 				}
- // 			}
- // 		}
- // 	}
- //
- //
- //
- // 	return 0;
- // }
- // R61 Threading code for comparision with above block
- // PENDING REMOVAL
- // ---------------------------------------------------
-
-/* NOT USED COMMENTED OUT PRIOR TO r61
-void * actin::linkforcesthread(void* threadarg)
-{
-	struct thread_data *dat;
-	dat = (struct thread_data *) threadarg;
-
-	double xdist, ydist, zdist, dist;
-	double force;
-	vect nodeposvec;
-
-	//cout << "Thread " << dat->threadnum << " started" << endl;
-	//cout.flush();
-
-	while (true)
-	{	
-
-		sem_wait(&linkforces_thread_go[dat->threadnum]);  // go only if released by main thread
-
-		for (int n=dat->startnode; n<dat->endnode; n++)
-			{  	
-				if (!node[n].polymer)
-					continue;
-				
-				nodeposvec.x = node[n].x;	// get xyz of our node
-				nodeposvec.y = node[n].y;
-				nodeposvec.z = node[n].z;
-
-				// go through links for each node
-				for (vector <links>::iterator i=node[n].listoflinks.begin(); i<node[n].listoflinks.end() ; i++ )
-				{	 
-					if (!(i->broken))  // if link not broken  (shouldn't be here if broken anyway)
-					{			
-						xdist = nodeposvec.x - i->linkednodeptr->x;
-						ydist = nodeposvec.y - i->linkednodeptr->y;
-						zdist = nodeposvec.z - i->linkednodeptr->z;
-
-						dist = calcdist(xdist,ydist,zdist);
-
-						if (dist < 0)
-							continue;
-
-						force = i->getlinkforces(dist);
-
-						if (i->broken)
-						{	// broken link
-							pthread_mutex_lock(&linkstoremove_mutex);  // lock the mutex
-							linkremovefrom.push_back(&node[n]);
-							linkremoveto.push_back(i->linkednodeptr);
-							pthread_mutex_unlock(&linkstoremove_mutex);  //unlock
-						}
-						else
-						{
-							node[n].link_force_vec[dat->threadnum].x += force * (xdist/dist);
-							node[n].link_force_vec[dat->threadnum].y += force * (ydist/dist);
-							node[n].link_force_vec[dat->threadnum].z += force * (zdist/dist);
-						}
-					}
-				}
-			}
-
-		sem_post(&linkforces_data_done[dat->threadnum]);  // release main thread block waiting for data
-
-	}  
-
-	return (void*) NULL;
-}
-
-inline int actin::dorepulsion(nodes& node_i,nodes& node_j,
-			      const double& dist,const int& threadnum)
-{			      // defunct, now in collisiondetectiondowork
-    if (&node_i==&node_j)
-	return 0;
-    
-    double scale;
-    
-    vect disp;
-    
-    disp = node_j - node_i;
-    
-    scale = (NODE_INCOMPRESSIBLE_RADIUS / 4)*dist;  
-    
-    disp *= scale;
-    
-    
-#ifdef FORCES_BOTH_WAYS
- 
-    node_i.repulsion_displacement_vec[threadnum] -= disp;
-    node_j.repulsion_displacement_vec[threadnum] += disp;
-    
-#else
-    
-    node_i.repulsion_displacement_vec[threadnum] -= disp*2;
-    
- #endif
-    
-    
-    return 0;
-}
-*/

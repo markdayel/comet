@@ -41,6 +41,12 @@ class vect
 	{
 	}
     
+    inline void zero()
+	{
+	    x=y=z=0;
+	    return;
+	}
+
     inline vect operator+(const vect &param) const
 	{
 	    vect tmp;
@@ -163,11 +169,7 @@ class vect
 	    return temp;
 	}
     
-    inline vect zero()
-	{
-	    x=y=z=0;
-	    return *this;
-	}
+
 /*    
       void operator <<(ostream& out)
       {

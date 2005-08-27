@@ -25,8 +25,8 @@ class Colour;
 class nodes: public vect
 {
 public:
-	//double x , y , z ;
-	bool polymer;
+
+    bool polymer;
 	nodes(void);
 	~nodes(void);
 	nodes(const double& set_x,const double& set_y,const double& set_z);
@@ -34,35 +34,28 @@ public:
 	nodes* prevnode;
 	bool depolymerize(void);
 	bool polymerize(const double& set_x, const double& set_y, const double& set_z);
-	//int save(ofstream*);
-	//int savedata(ofstream*);
-	//int loaddata(ifstream *inputstream);
 	int save_data(ofstream &ofstr);
 	int load_data(ifstream &ifstr);
-	//int xrank;
-	//int yrank;
-	//int zrank;
-	//vect lastpos;
+
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
-	vect link_force_vec;  // index is the threadnum
+
+	vect link_force_vec;  
 	
 	vect rep_force_vec;
 	vect nuc_repulsion_displacement_vec;
-	//vect momentum_vec;
+    vect viscous_force_vec;
+    double viscous_force_recip_dist_sum;
 	vector <links> listoflinks;
 
 	double linkforce_transverse, linkforce_radial,  // index is the threadnum
 			 repforce_transverse, repforce_radial,
 			 links_broken;
-			 //dispforce_transverse, dispforce_radial;  
 	
 	double nucleator_impacts;
 
-    bool donecollision, donelinkforces;
 
 	int gridx, gridy, gridz;
 	vect delta;
-	//double delta_x, delta_y, delta_z;
 	void updategrid(void);
 	void removefromgrid(void);
 	void addtogrid(void);
@@ -80,18 +73,32 @@ public:
 	int savelinks(ofstream * outstream);
 	bool dontupdate;
 
-	//inline int applyforces(const int &threadnum);
 	inline void applyforces()
 	{	
-		delta = (link_force_vec + rep_force_vec) * DELTA_T * FORCE_SCALE_FACT;
-				//+ nuc_repulsion_displacement_vec;
+        
+		delta = (link_force_vec + rep_force_vec ) 
+                    * DELTA_T * FORCE_SCALE_FACT;
+				
+        // if on edge of network, viscous_force_recip_dist_sum will be low,
+        // by increasing, we essentially weight the average towards zero
+
+        //if (viscous_force_recip_dist_sum < 10)
+        //    viscous_force_recip_dist_sum = 10;  // ?? what should this number be?
+
+        //// viscosity: weighted average of 'velocities'
+
+        //delta = (delta * 100 + viscous_force_vec * viscous_force_recip_dist_sum) 
+        //                  * (1 / (100 + viscous_force_recip_dist_sum));
+
+        //delta += nuc_repulsion_displacement_vec;
 
 		*this+=delta;
 
 		rep_force_vec.zero();
 		link_force_vec.zero();
-		nuc_repulsion_displacement_vec.zero();
-
+		//viscous_force_vec.zero();
+  //      viscous_force_recip_dist_sum = 0;
+        //nuc_repulsion_displacement_vec.zero();
 	}
 
 	void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
@@ -118,10 +125,6 @@ public:
 		repforce_radial      = 
 		links_broken	     =
  		nucleator_impacts    = 0;
-//		dispforce_transverse[threadnum] = 
-//		dispforce_radial[threadnum]     = 0;
-
-		
 	}
 
 	void setunitvec(void)
