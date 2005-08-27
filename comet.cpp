@@ -946,7 +946,7 @@ srand( rand_num_seed );
 				sprintf(command1, "%s sym 1>/dev/null 2>/dev/null &", argv[0]);
 				system(command1);
 
-				sprintf(last_symbreak_bmp_filename, "%sz_forces_%05i.%s",BITMAPDIR, 
+				sprintf(last_symbreak_bmp_filename, "%sz_proj_%05i.%s",BITMAPDIR, 
 							filenum-1 ,BMP_OUTPUT_FILETYPE.c_str());
 
 				// kludge to move the last save
