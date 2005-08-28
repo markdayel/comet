@@ -20,7 +20,7 @@ removed without prior written permission from the author.
 actin::actin(void)
 {
 
-    if (!REWRITESYMBREAK)
+    if (!REWRITESYMBREAK && !POST_PROCESS)
     {
 	    opruninfo.open("comet_run_info.txt", ios::out | ios::trunc);
 	    if (!opruninfo) 
@@ -1588,9 +1588,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     else 
     {
 		sprintf(command1,
-		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" %s %s %s%s_proj_%05i.%s",
+		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 6i\\nTime % 6.1f'\" %s %s %s%s_proj_%05i.%s",
 			BMP_COMPRESSION, scalebarlength+5,  projletter, filenum,
-			(int)((1000/(double)imageGmax[proj])+0.5), drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR,
+			filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
 

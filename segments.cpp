@@ -38,7 +38,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	p_actin = pactin;
 	
 	num_dist_segs = 20;		// normal bins radial distance
-	dist_step = 0.2;
+	dist_step = 0.1;
 
 	radialdist = 0.1;		// for radial-only averaging
 	num_radial_bins = 20;
@@ -78,17 +78,6 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		num_segs = num_cap_segs * 2 + num_straight_segs * 2;
 	}
 
-	// allocate and zero 1d surfaceimpacts vector
-
-	surfaceimpacts.resize(3);
-	for (int axis = 0; axis < 3; ++axis)
-	{
-		surfaceimpacts[axis].resize(num_segs);
-	}
-
-	//clearsurfaceimpacts();
-
-
 	// allocate and zero the 2d vectors
 
 	       numnodes.resize(3);			
@@ -97,10 +86,6 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	    link_radial.resize(3);
 	link_transverse.resize(3);
 	   links_broken.resize(3);
-//	    disp_radial.resize(3);
-//	disp_transverse.resize(3);
-
-//	segment_pixel.resize(3);
 
 	for (int axis = 0; axis < 3; ++axis)
 	{
@@ -111,9 +96,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		link_transverse[axis].resize(num_segs);
 		   links_broken[axis].resize(num_segs);
 
-		//segment_pixel[axis].resize(num_segs);
-
-		for(int i = 0; i<num_segs; ++i)
+        for(int i = 0; i<num_segs; ++i)
 		{
 			       numnodes[axis][i].resize(num_dist_segs);
 			     rep_radial[axis][i].resize(num_dist_segs);
@@ -121,15 +104,6 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			    link_radial[axis][i].resize(num_dist_segs);
 			link_transverse[axis][i].resize(num_dist_segs);
 			   links_broken[axis][i].resize(num_dist_segs);
-
-			//segment_pixel[axis][i].resize(num_dist_segs);
-
-			//for(int j = 0; j<num_dist_segs; ++j)
-			//{
-			//	segment_pixel[axis][i][j].resize(0);
-
-			//}
-
 		}
 	}
 
@@ -140,6 +114,35 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	radial_link_radial.resize(num_radial_bins);	
 	radial_link_transverse.resize(num_radial_bins);	
 	radial_links_broken.resize(num_radial_bins);	
+
+	// allocate surfaceimpacts vector
+
+	surfaceimpacts.resize(3);
+	for (int axis = 0; axis < 3; ++axis)
+	{
+		surfaceimpacts[axis].resize(num_segs);
+	}
+
+    // allocate stddev vectors
+
+    numnodes_SD.resize(3);
+	rep_radial_SD.resize(3);
+	rep_transverse_SD.resize(3);
+	link_radial_SD.resize(3);
+	link_transverse_SD.resize(3);
+	links_broken_SD.resize(3);
+
+    for (int axis = 0; axis < 3; ++axis)
+	{
+        numnodes_SD[axis].resize(num_dist_segs);
+		rep_radial_SD[axis].resize(num_dist_segs);
+		rep_transverse_SD[axis].resize(num_dist_segs);
+		link_radial_SD[axis].resize(num_dist_segs);
+		link_transverse_SD[axis].resize(num_dist_segs);
+		links_broken_SD[axis].resize(num_dist_segs);
+    }
+
+    // clear these vectors
 
 	clearbins();
 
@@ -422,15 +425,6 @@ void segments::addnode(const nodes& node)
 	getsegmentnum(rot_pos, xseg, yseg, zseg);
 	getsegmentdist(rot_pos, xdist, ydist, zdist);
 
-	if (xdist!=-1)
-		numnodes[0][xseg][xdist] ++;
-
-	if (ydist!=-1)	
-		numnodes[1][yseg][ydist] ++;
-
-	if (zdist!=-1)
-		numnodes[2][zseg][zdist] ++;
-
 	// find scaling factor if off-axis, using rotated vector
 	// and radius using normal pos'n
 
@@ -458,59 +452,49 @@ void segments::addnode(const nodes& node)
 
 	}
 
+    if (radius < 0)
+        radius = SQRT_ACCURACY_LOSS;
+
 	surfaceimpacts[0][xseg] += xfactor * node.nucleator_impacts;
 	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts;
 	surfaceimpacts[2][zseg] += zfactor * node.nucleator_impacts;
 
-
 	if (xdist!=-1)
 	{
-
+              numnodes[0][xseg][xdist] += xfactor;
 			rep_radial[0][xseg][xdist] += xfactor * node.repforce_radial;
 		rep_transverse[0][xseg][xdist] += xfactor * node.repforce_transverse;
-		link_radial[0][xseg][xdist] += xfactor * node.linkforce_radial;
-	link_transverse[0][xseg][xdist] += xfactor * node.linkforce_transverse;
-		links_broken[0][xseg][xdist] += xfactor * node.links_broken;
-
-            
-//			disp_radial[0][xseg][xdist] += node.dispforce_radial;
-//		disp_transverse[0][xseg][xdist] += node.dispforce_transverse;
+	   	   link_radial[0][xseg][xdist] += xfactor * node.linkforce_radial;
+	   link_transverse[0][xseg][xdist] += xfactor * node.linkforce_transverse;
+		  links_broken[0][xseg][xdist] += xfactor * node.links_broken;
 	}
 
 
 	if (ydist!=-1)
 	{
+              numnodes[1][xseg][xdist] += yfactor;
 			rep_radial[1][yseg][ydist] += yfactor * node.repforce_radial;
 		rep_transverse[1][yseg][ydist] += yfactor * node.repforce_transverse;
-		link_radial[1][yseg][ydist] += yfactor * node.linkforce_radial;
-	link_transverse[1][yseg][ydist] += yfactor * node.linkforce_transverse;
-		links_broken[1][yseg][ydist] += yfactor * node.links_broken;
-
-
-//			disp_radial[1][yseg][ydist] += node.dispforce_radial;
-//		disp_transverse[1][yseg][ydist] += node.dispforce_transverse;
+		   link_radial[1][yseg][ydist] += yfactor * node.linkforce_radial;
+	   link_transverse[1][yseg][ydist] += yfactor * node.linkforce_transverse;
+		  links_broken[1][yseg][ydist] += yfactor * node.links_broken;
 	}
 
 
 	if (zdist!=-1)
 	{
+              numnodes[2][xseg][xdist] += zfactor;
 			rep_radial[2][zseg][zdist] += zfactor * node.repforce_radial;
 		rep_transverse[2][zseg][zdist] += zfactor * node.repforce_transverse;
-		link_radial[2][zseg][zdist] += zfactor * node.linkforce_radial;
-	link_transverse[2][zseg][zdist] += zfactor * node.linkforce_transverse;
-		links_broken[2][zseg][zdist] += zfactor * node.links_broken;
+		   link_radial[2][zseg][zdist] += zfactor * node.linkforce_radial;
+	   link_transverse[2][zseg][zdist] += zfactor * node.linkforce_transverse;
+		  links_broken[2][zseg][zdist] += zfactor * node.links_broken;
 
     }
 
-//			disp_radial[2][zseg][zdist] += node.dispforce_radial[threadnum];
-//		disp_transverse[2][zseg][zdist] += node.dispforce_transverse[threadnum];
-	
-	
-
-
 	dist = (int) (radius / radialdist);
 
-	if ((dist < num_radial_bins) && (dist > 0))
+	if ((dist < num_radial_bins) && (dist >= 0))
     {
 	    radial_numnodes[dist]++;
 	    radial_rep_radial[dist] += node.repforce_radial; 
@@ -519,94 +503,51 @@ void segments::addnode(const nodes& node)
 	    radial_link_transverse[dist] += node.linkforce_transverse;
 	    radial_links_broken[dist] += node.links_broken;
     }
-	
-
 
 }
-
-//void segments::addsurfaceimpact(nodes& node, const double& mag)
-//{	// add a surface impact
-//	
-//	
-//	node.nucleator_impacts += mag;
-
- //   int xseg,yseg,zseg;
-	//vect rot_pos, rot_unit;
-
-	//rot_pos = node;
-	//rot_unit = node.unit_vec_posn;
-
-	////p_actin->camera_rotation.rotate(rot_pos); 
-	////p_actin->camera_rotation.rotate(rot_unit); 
-
-	//getsegmentnum(rot_pos, xseg, yseg, zseg);
-
- //   surfaceimpacts[0][xseg]+= mag * calcdist(rot_unit.x,rot_unit.y);
-	//surfaceimpacts[1][yseg]+= mag * calcdist(rot_unit.x,rot_unit.z);
-
-	//if (p_nuc->geometry == nucleator::sphere)
-	//{
-	//	surfaceimpacts[2][zseg]+= mag * calcdist(rot_unit.x,rot_unit.y);	
-	//}
-	//else
-	//{
-	//	if (node.onseg)
-	//	{  // on cylinder, don't scale by z component
-	//		surfaceimpacts[2][zseg]+= mag;
-	//	}
-	//	else
-	//	{	// on ends
-
-	//		surfaceimpacts[2][zseg]+= mag * calcdist(rot_unit.x,rot_unit.y);	
-	//	}
-
-	//}
-
-//}
-
-//void segments::clearsurfaceimpacts(void)
-//{
-//	for (int axis = 0; axis < 3; ++axis)
-//	{
-//		for(int i = 0; i<num_segs; ++i)
-//		{
-//			surfaceimpacts[axis][i]=0;
-//		}
-//	}
-//}
 
 void segments::clearbins(void)
 {
 	for (int axis = 0; axis < 3; ++axis)
 	{
-		for(int i = 0; i<num_segs; ++i)
+		for(int seg = 0; seg<num_segs; ++seg)
 		{
-		surfaceimpacts[axis][i]=0;
+		surfaceimpacts[axis][seg]=0;
 
-			for(int j = 0; j<num_dist_segs; ++j)
-			{
-				       numnodes[axis][i][j]=0;
-				     rep_radial[axis][i][j]=0;
-				 rep_transverse[axis][i][j]=0;
-				    link_radial[axis][i][j]=0;
-				link_transverse[axis][i][j]=0;
-	   			   links_broken[axis][i][j]=0;
-//				    disp_radial[axis][i][j]=0;
-//			    disp_transverse[axis][i][j]=0;
+		for(int dist = 0; dist<num_dist_segs; ++dist)
+    		{
+				       numnodes[axis][seg][dist]=0;
+				     rep_radial[axis][seg][dist]=0;
+				 rep_transverse[axis][seg][dist]=0;
+				    link_radial[axis][seg][dist]=0;
+				link_transverse[axis][seg][dist]=0;
+	   			   links_broken[axis][seg][dist]=0;
 			}
 		}
 	}
-
 	
-	for(int i = 0; i<num_radial_bins; ++i)
+	for(int dist = 0; dist<num_dist_segs; ++dist)
 	{
-		radial_numnodes[i] =			
-		radial_rep_radial[i] =
-		radial_rep_transverse[i] =
-		radial_link_radial[i] =
-		radial_link_transverse[i] =
-		radial_links_broken[i] = 0;
+		radial_numnodes[dist] =			
+		radial_rep_radial[dist] =
+		radial_rep_transverse[dist] =
+		radial_link_radial[dist] =
+		radial_link_transverse[dist] =
+		radial_links_broken[dist] = 0;
 	}
+
+    for (int axis = 0; axis < 3; ++axis)
+	{
+    	for(int dist = 0; dist<num_dist_segs; ++dist)
+		{
+            numnodes_SD[axis][dist] =
+		    rep_radial_SD[axis][dist] =
+		    rep_transverse_SD[axis][dist] =
+		    link_radial_SD[axis][dist] =
+		    link_transverse_SD[axis][dist] =
+		    links_broken_SD[axis][dist] = 0;
+        }
+    }
 }
 
 void segments::drawoutline(ostream& drawcmd, const int& axis) const
@@ -730,6 +671,8 @@ return numlinesplotted;
 
 void segments::addallnodes()
 {
+    clearbins();
+
 	for (int i=0; i<p_actin->highestnodecount; i++)
 	{
 		if ((p_actin->node[i].polymer))  // is point valid?
@@ -737,6 +680,92 @@ void segments::addallnodes()
 			addnode(p_actin->node[i]);
 		}
 	}
+
+    // calculate stddev's from bins
+
+    calcSD(numnodes,numnodes_SD);
+    calcSD(rep_radial,rep_radial_SD);
+    calcSD(rep_transverse,rep_transverse_SD);
+    calcSD(link_radial,link_radial_SD);
+    calcSD(link_transverse,link_transverse_SD);
+    calcSD(links_broken,links_broken_SD);
+
+}
+
+void segments::calcSD(const Dbl3d& data, Dbl2d& SD)
+{
+    Dbl2d mean;
+    mean.resize(3);
+    for (int axis = 0; axis < 3; ++axis)
+    {
+	    mean[axis].resize(num_dist_segs);
+        fill(mean[axis].begin(), mean[axis].end(), 0);
+    }
+
+    // calc sums for means
+
+    for (int axis = 0; axis < 3; ++axis)
+	{
+	    for(int seg = 0; seg<num_segs; ++seg)
+		{
+		    for(int dist = 0; dist<num_dist_segs; ++dist)
+    		{
+                mean[axis][dist] += data[axis][seg][dist];
+			}
+		}
+	}
+
+    // convert sums to means
+    for (int axis = 0; axis < 3; ++axis)
+	{
+	    for(int dist = 0; dist<num_dist_segs; ++dist)
+        {
+            mean[axis][dist] /= num_segs;
+	    }
+    }
+    
+    // sum the squares
+
+    for (int axis = 0; axis < 3; ++axis)
+	{
+	    for(int seg = 0; seg<num_segs; ++seg)
+		{
+		    for(int dist = 0; dist<num_dist_segs; ++dist)
+    		{
+                SD[axis][dist] += data[axis][seg][dist] * data[axis][seg][dist];
+			}
+		}
+	}
+
+    // convert to means of squares
+    
+    for (int axis = 0; axis < 3; ++axis)
+	{
+        for(int dist = 0; dist<num_dist_segs; ++dist)
+        {
+            SD[axis][dist] /= num_segs;
+	    }
+    }
+
+    // subtract square of mean
+
+    for (int axis = 0; axis < 3; ++axis)
+	{
+        for(int dist = 0; dist<num_dist_segs; ++dist)
+        {
+            SD[axis][dist] -= mean[axis][dist] * mean[axis][dist];
+	    }
+    }
+
+    // and take squareroot
+    for (int axis = 0; axis < 3; ++axis)
+	{
+        for(int dist = 0; dist<num_dist_segs; ++dist)
+        {
+            if (SD[axis][dist]>SQRT_ACCURACY_LOSS)
+                SD[axis][dist] = sqrt(SD[axis][dist]);
+	    }
+    }
 
 }
 
@@ -775,27 +804,53 @@ void segments::savereport(const int& filenum) const
 
 				capsuleside = false;
 
-				if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
-				{	// sphere or capsule z
-					radius = calcdist(x,y) - RADIUS;
-				}
-				else
-				{
-					if (fabs(y) < CAPSULE_HALF_LINEAR)
-					{
-						capsuleside = true;
-						radius = fabs(x) - RADIUS;
-					}
-					else
-					{
-						radius = calcdist(x , fabs(y) - CAPSULE_HALF_LINEAR) - RADIUS;
-					}
-				}
+                if (axis == 0)
+                {
+                    if (p_nuc->geometry == nucleator::sphere)
+				    {	// sphere or capsule z
+					    radius = calcdist(y,z) - RADIUS;
+				    }
+				    else
+				    {
+					    if (fabs(z) < CAPSULE_HALF_LINEAR)
+					    {
+						    capsuleside = true;
+						    radius = fabs(x) - RADIUS;
+					    }
+					    else
+					    {
+						    radius = calcdist(x , fabs(z) - CAPSULE_HALF_LINEAR) - RADIUS;
+					    }
+				    }
+                }
+                else if (axis == 1)
+                {
+                    if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+				    {	// sphere or capsule z
+					    radius = calcdist(x,z) - RADIUS;
+				    }
+				    else
+				    {
+					    if (fabs(z) < CAPSULE_HALF_LINEAR)
+					    {
+						    capsuleside = true;
+						    radius = fabs(x) - RADIUS;
+					    }
+					    else
+					    {
+						    radius = calcdist(x , fabs(z) - CAPSULE_HALF_LINEAR) - RADIUS;
+					    }
+				    }
+                }
+                else
+                {
+				    radius = calcdist(x,y) - RADIUS;
+		        }
+
 
                 // rotate *after* determining radius
 
-                p_actin->camera_rotation.rotate(x,y,z);
-
+                //p_actin->camera_rotation.rotate(x,y,z);
 
 // Axis,segment,distseg,x,y,z,Radius,numnodes,area,capsuleside,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
 
@@ -815,10 +870,6 @@ void segments::savereport(const int& filenum) const
 					<< link_radial[axis][seg][dist] << ","
 					<< link_transverse[axis][seg][dist] << ","
 					<< links_broken[axis][seg][dist] << endl;
-//					<< disp_radial[axis][seg][dist] << ","
-//					<< disp_transverse[axis][seg][dist] << ",";
-
-
 
 			}
 		}
@@ -862,6 +913,104 @@ void segments::saveradialreport(const int& filenum) const
 
 	opradialreport << endl;
 	opradialreport.close();
+}
+
+void segments::saveradialaxisreport(const int& filenum, const int axis) const
+{
+
+	char filename [255];
+
+    char projletter[] = "z";
+
+    if (axis == 0)
+	{
+		sprintf ( projletter , "x");
+	}
+	else if (axis == 1)
+	{
+		sprintf ( projletter , "y");
+	}
+
+	sprintf ( filename , "%s%s_report_radial_%05i.txt", TEMPDIR,projletter, filenum );
+
+	ofstream opradialreport(filename, ios::out | ios::trunc);
+	if (!opradialreport) 
+	{ cout << "Unable to open file " << filename << " for output"; return;}
+
+	opradialreport << "RadialSegDist,numnodes,RepForceRadial,RepForceTrans,LinkForceRadial,LinkForceTrans,LinksBroken" << endl;
+
+    double temp_radial_numnodes,
+        temp_radial_rep_radial,
+        temp_radial_rep_transverse,
+        temp_radial_link_radial,
+        temp_radial_link_transverse,
+        temp_radial_links_broken;
+
+
+	for (int dist = 0; dist < num_radial_bins; ++dist)
+	{
+        temp_radial_numnodes = 0;
+        temp_radial_rep_radial = 0;
+        temp_radial_rep_transverse = 0;
+        temp_radial_link_radial = 0;
+        temp_radial_link_transverse = 0;
+        temp_radial_links_broken = 0;
+
+        for(int seg = 0; seg<num_segs; ++seg)
+	    {
+            temp_radial_numnodes += numnodes[axis][seg][dist];
+            temp_radial_rep_radial += rep_radial[axis][seg][dist];
+            temp_radial_rep_transverse += rep_transverse[axis][seg][dist];
+            temp_radial_link_radial += link_radial[axis][seg][dist];
+            temp_radial_link_transverse += link_transverse[axis][seg][dist];
+            temp_radial_links_broken += links_broken[axis][seg][dist];
+        }
+
+		opradialreport 
+			<< ((double)dist + 0.5) * radialdist << ","
+			<< temp_radial_numnodes << ","
+			<< temp_radial_rep_radial << ","
+			<< temp_radial_rep_transverse << ","
+			<< temp_radial_link_radial << ","
+			<< temp_radial_link_transverse << ","
+			<< temp_radial_links_broken << endl;
+	}
+
+	opradialreport << endl;
+	opradialreport.close();
+}
+
+void segments::saveSDreport(const int& filenum) const
+{
+
+	char filename [255];
+
+	sprintf ( filename , "%sreport_SD%05i.txt", TEMPDIR, filenum );
+
+	ofstream opSDreport(filename, ios::out | ios::trunc);
+	if (!opSDreport) 
+	{ cout << "Unable to open file " << filename << " for output"; return;}
+
+	opSDreport << "Axis,RadialSegDist,numnodesSD,RepForceRadialSD,RepForceTransSD,LinkForceRadialSD,LinkForceTransSD,LinksBrokenSD" << endl;
+
+    for (int axis = 0; axis < 3; ++axis)
+	{
+	    for (int dist = 0; dist < num_radial_bins; ++dist)
+	    {
+
+		    opSDreport << axis << ","
+			    << ((double)dist + 0.5) * radialdist << ","
+			    << numnodes_SD[axis][dist] << ","
+			    << rep_radial_SD[axis][dist] << ","
+			    << rep_transverse_SD[axis][dist] << ","
+			    << link_radial_SD[axis][dist] << ","
+			    << link_transverse_SD[axis][dist] << ","
+			    << links_broken_SD[axis][dist] << endl;
+	    }
+    }
+
+	opSDreport << endl;
+	opSDreport.close();
 }
 
 void segments::getsegmentposition(double& x, double& y, double& z, const int & seg,

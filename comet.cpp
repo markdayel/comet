@@ -153,6 +153,7 @@ Nodes2d actin::linkremovefrom;
 Nodes2d actin::linkremoveto;
 
 bool REWRITESYMBREAK = false;
+bool POST_PROCESS = false;
 
 int InterRecordIterations = 0;
 
@@ -206,12 +207,12 @@ keyboard keyb;
 	system(command1);
 #endif
 
-	
+
+
 	if(argc == 2 &&  strcmp(argv[1], "sym") == 0 ) 
 	{
 		REWRITESYMBREAK = true;
 	}
-
 
 	vector<int> postprocess_iterations;
 	postprocess_iterations.resize(0);
@@ -220,6 +221,7 @@ keyboard keyb;
 	{
 	    cout << "Postprocessing iterations: ";
 	    get_postprocess_iterations(argv[2], postprocess_iterations);
+        POST_PROCESS = true;
 	}
 	else if (!REWRITESYMBREAK)
 	{	// not re-writing symmetry breaking bitmaps or post-processing
@@ -276,18 +278,6 @@ if (!REWRITESYMBREAK)
 		USE_THREADS = true;
 	}
 
-	// -- Threading TaskTeam, create and intialise the team
-	collision_tteam.create_team(NUM_THREADS);
-	collision_tteam.set_taskfcn(&actin::collisiondetectiondowork);
-	collision_thread_data_array.resize(NUM_THREADS+1);
-
-	linkforces_tteam.create_team(NUM_THREADS);
-	linkforces_tteam.set_taskfcn(&actin::linkforcesdowork);
-	linkforces_thread_data_array.resize(NUM_THREADS+1);
-
-	applyforces_tteam.create_team(NUM_THREADS);
-	applyforces_tteam.set_taskfcn(&actin::applyforcesdowork);
-	applyforces_thread_data_array.resize(NUM_THREADS+1);
 
 
 	// main parameters:
@@ -560,6 +550,9 @@ if (!REWRITESYMBREAK)
  
 	param.close();
 
+
+
+
 	// calculate commonly used constant's from parameters:
 
 	TOTAL_ITERATIONS = (int) (((double)TOTAL_SIMULATION_TIME / (double)DELTA_T)+0.5);
@@ -590,6 +583,33 @@ if (!REWRITESYMBREAK)
 		exit(EXIT_SUCCESS);
 	}
 
+    // create threads:
+
+    collision_thread_data_array.resize(NUM_THREADS+1);
+	linkforces_thread_data_array.resize(NUM_THREADS+1);
+    applyforces_thread_data_array.resize(NUM_THREADS+1);
+    
+	// -- Threading TaskTeam, create and intialise the team
+    if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
+    {
+        if (USETHREAD_COLLISION)
+        {	
+            collision_tteam.create_team(NUM_THREADS);
+	        collision_tteam.set_taskfcn(&actin::collisiondetectiondowork);
+        }
+
+        if (USETHREAD_LINKFORCES)
+        {
+	        linkforces_tteam.create_team(NUM_THREADS);
+	        linkforces_tteam.set_taskfcn(&actin::linkforcesdowork);
+        }
+
+        if (USETHREAD_APPLYFORCES)
+        {
+	        applyforces_tteam.create_team(NUM_THREADS);
+	        applyforces_tteam.set_taskfcn(&actin::applyforcesdowork);
+        }
+    }
 
 	// write out parameters to screen
 
@@ -898,7 +918,7 @@ srand( rand_num_seed );
              {
                 nuc_object.segs.addallnodes();  // put node data into segment bins
                 nuc_object.segs.set_scale_factors();                
-                nuc_object.segs.clearbins();  // clear the aggregate stats
+                
 
                 // calculate but don't write bitmaps to get scaling factors
 			    theactin.savebmp(filenum, actin::xaxis, actin::runfg, false);
@@ -934,8 +954,7 @@ srand( rand_num_seed );
                 nuc_object.segs.addallnodes();  // put node data into segment bins
                 nuc_object.segs.set_scale_factors();                
                 nuc_object.segs.save_scalefactors();
-                nuc_object.segs.clearbins();  // clear the aggregate stats
-
+                
 				// reprocess bitmaps etc.
 
 				// call another instance to write bitmaps
@@ -978,7 +997,11 @@ srand( rand_num_seed );
                 nuc_object.segs.addallnodes();  // put node data into segment bins
 
                 nuc_object.segs.savereport(filenum);
+                nuc_object.segs.saveSDreport(filenum);                
 		        nuc_object.segs.saveradialreport(filenum);
+                nuc_object.segs.saveradialaxisreport(filenum, 0);
+                nuc_object.segs.saveradialaxisreport(filenum, 1);
+                nuc_object.segs.saveradialaxisreport(filenum, 2);
 
 				theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);
 				theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);
@@ -986,8 +1009,6 @@ srand( rand_num_seed );
 
 				cout << "\r";
 				cout.flush();
-
-                nuc_object.segs.clearbins();  // clear the aggregate stats
 
 				if (strlen(last_symbreak_bmp_filename)!=0)
 				{
@@ -1171,6 +1192,12 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 
 	int filenum;
 
+	theactin.load_sym_break_axes();
+    nuc_object.segs.load_scalefactors();
+
+    // fix the bitmap scaling
+    theactin.BMP_intensity_scaling = false;
+
     for(vector<int>::iterator iteration = postprocess_iterations.begin(); 
 		iteration != postprocess_iterations.end(); ++iteration)
 	{
@@ -1187,20 +1214,19 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 		nuc_object.segs.addallnodes();  // put node data into segment bins
 
         nuc_object.segs.savereport(filenum);
+        nuc_object.segs.saveSDreport(filenum);
 		nuc_object.segs.saveradialreport(filenum);
 
-		// put these in later after rotation done
-		//nuc_object.segs.savereport(i/InterRecordIterations);
-		//nuc_object.segs.saveradialreport(i/InterRecordIterations);
+        nuc_object.segs.saveradialaxisreport(filenum, 0);
+        nuc_object.segs.saveradialaxisreport(filenum, 1);
+        nuc_object.segs.saveradialaxisreport(filenum, 2);
 
-		theactin.savebmp(filenum, actin::xaxis, actin::runfg, true);  // was bg
-		theactin.savebmp(filenum, actin::yaxis, actin::runfg, true);	// was bg
+		theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
+		theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg
 		theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
         	
-		//nuc_object.segs.clearsurfaceimpacts();
-		nuc_object.segs.clearbins();
-
-		cout << endl;
+		cout << "\r";
+		cout.flush();
     }
 }
 
@@ -1218,7 +1244,7 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 	//cout << " InterRecordIterations " << InterRecordIterations
 	//	 << " theactin.symbreakiter " << theactin.symbreakiter << endl;
 
-    for(int i = InterRecordIterations; i < theactin.symbreakiter; i+=InterRecordIterations)
+    for(int i =  theactin.symbreakiter - InterRecordIterations; i > 0; i-=InterRecordIterations)
 	{
 		filenum = (int)(i/InterRecordIterations);
 
@@ -1236,18 +1262,19 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 		nuc_object.segs.addallnodes();  // put node data into segment bins
 
         nuc_object.segs.savereport(filenum);
+        nuc_object.segs.saveSDreport(filenum);
 		nuc_object.segs.saveradialreport(filenum);
+        nuc_object.segs.saveradialaxisreport(filenum, 0);
+        nuc_object.segs.saveradialaxisreport(filenum, 1);
+        nuc_object.segs.saveradialaxisreport(filenum, 2);
 
 		// run them in foreground to slow things down
 		// so don't overload system with too many bg processes
 
-		theactin.savebmp(filenum, actin::xaxis, actin::runfg, true);  // was bg
-		theactin.savebmp(filenum, actin::yaxis, actin::runfg, true);	// was bg
+		theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
+		theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg
 		theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
 		
-		//nuc_object.segs.clearsurfaceimpacts();
-		nuc_object.segs.clearbins();
-
 		cout << "\r";
 		cout.flush();
     }

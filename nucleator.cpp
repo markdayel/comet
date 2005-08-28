@@ -471,9 +471,6 @@ bool nucleator::iswithinnucleator(const double& x, const double& y, const double
 bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 {  // returns true if succeeds, false if fails due to too great node ejection
 
-//if (USE_THREADS)
-//	pthread_mutex_lock(&beadmovelock_mutex); // lock the beadmove mutex
-
 	// node has entered nucleator,
 	// return co-ords of node pushed to surface...
 
@@ -494,7 +491,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 		scale = rad / r;
 
-		node*=scale;
+		node *= scale;
 		
         node.nucleator_impacts += (rad-r);
 
@@ -510,8 +507,8 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 				r = calcdist(node.x,node.y);
 				scale = rad / r;
-				node.x*=scale;
-				node.y*=scale;
+				node.x *= scale;
+				node.y *= scale;
 				
                 node.nucleator_impacts += (rad-r);
 			}
@@ -527,8 +524,8 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 				r = calcdist(node.x,node.y,z2);
 				scale = rad / r;
-				node.x  *= scale;
-				node.y  *= scale;
+				node.x *= scale;
+				node.y *= scale;
 				z2 *= scale;
 
 				if (node.z<0)  
@@ -574,16 +571,6 @@ if (ROTATION)
 	torque.y += ((oldpos.z-centerofmass.z)*node_disp.x - (oldpos.x-centerofmass.x)*node_disp.z);
 	torque.z += ((oldpos.x-centerofmass.x)*node_disp.y - (oldpos.y-centerofmass.y)*node_disp.x);
 }
-
-//torque += delta_torque;
-
-//if (ptheactin->iteration_num % 2000 == 0)
-//{
-//	cout << setprecision(20) << torque.x << " " << torque.y << " " << torque.z << endl;
-//}
-
-//if (USE_THREADS)
-//	pthread_mutex_unlock(&beadmovelock_mutex); // unlock the beadmove mutex
 
 	return true; // sucessful node ejection
 }

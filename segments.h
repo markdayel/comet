@@ -46,6 +46,7 @@ public:
 
 	void addnode(const nodes& node);
 	void addallnodes();
+    void calcSD(const Dbl3d& data, Dbl2d& SD);
 	//void addsurfaceimpact(nodes& node, const double& mag);
 
 	void getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const;
@@ -60,6 +61,8 @@ public:
 
 	void savereport(const int& filenum) const;
 	void saveradialreport(const int& filenum) const;
+    void saveSDreport(const int& filenum) const;
+    void saveradialaxisreport(const int& filenum, const int axis) const;
 
 	void write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 					   const Dbl3d & var, const double& scale, const int& axis);
@@ -107,9 +110,6 @@ public:
 
 									// for axes, 0=x, 1=y, 2=z
 
-	Dbl2d							// 2d vector for surface [axis][segnum]
-		surfaceimpacts;
-
 	Dbl3d 							// 3d vectors for the rest [axis][segnum][dist]
 		numnodes,
 		rep_radial,
@@ -117,8 +117,17 @@ public:
 		link_radial,
 		link_transverse, 
 		links_broken;
-//		disp_radial,
-//		disp_transverse;
+
+    Dbl2d							// 2d vector for surface [axis][segnum]
+		surfaceimpacts;
+
+	Dbl2d 							// 2d vectors for SD [axis][dist]
+		numnodes_SD,
+		rep_radial_SD,
+		rep_transverse_SD,
+		link_radial_SD,
+		link_transverse_SD, 
+		links_broken_SD;
 
     double 	numnodes_scalefactor,
 		    rep_radial_scalefactor,
