@@ -73,33 +73,12 @@ public:
 	int savelinks(ofstream * outstream);
 	bool dontupdate;
 
-	inline void applyforces()
-	{	
-        
-		delta = (link_force_vec + rep_force_vec ) 
-                    * DELTA_T * FORCE_SCALE_FACT;
-				
-        // if on edge of network, viscous_force_recip_dist_sum will be low,
-        // by increasing, we essentially weight the average towards zero
+    //typedef void (nodes::*p_applyforces_fn)();
 
-        //if (viscous_force_recip_dist_sum < 10)
-        //    viscous_force_recip_dist_sum = 10;  // ?? what should this number be?
-
-        //// viscosity: weighted average of 'velocities'
-
-        //delta = (delta * 100 + viscous_force_vec * viscous_force_recip_dist_sum) 
-        //                  * (1 / (100 + viscous_force_recip_dist_sum));
-
-        //delta += nuc_repulsion_displacement_vec;
-
-		*this+=delta;
-
-		rep_force_vec.zero();
-		link_force_vec.zero();
-		//viscous_force_vec.zero();
-  //      viscous_force_recip_dist_sum = 0;
-        //nuc_repulsion_displacement_vec.zero();
-	}
+    void (nodes::*p_applyforces_fn)(void);
+    
+	void applyforces_novisc();
+    void applyforces_visc();
 
 	void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
 	{

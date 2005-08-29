@@ -23,6 +23,8 @@ prior written permission from the author.
 #include "nucleator.h"
 #include "Colour.h"
 #include "threadtaskteam.h"
+//#include <iterator>
+
 //#include "stdafx.h"
 
 typedef vector<nodes*> Nodes1d;
@@ -147,8 +149,13 @@ public:
     static Nodes2d nodes_by_thread;
 	static Nodes2d recti_near_nodes;
 	static Nodes2d nodes_on_same_gridpoint;
+
+    static vector <int> recti_near_nodes_size;
+    static vector <int> nodes_on_same_gridpoint_size;
+
 	static Nodes1d nodes_within_nucleator;	
 	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
+    static int findnearbynodes_col(const nodes& ournode, const int& threadnum);
 
     // -- Threading, comment these out
 	// static void *collisiondetectionthread(void* threadarg);

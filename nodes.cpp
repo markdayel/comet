@@ -52,6 +52,11 @@ nodes::nodes(void)
 	dontupdate = false;
 
 	clearstats();
+
+    if (VISCOSITY)
+        p_applyforces_fn = &nodes::applyforces_visc;
+    else
+        p_applyforces_fn = &nodes::applyforces_novisc;
 	
 }
 
@@ -77,10 +82,75 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 
 	polymerize(set_x,  set_y,  set_z);
 
+    if (VISCOSITY)
+        p_applyforces_fn = &nodes::applyforces_visc;
+    else
+        p_applyforces_fn = &nodes::applyforces_novisc;
+
 }
 
 nodes::~nodes(void)
 {
+}
+
+void nodes::applyforces_visc()
+{	
+
+    static const double local_DELTA_T = DELTA_T;
+    static const double local_FORCE_SCALE_FACT = FORCE_SCALE_FACT;
+    static const double local_VISCOSITY_EDGE_THRESHOLD = VISCOSITY_EDGE_THRESHOLD;
+    static const double local_VISCOSITY_UNWEIGHTING_FACTOR = VISCOSITY_UNWEIGHTING_FACTOR;
+
+    // link and repulsive forces actin on node
+
+	delta = (link_force_vec + rep_force_vec ) 
+                * local_DELTA_T * local_FORCE_SCALE_FACT;
+    
+    // the viscous_force_vec's are weighted by their recirocal distances,
+    // so need to be scaled back by dividing by viscous_force_recip_dist_sum
+
+    // if on edge of network, viscous_force_recip_dist_sum will be low,
+    // by increasing, we essentially weight the average towards zero
+
+    if (viscous_force_recip_dist_sum < local_VISCOSITY_EDGE_THRESHOLD)
+        viscous_force_recip_dist_sum = local_VISCOSITY_EDGE_THRESHOLD;  // ?? what should this number be?
+
+    // viscosity: weighted average of 'velocities'
+
+    delta =   ( delta * local_VISCOSITY_UNWEIGHTING_FACTOR + viscous_force_vec ) 
+                    * (1 / (local_VISCOSITY_UNWEIGHTING_FACTOR + viscous_force_recip_dist_sum));
+
+    //delta += nuc_repulsion_displacement_vec;  // this is a displacement, therefore not scaled
+
+	*this += delta;
+
+	rep_force_vec.zero();
+	link_force_vec.zero();
+	viscous_force_vec.zero();
+    viscous_force_recip_dist_sum = 0;
+    //nuc_repulsion_displacement_vec.zero();
+}
+
+void nodes::applyforces_novisc()
+{	
+
+    static const double local_DELTA_T = DELTA_T;
+    static const double local_FORCE_SCALE_FACT = FORCE_SCALE_FACT;
+
+    // link and repulsive forces actin on node
+
+	delta = (link_force_vec + rep_force_vec ) 
+                * local_DELTA_T * local_FORCE_SCALE_FACT;
+
+    //delta += nuc_repulsion_displacement_vec;  // this is a displacement, therefore not scaled
+
+	*this += delta;
+
+	rep_force_vec.zero();
+	link_force_vec.zero();
+	viscous_force_vec.zero();
+    viscous_force_recip_dist_sum = 0;
+    //nuc_repulsion_displacement_vec.zero();
 }
 
 bool nodes::depolymerize(void) 

@@ -134,14 +134,17 @@ void* taskteam::do_thread_work(void* arg)
 {
     int err;
     
-    while(GRASS_IS_GREEN) {
+    while(GRASS_IS_GREEN) 
+    {
 	
 		lockteam();	
 		// wait until there is some work to do
-		while( !ready || tasks.empty() ) {
+		while( !ready || tasks.empty() ) 
+        {
 	    	// cout << this << " waiting for start " << threads_ready << std::endl;
 	    	err = pthread_cond_wait(&start, &mutex);
-	    	if(err != 0){
+	    	if(err != 0)
+            {
 				std::cerr << "start error" << std::endl;
 	    	}
 		}
@@ -157,13 +160,16 @@ void* taskteam::do_thread_work(void* arg)
 		lockteam();
 		ntasks_todo--;
 		// check if all the work is done
-		if( ntasks_todo == 0 ) {
+		if( ntasks_todo == 0 ) 
+        {
 	    	// indicate that we are done
 	    	err = pthread_cond_broadcast(&finish);
-	    	if(err != 0){
+	    	if(err != 0)
+            {
 				std::cerr << "finish error" << std::endl;
 	    	}
 		}
+
 		unlockteam();	
     }
     

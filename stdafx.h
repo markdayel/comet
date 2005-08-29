@@ -22,7 +22,7 @@ removed without prior written permission from the author.
 
 	#pragma warning(disable: 4127)  // constant conditional expression
 
-	#pragma inline_depth( 255 )
+	#pragma inline_depth( 64 )
 	#pragma inline_recursion( on )
 	#pragma auto_inline( on )
 	
@@ -108,6 +108,8 @@ using namespace std;
 //#include "sched.h"
 
 //extern char temp_BMP_filename[];
+
+extern bool VISCOSITY;
 
 extern bool USE_THREADS;
 extern int NUM_THREADS;
@@ -236,6 +238,9 @@ extern bool NO_IMAGE_TEXT;
 extern int BMP_COMPRESSION;
 extern string BMP_OUTPUT_FILETYPE;
 
+extern double VISCOSITY_EDGE_THRESHOLD;
+extern double VISCOSITY_UNWEIGHTING_FACTOR;
+
 extern double GAUSSFWHM;
 extern int SPECKLE_FACTOR;
 extern double INIT_R_GAIN;
@@ -276,8 +281,6 @@ extern bool ROTATION;
 extern double MofI;
 
 extern bool FORCES_ON_SIDE;
-
-extern double colormap[];
 
 
 // compile-time options:

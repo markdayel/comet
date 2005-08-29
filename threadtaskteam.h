@@ -6,6 +6,7 @@
 #include "pthread.h"
 #include <vector>
 #include <queue>
+//#include "stdafx.h"
 
 class taskteam 
 {

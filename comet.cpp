@@ -45,6 +45,8 @@ bool GRASS_IS_GREEN = true;
 
 double MofI =  0.1;
 
+bool VISCOSITY = false;
+
 //bool FORCES_ON_SIDE = true;
 
 bool NO_IMAGE_TEXT = false;
@@ -75,6 +77,9 @@ unsigned int MAX_LINKS_PER_NODE = 100;
 
 double LINK_TAUT_FORCE =  5;
 double LINK_TAUT_RATIO =  1.1;
+
+double VISCOSITY_EDGE_THRESHOLD = 10;
+double VISCOSITY_UNWEIGHTING_FACTOR = 100;
 
 //char temp_BMP_filename[255];
 
@@ -146,6 +151,10 @@ Nodes2d actin::nodes_by_thread;
 Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
 Nodes1d actin::nodes_within_nucleator;
+
+vector <int> actin::recti_near_nodes_size;
+vector <int> actin::nodes_on_same_gridpoint_size;
+
 int actin::iteration_num;
 
 bool actin::isinthread;
@@ -417,6 +426,25 @@ if (!REWRITESYMBREAK)
 			{
                 ss >> P_NUC;
                 continue;
+			} 
+            else if (tag == "VISCOSITY_EDGE_THRESHOLD") 
+			{
+                ss >> VISCOSITY_EDGE_THRESHOLD;
+                continue;
+			} 
+            else if (tag == "VISCOSITY_UNWEIGHTING_FACTOR") 
+			{
+                ss >> VISCOSITY_UNWEIGHTING_FACTOR;
+                continue;
+			} 
+            else if (tag == "VISCOSITY") 
+			{
+			    ss >> buff2;
+			    if(buff2=="true")
+				VISCOSITY = true;
+			    else
+				VISCOSITY = false;
+			    continue;
 			} 
 			else if (tag == "RADIUS") 
 			{
@@ -966,7 +994,7 @@ srand( rand_num_seed );
 				system(command1);
 
 				sprintf(last_symbreak_bmp_filename, "%sz_proj_%05i.%s",BITMAPDIR, 
-							filenum-1 ,BMP_OUTPUT_FILETYPE.c_str());
+							1 ,BMP_OUTPUT_FILETYPE.c_str());
 
 				// kludge to move the last save
 				// so we can re-load to the point we left off
