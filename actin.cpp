@@ -259,7 +259,7 @@ int actin::crosslinknewnodes(int numnewnodes)
 
 		linkformto.resize(0);
 
-        int a = recti_near_nodes_size[threadnum];
+        recti_near_nodes_size[threadnum];
 
         for( vector <nodes*>::iterator nearnode=recti_near_nodes[threadnum].begin(); 
 			    nearnode<recti_near_nodes[threadnum].begin()+recti_near_nodes_size[threadnum];
@@ -837,6 +837,7 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
     vect nodeposvec;
     double distsqr,dist;
     double recip_dist, force_over_dist;
+    double recip_distsqr;
     //double force;
     vect tomove;
     vect disp;
@@ -893,6 +894,7 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 				    // calc dist between nodes
 				    dist = sqrt(distsqr); 
                     recip_dist = 1/dist;
+                    recip_distsqr = recip_dist * recip_dist;
 
 				    //force = local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE) * dist;
 				    force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
@@ -905,8 +907,8 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 				    (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial,
 								    (*sameGPnode)->repforce_transverse);
 
-                    (*sameGPnode)->viscous_force_vec -= (*nearnode)->delta * recip_dist;
-                    (*sameGPnode)->viscous_force_recip_dist_sum += recip_dist;
+                    (*sameGPnode)->viscous_force_vec -= (*nearnode)->delta * recip_distsqr;
+                    (*sameGPnode)->viscous_force_recip_dist_sum += recip_distsqr;
     			
 			    }
 			}
@@ -1837,17 +1839,17 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		    for (y = 0; y<BMP_HEIGHT; y++)
 		    {
                 if (imageR[x][y] > imageRmax[proj])
-                    imageR[x][y] = imageRmax[proj];
+                    imageR[x][y] = 1;
                 else
                     imageR[x][y] /= imageRmax[proj];
 
                 if (imageG[x][y] > imageGmax[proj])
-                    imageG[x][y] = imageGmax[proj];
+                    imageG[x][y] = 1;
                 else
                     imageG[x][y] /= imageGmax[proj];
 
                 if (imageB[x][y] > imageBmax[proj])
-                    imageB[x][y] = imageBmax[proj];
+                    imageB[x][y] = 1;
                 else
                     imageB[x][y] /= imageBmax[proj];
 		    }
@@ -2566,6 +2568,11 @@ void actin::set_sym_break_axes(void)
 		}
 
 	}
+
+    if (p_nuc->geometry==nucleator::capsule)
+    {
+        maxchiangle += PI/4;
+    }
 
 	// now have all the angles
 	// need to assemble them in the right (reverse) order z,y,x

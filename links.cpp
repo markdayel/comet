@@ -41,13 +41,16 @@ links::links(nodes* linknodep, double dist)
 	linkednodeptr = linknodep;
 }
 
-double links::getlinkforces(const double& dist)
+double links::getlinkforces(const double
+                            
+                            & dist)
 {  // return force (nominally in pN)
 	double force;//=0.0;
     double strain = dist / orig_dist;
 	double stress_over_breakage;
 	// is link loose or taut?
 
+    static const bool local_USE_BREAKAGE_STRAIN = USE_BREAKAGE_STRAIN;
     // calculate forces:
 
     force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
@@ -61,7 +64,7 @@ double links::getlinkforces(const double& dist)
 
     // decide if link broken:
 
-    if (USE_BREAKAGE_STRAIN)
+    if (local_USE_BREAKAGE_STRAIN)
     {
 	    if (strain > LINK_BREAKAGE_STRAIN)
 		{

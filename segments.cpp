@@ -472,7 +472,7 @@ void segments::addnode(const nodes& node)
 
 	if (ydist!=-1)
 	{
-              numnodes[1][xseg][xdist] += yfactor;
+              numnodes[1][yseg][ydist] += yfactor;
 			rep_radial[1][yseg][ydist] += yfactor * node.repforce_radial;
 		rep_transverse[1][yseg][ydist] += yfactor * node.repforce_transverse;
 		   link_radial[1][yseg][ydist] += yfactor * node.linkforce_radial;
@@ -483,7 +483,7 @@ void segments::addnode(const nodes& node)
 
 	if (zdist!=-1)
 	{
-              numnodes[2][xseg][xdist] += zfactor;
+              numnodes[2][zseg][zdist] += zfactor;
 			rep_radial[2][zseg][zdist] += zfactor * node.repforce_radial;
 		rep_transverse[2][zseg][zdist] += zfactor * node.repforce_transverse;
 		   link_radial[2][zseg][zdist] += zfactor * node.linkforce_radial;

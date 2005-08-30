@@ -75,7 +75,7 @@ public:
 
     //typedef void (nodes::*p_applyforces_fn)();
 
-    void (nodes::*p_applyforces_fn)(void);
+    //void (nodes::*p_applyforces_fn)(void);
     
 	void applyforces_novisc();
     void applyforces_visc();

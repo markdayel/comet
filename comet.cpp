@@ -938,8 +938,8 @@ srand( rand_num_seed );
 			theactin.opruninfo << "|S" << setw(3) <<  (int)filenum  
 				<< "/" << NUMBER_RECORDINGS << endl ;
 
-            // don't use this, so don't bother with it
-			theactin.savevrml(filenum);
+            // don't use vrml anymore, so don't bother with it for now
+			// theactin.savevrml(filenum);
 
              if (((i % (5 * InterRecordIterations)) == 0) 
                  && (!theactin.brokensymmetry) && (theactin.BMP_intensity_scaling == true))

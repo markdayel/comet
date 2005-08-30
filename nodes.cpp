@@ -53,10 +53,10 @@ nodes::nodes(void)
 
 	clearstats();
 
-    if (VISCOSITY)
-        p_applyforces_fn = &nodes::applyforces_visc;
-    else
-        p_applyforces_fn = &nodes::applyforces_novisc;
+    //if (VISCOSITY)
+    //    p_applyforces_fn = &nodes::applyforces_visc;
+    //else
+    //    p_applyforces_fn = &nodes::applyforces_novisc;
 	
 }
 
@@ -82,10 +82,10 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 
 	polymerize(set_x,  set_y,  set_z);
 
-    if (VISCOSITY)
-        p_applyforces_fn = &nodes::applyforces_visc;
-    else
-        p_applyforces_fn = &nodes::applyforces_novisc;
+    //if (VISCOSITY)
+    //    p_applyforces_fn = &nodes::applyforces_visc;
+    //else
+    //    p_applyforces_fn = &nodes::applyforces_novisc;
 
 }
 
