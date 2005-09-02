@@ -95,8 +95,8 @@ actin::actin(void)
     nodes_on_same_gridpoint.resize(NUM_THREADS*4);
     nodes_by_thread.resize(NUM_THREADS*4);
 
-    recti_near_nodes_size.resize(NUM_THREADS*4);
-    nodes_on_same_gridpoint_size.resize(NUM_THREADS*4);
+//    recti_near_nodes_size.resize(NUM_THREADS*4);
+//    nodes_on_same_gridpoint_size.resize(NUM_THREADS*4);
 
     linkremovefrom.resize(NUM_THREADS);
     linkremoveto.resize(NUM_THREADS);
@@ -109,8 +109,8 @@ actin::actin(void)
         linkremovefrom[i].reserve(MAXNODES);
         linkremoveto[i].reserve(MAXNODES);
 
-        recti_near_nodes[i].resize(MAXNODES);
-        nodes_on_same_gridpoint[i].resize(MAXNODES);
+//        recti_near_nodes[i].resize(MAXNODES);
+//        nodes_on_same_gridpoint[i].resize(MAXNODES);
 
         nodes_by_thread[i].resize(0);
         linkremovefrom[i].resize(0);
@@ -259,12 +259,8 @@ int actin::crosslinknewnodes(int numnewnodes)
 
 		linkformto.resize(0);
 
-        recti_near_nodes_size[threadnum];
-
-        for( vector <nodes*>::iterator nearnode=recti_near_nodes[threadnum].begin(); 
-			    nearnode<recti_near_nodes[threadnum].begin()+recti_near_nodes_size[threadnum];
-			    nearnode++) 
-        {
+		for (vector <nodes*>::iterator nearnode=recti_near_nodes[threadnum].begin(); nearnode<recti_near_nodes[threadnum].end() ; nearnode++ )
+		{
 
 			if ( ((*nearnode)->harbinger) || (!(*nearnode)->polymer) )
 				continue;  // only crosslink to real nodes
@@ -729,6 +725,102 @@ int actin::collisiondetection(void)
     return 0;
 }
 
+
+int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
+{
+    // create list of nodes on the same gridpoint, and on adjacent gridpoints (including same GP)
+    // 	
+    // N.B. a good fraction of the total CPU time is spent in this function
+    // may be worth linearizing the loop or poss amalgamating with the calling
+    // functions so that creating and reading the list of gridpoints is not necessary
+        
+    nodes *nodeptr, *startnodeptr;
+    
+// save repeatedly dereferencing pointer by threadnum in inner loops:
+// (maybe compiler does this anyway?)
+    Nodes1d *p_recti_near_nodeslist = &recti_near_nodes[threadnum];
+    Nodes1d *p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
+
+    p_recti_near_nodeslist->resize(0);
+    p_nodes_on_same_gridpoint->resize(0);
+    
+    if(!ournode.polymer) // bail early
+	return 0;
+    
+    int gridx = ournode.gridx;
+    int gridy = ournode.gridy;
+    int gridz = ournode.gridz;
+    
+    if ((gridx < 0) || (gridx > GRIDSIZE) ||
+	(gridy < 0) || (gridy > GRIDSIZE) ||
+	(gridz < 0) || (gridz > GRIDSIZE))
+	return 0;
+    
+    int minx,miny,minz,maxx,maxy,maxz;
+    
+    minx = gridx-adjgridpoints;
+    miny = gridy-adjgridpoints;
+    minz = gridz-adjgridpoints;
+    
+    maxx = gridx+adjgridpoints;
+    maxy = gridy+adjgridpoints;
+    maxz = gridz+adjgridpoints;
+    
+    // truncate if out of grid bounds:
+    if (minx < 0)
+    	minx = 0;
+    
+    if (miny < 0)
+	    miny = 0;
+    
+    if (minz < 0)
+	    minz = 0;
+    
+    if (maxx > GRIDSIZE)
+	    maxx = GRIDSIZE;
+
+    if (maxy > GRIDSIZE)
+	    maxy = GRIDSIZE;
+    
+    if (maxz > GRIDSIZE)
+	    maxz = GRIDSIZE;
+    
+    // do adjgridpoints by adjgridpoints scan on grid
+    for (int x = minx; x != maxx; ++x) 
+    {
+	    for (int y = miny; y != maxy; ++y) 
+            {
+	            for (int z = minz; z != maxz; ++z) 
+                {
+            	    nodeptr=nodegrid[x][y][z];
+		            startnodeptr=nodeptr;
+		            if (nodeptr!=0) 
+                    {
+		                do 
+                        {
+			                p_recti_near_nodeslist->push_back(nodeptr);
+			                nodeptr = nodeptr->nextnode;					
+		                } while (nodeptr!=startnodeptr);  // until back to start
+		            }
+	            }
+	        }
+    }
+    // nodes on same gridpoint:
+    
+    nodeptr=nodegrid[gridx][gridy][gridz];
+    startnodeptr=nodeptr;
+    if(nodeptr!=0) {
+	do {
+	    p_nodes_on_same_gridpoint->push_back(nodeptr);
+	    nodeptr = nodeptr->nextnode;					
+	} while (nodeptr!=startnodeptr);  // until back to start
+    }
+    
+    return (int) p_recti_near_nodeslist->size();
+}
+
+
+/*
 int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
 {
     // create list of nodes on the same gridpoint, and on adjacent gridpoints (including same GP)
@@ -824,23 +916,24 @@ int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const
     return recti_near_nodes_size[threadnum];
 }
 
-
+*/
 void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 {	
     // cast arg
-    thread_data* dat;
-    dat = (thread_data*) arg;
+    const thread_data* dat = (thread_data*) arg;
+
     
     static const double local_NODE_REPULSIVE_RANGE = NODE_REPULSIVE_RANGE;
     static const double local_NODE_REPULSIVE_MAG = NODE_REPULSIVE_MAG;
 
     vect nodeposvec;
     double distsqr,dist;
-    double recip_dist, force_over_dist;
+    double recip_dist;//, force_over_dist;
     double recip_distsqr;
     //double force;
     vect tomove;
     vect disp;
+    nodes *p_nearnode, *p_sameGPnode;
 
     int sameGPnodenum;
 
@@ -859,11 +952,12 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 
 	    // loop over nodes on same gridpoint:
 	    for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
-	        sameGPnode<nodes_on_same_gridpoint[dat->threadnum].begin()+nodes_on_same_gridpoint_size[dat->threadnum];
+	        sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
 	        sameGPnode++) 
         {
+            p_sameGPnode = *sameGPnode;
 
-            sameGPnodenum = (*sameGPnode)->nodenum;
+            sameGPnodenum = p_sameGPnode->nodenum;
     	    
 	        if (donenode[sameGPnodenum])
 		      continue;  // skip if done
@@ -874,16 +968,18 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 			//pthread_mutex_unlock(&nodedone_mutex);
     		
 			// of these nodes, calculate euclidian dist
-			nodeposvec = **sameGPnode;	// get xyz of our node
+			nodeposvec = *p_sameGPnode;	// get xyz of our node
 
 			for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
-			    nearnode<recti_near_nodes[dat->threadnum].begin()+recti_near_nodes_size[dat->threadnum];
+			    nearnode<recti_near_nodes[dat->threadnum].end();
 			    nearnode++) {
 
-			    if ( *sameGPnode == *nearnode)
+                p_nearnode = *nearnode;
+
+			    if ( p_sameGPnode == p_nearnode)
 				    continue;  // skip if self
     			  			
-			    disp = **nearnode - nodeposvec; 
+			    disp = *p_nearnode - nodeposvec; 
 			    distsqr = disp.sqrlength();
     			
 			    if (distsqr < SQRT_ACCURACY_LOSS)
@@ -897,18 +993,19 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
                     recip_distsqr = recip_dist * recip_dist;
 
 				    //force = local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE) * dist;
-				    force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
+				    //force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
+				    tomove = disp * 2 * (recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE));
 
-                    tomove = disp * ( 2 * force_over_dist);
+                    //tomove = disp * ( 2 * force_over_dist);
                     //tomove = disp * ( 2 * force / dist);
         			
-				    (*sameGPnode)->rep_force_vec -= tomove ;
+				    p_sameGPnode->rep_force_vec -= tomove ;
 
-				    (*sameGPnode)->adddirectionalmags(tomove, (*sameGPnode)->repforce_radial,
-								    (*sameGPnode)->repforce_transverse);
+				    p_sameGPnode->adddirectionalmags(tomove, p_sameGPnode->repforce_radial,
+								    p_sameGPnode->repforce_transverse);
 
-                    (*sameGPnode)->viscous_force_vec -= (*nearnode)->delta * recip_distsqr;
-                    (*sameGPnode)->viscous_force_recip_dist_sum += recip_distsqr;
+                    p_sameGPnode->viscous_force_vec -= p_nearnode->delta * recip_distsqr;
+                    p_sameGPnode->viscous_force_recip_dist_sum += recip_distsqr;
     			
 			    }
 			}
@@ -1053,8 +1150,8 @@ int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const
 void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 {	
     // cast arg
-    thread_data* dat;
-    dat = (thread_data*) arg;
+    const thread_data* dat = (thread_data*) arg;
+
     
     static const double local_NODE_REPULSIVE_RANGE = NODE_REPULSIVE_RANGE;
     static const double local_NODE_REPULSIVE_MAG = NODE_REPULSIVE_MAG;
@@ -1349,15 +1446,18 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
 void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
 {
     // cast arg
-    thread_data* dat;
-    dat = (thread_data*) arg;
+    const thread_data* dat = (thread_data*) arg;
     
     if (VISCOSITY)
     {
+
+        //if ((iteration_num % 500) == 0)
+        //    cout << node[dat->startnode + (dat->endnode - dat->startnode) * (double) rand() / (double)RAND_MAX].viscous_force_recip_dist_sum << endl;
+
         // sum forces etc. over all threads
         for (int i=dat->startnode; i<dat->endnode; ++i)
         {
-	        if((!node[i].dontupdate) && node[i].polymer)
+	        if(node[i].polymer)
             {
 	            node[i].applyforces_visc();  // note this is the num of the thread that put the
                                         // data there, not our thread
@@ -1369,7 +1469,7 @@ void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
          // sum forces etc. over all threads
         for (int i=dat->startnode; i<dat->endnode; ++i)
         {
-	        if((!node[i].dontupdate) && node[i].polymer)
+	        if(node[i].polymer)
             {
 	            node[i].applyforces_novisc();  // note this is the num of the thread that put the
                                         // data there, not our thread
@@ -1448,8 +1548,8 @@ int actin::linkforces()
 void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
 {
     // cast arg
-    thread_data* dat;
-    dat = (thread_data*) arg;
+    const thread_data* dat = (thread_data*) arg;
+
     
     double dist;
     double force;
@@ -1459,7 +1559,7 @@ void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
     // go through all nodes
     for(int n=(dat->startnode); n<(dat->endnode); n++)
     {  	
-	    if ((node[n].dontupdate) || (!node[n].polymer))
+	    if (!node[n].polymer)
 	        continue;
     	
 	    nodeposvec = node[n];
@@ -2482,10 +2582,10 @@ void actin::setdontupdates(void)
         lowestnodetoupdate = highestnodecount - NODES_TO_UPDATE;
 	}
 
-	for (int i=0; i<lowestnodetoupdate; i++)
-	{
-		node[i].dontupdate = true;
-	}
+	//for (int i=0; i<lowestnodetoupdate; i++)
+	//{
+	//	node[i].dontupdate = true;
+	//}
 
 }
 
@@ -2635,10 +2735,31 @@ void actin::load_sym_break_axes(void)
 void actin::clear_node_stats(void)
 {
 
-	for (int i=0; i<highestnodecount; ++i)
+	for (int i=lowestnodetoupdate; i<highestnodecount; ++i)
 	{
-		if (!node[i].dontupdate)
+//		if (!node[i].dontupdate)
 			node[i].clearstats();
 	}
 
+}
+
+void actin::keep_mem_resident(void)
+{
+
+#ifndef _WIN32
+
+    nmadvise(&nodegrid, sizeof(nodegrid), MADV_WILLNEED, NULL);
+    //madvise((caddr_t)&nodegrid, sizeof(nodegrid), MADV_WILLNEED);
+	for (int i=0; i!=(GRIDSIZE+1); i++)  
+	{
+        nmadvise(&nodegrid[i], sizeof(nodegrid[i]), MADV_WILLNEED, NULL);
+        //madvise((caddr_t)&nodegrid[i], sizeof(nodegrid[i]), MADV_WILLNEED);
+        for (int j=0; j!=(GRIDSIZE+1); j++)
+		{
+            nmadvise(&nodegrid[i][j], sizeof(nodegrid[i][j]), MADV_WILLNEED, NULL);
+            //madvise((caddr_t)&nodegrid[i][j], sizeof(nodegrid[i][j]), MADV_WILLNEED);
+        }
+	}
+
+#endif
 }

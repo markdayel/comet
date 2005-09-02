@@ -71,7 +71,7 @@ public:
 	double theta;
 	double phi;
 	int savelinks(ofstream * outstream);
-	bool dontupdate;
+	//bool dontupdate;
 
     //typedef void (nodes::*p_applyforces_fn)();
 

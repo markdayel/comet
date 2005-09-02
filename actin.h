@@ -150,8 +150,8 @@ public:
 	static Nodes2d recti_near_nodes;
 	static Nodes2d nodes_on_same_gridpoint;
 
-    static vector <int> recti_near_nodes_size;
-    static vector <int> nodes_on_same_gridpoint_size;
+    //static vector <int> recti_near_nodes_size;
+    //static vector <int> nodes_on_same_gridpoint_size;
 
 	static Nodes1d nodes_within_nucleator;	
 	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
@@ -203,6 +203,7 @@ public:
 	}
 
 
+    void keep_mem_resident(void);
 };
 
 #endif

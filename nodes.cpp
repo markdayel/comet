@@ -49,7 +49,7 @@ nodes::nodes(void)
 	creation_iter_num = 0;
 	nodelinksbroken = 0;
 	harbinger = false;
-	dontupdate = false;
+//	dontupdate = false;
 
 	clearstats();
 
@@ -78,7 +78,7 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 	creation_iter_num = ptheactin->iteration_num;
 	nodelinksbroken =0;
 	harbinger = false;
-	dontupdate = false;
+//	dontupdate = false;
 
 	polymerize(set_x,  set_y,  set_z);
 

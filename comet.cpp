@@ -29,7 +29,7 @@ double GAUSSFWHM =  0.266;
 
 bool NUCLEATOR_FORCES = true;
 
-const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);
+//const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);
 
 int BMP_WIDTH = 800;
 int BMP_HEIGHT = 600;
@@ -152,8 +152,8 @@ Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
 Nodes1d actin::nodes_within_nucleator;
 
-vector <int> actin::recti_near_nodes_size;
-vector <int> actin::nodes_on_same_gridpoint_size;
+//vector <int> actin::recti_near_nodes_size;
+//vector <int> actin::nodes_on_same_gridpoint_size;
 
 int actin::iteration_num;
 
@@ -263,7 +263,19 @@ if (!REWRITESYMBREAK)
 	// so process would halt on single cpu machine
 
 #ifndef _WIN32
-	nice(10);
+    char hostname[255];
+    gethostname( hostname, 255);
+    if (strcmp( hostname, "adenine.cgl.ucsf.edu") == 0 ||
+        strcmp( hostname, "cytosine.cgl.ucsf.edu") == 0||
+        strcmp( hostname, "thymine.cgl.ucsf.edu") == 0||
+        strcmp( hostname, "uracil.cgl.ucsf.edu")== 0 )
+    {
+        // don't renice for small socrates nodes
+    }
+    else
+    {
+	    nice(10);
+    }
 #else
 	//SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_LOWEST);
 #endif
@@ -800,7 +812,6 @@ if (NUCSHAPE == nucleator::capsule)
 	int filenum = 0;
 
     char last_symbreak_bmp_filename[255] = "";
-	
 
 	cout << "Starting iterations..." << endl;
 	cout << "(Press 'q' to abort run)" << endl << endl;
@@ -811,6 +822,9 @@ if (NUCSHAPE == nucleator::capsule)
 
 	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++)
 	{
+
+        
+
 		filenum = (int)(i/InterRecordIterations);
 
 		if (kbhit())
@@ -844,6 +858,8 @@ if (NUCSHAPE == nucleator::capsule)
 
 		if ((nowtime > lasttime) || ((i % InterRecordIterations) == 1))
 		{
+            theactin.keep_mem_resident();            
+
 			lasttime = nowtime;
 			theactin.find_center(center);
 			distfromorigin = center.length();
@@ -938,7 +954,7 @@ srand( rand_num_seed );
 			theactin.opruninfo << "|S" << setw(3) <<  (int)filenum  
 				<< "/" << NUMBER_RECORDINGS << endl ;
 
-            // don't use vrml anymore, so don't bother with it for now
+            // we don't use vrml anymore, so don't bother with it for now
 			// theactin.savevrml(filenum);
 
              if (((i % (5 * InterRecordIterations)) == 0) 

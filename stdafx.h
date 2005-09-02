@@ -88,8 +88,12 @@ removed without prior written permission from the author.
 #include <sys/timeb.h>
 #include <vector> 
 
+
+
 #ifndef _WIN32
 	#include <unistd.h>
+    #include <sys/mman.h>
+    #include <numa.h>
 #else
 	//#include <Windows.h>
 #endif
@@ -295,7 +299,6 @@ const int MAXNODES = 50000;			// max nodes
 #define HIST_MAX 3.0
 #define HIST_BINS 20
 
-extern const double RECIP_RAND_MAX;
 
 extern int TOTAL_ITERATIONS;  // these variables are global and are calculated from others
 extern int NODE_REPULSIVE_GRIDSEARCH;
@@ -304,6 +307,8 @@ extern int NODE_XLINK_GRIDSEARCH;
 //extern int GRIDSIZE;
 const int GRIDSIZE =  (int) (GRIDBOUNDS/GRIDRES);
 
+//extern const double RECIP_RAND_MAX;
+const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);
 const double PI = (double) 3.141592653589793238462643383279502884197; // Pi
 const double LN_TWO = (double) 0.69314718055995; // ln(2)
 
