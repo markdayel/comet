@@ -14,7 +14,7 @@ removed without prior written permission from the author.
 
 #include "stdafx.h"
 #include "comet.h"
-#include "threadtaskteam.h"
+#include "threadedtaskqueue.h"
 
 // #include "nucleator.h"
 // #include "string.h"
@@ -123,9 +123,7 @@ double VIEW_HEIGHT = 12;
 bool USE_THREADS;
 int NUM_THREADS;
 //-- ThreadTaskTeam
-taskteam collision_tteam;
-taskteam linkforces_tteam;
-taskteam applyforces_tteam;
+TaskQueue thread_queue;
 //pthread_mutex_t removelinks_mutex;
 //pthread_mutex_t nodedone_mutex;
 bool USETHREAD_COLLISION   = true;
@@ -134,8 +132,7 @@ bool USETHREAD_LINKFORCES  = true;
 // --
 
 pthread_attr_t thread_attr;
-
-vector<pthread_t>  threads;
+vector<pthread_t> threads;
 
 vector<struct thread_data>  collision_thread_data_array;
 vector<struct thread_data>  linkforces_thread_data_array;
@@ -623,33 +620,17 @@ if (!REWRITESYMBREAK)
 		exit(EXIT_SUCCESS);
 	}
 
-    // create threads:
-
-    collision_thread_data_array.resize(NUM_THREADS+1);
+	// create threads:
+	// data for threads (managed outside queue
+	collision_thread_data_array.resize(NUM_THREADS+1);
 	linkforces_thread_data_array.resize(NUM_THREADS+1);
-    applyforces_thread_data_array.resize(NUM_THREADS+1);
+	applyforces_thread_data_array.resize(NUM_THREADS+1);
     
 	// -- Threading TaskTeam, create and intialise the team
-    if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
-    {
-        if (USETHREAD_COLLISION)
-        {	
-            collision_tteam.create_team(NUM_THREADS);
-	        collision_tteam.set_taskfcn(&actin::collisiondetectiondowork);
-        }
-
-        if (USETHREAD_LINKFORCES)
-        {
-	        linkforces_tteam.create_team(NUM_THREADS);
-	        linkforces_tteam.set_taskfcn(&actin::linkforcesdowork);
-        }
-
-        if (USETHREAD_APPLYFORCES)
-        {
-	        applyforces_tteam.create_team(NUM_THREADS);
-	        applyforces_tteam.set_taskfcn(&actin::applyforcesdowork);
-        }
-    }
+	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
+	{
+	    thread_queue.create_threads(NUM_THREADS);
+	}
 
 	// write out parameters to screen
 

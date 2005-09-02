@@ -697,29 +697,29 @@ int actin::collisiondetection(void)
     fill(donenode.begin(), donenode.begin()+highestnodecount, false);
     
     // do collision detection
-
+    
     if(USE_THREADS && USETHREAD_COLLISION)
     {
-	    for (int i = 0; i < NUM_THREADS; i++)
-	    {
+	for (int i = 0; i < NUM_THREADS; i++)
+	{
             // threads use the nodes_by_thread array
             // so don't need to pass work here
-            collision_thread_data_array[i].startnode = 0;
-	        collision_thread_data_array[i].endnode = 0;
-	        collision_thread_data_array[i].threadnum = i;
-    	    
-	        collision_tteam.add_task(&collision_thread_data_array[i]);
-	    }
-
-	    collision_tteam.do_work();
+	    collision_thread_data_array[i].startnode = 0;
+	    collision_thread_data_array[i].endnode = 0;
+	    collision_thread_data_array[i].threadnum = i;
+	    
+	    thread_queue.queue_task(&collisiondetectiondowork, &collision_thread_data_array[i]);
+	}
+	
+	thread_queue.complete_current_tasks();
     } 
     else 
     {
         // if not using threads, do in one go:
-	    collision_thread_data_array[0].startnode = 0;
-	    collision_thread_data_array[0].endnode = 0;
-	    collision_thread_data_array[0].threadnum = 0;
-	    collisiondetectiondowork(&collision_thread_data_array[0], NULL);
+	collision_thread_data_array[0].startnode = 0;
+	collision_thread_data_array[0].endnode = 0;
+	collision_thread_data_array[0].threadnum = 0;
+	collisiondetectiondowork(&collision_thread_data_array[0], NULL);
     }
     
     return 0;
@@ -1416,18 +1416,18 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
   	        applyforces_thread_data_array[i].startnode = start;
 	        applyforces_thread_data_array[i].endnode = end;
 	        applyforces_thread_data_array[i].threadnum = i;
+		
+	        thread_queue.queue_task(&applyforcesdowork, &applyforces_thread_data_array[i]);
+	    }
 	    
-	        applyforces_tteam.add_task(&applyforces_thread_data_array[i]);
-        }
-
-	    applyforces_tteam.do_work();
+	    thread_queue.complete_current_tasks();
     } 
     else 
     {
-	    applyforces_thread_data_array[0].startnode = lowestnodetoupdate;
-	    applyforces_thread_data_array[0].endnode = highestnodecount;
-	    applyforces_thread_data_array[0].threadnum = 0;
-
+	applyforces_thread_data_array[0].startnode = lowestnodetoupdate;
+	applyforces_thread_data_array[0].endnode = highestnodecount;
+	applyforces_thread_data_array[0].threadnum = 0;
+	
         applyforcesdowork(&applyforces_thread_data_array[0], NULL);
     }
     
@@ -1527,10 +1527,10 @@ int actin::linkforces()
 	        linkforces_thread_data_array[i].endnode = end;
 	        linkforces_thread_data_array[i].threadnum = i;
     	    
-	        linkforces_tteam.add_task(&linkforces_thread_data_array[i]);
+		thread_queue.queue_task(&linkforcesdowork, &linkforces_thread_data_array[i]);
 	    }
 
-	    linkforces_tteam.do_work();	
+	    thread_queue.complete_current_tasks();
     }
     else
     {
@@ -2746,9 +2746,9 @@ void actin::clear_node_stats(void)
 void actin::keep_mem_resident(void)
 {
 
-#ifndef _WIN32
+#ifdef _NUMA
 
-    nmadvise(&nodegrid, sizeof(nodegrid), MADV_WILLNEED, NULL);
+ nmadvise(&nodegrid, sizeof(nodegrid), MADV_WILLNEED, NULL);
     //madvise((caddr_t)&nodegrid, sizeof(nodegrid), MADV_WILLNEED);
 	for (int i=0; i!=(GRIDSIZE+1); i++)  
 	{

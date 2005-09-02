@@ -91,9 +91,11 @@ removed without prior written permission from the author.
 
 
 #ifndef _WIN32
-	#include <unistd.h>
+    #include <unistd.h>
     #include <sys/mman.h>
+#ifdef _NUMA
     #include <numa.h>
+#endif
 #else
 	//#include <Windows.h>
 #endif
@@ -106,41 +108,41 @@ using namespace std;
 
 // pthreads stuff:
 
-#include "pthread.h"
-#include "semaphore.h"
-#include "threadtaskteam.h"
 //#include "sched.h"
 
 //extern char temp_BMP_filename[];
+
+#include "pthread.h"
+#include "semaphore.h"
+#include "threadedtaskqueue.h"
 
 extern bool VISCOSITY;
 
 extern bool USE_THREADS;
 extern int NUM_THREADS;
+
 //-- Threading
-extern taskteam collision_tteam;
-extern taskteam linkforces_tteam;
-extern taskteam applyforces_tteam;
+extern TaskQueue thread_queue;
 extern bool USETHREAD_LINKFORCES;
 extern bool USETHREAD_APPLYFORCES;
 extern bool USETHREAD_COLLISION;
-//extern pthread_mutex_t removelinks_mutex;
-//extern pthread_mutex_t nodedone_mutex;
 //-- 
 
-extern pthread_attr_t thread_attr;
-
-extern vector<pthread_t>  threads;
+//extern pthread_attr_t thread_attr;
+//extern vector<pthread_t>  threads;
 
 extern vector<struct thread_data>  collision_thread_data_array;
+extern vector<struct thread_data>  linkforces_thread_data_array;
+extern vector<struct thread_data>  applyforces_thread_data_array;
+
 //extern vector<sem_t> collision_thread_go;
 //extern vector<sem_t> collision_data_done;
 
-extern vector<struct thread_data>  linkforces_thread_data_array;
+
 //extern vector<sem_t> linkforces_thread_go;
 //extern vector<sem_t> linkforces_data_done;
 
-extern vector<struct thread_data>  applyforces_thread_data_array;
+
 //extern vector<sem_t> applyforces_thread_go;
 //extern vector<sem_t> applyforces_data_done;
 
@@ -160,9 +162,9 @@ extern vector<struct thread_data>  applyforces_thread_data_array;
 
 struct thread_data
 {
-int startnode;
-int endnode;
-int threadnum;
+  int startnode;
+  int endnode;
+  int threadnum;
 };
 
 
@@ -330,8 +332,6 @@ extern nucleator::shape NUCSHAPE;  //default to sphere
 #include "links.h"
 #include "actin.h"
 #include "vect.h"
-#include "threadtaskteam.h"
-
 
 inline double calcdist(const vect & v1, const vect & v2);
 

@@ -22,7 +22,7 @@ prior written permission from the author.
 #include "nodes.h"
 #include "nucleator.h"
 #include "Colour.h"
-#include "threadtaskteam.h"
+#include "threadedtaskqueue.h"
 //#include <iterator>
 
 //#include "stdafx.h"
