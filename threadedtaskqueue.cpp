@@ -7,7 +7,6 @@
 // static members are not *guaranteed* to have C linkage
 extern "C" void* wrapper_activate_workers(void *my_this)
 {
-  std::cout << "TaskQueueWrapper" << std::endl;
   TaskQueue* the_team = (TaskQueue*) my_this;    
   return the_team->activate_workers();
 }
@@ -30,8 +29,6 @@ TaskQueue::TaskQueue()
     std::cerr << "cond initialisation error" << std::endl;
   }
   ready = false;
-
-  std::cout << "created taskteam :" << this << std::endl;
 }
 
 void TaskQueue::lockteam()
@@ -81,8 +78,6 @@ void TaskQueue::create_threads(const int num_workerthreads)
   lockteam();
   
   workers.resize(num_workerthreads);
-
-  std::cout << "this: " << this << std::endl;
 
   for(int i=0; i<num_workerthreads; ++i){
     pthread_t thread;
