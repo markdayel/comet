@@ -30,6 +30,8 @@ removed without prior written permission from the author.
 
 #endif
 
+#define SYM_BREAK_FILE "sym_break_axis.txt"
+#define SEG_SCALE_FILE "segscalefactors.txt"
 
 #ifndef _WIN32
 
@@ -91,7 +93,7 @@ removed without prior written permission from the author.
 
 
 #ifndef _WIN32
-    #include <unistd.h>
+	#include <unistd.h>
     #include <sys/mman.h>
 #ifdef _NUMA
     #include <numa.h>
@@ -162,9 +164,9 @@ extern vector<struct thread_data>  applyforces_thread_data_array;
 
 struct thread_data
 {
-  int startnode;
-  int endnode;
-  int threadnum;
+int startnode;
+int endnode;
+int threadnum;
 };
 
 

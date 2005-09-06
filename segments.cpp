@@ -1320,13 +1320,14 @@ void segments::save_scalefactors(void)
 	//cout << "'sym_break_axis.txt' file written" << endl;
 }
 
-void segments::load_scalefactors(void)
+bool segments::load_scalefactors(void)
 {
-	ifstream ipscalefact("segscalefactors.txt", ios::in);
+	ifstream ipscalefact(SEG_SCALE_FILE, ios::in);
 
 	if (!ipscalefact) 
 	{ 
 		cout << "Unable to open file 'segscalefactors.txt' for input, skipping." << endl;
+        return false;
 	}
 	else
 	{
@@ -1348,6 +1349,7 @@ void segments::load_scalefactors(void)
                     >> p_actin->imageBmax[2];
 
 		ipscalefact.close();
+        return true;
 	}
 }
 

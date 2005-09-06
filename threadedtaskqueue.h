@@ -36,6 +36,7 @@ public:
     TaskQueue();
     virtual ~TaskQueue() {};
     virtual void* activate_workers();
+    virtual void* do_one_task_set();
     // TODO override copy and assignment cstrs
     virtual void  create_threads(const int num_workerthreads);
     void  queue_task(TaskFcn_ptr task_fcn, void* task_args);

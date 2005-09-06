@@ -188,7 +188,7 @@ public:
 	int load_data(ifstream &ifstrm);
 	void setdontupdates(void);
 	void set_sym_break_axes(void);
-	void load_sym_break_axes(void);
+	bool load_sym_break_axes(void);
 	void save_sym_break_axes(void);
 	void clear_node_stats(void);
 

@@ -472,6 +472,13 @@ int actin::iterate()  // this is the main iteration loop call
 	collisiondetection();	    // calc node-to-node repulsion
 	linkforces();			    // and link forces
 
+
+    if  (USE_THREADS && (USETHREAD_COLLISION || USETHREAD_LINKFORCES))
+    {
+        thread_queue.complete_current_tasks();
+    }
+
+
 	ejectfromnucleator();	    // do forcable node ejection
 	
 	move_and_rotate();		    // move and rotation of the actin based on 
@@ -697,29 +704,29 @@ int actin::collisiondetection(void)
     fill(donenode.begin(), donenode.begin()+highestnodecount, false);
     
     // do collision detection
-    
+
     if(USE_THREADS && USETHREAD_COLLISION)
     {
-	for (int i = 0; i < NUM_THREADS; i++)
-	{
+	    for (int i = 0; i < NUM_THREADS; i++)
+	    {
             // threads use the nodes_by_thread array
             // so don't need to pass work here
-	    collision_thread_data_array[i].startnode = 0;
-	    collision_thread_data_array[i].endnode = 0;
-	    collision_thread_data_array[i].threadnum = i;
-	    
+            collision_thread_data_array[i].startnode = 0;
+	        collision_thread_data_array[i].endnode = 0;
+	        collision_thread_data_array[i].threadnum = i;
+    	    
 	    thread_queue.queue_task(&collisiondetectiondowork, &collision_thread_data_array[i]);
-	}
-	
-	thread_queue.complete_current_tasks();
+	    }
+
+	//thread_queue.complete_current_tasks();
     } 
     else 
     {
         // if not using threads, do in one go:
-	collision_thread_data_array[0].startnode = 0;
-	collision_thread_data_array[0].endnode = 0;
-	collision_thread_data_array[0].threadnum = 0;
-	collisiondetectiondowork(&collision_thread_data_array[0], NULL);
+	    collision_thread_data_array[0].startnode = 0;
+	    collision_thread_data_array[0].endnode = 0;
+	    collision_thread_data_array[0].threadnum = 0;
+	    collisiondetectiondowork(&collision_thread_data_array[0], NULL);
     }
     
     return 0;
@@ -1416,18 +1423,18 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
   	        applyforces_thread_data_array[i].startnode = start;
 	        applyforces_thread_data_array[i].endnode = end;
 	        applyforces_thread_data_array[i].threadnum = i;
-		
-	        thread_queue.queue_task(&applyforcesdowork, &applyforces_thread_data_array[i]);
-	    }
 	    
+	        thread_queue.queue_task(&applyforcesdowork, &applyforces_thread_data_array[i]);
+        }
+
 	    thread_queue.complete_current_tasks();
     } 
     else 
     {
-	applyforces_thread_data_array[0].startnode = lowestnodetoupdate;
-	applyforces_thread_data_array[0].endnode = highestnodecount;
-	applyforces_thread_data_array[0].threadnum = 0;
-	
+	    applyforces_thread_data_array[0].startnode = lowestnodetoupdate;
+	    applyforces_thread_data_array[0].endnode = highestnodecount;
+	    applyforces_thread_data_array[0].threadnum = 0;
+
         applyforcesdowork(&applyforces_thread_data_array[0], NULL);
     }
     
@@ -1530,7 +1537,7 @@ int actin::linkforces()
 		thread_queue.queue_task(&linkforcesdowork, &linkforces_thread_data_array[i]);
 	    }
 
-	    thread_queue.complete_current_tasks();
+	    //thread_queue.complete_current_tasks();
     }
     else
     {
@@ -2700,7 +2707,7 @@ void actin::set_sym_break_axes(void)
 
 void actin::save_sym_break_axes(void)
 {
-	ofstream opsymbreak("sym_break_axis.txt", ios::out | ios::trunc);
+	ofstream opsymbreak(SYM_BREAK_FILE, ios::out | ios::trunc);
 	if (!opsymbreak) 
 	{ cout << "Unable to open file 'sym_break_axis.txt' for output"; return;}
 
@@ -2713,13 +2720,14 @@ void actin::save_sym_break_axes(void)
 	//cout << "'sym_break_axis.txt' file written" << endl;
 }
 
-void actin::load_sym_break_axes(void)
+bool actin::load_sym_break_axes(void)
 {
 	ifstream ipsymbreak("sym_break_axis.txt", ios::in);
 
 	if (!ipsymbreak) 
 	{ 
 		cout << "Unable to open file 'sym_break_axis.txt' for input, skipping." << endl;
+        return false;
 	}
 	else
 	{
@@ -2728,6 +2736,7 @@ void actin::load_sym_break_axes(void)
 					>> reverse_camera_rotation;
 
 		ipsymbreak.close();
+        return true;
 	}
 }
 

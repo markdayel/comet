@@ -114,11 +114,19 @@ void TaskQueue::wait_to_finish_tasks()
 {
   int err;
   lockteam();
-  
-  while( ntasks_todo != 0  ) {
-    err = pthread_cond_wait(&finish, &mutex);
-    if(err != 0){
-      std::cerr << "error waiting for work" << std::endl;
+
+  while( ntasks_todo != 0  ) 
+  {
+    unlockteam();
+    do_one_task_set();
+    lockteam();
+    if (ntasks_todo != 0)
+    {
+        err = pthread_cond_wait(&finish, &mutex);
+        if(err != 0)
+        {
+            std::cerr << "error waiting for work" << std::endl;
+        }
     }
   }    
   ready = false;
@@ -138,42 +146,93 @@ void TaskQueue::complete_current_tasks()
 // Treat as a private/protected member fcn
 void* TaskQueue::activate_workers()
 {
-  int err;
+    int err;
   
-  while(true) { // FIXME allow thread termination?
+    while(true) 
+    { // FIXME allow thread termination?
     
-    lockteam();		
-    // wait until there is some work to do
-    while( !ready || tasks.empty() ) {
-      err = pthread_cond_wait(&start, &mutex);
-      if(err != 0){
-	std::cerr << "start error" << std::endl;
-      }
-    }
+        lockteam();		
+        // wait until there is some work to do
+        while( !ready || tasks.empty() ) 
+        {
+            err = pthread_cond_wait(&start, &mutex);
+            if(err != 0)
+            {
+	            std::cerr << "start error" << std::endl;
+            }
+        }
     
-    // get the next work unit
-    TaskDetails task = tasks.front();
-    tasks.pop();
-    unlockteam();
-    
-    // Call the fcn to perform the task
-    task.fcn(task.args, &mutex);
+        // get the next work unit
+        TaskDetails task = tasks.front();
+        tasks.pop();
+        unlockteam();
+        
+        // Call the fcn to perform the task
+        task.fcn(task.args, &mutex);
 
-    lockteam();
-    ntasks_todo--;
-    // check if all the work is done
-    // not same as tasks.empty(), as tasks can be in process
-    // of executing.
-    if( ntasks_todo == 0 ) {
-      // indicate that we are done
-      err = pthread_cond_broadcast(&finish);
-      if(err != 0){
-	std::cerr << "finish error" << std::endl;
-      }
-    }
+        lockteam();
+        ntasks_todo--;
+
+        // check if all the work is done
+        // not same as tasks.empty(), as tasks can be in process
+        // of executing.
+        if( ntasks_todo == 0 ) 
+        {
+            // indicate that we are done
+            err = pthread_cond_broadcast(&finish);
+            if(err != 0)
+            {
+	            std::cerr << "finish error" << std::endl;
+            }
+        }
+
     unlockteam();
   }
   // UNREACHABLE ...
   return 0;
 }
 
+void* TaskQueue::do_one_task_set()
+{
+    int err;
+
+    lockteam();		
+
+    // check if anything to do, if not, return.
+    if (tasks.empty())
+    {
+        unlockteam();
+        return 0;
+    }
+
+    while(!tasks.empty()) 
+    {
+        // get the next work unit
+        TaskDetails task = tasks.front();
+        tasks.pop();
+        unlockteam();
+        
+        // Call the fcn to perform the task
+        task.fcn(task.args, &mutex);
+
+        lockteam();
+        ntasks_todo--;
+
+        // check if all the work is done
+        // not same as tasks.empty(), as tasks can be in process
+        // of executing.
+        if( ntasks_todo == 0 ) 
+        {
+            // indicate that we are done
+            err = pthread_cond_broadcast(&finish);
+            if(err != 0)
+            {
+	            std::cerr << "finish error" << std::endl;
+            }
+        }
+
+    }
+    
+    unlockteam();
+    return 0;
+}

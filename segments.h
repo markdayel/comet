@@ -69,7 +69,7 @@ public:
 
 	void setbitmapcoords();
 
-    void load_scalefactors(void);
+    bool load_scalefactors(void);
     void save_scalefactors(void);
 
 	//void clearsurfaceimpacts(void);

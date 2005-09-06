@@ -29,8 +29,6 @@ double GAUSSFWHM =  0.266;
 
 bool NUCLEATOR_FORCES = true;
 
-//const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);
-
 int BMP_WIDTH = 800;
 int BMP_HEIGHT = 600;
 
@@ -170,12 +168,16 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations);
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
+#define NOKBHIT 1
+
+#ifndef NOKBHIT
 #ifndef _WIN32
 	#include "kbhit.h"
 	#define kbhit keyb.kbhit
     #define getch keyb.getch
 #else
 	#include <conio.h>
+#endif
 #endif
 
 // main 
@@ -195,8 +197,10 @@ int main(int argc, char* argv[])
 
 	char command1[255];
 
+#ifndef NOKBHIT
 #ifndef _WIN32
-keyboard keyb;
+    keyboard keyb;
+#endif
 #endif
 
 #ifndef _WIN32
@@ -588,9 +592,7 @@ if (!REWRITESYMBREAK)
 	param.close();
 
 
-
-
-	// calculate commonly used constant's from parameters:
+	// calculate commonly used constants from parameters:
 
 	TOTAL_ITERATIONS = (int) (((double)TOTAL_SIMULATION_TIME / (double)DELTA_T)+0.5);
 
@@ -732,7 +734,7 @@ if (NUCSHAPE == nucleator::capsule)
 
 	double distfromorigin = 0;
 
-	double x_angle, y_angle, z_angle;
+	double x_angle, y_angle, z_angle, tot_rot;
 
 	bool DISTANCE_TO_UPDATE_reached = false;
 
@@ -784,6 +786,8 @@ if (NUCSHAPE == nucleator::capsule)
 		system(command1);
 		sprintf(command1, "rm -f %s*.wrl %s*.txt 2>/dev/null", TEMPDIR, TEMPDIR );
 		system(command1);
+        sprintf(command1, "rm -f %s 2>/dev/null", SYM_BREAK_FILE );
+		system(command1);        
 
 		cout << "done." << endl;
 #endif
@@ -804,33 +808,7 @@ if (NUCSHAPE == nucleator::capsule)
 	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++)
 	{
 
-        
-
 		filenum = (int)(i/InterRecordIterations);
-
-		if (kbhit())
-		{
-			int ch = getch();
-			if (( ch=='q' ) || ( ch=='Q'))
-			{
-				cout << endl << "Abort run(y/n)?";
-				cout.flush();
-				int ch;
-
-				do { ch = getch(); } while (( ch=='q' ) || ( ch=='Q'));
-
-				if (( ch=='y' ) || ( ch=='Y'))
-				{
-					cout << "y - Run aborted" << endl;
-					cout.flush();
-					break;
-				}
-				else
-				{
-					cout << "\r";
-				}
-			}
-		}
 
 		/*if ((i % 10) == 1)
 			srand( rand_num_seed );*/
@@ -839,11 +817,40 @@ if (NUCSHAPE == nucleator::capsule)
 
 		if ((nowtime > lasttime) || ((i % InterRecordIterations) == 1))
 		{
-            theactin.keep_mem_resident();            
+
+#ifndef NOKBHIT
+            if (kbhit())  // taken out of main loop
+		    {
+			    int ch = getch();
+			    if (( ch=='q' ) || ( ch=='Q'))
+			    {
+				    cout << endl << "Abort run(y/n)?";
+				    cout.flush();
+				    int ch;
+
+				    do { ch = getch(); } while (( ch=='q' ) || ( ch=='Q'));
+
+				    if (( ch=='y' ) || ( ch=='Y'))
+				    {
+					    cout << "y - Run aborted" << endl;
+					    cout.flush();
+					    break;
+				    }
+				    else
+				    {
+					    cout << "\r";
+				    }
+			    }
+		    }
+
+#endif
+            //theactin.keep_mem_resident();            
 
 			lasttime = nowtime;
 			theactin.find_center(center);
 			distfromorigin = center.length();
+            nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
+            tot_rot = fabs(x_angle) + fabs(y_angle) + fabs(z_angle);
 		
 			if ((!DISTANCE_TO_UPDATE_reached) && (DISTANCE_TO_UPDATE > 0.01) 
 				&& (distfromorigin > (DISTANCE_TO_UPDATE*RADIUS)))
@@ -854,20 +861,21 @@ if (NUCSHAPE == nucleator::capsule)
 					<< " updating only newest " << NODES_TO_UPDATE << " nodes" << endl;
 			}
 
-			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
 
 			cout << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
 			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
 			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
-			<< "|x " << setw(6) << setprecision(3) << center.x
-			<< "|y " << setw(6) << setprecision(3) << center.y
-			<< "|z " << setw(6) << setprecision(3) << center.z			
-			<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
-			<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
-			<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
+            << "|d " << setw(6) << setprecision(3) << distfromorigin
+			//<< "|x " << setw(6) << setprecision(3) << center.x
+			//<< "|y " << setw(6) << setprecision(3) << center.y
+			//<< "|z " << setw(6) << setprecision(3) << center.z	
+            << "|Dir " << setw(6) << setprecision(1) << (180/PI) * tot_rot
+			//<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
+			//<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
+			//<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
 			<< "|NR " << setw(6) <<  theactin.num_rotate	
-			<< "|ND " << setw(6) <<  theactin.num_displace
+			//<< "|ND " << setw(6) <<  theactin.num_displace
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime) << "\r";
 
 			cout.flush();
@@ -884,8 +892,11 @@ if (NUCSHAPE == nucleator::capsule)
 srand( rand_num_seed );
 
 #endif
-			theactin.setdontupdates();
+
 			theactin.find_center(center);
+			distfromorigin = center.length();
+            nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
+            tot_rot = fabs(x_angle) + fabs(y_angle) + fabs(z_angle);
 			
 			delta_center = center - last_center;  
 			last_center = center;
@@ -903,14 +914,15 @@ srand( rand_num_seed );
 			<< "|N"<< setw(6)<< theactin.highestnodecount
 			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
 			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
-			<< "|x " << setw(6) << setprecision(3) << center.x
-			<< "|y " << setw(6) << setprecision(3) << center.y
-			<< "|z " << setw(6) << setprecision(3) << center.z			
-			<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
-			<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
-			<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
-			<< "|NR " << setw(6) <<  theactin.num_rotate	
-			<< "|ND " << setw(6) <<  theactin.num_displace	
+            << "|d " << setw(6) << setprecision(3) << distfromorigin
+			//<< "|x " << setw(6) << setprecision(3) << center.x
+			//<< "|y " << setw(6) << setprecision(3) << center.y
+			//<< "|z " << setw(6) << setprecision(3) << center.z	
+            << "|Dir " << setw(6) << setprecision(1) << (180/PI) * tot_rot
+			//<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
+			//<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
+			//<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
+			<< "|NR " << setw(6) <<  theactin.num_rotate
 			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
 
 			cout << "|S " << setw(3) <<  (int)filenum  
@@ -942,8 +954,7 @@ srand( rand_num_seed );
                  && (!theactin.brokensymmetry) && (theactin.BMP_intensity_scaling == true))
              {
                 nuc_object.segs.addallnodes();  // put node data into segment bins
-                nuc_object.segs.set_scale_factors();                
-                
+                nuc_object.segs.set_scale_factors();
 
                 // calculate but don't write bitmaps to get scaling factors
 			    theactin.savebmp(filenum, actin::xaxis, actin::runfg, false);
@@ -1216,21 +1227,23 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 {
 
 	int filenum;
+    theactin.load_sym_break_axes();
 
-	theactin.load_sym_break_axes();
-    nuc_object.segs.load_scalefactors();
+	if (nuc_object.segs.load_scalefactors())
+    {
+        // if we're able to load the scale factors
+        // turn off the auto-scaling
+        theactin.BMP_intensity_scaling = false;
+    }
 
-    // fix the bitmap scaling
-    theactin.BMP_intensity_scaling = false;
-
-    for(vector<int>::iterator iteration = postprocess_iterations.begin(); 
-		iteration != postprocess_iterations.end(); ++iteration)
+    for(vector<int>::iterator iteration = postprocess_iterations.end()-1; 
+		iteration >= postprocess_iterations.begin(); ++iteration)
 	{
 		filenum = (int)(*iteration/InterRecordIterations);
 
 		//cout << "Post processing iteration " << *iteration << ": ";
 		cout << "Post processing frame " << filenum << "/" 
-			 << (*postprocess_iterations.end()/InterRecordIterations) << ": ";
+			 << ((*postprocess_iterations.end())/InterRecordIterations) << ": ";
 
 		load_data(theactin, *iteration);
 
@@ -1259,17 +1272,21 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 {
 
 	int filenum;
+    theactin.load_sym_break_axes();
 
-	theactin.load_sym_break_axes();
-    nuc_object.segs.load_scalefactors();
+	if (nuc_object.segs.load_scalefactors())
+    {
+        // if we're able to load the scale factors
+        // turn off the auto-scaling
+        theactin.BMP_intensity_scaling = false;
+    }
 
-    // fix the bitmap scaling
-    theactin.BMP_intensity_scaling = false;
-
-	//cout << " InterRecordIterations " << InterRecordIterations
+    //cout << " InterRecordIterations " << InterRecordIterations
 	//	 << " theactin.symbreakiter " << theactin.symbreakiter << endl;
 
-    for(int i =  theactin.symbreakiter - InterRecordIterations; i > 0; i-=InterRecordIterations)
+    // go in reverse order, in case we're autoscaling
+
+    for(int i = theactin.symbreakiter - InterRecordIterations; i > 0; i-=InterRecordIterations)
 	{
 		filenum = (int)(i/InterRecordIterations);
 
