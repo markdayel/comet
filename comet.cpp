@@ -631,7 +631,7 @@ if (!REWRITESYMBREAK)
 	// -- Threading TaskTeam, create and intialise the team
 	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
 	{
-	    thread_queue.create_threads(NUM_THREADS);
+	    thread_queue.create_threads(NUM_THREADS-1);
 	}
 
 	// write out parameters to screen
