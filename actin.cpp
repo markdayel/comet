@@ -466,8 +466,7 @@ int actin::iterate()  // this is the main iteration loop call
 	crosslinknodesdelay[iteration_num % CROSSLINKDELAY] = numnewnodes;
 	crosslinknewnodes(crosslinknodesdelay[(iteration_num + 1) % CROSSLINKDELAY]);
 	
-	//if (numnewnodes > 0)
-        sortnodesbygridpoint(); // sort the nodes so they can be divided sanely between threads
+    sortnodesbygridpoint(); // sort the nodes so they can be divided sanely between threads
 
 	collisiondetection();	    // calc node-to-node repulsion
 	linkforces();			    // and link forces
@@ -562,45 +561,58 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 
 void actin::ejectfromnucleator()
 {
-	vect nodeposvec, oldnucposn;
-	nodes *nodeptr, *startnodeptr;
+//	vect nodeposvec, oldnucposn;
+//	nodes *nodeptr, *startnodeptr;
+//
+////  check node-nucleator repulsion
+//// collect the nodes:
+//
+//	nodes_within_nucleator.resize(0);
+//
+//	for (vector <int_vect>::iterator i=nucleatorgrid.begin(); i<nucleatorgrid.end() ; i++ )
+//	{	 
+//		nodeptr=nodegrid[i->x][i->y][i->z];
+//		startnodeptr=nodeptr;
+//			if (nodeptr!=0) 
+//			{
+//				do
+//				{
+//					if ((p_nuc->iswithinnucleator(nodeptr->x,nodeptr->y,nodeptr->z))
+//						&& (nodeptr->polymer))
+//					{	// inside nucleator
+//						nodes_within_nucleator.push_back(nodeptr);						
+//					}
+//
+//					nodeptr = nodeptr->nextnode;
+//				}
+//				while (nodeptr!=startnodeptr);  //until back to start
+//				
+//			}
+//	}
+//
+//	oldnucposn = p_nuc->position;
+//
+//	// do the ejection:
+//
+//	for (vector <nodes*>::iterator i=nodes_within_nucleator.begin(); i<nodes_within_nucleator.end() ; i++ )
+//	{  //eject them
+//		if (p_nuc->collision(*(*i))) // (*i)->x,(*i)->y,(*i)->z)==0)  
+//			(*i)->updategrid();  // ejected OK
+//		else
+//			(*i)->depolymerize();  // not ejected OK, depolymerize
+//	}
 
-//  check node-nucleator repulsion
-// collect the nodes:
+    // now using insidenucleator flag set in setunitvec() of node
 
-	nodes_within_nucleator.resize(0);
-
-	for (vector <int_vect>::iterator i=nucleatorgrid.begin(); i<nucleatorgrid.end() ; i++ )
-	{	 
-		nodeptr=nodegrid[i->x][i->y][i->z];
-		startnodeptr=nodeptr;
-			if (nodeptr!=0) 
-			{
-				do
-				{
-					if ((p_nuc->iswithinnucleator(nodeptr->x,nodeptr->y,nodeptr->z))
-						&& (nodeptr->polymer))
-					{	// inside nucleator
-						nodes_within_nucleator.push_back(nodeptr);						
-					}
-
-					nodeptr = nodeptr->nextnode;
-				}
-				while (nodeptr!=startnodeptr);  //until back to start
-				
-			}
-	}
-
-	oldnucposn = p_nuc->position;
-
-	// do the ejection:
-
-	for (vector <nodes*>::iterator i=nodes_within_nucleator.begin(); i<nodes_within_nucleator.end() ; i++ )
-	{  //eject them
-		if (p_nuc->collision(*(*i))) // (*i)->x,(*i)->y,(*i)->z)==0)  
-			(*i)->updategrid();  // ejected OK
-		else
-			(*i)->depolymerize();  // not ejected OK, depolymerize
+    for (int i=lowestnodetoupdate; i<highestnodecount; ++i)
+	{
+        if (node[i].insidenucleator)            
+        {   
+            if (p_nuc->collision(node[i])) // (*i)->x,(*i)->y,(*i)->z)==0)  
+			    node[i].updategrid();  // ejected OK
+		    else
+			    node[i].depolymerize();  // not ejected OK, depolymerize
+        }
 	}
 
 }

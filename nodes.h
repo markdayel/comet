@@ -53,6 +53,8 @@ public:
 	
 	double nucleator_impacts;
 
+    bool insidenucleator;
+
 
 	int gridx, gridy, gridz;
 	vect delta;
@@ -111,7 +113,12 @@ public:
 
 		if (NUCSHAPE == nucleator::sphere)
 		{
-			unit_vec_posn = this->unitvec();  // set unit vector position
+            double len = this->length();
+            unit_vec_posn = *this * (1/len);  // set unit vector position
+            if (len < RADIUS)
+                insidenucleator = true;
+            else
+                insidenucleator = false;
 		}
 		else
 		{	// capsule
@@ -119,7 +126,13 @@ public:
 			{  // on cylinder, no z component
 				double len = calcdist(x,y);
 				unit_vec_posn = vect(x/len, y/len, 0);
+
 				onseg = true;
+
+                if (len < RADIUS)
+                    insidenucleator = true;
+                else
+                    insidenucleator = false;
 			}
 			else
 			{	// on ends
@@ -130,13 +143,29 @@ public:
 				{
 					vect offsetvec = *this;
 					offsetvec.z -= CAPSULE_HALF_LINEAR;
-					unit_vec_posn = offsetvec.unitvec();
+
+                    double len = offsetvec.length();
+
+                    unit_vec_posn = offsetvec * (1/len);  // set unit vector position
+
+					if (len < RADIUS)
+                        insidenucleator = true;
+                    else
+                        insidenucleator = false;
 				}
 				else
 				{
 					vect offsetvec = *this;
 					offsetvec.z += CAPSULE_HALF_LINEAR;
-					unit_vec_posn = offsetvec.unitvec();
+
+                    double len = offsetvec.length();
+
+                    unit_vec_posn = offsetvec * (1/len);  // set unit vector position
+
+					if (len < RADIUS)
+                        insidenucleator = true;
+                    else
+                        insidenucleator = false;
 				}	
 			}
 		}

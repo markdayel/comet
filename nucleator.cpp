@@ -448,7 +448,7 @@ int nucleator::definenucleatorgrid(void)
 
 
 bool nucleator::iswithinnucleator(const double& x, const double& y, const double& z)
-{
+{   // this function is defunct.  Check now done inside setunitvec() of node
 	switch (geometry)
 	{
 	case (sphere):
@@ -575,6 +575,8 @@ if (ROTATION)
 	torque.y += ((oldpos.z-centerofmass.z)*node_disp.x - (oldpos.x-centerofmass.x)*node_disp.z);
 	torque.z += ((oldpos.x-centerofmass.x)*node_disp.y - (oldpos.y-centerofmass.y)*node_disp.x);
 }
+
+    node.insidenucleator = false;
 
 	return true; // sucessful node ejection
 }

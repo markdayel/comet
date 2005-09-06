@@ -801,7 +801,8 @@ if (NUCSHAPE == nucleator::capsule)
 	cout << "Starting iterations..." << endl;
 	cout << "(Press 'q' to abort run)" << endl << endl;
 
-	cout << "Itternum|TotNode|NewLinks|RemLinks|Center_X|Center_Y|Center_Z|Direction                 |Rotations|Displmnts|SnpshTm|SaveNum" << endl << endl;
+	cout << "Itternum|TotNode|NewLinks|RemLinks|distance|Rotation  |Num Rotns|SnpshTm|SaveNum" << endl << endl;
+
 
 	lastitertime = starttime = (unsigned) time( NULL );
 
@@ -870,7 +871,7 @@ if (NUCSHAPE == nucleator::capsule)
 			//<< "|x " << setw(6) << setprecision(3) << center.x
 			//<< "|y " << setw(6) << setprecision(3) << center.y
 			//<< "|z " << setw(6) << setprecision(3) << center.z	
-            << "|Dir " << setw(6) << setprecision(1) << (180/PI) * tot_rot
+            << "|Rot " << setw(6) << setprecision(1) << (180/PI) * tot_rot
 			//<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
 			//<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
 			//<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
@@ -918,7 +919,7 @@ srand( rand_num_seed );
 			//<< "|x " << setw(6) << setprecision(3) << center.x
 			//<< "|y " << setw(6) << setprecision(3) << center.y
 			//<< "|z " << setw(6) << setprecision(3) << center.z	
-            << "|Dir " << setw(6) << setprecision(1) << (180/PI) * tot_rot
+            << "|Rot " << setw(6) << setprecision(1) << (180/PI) * tot_rot
 			//<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
 			//<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
 			//<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle

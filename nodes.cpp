@@ -44,6 +44,7 @@ nodes::nodes(void)
 	unit_vec_posn.zero();
 
 
+    insidenucleator = false;
 	polymer = false;
 	colour.setcol(0);
 	creation_iter_num = 0;
@@ -79,6 +80,7 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 	nodelinksbroken =0;
 	harbinger = false;
 //	dontupdate = false;
+    insidenucleator = false;
 
 	polymerize(set_x,  set_y,  set_z);
 
@@ -124,6 +126,8 @@ void nodes::applyforces_visc()
 
 	*this += delta;
 
+    setunitvec();
+
 	rep_force_vec.zero();
 	link_force_vec.zero();
 	viscous_force_vec.zero();
@@ -145,6 +149,8 @@ void nodes::applyforces_novisc()
     //delta += nuc_repulsion_displacement_vec;  // this is a displacement, therefore not scaled
 
 	*this += delta;
+
+    setunitvec();
 
 	rep_force_vec.zero();
 	link_force_vec.zero();
@@ -279,6 +285,7 @@ int nodes::load_data(ifstream &istrm)
     // because we need to be sure this is the node
     // stored by the actin.  The actin knows that.
 
+    setunitvec();
 	updategrid();
 
     return 0;
@@ -293,7 +300,7 @@ void nodes::updategrid(void)
 	int oldgridz = gridz;
 
 	setgridcoords();				// set gridx,y,z by x,y,z position
-	setunitvec();	
+	//setunitvec();	
 
 	if	((gridx != oldgridx) ||		// has the node moved gridpoints?
 		 (gridy != oldgridy) || 
