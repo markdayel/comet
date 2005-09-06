@@ -55,7 +55,6 @@ public:
 
     bool insidenucleator;
 
-
 	int gridx, gridy, gridz;
 	vect delta;
 	void updategrid(void);
@@ -73,7 +72,9 @@ public:
 	double theta;
 	double phi;
 	int savelinks(ofstream * outstream);
-	//bool dontupdate;
+	bool onseg;
+
+    //bool dontupdate;
 
     //typedef void (nodes::*p_applyforces_fn)();
 
@@ -170,7 +171,8 @@ public:
 			}
 		}
 	}
-	bool onseg;
+
+
 };
 
 #endif

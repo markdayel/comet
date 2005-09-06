@@ -611,6 +611,18 @@ if (!REWRITESYMBREAK)
 		cout << "SPECKLE_FACTOR reset to 1" << endl;
 	}
 
+    // create threads:
+	// -- Threading TaskTeam, create and intialise the team
+	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
+	{
+	    thread_queue.create_threads(NUM_THREADS-1);
+	}
+
+	// data for threads (managed outside queue
+	collision_thread_data_array.resize(NUM_THREADS+1);
+	linkforces_thread_data_array.resize(NUM_THREADS+1);
+	applyforces_thread_data_array.resize(NUM_THREADS+1);
+
 	// create main objects
 	// create as static otherwise exit() doesn't call their destructors (!)
 	static actin theactin;
@@ -620,18 +632,6 @@ if (!REWRITESYMBREAK)
 	{
 		rewrite_symbreak_bitmaps(nuc_object, theactin);
 		exit(EXIT_SUCCESS);
-	}
-
-	// create threads:
-	// data for threads (managed outside queue
-	collision_thread_data_array.resize(NUM_THREADS+1);
-	linkforces_thread_data_array.resize(NUM_THREADS+1);
-	applyforces_thread_data_array.resize(NUM_THREADS+1);
-    
-	// -- Threading TaskTeam, create and intialise the team
-	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
-	{
-	    thread_queue.create_threads(NUM_THREADS-1);
 	}
 
 	// write out parameters to screen
