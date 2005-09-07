@@ -122,6 +122,7 @@ extern bool VISCOSITY;
 
 extern bool USE_THREADS;
 extern int NUM_THREADS;
+extern int NUM_THREAD_DATA_CHUNKS;
 
 //-- Threading
 extern TaskQueue thread_queue;

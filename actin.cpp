@@ -88,26 +88,23 @@ actin::actin(void)
 
 	nucleatorgrid.reserve(5000);
 	
-	// these are reserved 4x the NUM_THREADS because they may run concurrently 
-	// between stages and between threads inside stages
+	recti_near_nodes.resize(NUM_THREAD_DATA_CHUNKS);
+    nodes_on_same_gridpoint.resize(NUM_THREAD_DATA_CHUNKS);
+    nodes_by_thread.resize(NUM_THREAD_DATA_CHUNKS);
 
-	recti_near_nodes.resize(NUM_THREADS*4);
-    nodes_on_same_gridpoint.resize(NUM_THREADS*4);
-    nodes_by_thread.resize(NUM_THREADS*4);
+//    recti_near_nodes_size.resize(NUM_THREAD_DATA_CHUNKS);
+//    nodes_on_same_gridpoint_size.resize(NUM_THREAD_DATA_CHUNKS);
 
-//    recti_near_nodes_size.resize(NUM_THREADS*4);
-//    nodes_on_same_gridpoint_size.resize(NUM_THREADS*4);
+    linkremovefrom.resize(NUM_THREAD_DATA_CHUNKS);
+    linkremoveto.resize(NUM_THREAD_DATA_CHUNKS);
 
-    linkremovefrom.resize(NUM_THREADS);
-    linkremoveto.resize(NUM_THREADS);
-
-	for (int i = 0; i < NUM_THREADS; ++i)
+	for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; ++i)
 	{
 		//recti_near_nodes[i].reserve(MAXNODES);
 		//nodes_on_same_gridpoint[i].reserve(MAXNODES);
-        nodes_by_thread[i].reserve(MAXNODES);
-        linkremovefrom[i].reserve(MAXNODES);
-        linkremoveto[i].reserve(MAXNODES);
+        nodes_by_thread[i].reserve(10000/NUM_THREAD_DATA_CHUNKS);
+        linkremovefrom[i].reserve(100);
+        linkremoveto[i].reserve(100);
 
 //        recti_near_nodes[i].resize(MAXNODES);
 //        nodes_on_same_gridpoint[i].resize(MAXNODES);
@@ -118,7 +115,7 @@ actin::actin(void)
 	}
 
 	nodes_within_nucleator.reserve(10000);
-	linkformto.reserve(100*MAX_LINKS_PER_NODE);
+	linkformto.reserve(100);
 
 
 	cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
@@ -719,7 +716,7 @@ int actin::collisiondetection(void)
 
     if(USE_THREADS && USETHREAD_COLLISION)
     {
-	    for (int i = 0; i < NUM_THREADS; i++)
+	    for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; i++)
 	    {
             // threads use the nodes_by_thread array
             // so don't need to pass work here
@@ -1409,15 +1406,15 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
 #ifndef SEED_INSIDE
     int numthreadnodes, start, end;
     
-    numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREADS;
+    numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREAD_DATA_CHUNKS;
 
     // if there is a remainder, distribute it between the threads
-    if (((highestnodecount-lowestnodetoupdate) % NUM_THREADS) != 0)
+    if (((highestnodecount-lowestnodetoupdate) % NUM_THREAD_DATA_CHUNKS) != 0)
         numthreadnodes += 1;
 
     if (USE_THREADS && USETHREAD_APPLYFORCES)
     {
-	    for (int i = 0; i < NUM_THREADS; i++)
+	    for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; i++)
 	    {
 	        start = i * numthreadnodes + lowestnodetoupdate;
 	        end = (i+1) * numthreadnodes + lowestnodetoupdate;
@@ -1427,9 +1424,9 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
             if (end > highestnodecount)
                 end = highestnodecount;
 
-            //if (i==NUM_THREADS-1)
+            //if (i==NUM_THREAD_DATA_CHUNKS-1)
 	        //{	// put remainder in last thread (cludge for now)
-		       // end += highestnodecount % NUM_THREADS;
+		       // end += highestnodecount % NUM_THREAD_DATA_CHUNKS;
 	        //}
 
   	        applyforces_thread_data_array[i].startnode = start;
@@ -1505,7 +1502,7 @@ int actin::linkforces()
 {
 
     // remove the links for ones that were broken last time
-    for(int threadnum=0; threadnum<NUM_THREADS; ++threadnum)
+    for(int threadnum=0; threadnum<NUM_THREAD_DATA_CHUNKS; ++threadnum)
     {
         for (unsigned int i=0; i<linkremovefrom[threadnum].size() ; ++i )
         {
@@ -1519,15 +1516,15 @@ int actin::linkforces()
    
     int numthreadnodes, start, end;
 
-    numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREADS;
+    numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREAD_DATA_CHUNKS;
 
     // if there is a remainder, distribute it between the threads
-    if (((highestnodecount-lowestnodetoupdate) % NUM_THREADS) != 0)
+    if (((highestnodecount-lowestnodetoupdate) % NUM_THREAD_DATA_CHUNKS) != 0)
         numthreadnodes += 1;
 
     if (USE_THREADS && USETHREAD_LINKFORCES)
     {
-	    for (int i = 0; i < NUM_THREADS; i++)
+	    for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; i++)
 	    {
 	        start = i * numthreadnodes + lowestnodetoupdate;
 	        end = (i+1) * numthreadnodes + lowestnodetoupdate;
@@ -1537,9 +1534,9 @@ int actin::linkforces()
             if (end > highestnodecount)
                 end = highestnodecount;
 
-            //if (i==NUM_THREADS-1)
+            //if (i==NUM_THREAD_DATA_CHUNKS-1)
 	        //{	// put remainder in last thread (cludge for now)
-		       // end += highestnodecount % NUM_THREADS;
+		       // end += highestnodecount % NUM_THREAD_DATA_CHUNKS;
 	        //}
 
 	        linkforces_thread_data_array[i].startnode = start;
@@ -2341,14 +2338,16 @@ void actin::sortnodesbygridpoint(void)
 
 	nodes* nodeptr, *startnodeptr;
 
-	for (int i=0; i<highestnodecount; i++)
+    int i;
+
+	for (i=lowestnodetoupdate; i<highestnodecount; ++i)
 	{
 		donenode[i] = false;
 	}
 
     int threadnum;
 
-    for (threadnum = 0; threadnum < NUM_THREADS; ++threadnum)
+    for (threadnum = 0; threadnum < NUM_THREAD_DATA_CHUNKS; ++threadnum)
     {
         nodes_by_thread[threadnum].resize(0);
     }
@@ -2359,12 +2358,12 @@ void actin::sortnodesbygridpoint(void)
 
 	// int i;
 	//int nodenumber = 0;
-    int tn;
-    size_t threadsize, minsize;
+    //int tn;
+    //size_t threadsize, minsize;
     
     threadnum = 0;
 
-	for (int i=lowestnodetoupdate; i<highestnodecount; ++i)
+	for (i=lowestnodetoupdate; i<highestnodecount; ++i)
 	{	// collect the nodes in gridpoint order...
 
 		if ((donenode[i]) || (!node[i].polymer))
@@ -2385,19 +2384,23 @@ void actin::sortnodesbygridpoint(void)
 			while (nodeptr!=startnodeptr);  //until back to start
 		}
 
-        // find smallest thread queue and put next one in there
+        // just scatter randomly between thread queues
 
-        minsize = MAXNODES;
+        threadnum = (threadnum + 1) % NUM_THREAD_DATA_CHUNKS;
 
-        for (tn = 0; tn < NUM_THREADS; ++tn)
-        {
-            threadsize = nodes_by_thread[tn].size();
-            if (threadsize < minsize)
-            {
-                minsize = threadsize;
-                threadnum = tn;
-            }
-        }
+        //// find smallest thread queue and put next one in there
+
+        //minsize = MAXNODES;
+
+        //for (tn = 0; tn < NUM_THREAD_DATA_CHUNKS; ++tn)
+        //{
+        //    threadsize = nodes_by_thread[tn].size();
+        //    if (threadsize < minsize)
+        //    {
+        //        minsize = threadsize;
+        //        threadnum = tn;
+        //    }
+        //}
 	}
 
 	return;

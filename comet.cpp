@@ -120,6 +120,7 @@ double VIEW_HEIGHT = 12;
 
 bool USE_THREADS;
 int NUM_THREADS;
+int NUM_THREAD_DATA_CHUNKS;
 //-- ThreadTaskTeam
 TaskQueue thread_queue;
 //pthread_mutex_t removelinks_mutex;
@@ -188,7 +189,7 @@ int main(int argc, char* argv[])
 	{
 	    cerr << "Usage:" << endl << endl << argv[0] << " numThreads [R]" << endl << endl;
 	    cerr << "where numThreads is the number of threads to use per calculation stage" << endl;
-	    cerr << "Set numThreads to 0 to run in single threaded mode" << endl;
+	    cerr << "Set numThreads to 1 to run in single threaded mode" << endl;
 	    cerr << "and 'R' sets use of time-based random number seed" << endl << endl;
 	    exit(EXIT_FAILURE);
 	}
@@ -284,7 +285,7 @@ if (!REWRITESYMBREAK)
 
   	NUM_THREADS = atoi(argv[1]);
 
-	if (NUM_THREADS < 1)
+	if (NUM_THREADS < 2)
 	{
 		cout << "Running in Single Threaded mode" << endl;
 		NUM_THREADS = 1;
@@ -292,18 +293,26 @@ if (!REWRITESYMBREAK)
 	}
 	else
 	{
-		cout << "Warning:  Multithreading does not function properly yet!" << endl;
-		if (NUM_THREADS<2)
-			cout << "Running in multithreaded mode with 1 thread per stage" << endl;
-		else
-			cout << "Running in multithreaded mode with " << NUM_THREADS << " threads per stage" << endl;
+		cout << "Running in multithreaded mode with " << NUM_THREADS << " threads (including parent)" << endl;
 		USE_THREADS = true;
 	}
 
+    NUM_THREAD_DATA_CHUNKS = NUM_THREADS * 4;
+
+    // create threads:
+	// -- Threading TaskTeam, create and intialise the team
+	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
+	{
+	    thread_queue.create_threads(NUM_THREADS-1);  // -1 because parent thread counts too
+	}
+
+	// data for threads (managed outside queue
+	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
+	linkforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
+	applyforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
 
 
 	// main parameters:
-
 
 	// read the parameters file:
 
@@ -610,18 +619,6 @@ if (!REWRITESYMBREAK)
         SPECKLE_FACTOR = 1;
 		cout << "SPECKLE_FACTOR reset to 1" << endl;
 	}
-
-    // create threads:
-	// -- Threading TaskTeam, create and intialise the team
-	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
-	{
-	    thread_queue.create_threads(NUM_THREADS-1);
-	}
-
-	// data for threads (managed outside queue
-	collision_thread_data_array.resize(NUM_THREADS+1);
-	linkforces_thread_data_array.resize(NUM_THREADS+1);
-	applyforces_thread_data_array.resize(NUM_THREADS+1);
 
 	// create main objects
 	// create as static otherwise exit() doesn't call their destructors (!)

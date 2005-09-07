@@ -24,17 +24,6 @@ nodes::nodes(void)
 	x = y = z = 0.0;
 	gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
 	
-	//repulsion_displacement_vec = new vect[NUM_THREADS+1];
-	//repulsion_displacement_vec.resize(NUM_THREADS+1);
-	//link_force_vec.resize(NUM_THREADS+1);
-	//rep_force_vec.resize(NUM_THREADS+1);
-
-	//for (int i = 0; i < NUM_THREADS; ++i)
-	//{
-		//repulsion_displacement_vec[i].zero();
-	
-	//}
-
     link_force_vec.zero();
 	rep_force_vec.zero();
     viscous_force_vec.zero();
