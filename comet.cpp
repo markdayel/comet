@@ -133,6 +133,7 @@ bool USETHREAD_LINKFORCES  = true;
 #ifdef _NUMA
     nsgid_t numa_group;
     radset_t radset;
+    cpuset_t cpuset;
 #endif
 
 pthread_attr_t thread_attr;
@@ -222,8 +223,6 @@ int main(int argc, char* argv[])
 		USE_THREADS = true;
 	}
 
-    NUM_THREAD_DATA_CHUNKS = NUM_THREADS * 4;
-
     // create threads:
 	// -- Threading TaskTeam, create and intialise the team
 	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
@@ -232,9 +231,16 @@ int main(int argc, char* argv[])
         radsetcreate(&radset);
         pid_t pid = getpid();
         numa_group = nsg_init(pid, NSG_GETBYPID);
+
+        cpusetcreate(&cpuset);
+        cpuid_t cpu = cpu_get_current();
+        cpuaddset(cpuset, cpu);
 #endif
 	    thread_queue.create_threads(NUM_THREADS-1);  // -1 because parent thread counts too
 	}
+
+
+    NUM_THREAD_DATA_CHUNKS = NUM_THREADS * 4;
 
 	// data for threads (managed outside queue
 	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);

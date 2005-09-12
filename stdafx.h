@@ -103,6 +103,7 @@ removed without prior written permission from the author.
     #include <numa.h>
     extern nsgid_t numa_group;
     extern radset_t radset;
+    extern cpuset_t cpuset;
 #endif
 
 //#include <pstream>
