@@ -75,7 +75,7 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 	ptheactin->p_nuc = this;
 
 	position.zero();
-	definenucleatorgrid();
+	//definenucleatorgrid();
 
 	deltanucposn.zero();
 
@@ -381,70 +381,70 @@ for (vector <vect>::iterator point=cagepoints.begin();
 
 	return 0;
 }
-
-int nucleator::definenucleatorgrid(void)
-{
-
-	int_vect gridpos, lastgridpoint;
-	bool newgridpoint;
-
-	lastgridpoint.x = lastgridpoint.y = lastgridpoint.z = -1;
-
-	// traverse cuboid around shape, and add to nucleatorgrid
-
-	double scalefacrad = ((double)1 + ((double)2)*(double)GRIDRES/RAD_INCOMP);
-
-	cout << "Defining nucleator grid for ";
-	if (geometry==capsule)
-		cout << "capsule...";
-	else
-		cout << "sphere...";
-	cout.flush();
-
-	for (double x=-(double)1.2*(RAD_INCOMP+GRIDRES); x<(double)1.2*(RAD_INCOMP+GRIDRES); x+=GRIDRES/10)
-		for (double y=-(double)1.2*(RAD_INCOMP+GRIDRES); y<(double)1.2*(RAD_INCOMP+GRIDRES); y+=GRIDRES/10)
-			for (double z=-(double)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES); z<(double)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES);z+=GRIDRES/10)
-				{
-					gridpos.x = (((int)(x / GRIDRES)) + (GRIDSIZE/2) );
-					gridpos.y = (((int)(y / GRIDRES)) + (GRIDSIZE/2) );
-					gridpos.z = (((int)(z / GRIDRES)) + (GRIDSIZE/2) );
-
-					if ((gridpos.x==lastgridpoint.x) &&   // is it same point as last one?
-						(gridpos.y==lastgridpoint.y) &&
-						(gridpos.z==lastgridpoint.z))
-						continue;
-
-					lastgridpoint = gridpos;
-
-					if (iswithinnucleator(x/scalefacrad,y/scalefacrad,z/scalefacrad))
-					{
-						newgridpoint = true;
-
-						for (vector <int_vect>::iterator i=ptheactin->nucleatorgrid.begin(); i<ptheactin->nucleatorgrid.end() ; i++ )
-						{	 
-							if ((i->x == gridpos.x) &&
-								(i->y == gridpos.y) &&
-								(i->z == gridpos.z))
-							{
-								newgridpoint = false;
-								break;
-							}
-						}
-	
-						if (newgridpoint)
-						{
-							ptheactin->nucleatorgrid.push_back(gridpos);
-						}
-					}
-
-					
-				}
-
-	cout << "done." << endl;
-	cout << (int) ptheactin->nucleatorgrid.size() << " nucleator gridpoints created" << endl << endl;
-
-	return 0;
-}
+//
+//int nucleator::definenucleatorgrid(void)
+//{
+//
+//	int_vect gridpos, lastgridpoint;
+//	bool newgridpoint;
+//
+//	lastgridpoint.x = lastgridpoint.y = lastgridpoint.z = -1;
+//
+//	// traverse cuboid around shape, and add to nucleatorgrid
+//
+//	double scalefacrad = ((double)1 + ((double)2)*(double)GRIDRES/RAD_INCOMP);
+//
+//	cout << "Defining nucleator grid for ";
+//	if (geometry==capsule)
+//		cout << "capsule...";
+//	else
+//		cout << "sphere...";
+//	cout.flush();
+//
+//	for (double x=-(double)1.2*(RAD_INCOMP+GRIDRES); x<(double)1.2*(RAD_INCOMP+GRIDRES); x+=GRIDRES/10)
+//		for (double y=-(double)1.2*(RAD_INCOMP+GRIDRES); y<(double)1.2*(RAD_INCOMP+GRIDRES); y+=GRIDRES/10)
+//			for (double z=-(double)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES); z<(double)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES);z+=GRIDRES/10)
+//				{
+//					gridpos.x = (((int)(x / GRIDRES)) + (GRIDSIZE/2) );
+//					gridpos.y = (((int)(y / GRIDRES)) + (GRIDSIZE/2) );
+//					gridpos.z = (((int)(z / GRIDRES)) + (GRIDSIZE/2) );
+//
+//					if ((gridpos.x==lastgridpoint.x) &&   // is it same point as last one?
+//						(gridpos.y==lastgridpoint.y) &&
+//						(gridpos.z==lastgridpoint.z))
+//						continue;
+//
+//					lastgridpoint = gridpos;
+//
+//					if (iswithinnucleator(x/scalefacrad,y/scalefacrad,z/scalefacrad))
+//					{
+//						newgridpoint = true;
+//
+//						for (vector <int_vect>::iterator i=ptheactin->nucleatorgrid.begin(); i<ptheactin->nucleatorgrid.end() ; i++ )
+//						{	 
+//							if ((i->x == gridpos.x) &&
+//								(i->y == gridpos.y) &&
+//								(i->z == gridpos.z))
+//							{
+//								newgridpoint = false;
+//								break;
+//							}
+//						}
+//	
+//						if (newgridpoint)
+//						{
+//							ptheactin->nucleatorgrid.push_back(gridpos);
+//						}
+//					}
+//
+//					
+//				}
+//
+//	cout << "done." << endl;
+//	cout << (int) ptheactin->nucleatorgrid.size() << " nucleator gridpoints created" << endl << endl;
+//
+//	return 0;
+//}
 
 
 bool nucleator::iswithinnucleator(const double& x, const double& y, const double& z)

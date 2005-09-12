@@ -130,6 +130,11 @@ bool USETHREAD_APPLYFORCES = true;
 bool USETHREAD_LINKFORCES  = true;
 // --
 
+#ifdef _NUMA
+    nsgid_t numa_group;
+    radset_t radset;
+#endif
+
 pthread_attr_t thread_attr;
 vector<pthread_t> threads;
 
@@ -185,7 +190,7 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
 int main(int argc, char* argv[])
 {
-        if(argc < 2 || argc > 3) 
+    if(argc < 2 || argc > 3) 
 	{
 	    cerr << "Usage:" << endl << endl << argv[0] << " numThreads [R]" << endl << endl;
 	    cerr << "where numThreads is the number of threads to use per calculation stage" << endl;
@@ -193,6 +198,49 @@ int main(int argc, char* argv[])
 	    cerr << "and 'R' sets use of time-based random number seed" << endl << endl;
 	    exit(EXIT_FAILURE);
 	}
+
+    if(argc == 2 &&  strcmp(argv[1], "sym") == 0 ) 
+	{
+		REWRITESYMBREAK = true;
+	}
+	else if(argc > 2 &&  strcmp(argv[1], "post") == 0 ) 
+	{
+        POST_PROCESS = true;
+	}
+ 
+  	NUM_THREADS = atoi(argv[1]);
+
+	if (NUM_THREADS < 2)
+	{
+		cout << "Running in Single Threaded mode" << endl;
+		NUM_THREADS = 1;
+		USE_THREADS = false;
+	}
+	else
+	{
+		cout << "Running in multithreaded mode with " << NUM_THREADS << " threads (including parent)" << endl;
+		USE_THREADS = true;
+	}
+
+    NUM_THREAD_DATA_CHUNKS = NUM_THREADS * 4;
+
+    // create threads:
+	// -- Threading TaskTeam, create and intialise the team
+	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
+	{
+#ifdef _NUMA
+        radsetcreate(&radset);
+        pid_t pid = getpid();
+        numa_group = nsg_init(pid, NSG_GETBYPID);
+#endif
+	    thread_queue.create_threads(NUM_THREADS-1);  // -1 because parent thread counts too
+	}
+
+	// data for threads (managed outside queue
+	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
+	linkforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
+	applyforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
+
 
 	// make directories
 
@@ -218,23 +266,18 @@ int main(int argc, char* argv[])
 	system(command1);
 #endif
 
-
-
-	if(argc == 2 &&  strcmp(argv[1], "sym") == 0 ) 
-	{
-		REWRITESYMBREAK = true;
-	}
-
 	vector<int> postprocess_iterations;
 	postprocess_iterations.resize(0);
-	
-	if(argc > 2 &&  strcmp(argv[1], "post") == 0 ) 
-	{
-	    cout << "Postprocessing iterations: ";
+
+
+
+    if (POST_PROCESS)
+    {
+        cout << "Postprocessing iterations: ";
 	    get_postprocess_iterations(argv[2], postprocess_iterations);
-        POST_PROCESS = true;
-	}
-	else if (!REWRITESYMBREAK)
+    }
+        
+    if (!REWRITESYMBREAK  && !POST_PROCESS)
 	{	// not re-writing symmetry breaking bitmaps or post-processing
 		// so this is a new calculation and no other process is using temp bmp files
 		// and can clear them
@@ -282,34 +325,6 @@ if (!REWRITESYMBREAK)
 	//SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_LOWEST);
 #endif
 }
-
-  	NUM_THREADS = atoi(argv[1]);
-
-	if (NUM_THREADS < 2)
-	{
-		cout << "Running in Single Threaded mode" << endl;
-		NUM_THREADS = 1;
-		USE_THREADS = false;
-	}
-	else
-	{
-		cout << "Running in multithreaded mode with " << NUM_THREADS << " threads (including parent)" << endl;
-		USE_THREADS = true;
-	}
-
-    NUM_THREAD_DATA_CHUNKS = NUM_THREADS * 4;
-
-    // create threads:
-	// -- Threading TaskTeam, create and intialise the team
-	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
-	{
-	    thread_queue.create_threads(NUM_THREADS-1);  // -1 because parent thread counts too
-	}
-
-	// data for threads (managed outside queue
-	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
-	linkforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
-	applyforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
 
 
 	// main parameters:
@@ -765,6 +780,9 @@ if (NUCSHAPE == nucleator::capsule)
 
 	    starting_iter = RESTORE_FROM_ITERATION; 
 		//	starting_iter = RESTORE_FROM_ITERATION + 1; // don't overwrite
+
+        if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
+            theactin.reservemorenodes(10000);
 	}
 	else
 	{
@@ -815,6 +833,9 @@ if (NUCSHAPE == nucleator::capsule)
 
 		if ((nowtime > lasttime) || ((i % InterRecordIterations) == 1))
 		{
+
+            if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
+                theactin.reservemorenodes(10000);
 
 #ifndef NOKBHIT
             if (kbhit())  // taken out of main loop

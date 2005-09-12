@@ -143,8 +143,8 @@ void nodes::applyforces_novisc()
 
 	rep_force_vec.zero();
 	link_force_vec.zero();
-	viscous_force_vec.zero();
-    viscous_force_recip_dist_sum = 0;
+	//viscous_force_vec.zero();
+    //viscous_force_recip_dist_sum = 0;
     //nuc_repulsion_displacement_vec.zero();
 }
 

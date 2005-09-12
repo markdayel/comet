@@ -10,7 +10,7 @@
 class TaskQueue // sorry couldn't look at lower case user defined types any longer
 {
 protected:
-    typedef void* (*TaskFcn_ptr)(void *args, pthread_mutex_t *mutex);
+    typedef void* (*TaskFcn_ptr)(void *args);//, pthread_mutex_t *mutex);
     struct TaskDetails {
 	TaskFcn_ptr fcn;
 	void* args;

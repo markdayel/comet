@@ -53,18 +53,18 @@ actin::actin(void)
 
 	opvelocityinfo << "time,x,y,z,vel" << endl;
 
-	node.resize(MAXNODES);
-	donenode.resize(MAXNODES);
 	crosslinknodesdelay.resize(CROSSLINKDELAY);
 
 	doreportiteration = 9999999;
+
+	node.resize(MAXNODES);
+	donenode.resize(MAXNODES);
 
 	for (int i=0; i<MAXNODES; i++)
 	{
 		node[i].nodenum=i;
 		node[i].ptheactin=this;
-		if (i<10000)
-			node[i].listoflinks.reserve(64);
+        node[i].listoflinks.reserve(MAX_LINKS_PER_NODE+1);
 	}
 
 	cout << "GridExtent : " << GRIDBOUNDS << " uM" << endl;
@@ -86,7 +86,7 @@ actin::actin(void)
 
 	cout << "Done" << endl << endl;
 
-	nucleatorgrid.reserve(5000);
+	//nucleatorgrid.reserve(5000);
 	
 	recti_near_nodes.resize(NUM_THREAD_DATA_CHUNKS);
     nodes_on_same_gridpoint.resize(NUM_THREAD_DATA_CHUNKS);
@@ -724,7 +724,15 @@ int actin::collisiondetection(void)
 	        collision_thread_data_array[i].endnode = 0;
 	        collision_thread_data_array[i].threadnum = i;
     	    
-	    thread_queue.queue_task(&collisiondetectiondowork, &collision_thread_data_array[i]);
+            if (VISCOSITY)
+            {
+                thread_queue.queue_task(&collisiondetectiondoworkvisc, &collision_thread_data_array[i]);
+            }
+            else
+            {
+                thread_queue.queue_task(&collisiondetectiondowork, &collision_thread_data_array[i]);
+            }
+	    
 	    }
 
 	//thread_queue.complete_current_tasks();
@@ -735,7 +743,15 @@ int actin::collisiondetection(void)
 	    collision_thread_data_array[0].startnode = 0;
 	    collision_thread_data_array[0].endnode = 0;
 	    collision_thread_data_array[0].threadnum = 0;
-	    collisiondetectiondowork(&collision_thread_data_array[0], NULL);
+	    
+        if (VISCOSITY)
+        {
+            collisiondetectiondoworkvisc(&collision_thread_data_array[0]);//, NULL);
+        }
+        else
+        {
+            collisiondetectiondowork(&collision_thread_data_array[0]);//, NULL);
+        }
     }
     
     return 0;
@@ -933,7 +949,106 @@ int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const
 }
 
 */
-void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
+void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
+{	
+    // cast arg
+    const thread_data* dat = (thread_data*) arg;
+
+    
+    static const double local_NODE_REPULSIVE_RANGE = NODE_REPULSIVE_RANGE;
+    static const double local_NODE_REPULSIVE_MAG = NODE_REPULSIVE_MAG;
+
+    vect nodeposvec;
+    double distsqr,dist;
+    double recip_dist;//, force_over_dist;
+    //double recip_distsqr;
+    //double force;
+    vect tomove;
+    vect disp;
+    nodes *p_nearnode, *p_sameGPnode;
+
+    int sameGPnodenum;
+
+    // loop over the nodes given to this thread
+    for(vector <nodes*>::iterator thisnode=nodes_by_thread[dat->threadnum].begin(); 
+	        thisnode<nodes_by_thread[dat->threadnum].end();
+	        ++thisnode) 
+    {	
+        if(donenode[(*thisnode)->nodenum])
+	        continue;  // skip nodes already done
+	   	  
+	    // find nodes on same gridpoint, and nodes within repulsive range
+        // skip if zero
+	    if (findnearbynodes(**thisnode,NODE_REPULSIVE_RANGE_GRIDSEARCH, dat->threadnum)==0)
+	        continue;	// find nodes within 1 grid point
+
+	    // loop over nodes on same gridpoint:
+	    for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
+	        sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
+	        sameGPnode++) 
+        {
+            p_sameGPnode = *sameGPnode;
+
+            sameGPnodenum = p_sameGPnode->nodenum;
+    	    
+	        if (donenode[sameGPnodenum])
+		      continue;  // skip if done
+    	    
+			// REVISIT ML: remove this mutex, should never conflict
+			//pthread_mutex_lock(&nodedone_mutex);
+			donenode[sameGPnodenum] = true;  // mark node as done
+			//pthread_mutex_unlock(&nodedone_mutex);
+    		
+			// of these nodes, calculate euclidian dist
+			nodeposvec = *p_sameGPnode;	// get xyz of our node
+
+			for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
+			    nearnode<recti_near_nodes[dat->threadnum].end();
+			    nearnode++) {
+
+                p_nearnode = *nearnode;
+
+			    if ( p_sameGPnode == p_nearnode)
+				    continue;  // skip if self
+    			  			
+			    disp = *p_nearnode - nodeposvec; 
+			    distsqr = disp.sqrlength();
+    			
+			    if (distsqr < SQRT_ACCURACY_LOSS)
+		    		continue;
+   			
+			    if (distsqr < local_NODE_REPULSIVE_RANGE * local_NODE_REPULSIVE_RANGE)
+			    {
+				    // calc dist between nodes
+				    dist = sqrt(distsqr); 
+                    recip_dist = 1/dist;
+                    //recip_distsqr = recip_dist * recip_dist;
+
+				    //force = local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE) * dist;
+				    //force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
+				    tomove = disp * 2 * (recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE));
+
+                    //tomove = disp * ( 2 * force_over_dist);
+                    //tomove = disp * ( 2 * force / dist);
+        			
+				    p_sameGPnode->rep_force_vec -= tomove ;
+
+				    p_sameGPnode->adddirectionalmags(tomove, p_sameGPnode->repforce_radial,
+								    p_sameGPnode->repforce_transverse);
+
+                    //p_sameGPnode->viscous_force_vec -= p_nearnode->delta * recip_distsqr;
+                    //p_sameGPnode->viscous_force_recip_dist_sum += recip_distsqr;
+    			
+			    }
+			}
+	    }
+    }
+
+    return (void*) NULL;
+}
+
+
+void * actin::collisiondetectiondoworkvisc(void* arg)//, pthread_mutex_t *mutex)
 {	
     // cast arg
     const thread_data* dat = (thread_data*) arg;
@@ -1444,7 +1559,7 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
 	    applyforces_thread_data_array[0].endnode = highestnodecount;
 	    applyforces_thread_data_array[0].threadnum = 0;
 
-        applyforcesdowork(&applyforces_thread_data_array[0], NULL);
+        applyforcesdowork(&applyforces_thread_data_array[0]);//, NULL);
     }
     
     // note: we have to updategrid() for *all* the nodes, because of
@@ -1459,7 +1574,7 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
     return 0;
 }
 
-void* actin::applyforcesdowork(void* arg, pthread_mutex_t *mutex)
+void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 {
     // cast arg
     const thread_data* dat = (thread_data*) arg;
@@ -1554,14 +1669,14 @@ int actin::linkforces()
 	    linkforces_thread_data_array[0].startnode = 0;
 	    linkforces_thread_data_array[0].endnode = highestnodecount;
 	    linkforces_thread_data_array[0].threadnum = 0;
-	    linkforcesdowork(&linkforces_thread_data_array[0], NULL);
+	    linkforcesdowork(&linkforces_thread_data_array[0]);//, NULL);
     }
 
     return 0;
 }
 
 // LinkForces
-void * actin::linkforcesdowork(void* arg, pthread_mutex_t *mutex)
+void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 {
     // cast arg
     const thread_data* dat = (thread_data*) arg;
@@ -2492,7 +2607,6 @@ int actin::save_data(ofstream &ofstrm)
 int actin::load_data(ifstream &ifstr)
 {
 
-
     // clear the nodegrid
     clear_nodegrid();
     
@@ -2537,12 +2651,14 @@ int actin::load_data(ifstream &ifstr)
     //  important this is done after the full node list has been built
     //    - iterate over nodes
     //    - then iterate over links in the node linklist
-    for(int i=0; i < highestnodecount; i++) {
-	for(vector<links>::iterator l=node[i].listoflinks.begin(); 
-	    l<node[i].listoflinks.end(); ++l) {
-	    // if(l->linkednodenumber>=0) // ensure the indx was explicitly set
-		l->linkednodeptr = &node[l->linkednodenumber];
-	}
+    for(int i=0; i < highestnodecount; i++) 
+    {
+	    for(vector<links>::iterator l=node[i].listoflinks.begin(); 
+	        l<node[i].listoflinks.end(); ++l) 
+        {
+	        // if(l->linkednodenumber>=0) // ensure the indx was explicitly set
+		    l->linkednodeptr = &node[l->linkednodenumber];
+	    }
     }
 
     // check node list
@@ -2614,7 +2730,7 @@ void actin::setdontupdates(void)
 void actin::set_sym_break_axes(void)
 {
 	vect tmp_nodepos;
-	vect CofM;
+	//vect CofM;
 	vect sym_break_direction;
 
 	rotationmatrix tmp_rotation, tmp_rotation2;	
@@ -2786,4 +2902,19 @@ void actin::keep_mem_resident(void)
 	}
 
 #endif
+}
+
+void actin::reservemorenodes(int extranodes)
+{
+    int oldsize = (int) node.size();
+
+    node.resize(oldsize + extranodes);
+	donenode.resize(oldsize + extranodes);
+
+	for (int i=oldsize; i<oldsize + extranodes; i++)
+	{
+		node[i].nodenum=i;
+		node[i].ptheactin=this;
+		node[i].listoflinks.reserve(MAX_LINKS_PER_NODE+1);
+	}
 }

@@ -108,7 +108,7 @@ public:
 
 	int crosslinknewnodes(int numnewnodes);
 
-	vector <int_vect> nucleatorgrid;
+	//vector <int_vect> nucleatorgrid;
 	vector <int> crosslinknodesdelay;
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
@@ -163,9 +163,10 @@ public:
         // --
 	static bool isinthread;
 	// -- Threading add worker functions
-	static void *collisiondetectiondowork(void* arg, pthread_mutex_t *mutex);
-	static void *linkforcesdowork(void* arg, pthread_mutex_t *mutex);
-	static void *applyforcesdowork(void* threadarg, pthread_mutex_t *mutex);
+	static void *collisiondetectiondowork(void* arg);//, pthread_mutex_t *mutex);
+    static void *collisiondetectiondoworkvisc(void* arg);//, pthread_mutex_t *mutex);
+	static void *linkforcesdowork(void* arg);//, pthread_mutex_t *mutex);
+	static void *applyforcesdowork(void* threadarg);//, pthread_mutex_t *mutex);
 	// --
 	//static Bool2d repulsedone;
 
@@ -204,6 +205,7 @@ public:
 
 
     void keep_mem_resident(void);
+    void reservemorenodes(int extranodes);
 };
 
 #endif

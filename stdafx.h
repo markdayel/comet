@@ -90,17 +90,21 @@ removed without prior written permission from the author.
 #include <sys/timeb.h>
 #include <vector> 
 
-
+//#define _NUMA 1
 
 #ifndef _WIN32
 	#include <unistd.h>
     #include <sys/mman.h>
-#ifdef _NUMA
-    #include <numa.h>
-#endif
 #else
 	//#include <Windows.h>
 #endif
+
+#ifdef _NUMA
+    #include <numa.h>
+    extern nsgid_t numa_group;
+    extern radset_t radset;
+#endif
+
 //#include <pstream>
 
 
@@ -297,13 +301,12 @@ extern bool FORCES_ON_SIDE;
 #define GRIDBOUNDS (double)40	  // size of grid in um
 #define GRIDRES (double)0.2	  // low res grid range
 
-const int MAXNODES = 50000;			// max nodes
+const int MAXNODES = 100000;			// max nodes
 //const double GLOBAL_DAMPING = 
 
 #define HIST_MIN 1.0
 #define HIST_MAX 3.0
 #define HIST_BINS 20
-
 
 extern int TOTAL_ITERATIONS;  // these variables are global and are calculated from others
 extern int NODE_REPULSIVE_GRIDSEARCH;

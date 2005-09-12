@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <iostream>
+#include "stdafx.h"
 
 // static members are not *guaranteed* to have C linkage
 extern "C" void* wrapper_activate_workers(void *my_this)
@@ -84,6 +85,10 @@ void TaskQueue::create_threads(const int num_workerthreads)
     int err = pthread_create(&thread, 0,
 			     wrapper_activate_workers,
 			     this);
+#ifdef _NUMA
+    pthread_nsg_attach( numa_group, thread, NSG_INSIST || NSG_SMALLMEM || NSG_MIGRATE || NSG_WAIT);
+#endif
+
     if(err != 0){
       std::cerr << "Error creating pthread" << std::endl;
     }
@@ -146,9 +151,14 @@ void TaskQueue::complete_current_tasks()
 // Treat as a private/protected member fcn
 void* TaskQueue::activate_workers()
 {
+#ifdef _NUMA
+    pid_t pid = getpid();
+    rad_attach_pid(pid, radset, RAD_INSIST || RAD_SMALLMEM || RAD_MIGRATE || RAD_WAIT);
+#endif
+
     int err;
   
-    while(true) 
+    while(GRASS_IS_GREEN) 
     { // FIXME allow thread termination?
     
         lockteam();		
@@ -168,7 +178,7 @@ void* TaskQueue::activate_workers()
         unlockteam();
         
         // Call the fcn to perform the task
-        task.fcn(task.args, &mutex);
+        task.fcn(task.args);//, &mutex);
 
         lockteam();
         ntasks_todo--;
@@ -213,7 +223,7 @@ void* TaskQueue::do_one_task_set()
         unlockteam();
         
         // Call the fcn to perform the task
-        task.fcn(task.args, &mutex);
+        task.fcn(task.args);//, &mutex);
 
         lockteam();
         ntasks_todo--;
