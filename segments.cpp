@@ -38,9 +38,9 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	p_actin = pactin;
 	
 	num_dist_segs = 20;		// normal bins radial distance
-	dist_step = 0.1;
+	dist_step = RADIUS * 0.1;
 
-	radialdist = 0.1;		// for radial-only averaging
+	radialdist = RADIUS * 0.1;		// for radial-only averaging
 	num_radial_bins = 20;
 
 	centerx = BMP_WIDTH  / 7;  // specifies center of nucleator on forces and seg maps

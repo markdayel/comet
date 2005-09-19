@@ -139,9 +139,9 @@ class vect
     //{
     //	vect temp;
     
-    //	temp.x = a.y*b.z - a.z-b.y;
-    //	temp.y = a.z*b.x - a.x-b.z;
-    //	temp.z = a.x*b.y - a.y-b.x;
+    //	temp.x = a.y*b.z - a.z*b.y;
+    //	temp.y = a.z*b.x - a.x*b.z;
+    //	temp.z = a.x*b.y - a.y*b.x;
     
     //	return temp;
     //}
@@ -150,9 +150,9 @@ class vect
 	{
 	    vect temp;
 	    
-	    temp.x = y*v.z - z-v.y;
-	    temp.y = z*v.x - x-v.z;
-	    temp.z = x*v.y - y-v.x;
+	    temp.x = y*v.z - z*v.y;
+	    temp.y = z*v.x - x*v.z;
+	    temp.z = x*v.y - y*v.x;
 	    
 	    return temp;
 	}

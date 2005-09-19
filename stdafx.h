@@ -22,8 +22,8 @@ removed without prior written permission from the author.
 
 	#pragma warning(disable: 4127)  // constant conditional expression
 
-	#pragma inline_depth( 64 )
-	#pragma inline_recursion( on )
+	//#pragma inline_depth( 64 )
+	//#pragma inline_recursion( on )
 	#pragma auto_inline( on )
 	
 	//#define inline __forceinline
@@ -101,9 +101,9 @@ removed without prior written permission from the author.
 
 #ifdef _NUMA
     #include <numa.h>
-    extern nsgid_t numa_group;
+    //extern nsgid_t numa_group;
     extern radset_t radset;
-    extern cpuset_t cpuset;
+    //extern cpuset_t cpuset;
 #endif
 
 //#include <pstream>
@@ -229,14 +229,20 @@ extern double MIN_DISPLACEMENT_TO_UPDATE;
 //extern double MAX_DISP_PERDT_DIVSQRTTWO;
 extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
 
+extern bool STICK_TO_NUCLEATOR;
+
 extern bool NUCLEATOR_FORCES;
+
+
+extern double NUC_LINK_FORCE;
+extern double NUC_LINK_BREAKAGE_DIST;
 
 extern double FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
 										// this is related to effective viscosity and effective size of node
-extern double FORCEBAR_SCALE;  // scale force for bars in output
+//extern double FORCEBAR_SCALE;  // scale force for bars in output
 
 extern double XLINK_NODE_RANGE;	// Limit crosslink to within this range
-extern double NODE_INCOMPRESSIBLE_RADIUS;// repulsion is zero here
+//extern double NODE_INCOMPRESSIBLE_RADIUS;// repulsion is zero here
 //extern double NODE_REPULSIVE_MAG;   // max repulsion (at dist=0)
 
 extern double LINK_BREAKAGE_FORCE;  // breakage force per link
@@ -263,7 +269,7 @@ extern double INIT_B_GAIN;
 
 extern double RADIUS;   // radius and segment are the true radius and segment of nucleator
 extern double CAPSULE_HALF_LINEAR;
-extern double RAD_INCOMP; // RAD_INCOMP and SEG_INCOMP are the enlarged radius and segments
+extern double RADIUS; // RADIUS and SEG_INCOMP are the enlarged radius and segments
 //extern double SEG_INCOMP; // to prevent putting nodes within the node NODE_INCOMPRESSIBLE_RADIUS of the nucleator
 //extern double NODEMASS;
 //extern double INERTIAL_DAMPING_HALFTIME;
@@ -299,8 +305,8 @@ extern bool FORCES_ON_SIDE;
 
 // compile-time options:
 
-#define GRIDBOUNDS (double)40	  // size of grid in um
-#define GRIDRES (double)0.2	  // low res grid range
+#define GRIDBOUNDS (double)100	  // size of grid in um
+#define GRIDRES (double)0.5	  // low res grid range
 
 const int MAXNODES = 100000;			// max nodes
 //const double GLOBAL_DAMPING = 

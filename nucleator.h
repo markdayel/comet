@@ -33,7 +33,7 @@ public:
 	~nucleator(void);
 	nucleator(shape set_geometry, actin *ptheactin);
 	shape geometry;
-	double radius;
+	//double radius;
 	//double segment;
 	double surf_area;
 	double movability;
@@ -64,6 +64,9 @@ public:
 	//vector <double> fbar_bdy_x;
 	//vector <double> fbar_bdy_y;
 
+
+    void move_nuc(vect& origin_of_movement, vect& tomove);
+
 	int addnodes(void);
 	int addnodessphere(void);
 	int addnodescapsule(void);
@@ -82,7 +85,7 @@ public:
 	//bool is_sphere();
 	//bool is_capsule();
 
-	bool iswithinnucleator(const double& x, const double& y, const double& z);
+	//bool iswithinnucleator(const double& x, const double& y, const double& z);
 	bool collision(nodes &node);//(double &x, double &y, double &z);
 	//int n_force_segments();
 	void definecagepoints(void);

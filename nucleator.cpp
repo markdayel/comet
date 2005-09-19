@@ -55,21 +55,25 @@ nucleator::~nucleator(void)
 
 nucleator::nucleator(shape set_geometry, actin *actinptr)
 {
-	radius = RADIUS;
+	//radius = RADIUS;
 	//segment = 2*CAPSULE_HALF_LINEAR;
 	//P_NUC = (double)0.8 / (4*PI*radius*radius);
 	geometry = set_geometry;
 
 	if (geometry==sphere)
 	{
-		surf_area = 4 * PI * radius * radius;
-		movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / radius;
+		surf_area = 4 * PI * RADIUS * RADIUS;
+		movability = FORCE_SCALE_FACT * 0.5 / RADIUS;
 	}
 	else
 	{
-		surf_area = 4 * PI * radius * radius  +  4 * PI * radius * CAPSULE_HALF_LINEAR;
-		movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / (radius + CAPSULE_HALF_LINEAR/2);   // what should this be??
+		surf_area = 4 * PI * RADIUS * RADIUS  +  4 * PI * RADIUS * CAPSULE_HALF_LINEAR;
+		movability = FORCE_SCALE_FACT * 0.5 / (RADIUS + CAPSULE_HALF_LINEAR/2);   // what should this be??
 	}
+
+    momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
+	momentofinertia.y = 1000 * MofI;
+	momentofinertia.z =  500 * MofI;
 
 	ptheactin = actinptr;
 	ptheactin->p_nuc = this;
@@ -82,18 +86,6 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 	centerofmass.zero();;
 
 	torque.zero();;
-
-	momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
-	momentofinertia.y = 1000 * MofI;
-	momentofinertia.z = 500 * MofI;
-
-	//if( geometry==sphere ){
-	//radial_rep_distrib_x.reserve(RADIAL_SEGMENTS);
-	//radial_rep_distrib_y.reserve(RADIAL_SEGMENTS);
-	//radial_rep_distrib_z.reserve(RADIAL_SEGMENTS);
-	//} else {
-	//    set_rep_bins();
-	//}
 
 	definecagepoints();
 	colour.r = colour.g = colour.b = 1.0;
@@ -140,11 +132,11 @@ int nucleator::addnodessphere(void)
 		
 		if (z*z<1) // avoid floating exception due to rounding errors causing -ve sqrt
 		{
-			r = radius * sqrt(1 - z*z);		// radius of circle
+			r = RADIUS * sqrt(1 - z*z);		// radius of circle
 		}
 		else
 		{
-			r = radius;  
+			r = RADIUS;  
 		}
 
         //cout << "RECIP_RAND_MAX*RAND_MAX: " <<RAND_MAX*RECIP_RAND_MAX << " RAND_MAX:" <<RAND_MAX << endl;
@@ -152,17 +144,17 @@ int nucleator::addnodessphere(void)
 		x =  r * cos(theta) * NUCPOINT_SCALE;				// x and y of point
 		y =  r * sin(theta) * NUCPOINT_SCALE;
 
-		z *=  radius * NUCPOINT_SCALE;					// z just scaled by radius
+		z *=  RADIUS * NUCPOINT_SCALE;					// z just scaled by radius
 
 		if (ASYMMETRIC_NUCLEATION!=0)
 		{
 			if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
 				if ((y<0) || (fabs(x+z)>0.5)) continue;
 			if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
-				if (z < (radius) *( 2 * (rand() * RECIP_RAND_MAX) - 1))
+				if (z < (RADIUS) *( 2 * (rand() * RECIP_RAND_MAX) - 1))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
-				if (z < (radius) *( 4 * (rand() * RECIP_RAND_MAX) - 3))
+				if (z < (RADIUS) *( 4 * (rand() * RECIP_RAND_MAX) - 3))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==4) 
             { // fixed random location
@@ -190,7 +182,7 @@ int nucleator::addnodescapsule(void)
 	double x,y,z,r,theta;
 	bool onseg;
 
-	double rad = radius * NUCPOINT_SCALE;
+	double rad = RADIUS * NUCPOINT_SCALE;
 
 	double floatingnodestoadd = DELTA_T * P_NUC * surf_area;  // number of nodes to add
 
@@ -214,7 +206,7 @@ int nucleator::addnodescapsule(void)
 		z = ( 2 * (rand() * RECIP_RAND_MAX) ) - 1 ;  // random number -1 to 1
 		theta = (2 * PI * (rand() * RECIP_RAND_MAX));  // circle vector
 		
-		onseg = ( (CAPSULE_HALF_LINEAR /(radius+CAPSULE_HALF_LINEAR)) > ( rand() * RECIP_RAND_MAX )); // on ends or on segment?
+		onseg = ( (CAPSULE_HALF_LINEAR /(RADIUS+CAPSULE_HALF_LINEAR)) > ( rand() * RECIP_RAND_MAX )); // on ends or on segment?
 		
 		if (onseg)
 		{
@@ -232,12 +224,12 @@ int nucleator::addnodescapsule(void)
 				r = rad;  
 			}
 
-			z*=rad;
+			z *= rad;
 						
 			if (z>0)
-				z+= (CAPSULE_HALF_LINEAR); 
+				z += CAPSULE_HALF_LINEAR; 
 			else
-				z-= (CAPSULE_HALF_LINEAR);
+				z -= CAPSULE_HALF_LINEAR;
 		}
 
 		x =  r * cos(theta); // x and y of point
@@ -292,13 +284,13 @@ int nucleator::addnodescapsule(void)
 // // sphere
 //
 //	for (double theta=-PI; theta<PI; theta+=2*PI/20)
-//		for (double z1=-1; z1<=1; z1+= RAD_INCOMP/10)
+//		for (double z1=-1; z1<=1; z1+= RADIUS/10)
 //		{
-//			r = RAD_INCOMP * sqrt(1 - z1*z1);		// radius of circle
+//			r = RADIUS * sqrt(1 - z1*z1);		// radius of circle
 //			
 //			x = r * cos(theta);				// x and y of point
 //			y = r * sin(theta);
-//			z = z1 * RAD_INCOMP;						// z just scaled by radius
+//			z = z1 * RADIUS;						// z just scaled by radius
 //
 //			*outputstream	<< 0 << "," << x << "," << y << "," << z << "," 
 //			            << 1 << "," << 1 << "," 
@@ -310,13 +302,13 @@ int nucleator::addnodescapsule(void)
 //else
 //{
 //	for (double theta=-PI; theta<PI; theta+=2*PI/20)
-//		for (double z1=-1; z1<=1; z1+= RAD_INCOMP/10)
+//		for (double z1=-1; z1<=1; z1+= RADIUS/10)
 //		{
-//			r = RAD_INCOMP * sqrt(1 - z1*z1);		// radius of circle
+//			r = RADIUS * sqrt(1 - z1*z1);		// radius of circle
 //			
 //			x = r * cos(theta);				// x and y of point
 //			y = r * sin(theta);
-//			z = z1 * RAD_INCOMP;	// z just scaled by radius
+//			z = z1 * RADIUS;	// z just scaled by radius
 //
 //			if (z>0)
 //				z+= (CAPSULE_HALF_LINEAR); 
@@ -332,11 +324,11 @@ int nucleator::addnodescapsule(void)
 //		}
 //		
 //	for (double theta=-PI; theta<PI; theta+=2*PI/20)
-//		for (double z1=-1; z1<=1; z1+= RAD_INCOMP/10)
+//		for (double z1=-1; z1<=1; z1+= RADIUS/10)
 //		{
 //					
-//			x = RAD_INCOMP * cos(theta);				// x and y of point
-//			y = RAD_INCOMP * sin(theta);
+//			x = RADIUS * cos(theta);				// x and y of point
+//			y = RADIUS * sin(theta);
 //			z = z1 * CAPSULE_HALF_LINEAR;						// z just scaled by segment
 //
 //
@@ -392,7 +384,7 @@ for (vector <vect>::iterator point=cagepoints.begin();
 //
 //	// traverse cuboid around shape, and add to nucleatorgrid
 //
-//	double scalefacrad = ((double)1 + ((double)2)*(double)GRIDRES/RAD_INCOMP);
+//	double scalefacrad = ((double)1 + ((double)2)*(double)GRIDRES/RADIUS);
 //
 //	cout << "Defining nucleator grid for ";
 //	if (geometry==capsule)
@@ -401,9 +393,9 @@ for (vector <vect>::iterator point=cagepoints.begin();
 //		cout << "sphere...";
 //	cout.flush();
 //
-//	for (double x=-(double)1.2*(RAD_INCOMP+GRIDRES); x<(double)1.2*(RAD_INCOMP+GRIDRES); x+=GRIDRES/10)
-//		for (double y=-(double)1.2*(RAD_INCOMP+GRIDRES); y<(double)1.2*(RAD_INCOMP+GRIDRES); y+=GRIDRES/10)
-//			for (double z=-(double)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES); z<(double)1.2*(RAD_INCOMP+CAPSULE_HALF_LINEAR*2+GRIDRES);z+=GRIDRES/10)
+//	for (double x=-(double)1.2*(RADIUS+GRIDRES); x<(double)1.2*(RADIUS+GRIDRES); x+=GRIDRES/10)
+//		for (double y=-(double)1.2*(RADIUS+GRIDRES); y<(double)1.2*(RADIUS+GRIDRES); y+=GRIDRES/10)
+//			for (double z=-(double)1.2*(RADIUS+CAPSULE_HALF_LINEAR*2+GRIDRES); z<(double)1.2*(RADIUS+CAPSULE_HALF_LINEAR*2+GRIDRES);z+=GRIDRES/10)
 //				{
 //					gridpos.x = (((int)(x / GRIDRES)) + (GRIDSIZE/2) );
 //					gridpos.y = (((int)(y / GRIDRES)) + (GRIDSIZE/2) );
@@ -445,31 +437,31 @@ for (vector <vect>::iterator point=cagepoints.begin();
 //
 //	return 0;
 //}
-
-
-bool nucleator::iswithinnucleator(const double& x, const double& y, const double& z)
-{   // this function is defunct.  Check now done inside setunitvec() of node
-	switch (geometry)
-	{
-	case (sphere):
-		{
-		return (((x*x)+(y*y)+(z*z))<(RAD_INCOMP*RAD_INCOMP));
-		break;
-		}
-	case (capsule):
-		{
-		if (fabs(z)<(CAPSULE_HALF_LINEAR))
-			return (((x*x)+(y*y))<RAD_INCOMP*RAD_INCOMP); // cylinder segment
-		else
-		{
-			return (((x*x)+(y*y)+((fabs(z)-(CAPSULE_HALF_LINEAR))*(fabs(z)-(CAPSULE_HALF_LINEAR))))<RAD_INCOMP*RAD_INCOMP);
-		}
-		break;
-		}
-	}
-
-	return false;
-}
+//
+//
+//bool nucleator::iswithinnucleator(const double& x, const double& y, const double& z)
+//{   // this function is defunct.  Check now done inside setunitvec() of node
+//	switch (geometry)
+//	{
+//	case (sphere):
+//		{
+//		return (((x*x)+(y*y)+(z*z))<(RADIUS*RADIUS));
+//		break;
+//		}
+//	case (capsule):
+//		{
+//		if (fabs(z)<(CAPSULE_HALF_LINEAR))
+//			return (((x*x)+(y*y))<RADIUS*RADIUS); // cylinder segment
+//		else
+//		{
+//			return (((x*x)+(y*y)+((fabs(z)-(CAPSULE_HALF_LINEAR))*(fabs(z)-(CAPSULE_HALF_LINEAR))))<RADIUS*RADIUS);
+//		}
+//		break;
+//		}
+//	}
+//
+//	return false;
+//}
 
 
 bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
@@ -484,108 +476,143 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 	oldpos = node;
 
-	double rad = RAD_INCOMP * (double) 1.001; // needed to prevent rounding errors putting back inside nuclator
+	double rad = RADIUS * (double) 1.001; // needed to prevent rounding errors putting back inside nuclator
 
     // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
 	switch (geometry)
 	{
-	case (sphere):
-		{
-		r = node.length();;
+	    case (sphere):
+	    {
+		    r = node.length();;
 
-		scale = rad / r;
+		    scale = rad / r;
 
-		node *= scale;
-		
-        node.nucleator_impacts += (rad-r);
+		    node *= scale;
+        	
+            node.nucleator_impacts += (rad-r);
 
-		break;
-		}
+		    break;
+	    }
 
-	case (capsule):
+	    case (capsule):
 
-		{
-		if ((fabs(node.z)<(CAPSULE_HALF_LINEAR)))
-			{ 
-				// on the cylinder
+	    {
+		    if ((fabs(node.z)<(CAPSULE_HALF_LINEAR)))
+		    { 
+			    // on the cylinder
 
-				r = calcdist(node.x,node.y);
-				scale = rad / r;
-				node.x *= scale;
-				node.y *= scale;
-				
+			    r = calcdist(node.x,node.y);
+			    scale = rad / r;
+			    node.x *= scale;
+			    node.y *= scale;
+    			
                 node.nucleator_impacts += (rad-r);
-			}
-			else
-			{	// on the ends
-				
-				if (node.z<0)  // make into a sphere again
-					z2 = node.z + (CAPSULE_HALF_LINEAR);
-				else
-					z2 = node.z - (CAPSULE_HALF_LINEAR);
+		    }
+		    else
+		    {	// on the ends
+    			
+			    if (node.z<0)  // make into a sphere again
+				    z2 = node.z + (CAPSULE_HALF_LINEAR);
+			    else
+				    z2 = node.z - (CAPSULE_HALF_LINEAR);
 
-				// calculate theta, phi :
+			    // calculate theta, phi :
 
-				r = calcdist(node.x,node.y,z2);
-				scale = rad / r;
-				node.x *= scale;
-				node.y *= scale;
-				z2 *= scale;
+			    r = calcdist(node.x,node.y,z2);
+			    scale = rad / r;
+			    node.x *= scale;
+			    node.y *= scale;
+			    z2 *= scale;
 
-				if (node.z<0)  
-					node.z = z2 - (CAPSULE_HALF_LINEAR);
-				else
-					node.z = z2 + (CAPSULE_HALF_LINEAR);
-			
-				node.nucleator_impacts += (rad-r);
-			}
+			    if (node.z<0)  
+				    node.z = z2 - (CAPSULE_HALF_LINEAR);
+			    else
+				    node.z = z2 + (CAPSULE_HALF_LINEAR);
+    		
+			    node.nucleator_impacts += (rad-r);
+		    }
 
-			break;
-		}
+		    break;
+	    }
 
 	}
 
-node_disp = node - oldpos;
+    node_disp = node - oldpos;
 
-if ((fabs(node_disp.x) > NODE_INCOMPRESSIBLE_RADIUS) ||
-	(fabs(node_disp.y) > NODE_INCOMPRESSIBLE_RADIUS) ||
-	(fabs(node_disp.z) > NODE_INCOMPRESSIBLE_RADIUS))
-{
-	cout << "node nucleus ejection too great " <<  endl;
-	cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
-	cout << "new (x,y,z): " <<  node.x << ", " << node.y << ", " << node.z <<  endl;
-	return false;  // failed
-}
+    if ((fabs(node_disp.x) > 0.2*RADIUS) ||
+	    (fabs(node_disp.y) > 0.2*RADIUS) ||
+	    (fabs(node_disp.z) > 0.2*RADIUS))
+    {
+	    cout << "node nucleus ejection too great " <<  endl;
+	    cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
+	    cout << "new (x,y,z): " <<  node.x << ", " << node.y << ", " << node.z <<  endl;
+	    return false;  // failed
+    }
+
+//#ifndef SEED_INSIDE
+//
+//    deltanucposn -= node_disp * movability;  // move the nucleator
+//
+//    node -= node_disp * movability;	
+//
+//    // rotate the nucleator
+//
+//    // calculate torque (as pos x disp)
+//
+//    if (ROTATION)
+//    {
+//	    torque.x += ((oldpos.y-centerofmass.y)*node_disp.z - (oldpos.z-centerofmass.z)*node_disp.y);
+//	    torque.y += ((oldpos.z-centerofmass.z)*node_disp.x - (oldpos.x-centerofmass.x)*node_disp.z);
+//	    torque.z += ((oldpos.x-centerofmass.x)*node_disp.y - (oldpos.y-centerofmass.y)*node_disp.x);
+//    }
+//
+//    node.insidenucleator = false;
+//
+// #endif
+
 
 #ifndef SEED_INSIDE
 
-deltanucposn -= node_disp * movability;  // move the nucleator
+    node -= node_disp * movability;
 
-node -= node_disp * movability;	
-
-#endif
-
-// rotate the nucleator
-
-// calculate torque (as pos x disp)
-
-if (ROTATION)
-{
-	torque.x += ((oldpos.y-centerofmass.y)*node_disp.z - (oldpos.z-centerofmass.z)*node_disp.y);
-	torque.y += ((oldpos.z-centerofmass.z)*node_disp.x - (oldpos.x-centerofmass.x)*node_disp.z);
-	torque.z += ((oldpos.x-centerofmass.x)*node_disp.y - (oldpos.y-centerofmass.y)*node_disp.x);
-}
+    move_nuc(oldpos,node_disp);
 
     node.insidenucleator = false;
+
+#endif
 
 	return true; // sucessful node ejection
 }
 
+void nucleator::move_nuc(vect& origin_of_movement, vect& tomove)
+{
+    // displacement is easy:
+    deltanucposn -= tomove * movability;
+
+    vect lever_arm = origin_of_movement - centerofmass;
+
+    // rotate the nucleator
+
+    // calculate torque (as pos x disp)
+
+    if (ROTATION)
+    {
+        torque += lever_arm.cross(tomove);  // check this is right way round
+    }
+
+    //if (ROTATION)
+    //{
+	   // torque.x += (lever_arm.y*tomove.z - lever_arm.z*tomove.y);
+	   // torque.y += (lever_arm.z*tomove.x - lever_arm.x*tomove.z);
+	   // torque.z += (lever_arm.x*tomove.y - lever_arm.y*tomove.x);
+    //}
+
+}
 
 int nucleator::save_data(ofstream &ostr) 
 {
     ostr << geometry << endl;
-    ostr << radius << endl;
+    ostr << RADIUS << endl;
     ostr << CAPSULE_HALF_LINEAR << endl;
     ostr << surf_area << endl;
     ostr << movability << endl;
@@ -625,7 +652,7 @@ int nucleator::load_data(ifstream &istr)
 	geometry= sphere;
     else
 	geometry = capsule;
-    istr >> radius;
+    istr >> RADIUS;
     istr >> CAPSULE_HALF_LINEAR;
     istr >> surf_area;
     istr >> movability;
@@ -669,11 +696,11 @@ void nucleator::definecagepoints(void)
 			for (double phi=-PI; phi<PI; phi+=2*PI/pointdensity)
 			{
 				
-				r = RAD_INCOMP * cos(phi);		// radius of circle
+				r = RADIUS * cos(phi);		// radius of circle
 				
 				xx = r * cos(theta);				// x and y of point
 				yy = r * sin(theta);
-				zz = sin(phi) * RAD_INCOMP;						// z just scaled by radius
+				zz = sin(phi) * RADIUS;						// z just scaled by radius
 
 				cagepoints.push_back(vect(xx,yy,zz));
 			}
@@ -688,11 +715,11 @@ void nucleator::definecagepoints(void)
 			for (double phi=-PI; phi<PI; phi+=2*PI/pointdensity)
 			{
 				
-				r = RAD_INCOMP * cos(phi);		// radius of circle
+				r = RADIUS * cos(phi);		// radius of circle
 				
 				xx = r * cos(theta);				// x and y of point
 				yy = r * sin(theta);
-				zz = sin(phi) * RAD_INCOMP;						// z just scaled by radius
+				zz = sin(phi) * RADIUS;						// z just scaled by radius
 
 				if (zz>0)
 					zz+= (CAPSULE_HALF_LINEAR); 
@@ -704,14 +731,14 @@ void nucleator::definecagepoints(void)
 
 		// cylinder
 			
-		pointspacing = (RAD_INCOMP * 2 *PI) / pointdensity;
+		pointspacing = (RADIUS * 2 *PI) / pointdensity;
 
 		for (double theta=-PI; theta<PI; theta+=2*PI/pointdensity)
 			for (double z1=(-(CAPSULE_HALF_LINEAR)); z1<(0.001+CAPSULE_HALF_LINEAR); z1+= pointspacing)
 			{
 						
-				xx = RAD_INCOMP * cos(theta);				// x and y of point
-				yy = RAD_INCOMP * sin(theta);
+				xx = RADIUS * cos(theta);				// x and y of point
+				yy = RADIUS * sin(theta);
 				zz = -z1;						// z just scaled by radius
 
 				cagepoints.push_back(vect(xx,yy,zz));

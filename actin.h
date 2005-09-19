@@ -176,8 +176,7 @@ public:
 	vector <linkform> linkformto;
 	static void *linkforcesthread(void* threadarg);
 	//static void *compressfilesthread(void* threadarg);
-	void compressfilesdowork(const int & filenum);
-
+	void compressfilesdowork(const int & filenum);   
 
 	int squash(double thickness);
 	void sortnodesbygridpoint(void);

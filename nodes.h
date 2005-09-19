@@ -18,6 +18,7 @@ removed without prior written permission from the author.
 #include "stdafx.h"
 #include "vect.h"
 #include "Colour.h"
+#include "links.h"
 
 class links;
 class Colour;
@@ -52,6 +53,7 @@ public:
 			 links_broken;
 	
 	double nucleator_impacts;
+    vect nucleator_link_force;
 
     bool insidenucleator;
 
@@ -73,6 +75,10 @@ public:
 	double phi;
 	int savelinks(ofstream * outstream);
 	bool onseg;
+
+    bool stucktonucleator;
+    vect nucleator_stuck_position;
+    
 
     //bool dontupdate;
 
@@ -110,7 +116,7 @@ public:
 	}
 
 	void setunitvec(void)
-	{	// TODO: fix this to bring in line with normal nuclator shape test
+	{	
 
 		if (NUCSHAPE == nucleator::sphere)
 		{
@@ -173,6 +179,7 @@ public:
 	}
 
 
+    
 };
 
 #endif

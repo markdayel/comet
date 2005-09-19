@@ -39,6 +39,7 @@ public:
 
 	double getlinkforces(const double& dist);
 	
+    void reset_link(void);
 };
 
 #endif

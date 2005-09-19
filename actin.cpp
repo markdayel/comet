@@ -130,7 +130,6 @@ actin::actin(void)
 
 	newnodescolour.setcol(0);
 
-
 	//debug:
 
 	num_rotate = 0;
@@ -286,24 +285,30 @@ int actin::crosslinknewnodes(int numnewnodes)
 
 		// and crosslink:
 		for (vector <linkform>::iterator linkto=linkformto.begin(); linkto<linkformto.end() ; linkto++ )
+		{
+			//if (i%100==0)
+			//{
+			//	cout << (*linkto).distsqr << " " << node[i].listoflinks.size() 
+			//		<< " " << node[(*linkto).nodenum].listoflinks.size() << endl;
+			//}
+			if (node[i].listoflinks.size()<MAX_LINKS_PER_NODE)
 			{
-				//if (i%100==0)
-				//{
-				//	cout << (*linkto).distsqr << " " << node[i].listoflinks.size() 
-				//		<< " " << node[(*linkto).nodenum].listoflinks.size() << endl;
-				//}
-				if (node[i].listoflinks.size()<MAX_LINKS_PER_NODE)
+				if (node[(*linkto).nodenum].listoflinks.size()<MAX_LINKS_PER_NODE)
 				{
-					if (node[(*linkto).nodenum].listoflinks.size()<MAX_LINKS_PER_NODE)
-					{
-						addlinks(i,(*linkto).nodenum);
-					}
+					addlinks(i,(*linkto).nodenum);
 				}
-				else
-					break;
 			}
+			else
+				break;
+		}
 
 		node[i].harbinger = false;  // crosslinked: now node exists
+
+        if (STICK_TO_NUCLEATOR)
+        {
+            node[i].stucktonucleator = true;
+            node[i].nucleator_stuck_position = node[i];
+        }
 
 	}
 
@@ -610,6 +615,14 @@ void actin::ejectfromnucleator()
 		    else
 			    node[i].depolymerize();  // not ejected OK, depolymerize
         }
+
+        if (node[i].stucktonucleator)
+        {
+            vect tomove = node[i].nucleator_link_force * DELTA_T * FORCE_SCALE_FACT;
+            p_nuc->move_nuc(node[i],tomove);
+            //p_nuc->position += node[i].nucleator_link_force * p_nuc->movability;
+            node[i].nucleator_link_force.zero();
+        }
 	}
 
 }
@@ -625,8 +638,7 @@ void actin::move_and_rotate()
 	if (ROTATION && (p_nuc->torque.length() > MIN_TORQUE_TO_UPDATE))
 	{
 
-		
-		num_rotate++;
+        num_rotate++;
 
 		double x_angle = p_nuc->torque.x / 
 				p_nuc->momentofinertia.x;
@@ -1026,10 +1038,10 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
 				    //force = local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE) * dist;
 				    //force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
-				    tomove = disp * 2 * (recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE));
+				    tomove = disp * (recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE));
 
-                    //tomove = disp * ( 2 * force_over_dist);
-                    //tomove = disp * ( 2 * force / dist);
+                    //tomove = disp * ( force_over_dist);
+                    //tomove = disp * ( force / dist);
         			
 				    p_sameGPnode->rep_force_vec -= tomove ;
 
@@ -1125,10 +1137,10 @@ void * actin::collisiondetectiondoworkvisc(void* arg)//, pthread_mutex_t *mutex)
 
 				    //force = local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE) * dist;
 				    //force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
-				    tomove = disp * 2 * (recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE));
+				    tomove = disp * (recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE));
 
-                    //tomove = disp * ( 2 * force_over_dist);
-                    //tomove = disp * ( 2 * force / dist);
+                    //tomove = disp * ( force_over_dist);
+                    //tomove = disp * ( force / dist);
         			
 				    p_sameGPnode->rep_force_vec -= tomove ;
 
@@ -1404,8 +1416,8 @@ void * actin::collisiondetectiondowork(void* arg, pthread_mutex_t *mutex)
 				                                //force = local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE) * dist;
 				                                force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
 
-                                                tomove = disp * ( 2 * force_over_dist);
-                                                //tomove = disp * ( 2 * force / dist);
+                                                tomove = disp * ( force_over_dist);
+                                                //tomove = disp * ( force / dist);
                                     			
 				                                sameGPnode->rep_force_vec -= tomove ;
 
@@ -1680,15 +1692,14 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 {
     // cast arg
     const thread_data* dat = (thread_data*) arg;
-
-    
+ 
     double dist;
     double force;
     vect nodeposvec, disp;
     vect tomove;
     
     // go through all nodes
-    for(int n=(dat->startnode); n<(dat->endnode); n++)
+    for(int n=(dat->startnode); n<(dat->endnode); ++n)
     {  	
 	    if (!node[n].polymer)
 	        continue;
@@ -1713,9 +1724,11 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 		        linkremoveto[dat->threadnum].push_back(i->linkednodeptr);
 		        node[n].links_broken++;
 		        //pthread_mutex_unlock(&removelinks_mutex); // unlock the mutex
-	        } else 
+	        } 
+            else 
             {
-		        tomove = disp * (2* force/dist);  
+		        tomove = disp * (force/dist);  
+
 		        // we're scaling the force by vector disp
 		        // to get the *direction*, so we need to
 		        // divide by the length of disp (i.e. dist)
@@ -1726,13 +1739,45 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 		        if (force < 0) // put tension into link forces
 		        {
 		            node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
-		        } else {	   // but put compression into repulsive forces
+		        } 
+                else 
+                {	   // but put compression into repulsive forces
 		            node[n].adddirectionalmags(tomove, node[n].repforce_radial , node[n].repforce_transverse );
 		        }
-    		
 	        }
 	    }
+
+        if (node[n].stucktonucleator)
+        {
+
+            disp = nodeposvec - node[n].nucleator_stuck_position;
+	        dist = disp.length();
+    	    
+            force = NUC_LINK_FORCE * dist ;
+	        
+            if (dist > NUC_LINK_BREAKAGE_DIST)
+            {
+                node[n].nucleator_link_force.zero();
+                node[n].stucktonucleator = false;   // no longer stuck
+            }
+            else
+            {
+                tomove = disp * (force/dist);
+
+                node[n].link_force_vec += tomove;
+        		
+                // tension only since default dist is zero
+		        node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
+            
+                //node[n].nucleator_link_force = -tomove;
+            }
+            
+        }
     }
+
+
+    
+
     return NULL;
 }
 // -- END from threading branch
@@ -2164,7 +2209,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	// to use as disposable objects
 	// .clear() or .str("") don't seem to work.
 
-	int scalebarlength = pixels(1.0);
+	
 
 	drawcmd << "-fill none -stroke grey -draw \"";
 	p_nuc->segs.drawoutline(drawcmd,proj);				// draw outline of nucleator
@@ -2187,6 +2232,8 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 	drawcmd << "\"";
 
+    int scalebarlength = pixels(5.0);
+
     // drawing image text takes forever on alpha and OSX
     // so have option to bypass
 
@@ -2200,7 +2247,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     else 
     {
 		sprintf(command1,
-		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 6i\\nTime % 6.1f'\" %s %s %s%s_proj_%05i.%s",
+		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '5uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 6i\\nTime % 6.1f'\" %s %s %s%s_proj_%05i.%s",
 			BMP_COMPRESSION, scalebarlength+5,  projletter, filenum,
 			filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
@@ -2818,6 +2865,7 @@ void actin::set_sym_break_axes(void)
 
 	camera_rotation.settoidentity();
 
+    camera_rotation.rotatematrix(-x_angle, rotationmatrix::xaxis);
 	camera_rotation.rotatematrix(maxchiangle, rotationmatrix::zaxis);
 	camera_rotation.rotatematrix(y_angle, rotationmatrix::yaxis);
 	camera_rotation.rotatematrix(x_angle, rotationmatrix::xaxis);
@@ -2825,6 +2873,7 @@ void actin::set_sym_break_axes(void)
 	reverse_camera_rotation.settoidentity();
 	//reverse_camera_rotation2.settoidentity();
 
+    reverse_camera_rotation.rotatematrix(x_angle, rotationmatrix::xaxis);
 	reverse_camera_rotation.rotatematrix(-maxchiangle, rotationmatrix::zaxis);
 	reverse_camera_rotation.rotatematrix(-y_angle, rotationmatrix::yaxis);
 	reverse_camera_rotation.rotatematrix(-x_angle, rotationmatrix::xaxis);

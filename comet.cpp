@@ -61,17 +61,20 @@ int NUMBER_RECORDINGS = 0;
 
 double FORCE_SCALE_FACT = 0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
 					        // this is related to effective viscosity and effective size of node
-double FORCEBAR_SCALE   = 10;	// scale for relating force to image bar
+//double FORCEBAR_SCALE   = 10;	// scale for relating force to image bar
 
 double XLINK_NODE_RANGE =  1.0;		// Limit crosslink to within this range
-double NODE_INCOMPRESSIBLE_RADIUS = 0.2;	// repulsion is zero here
+//double NODE_INCOMPRESSIBLE_RADIUS = 0.2;	// repulsion is zero here
 // double NODE_REPULSIVE_MAG = 1000;   // max repulsion (at dist=0)
 
-double LINK_BREAKAGE_FORCE =  100;	 // breakage force per link
+double LINK_BREAKAGE_FORCE =  2;	 // breakage force per link
 bool USE_BREAKAGE_STRAIN = false;
 double LINK_BREAKAGE_STRAIN = 1.15;
 double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NODE = 100;
+
+double NUC_LINK_FORCE = 0.25;
+double NUC_LINK_BREAKAGE_DIST = 2;
 
 double LINK_TAUT_FORCE =  5;
 double LINK_TAUT_RATIO =  1.1;
@@ -80,6 +83,8 @@ double VISCOSITY_EDGE_THRESHOLD = 10;
 double VISCOSITY_UNWEIGHTING_FACTOR = 100;
 
 //char temp_BMP_filename[255];
+
+bool STICK_TO_NUCLEATOR = false;
 
 double LINK_FORCE = 0.1;
 double P_XLINK =  0.5;
@@ -90,7 +95,7 @@ double CAPSULE_HALF_LINEAR =  6.0;
 nucleator::shape NUCSHAPE = nucleator::sphere;  //default to sphere
 
 //double SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
-double RAD_INCOMP = RADIUS;// + NODE_INCOMPRESSIBLE_RADIUS/2;
+//double RADIUS = RADIUS;// + NODE_INCOMPRESSIBLE_RADIUS/2;
 
 //double NODEMASS = 1.0;
 //double INERTIAL_DAMPING_HALFTIME = 50;
@@ -110,7 +115,7 @@ int CROSSLINKDELAY = 20;  // number of interations before crosslinking
 						 //       reasonable before locking node in place)
 
 double NODE_REPULSIVE_MAG =  0.00000001;
-double NODE_REPULSIVE_RANGE = NODE_INCOMPRESSIBLE_RADIUS*2;
+double NODE_REPULSIVE_RANGE = 1.0;
 
 int ASYMMETRIC_NUCLEATION = 0;
 
@@ -131,9 +136,9 @@ bool USETHREAD_LINKFORCES  = true;
 // --
 
 #ifdef _NUMA
-    nsgid_t numa_group;
+    //nsgid_t numa_group;
     radset_t radset;
-    cpuset_t cpuset;
+    //cpuset_t cpuset;
 #endif
 
 pthread_attr_t thread_attr;
@@ -175,7 +180,7 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations);
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
-#define NOKBHIT 1
+//#define NOKBHIT 1
 
 #ifndef NOKBHIT
 #ifndef _WIN32
@@ -200,11 +205,11 @@ int main(int argc, char* argv[])
 	    exit(EXIT_FAILURE);
 	}
 
-    if(argc == 2 &&  strcmp(argv[1], "sym") == 0 ) 
+    if (argc == 2 &&  strcmp(argv[1], "sym") == 0 ) 
 	{
 		REWRITESYMBREAK = true;
 	}
-	else if(argc > 2 &&  strcmp(argv[1], "post") == 0 ) 
+	else if (argc > 2 &&  strcmp(argv[1], "post") == 0 ) 
 	{
         POST_PROCESS = true;
 	}
@@ -230,11 +235,13 @@ int main(int argc, char* argv[])
 #ifdef _NUMA
         radsetcreate(&radset);
         pid_t pid = getpid();
-        numa_group = nsg_init(pid, NSG_GETBYPID);
+        rad_attach_pid(pid, radset, RAD_INSIST || RAD_SMALLMEM || RAD_MIGRATE || RAD_WAIT);
+        //pid_t pid = getpid();
+        //numa_group = nsg_init(pid, NSG_GETBYPID);
 
-        cpusetcreate(&cpuset);
-        cpuid_t cpu = cpu_get_current();
-        cpuaddset(cpuset, cpu);
+        //cpusetcreate(&cpuset);
+        //cpuid_t cpu = cpu_get_current();
+        //cpuaddset(cpuset, cpu);
 #endif
 	    thread_queue.create_threads(NUM_THREADS-1);  // -1 because parent thread counts too
 	}
@@ -274,8 +281,6 @@ int main(int argc, char* argv[])
 
 	vector<int> postprocess_iterations;
 	postprocess_iterations.resize(0);
-
-
 
     if (POST_PROCESS)
     {
@@ -389,26 +394,36 @@ if (!REWRITESYMBREAK)
 				ss >> FORCE_SCALE_FACT;
 				continue;
 			} 
-			else if (tag == "FORCEBAR_SCALE") 
-			{
-				ss >> FORCEBAR_SCALE;
-				continue;
-			} 
+			//else if (tag == "FORCEBAR_SCALE") 
+			//{
+			//	ss >> FORCEBAR_SCALE;
+			//	continue;
+			//} 
 			else if (tag == "XLINK_NODE_RANGE") 
 			{
 				ss >> XLINK_NODE_RANGE;
 				continue;
 			} 
-			else if (tag == "NODE_INCOMPRESSIBLE_RADIUS") 
-			{
-				ss >> NODE_INCOMPRESSIBLE_RADIUS;
-				continue;
-			} 
+			//else if (tag == "NODE_INCOMPRESSIBLE_RADIUS") 
+			//{
+			//	ss >> NODE_INCOMPRESSIBLE_RADIUS;
+			//	continue;
+			//} 
 			else if (tag == "P_XLINK") 
 			{
 				ss >> P_XLINK;
 				continue;
 			} 
+            else if (tag == "NUC_LINK_FORCE") 
+			{
+				ss >> NUC_LINK_FORCE;
+				continue;
+			}
+            else if (tag == "NUC_LINK_BREAKAGE_DIST") 
+			{
+				ss >> NUC_LINK_BREAKAGE_DIST;
+				continue;
+			}
 			else if (tag == "LINK_BREAKAGE_FORCE") 
 			{
 				ss >> LINK_BREAKAGE_FORCE;
@@ -429,40 +444,49 @@ if (!REWRITESYMBREAK)
 				ss >> LINK_FORCE;
 				continue;
 			}
+            else if (tag == "STICK_TO_NUCLEATOR") 
+			{
+			    ss >> buff2;
+			    if(buff2=="true")
+				    STICK_TO_NUCLEATOR = true;
+			    else
+				    STICK_TO_NUCLEATOR = false;
+			    continue;
+			}
 			else if (tag == "USETHREAD_COLLISION") 
 			{
 			    ss >> buff2;
 			    if(buff2=="true")
-				USETHREAD_COLLISION=true;
+				    USETHREAD_COLLISION = true;
 			    else
-				USETHREAD_COLLISION=false;
+				    USETHREAD_COLLISION = false;
 			    continue;
 			}
 			else if (tag == "USETHREAD_LINKFORCES") 
 			{
 			    ss >> buff2;
 			    if(buff2=="true")
-				USETHREAD_LINKFORCES=true;
+				    USETHREAD_LINKFORCES = true;
 			    else
-				USETHREAD_LINKFORCES=false;
+				    USETHREAD_LINKFORCES = false;
 			    continue;
 			}
 			else if (tag == "USETHREAD_APPLYFORCES") 
 			{
 			    ss >> buff2;
 			    if(buff2=="true")
-				USETHREAD_APPLYFORCES=true;
+				    USETHREAD_APPLYFORCES = true;
 			    else
-				USETHREAD_APPLYFORCES=false;
+				    USETHREAD_APPLYFORCES = false;
 			    continue;
 			} 
         	else if (tag == "USE_BREAKAGE_STRAIN") 
 			{
 			    ss >> buff2;
 			    if(buff2=="true")
-				USE_BREAKAGE_STRAIN=true;
+				    USE_BREAKAGE_STRAIN = true;
 			    else
-				USE_BREAKAGE_STRAIN=false;
+				    USE_BREAKAGE_STRAIN = false;
 			    continue;
 			} 
 			else if (tag == "P_NUC") 
@@ -626,14 +650,14 @@ if (!REWRITESYMBREAK)
 
 	TOTAL_ITERATIONS = (int) (((double)TOTAL_SIMULATION_TIME / (double)DELTA_T)+0.5);
 
-	NODE_REPULSIVE_GRIDSEARCH = (int) ceil(((double) NODE_INCOMPRESSIBLE_RADIUS )/GRIDRES) + 1;
+	//NODE_REPULSIVE_GRIDSEARCH = (int) ceil(((double) NODE_INCOMPRESSIBLE_RADIUS )/GRIDRES) + 1;
 	NODE_XLINK_GRIDSEARCH = (int) ceil(((double) XLINK_NODE_RANGE )/GRIDRES) + 1;
 	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) ceil(((double) NODE_REPULSIVE_RANGE )/GRIDRES) + 1;
 
 	// loop iterations per recorded timestep
 	InterRecordIterations = RECORDING_INTERVAL;
 	NUMBER_RECORDINGS = int(TOTAL_ITERATIONS / RECORDING_INTERVAL);
-	RAD_INCOMP = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
+	//RADIUS = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
 
 	if (SPECKLE_FACTOR<1)
 	{
@@ -673,7 +697,7 @@ if (!REWRITESYMBREAK)
 	cout << "P(nuc):                     " << P_NUC << endl;
 	cout << "Force scale factor:         " << FORCE_SCALE_FACT << endl;
 	cout << "Crosslink node range:       " << XLINK_NODE_RANGE << endl;
-	cout << "Node Incompressible Radius: " << NODE_INCOMPRESSIBLE_RADIUS << endl;
+	//cout << "Node Incompressible Radius: " << NODE_INCOMPRESSIBLE_RADIUS << endl;
 	cout << "Node Repulsion Range:       " << NODE_REPULSIVE_RANGE << endl;
 	cout << "Node Repulsion Magnitude:   " << NODE_REPULSIVE_MAG << endl;
 	cout << "Max links per node:         " << MAX_LINKS_PER_NODE << endl;
@@ -697,7 +721,7 @@ if (NUCSHAPE == nucleator::capsule)
 	theactin.opruninfo << "P(nuc):                     " << P_NUC << endl;
 	theactin.opruninfo << "Force scale factor:         " << FORCE_SCALE_FACT << endl;
 	theactin.opruninfo << "Crosslink node range:       " << XLINK_NODE_RANGE << endl;
-	theactin.opruninfo << "Node Incompressible Radius: " << NODE_INCOMPRESSIBLE_RADIUS << endl;
+	//theactin.opruninfo << "Node Incompressible Radius: " << NODE_INCOMPRESSIBLE_RADIUS << endl;
 	theactin.opruninfo << "Node Repulsion Range:       " << NODE_REPULSIVE_RANGE << endl;
 	theactin.opruninfo << "Node Repulsion Magnitude:   " << NODE_REPULSIVE_MAG << endl;	
 	theactin.opruninfo << "Max links per node:         " << MAX_LINKS_PER_NODE << endl;
@@ -1272,17 +1296,21 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 
 		load_data(theactin, *iteration);
 
-		theactin.load_sym_break_axes();   // overwrite rotation matrixes
+		theactin.load_sym_break_axes();   // overwrite rotation matcp rixes
+
+		// cout << theactin.camera_rotation;
 					
 		nuc_object.segs.addallnodes();  // put node data into segment bins
 
         nuc_object.segs.savereport(filenum);
         nuc_object.segs.saveSDreport(filenum);
 		nuc_object.segs.saveradialreport(filenum);
-
         nuc_object.segs.saveradialaxisreport(filenum, 0);
         nuc_object.segs.saveradialaxisreport(filenum, 1);
         nuc_object.segs.saveradialaxisreport(filenum, 2);
+
+		// run them in foreground to slow things down
+		// so don't overload system with too many bg processes
 
 		theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
 		theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg

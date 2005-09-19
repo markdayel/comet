@@ -32,6 +32,8 @@ nodes::nodes(void)
 
 	unit_vec_posn.zero();
 
+    nucleator_link_force.zero();
+
 
     insidenucleator = false;
 	polymer = false;
@@ -41,13 +43,11 @@ nodes::nodes(void)
 	harbinger = false;
 //	dontupdate = false;
 
+    stucktonucleator = false;
+    nucleator_stuck_position.zero();
+
 	clearstats();
 
-    //if (VISCOSITY)
-    //    p_applyforces_fn = &nodes::applyforces_visc;
-    //else
-    //    p_applyforces_fn = &nodes::applyforces_novisc;
-	
 }
 
 nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
@@ -62,6 +62,8 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 	nuc_repulsion_displacement_vec.zero();
     viscous_force_recip_dist_sum = 0;
 
+    nucleator_link_force.zero();
+
 	clearstats();
 
 	colour.setcol(0);
@@ -73,10 +75,8 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 
 	polymerize(set_x,  set_y,  set_z);
 
-    //if (VISCOSITY)
-    //    p_applyforces_fn = &nodes::applyforces_visc;
-    //else
-    //    p_applyforces_fn = &nodes::applyforces_novisc;
+    stucktonucleator = false;
+    nucleator_stuck_position.zero();
 
 }
 
@@ -190,6 +190,8 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 	creation_iter_num = ptheactin->iteration_num;
 
 	harbinger = true;
+
+    setunitvec();
 
 	//colour.setcol(x);
 

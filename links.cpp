@@ -132,3 +132,10 @@ int links::load_data(ifstream &istr)
 	 >> linkednodenumber;
     return 0;
 }
+
+void links::reset_link(void)
+{
+    breakcount = 0;
+    breaklastiter = false;
+    broken = false;
+}

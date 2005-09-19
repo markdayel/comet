@@ -86,7 +86,7 @@ void TaskQueue::create_threads(const int num_workerthreads)
 			     wrapper_activate_workers,
 			     this);
 #ifdef _NUMA
-    pthread_nsg_attach( numa_group, thread, NSG_INSIST || NSG_SMALLMEM || NSG_MIGRATE || NSG_WAIT);
+    //pthread_nsg_attach( numa_group, thread, NSG_INSIST || NSG_SMALLMEM || NSG_MIGRATE || NSG_WAIT);
 #endif
 
     if(err != 0){
@@ -154,8 +154,8 @@ void* TaskQueue::activate_workers()
 #ifdef _NUMA
     pid_t pid = getpid();
     rad_attach_pid(pid, radset, RAD_INSIST || RAD_SMALLMEM || RAD_MIGRATE || RAD_WAIT);
-    cpuid_t cpu = cpu_get_current();
-    cpuaddset(cpuset, cpu);
+    //cpuid_t cpu = cpu_get_current();
+    //cpuaddset(cpuset, cpu);
 #endif
 
     int err;
