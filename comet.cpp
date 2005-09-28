@@ -243,11 +243,11 @@ int main(int argc, char* argv[])
         //cpuid_t cpu = cpu_get_current();
         //cpuaddset(cpuset, cpu);
 #endif
-	    thread_queue.create_threads(NUM_THREADS-1);  // -1 because parent thread counts too
+	    thread_queue.create_threads(NUM_THREADS);
 	}
 
 
-    NUM_THREAD_DATA_CHUNKS = NUM_THREADS * 4;
+	NUM_THREAD_DATA_CHUNKS = NUM_THREADS;  // was NUM_THREADS*4
 
 	// data for threads (managed outside queue
 	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
@@ -1272,54 +1272,106 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
     } 
 }
 
-void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations)
+void postprocess(nucleator& nuc_object, actin &theactin, 
+		 vector<int> &postprocess_iterations)
 {
-
-	int filenum;
+    int filenum;
     theactin.load_sym_break_axes();
-
-	if (nuc_object.segs.load_scalefactors())
+    
+    cout << endl
+	 << "-- Post processing" << endl;
+    
+    if (nuc_object.segs.load_scalefactors())
     {
-        // if we're able to load the scale factors
-        // turn off the auto-scaling
-        theactin.BMP_intensity_scaling = false;
+	// if we're able to load the scale factors
+	// turn off the auto-scaling
+	theactin.BMP_intensity_scaling = false;
     }
-
-    for(vector<int>::iterator iteration = postprocess_iterations.end()-1; 
-		iteration >= postprocess_iterations.begin(); ++iteration)
-	{
-		filenum = (int)(*iteration/InterRecordIterations);
-
-		//cout << "Post processing iteration " << *iteration << ": ";
-		cout << "Post processing frame " << filenum << "/" 
-			 << ((*postprocess_iterations.end())/InterRecordIterations) << ": ";
-
-		load_data(theactin, *iteration);
-
-		theactin.load_sym_break_axes();   // overwrite rotation matcp rixes
-
-		// cout << theactin.camera_rotation;
-					
-		nuc_object.segs.addallnodes();  // put node data into segment bins
-
+    int i=1;
+    for(vector<int>::reverse_iterator iteration = postprocess_iterations.rbegin();
+	iteration != postprocess_iterations.rend(); ++iteration, ++i)
+    {
+	filenum = (int)(*iteration/InterRecordIterations);
+	
+	cout << " iter " << i << "/" << postprocess_iterations.size() // Mark, change back if you prefer 
+	     << " (frame " << filenum 
+	     << "): " ;
+	
+	load_data(theactin, *iteration);
+	
+	theactin.load_sym_break_axes();   // overwrite rotation matcp rixes	
+	nuc_object.segs.addallnodes();  // put node data into segment bins
+	
         nuc_object.segs.savereport(filenum);
         nuc_object.segs.saveSDreport(filenum);
-		nuc_object.segs.saveradialreport(filenum);
+	nuc_object.segs.saveradialreport(filenum);
         nuc_object.segs.saveradialaxisreport(filenum, 0);
         nuc_object.segs.saveradialaxisreport(filenum, 1);
         nuc_object.segs.saveradialaxisreport(filenum, 2);
-
-		// run them in foreground to slow things down
-		// so don't overload system with too many bg processes
-
-		theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
-		theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg
-		theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
-        	
-		cout << "\r";
-		cout.flush();
+	
+	// run them in foreground to slow things down
+	// so don't overload system with too many bg processes
+	
+	theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
+	theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg
+	theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
+        
+	cout << "\r";
+	cout.flush();
     }
+    cout << endl << "-- done." << endl; 
 }
+
+// r90 postprocess, Mark remove if you are happy with minor changes above 
+//
+// void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations)
+// {
+//
+// 	int filenum;
+//     theactin.load_sym_break_axes();
+//
+// 	if (nuc_object.segs.load_scalefactors())
+//     {
+//         // if we're able to load the scale factors
+//         // turn off the auto-scaling
+//         theactin.BMP_intensity_scaling = false;
+//     }
+//
+//     for(vector<int>::iterator iteration = postprocess_iterations.end()-1; 
+// 		iteration >= postprocess_iterations.begin(); ++iteration)
+// 	{
+// 		filenum = (int)(*iteration/InterRecordIterations);
+//
+// 		//cout << "Post processing iteration " << *iteration << ": ";
+// 		cout << "Post processing frame " << filenum << "/" 
+// 			 << ((*postprocess_iterations.end())/InterRecordIterations) << ": ";
+//
+// 		load_data(theactin, *iteration);
+//
+// 		theactin.load_sym_break_axes();   // overwrite rotation matcp rixes
+//
+// 		// cout << theactin.camera_rotation;
+//				
+// 		nuc_object.segs.addallnodes();  // put node data into segment bins
+//
+//         nuc_object.segs.savereport(filenum);
+//         nuc_object.segs.saveSDreport(filenum);
+// 		nuc_object.segs.saveradialreport(filenum);
+//         nuc_object.segs.saveradialaxisreport(filenum, 0);
+//         nuc_object.segs.saveradialaxisreport(filenum, 1);
+//         nuc_object.segs.saveradialaxisreport(filenum, 2);
+//
+// 		// run them in foreground to slow things down
+// 		// so don't overload system with too many bg processes
+//
+// 		theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
+// 		theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg
+// 		theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
+//      	
+// 		cout << "\r";
+// 		cout.flush();
+//     }
+// }
 
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 {

@@ -476,7 +476,7 @@ int actin::iterate()  // this is the main iteration loop call
 
     if  (USE_THREADS && (USETHREAD_COLLISION || USETHREAD_LINKFORCES))
     {
-        thread_queue.complete_current_tasks();
+        thread_queue.complete_queued_tasks();
     }
 
 
@@ -1563,7 +1563,7 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
 	        thread_queue.queue_task(&applyforcesdowork, &applyforces_thread_data_array[i]);
         }
 
-	    thread_queue.complete_current_tasks();
+	    thread_queue.complete_queued_tasks();
     } 
     else 
     {
