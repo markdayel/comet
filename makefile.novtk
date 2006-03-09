@@ -1,0 +1,44 @@
+PROG = comet
+SRCS = comet.cpp actin.cpp Colour.cpp links.cpp \
+       nodes.cpp nucleator.cpp rotationmatrix.cpp \
+       segments.cpp kbhit.cpp threadedtaskqueue.cpp \
+
+OBJS = $(SRCS:.cpp=.o)
+
+LIBS = -lm 
+
+#debug:
+CXXFLAGS = -O3 \
+           -g -Wall -pthread  -Wno-deprecated 
+# -D_STLP_DEBUG
+
+
+#fast:
+#CXXFLAGS = -O3 -ffast-math -march=opteron -mfpmath=sse \
+#           -Wall -pthread  -Wno-deprecated \
+#           -fomit-frame-pointer -fprefetch-loop-arrays
+
+#
+#debug:
+
+CXX = c++
+
+$(PROG):$(OBJS)
+	$(CXX) $(CXXFLAGS) \
+	-o ../bin/$(PROG) $(OBJS) $(LIBS)
+
+clean:
+	rm -f $(OBJS)
+
+distclean: clean
+	rm -f $(PROG)
+
+dataclean:
+	rm -f ../bin/*.png
+	rm -f ../bin/*.gz
+	rm -f ../bin/*.txt
+	rm -f ../bin/*.wrz
+	rm -f ../bin/*.bmp
+	rm -f ../bin/*.wrl
+
+

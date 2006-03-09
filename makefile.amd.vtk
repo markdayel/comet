@@ -1,0 +1,64 @@
+PROG = comet
+SRCS = actin.cpp Colour.cpp links.cpp \
+       nodes.cpp nucleator.cpp rotationmatrix.cpp \
+       segments.cpp kbhit.cpp threadedtaskqueue.cpp \
+
+VTKSRCS = comet_vtk.cpp comet.cpp 
+
+OBJS = $(SRCS:.cpp=.o)
+VTKOBJS = $(VTKSRCS:.cpp=.o)
+ALLOBJS = $(OBJS)$(VTKOBJS) 
+
+# LIBS = -lm -I/usr/local/include/stlport -L/usr/local/lib/stlport
+LIBS = -lm 
+
+# vtk 
+VTKINCLUDES = -I/usr/local/include/vtk/
+VTKLIBPATH  = -L/usr/local/lib/vtk/
+VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics
+
+#normal:
+#CXXFLAGS = -O3 -ffast-math -DLINK_VTK
+#           -Wall -pthread -Wno-deprecated 
+
+
+#debug:
+CXXFLAGS = -O3 -DLINK_VTK \
+           -g -Wall -pthread  -Wno-deprecated 
+
+#fast:
+#CXXFLAGS = -O3 -ffast-math -march=opteron -mfpmath=sse \
+#           -Wall -pthread  -Wno-deprecated -DLINK_VTK \
+#           -fomit-frame-pointer -fprefetch-loop-arrays
+
+CXX = c++
+
+$(PROG):$(ALLOBJS)
+	$(CXX) $(CXXFLAGS) $(VTKLIBPATH) \
+	-o ../bin/$(PROG) $(ALLOBJS) $(LIBS) \
+	$(VTKLIBS)
+
+
+comet.o:comet.cpp
+	$(CXX) $(CXXFLAGS) $(VTKINCLUDES) \
+	-c -o $@ $< 
+
+comet_vtk.o:comet_vtk.cpp
+	$(CXX) $(CXXFLAGS) $(VTKINCLUDES) \
+	-c -o $@ $< 
+
+clean:
+	rm -f $(ALLOBJS)
+
+distclean: clean
+	rm -f $(PROG)
+
+dataclean:
+	rm -f ../bin/*.png
+	rm -f ../bin/*.gz
+	rm -f ../bin/*.txt
+	rm -f ../bin/*.wrz
+	rm -f ../bin/*.bmp
+	rm -f ../bin/*.wrl
+
+
