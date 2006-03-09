@@ -15,7 +15,7 @@ removed without prior written permission from the author.
 #ifndef nodes_H
 #define nodes_H
 
-#include "stdafx.h"
+//#include "stdafx.h"
 #include "vect.h"
 #include "Colour.h"
 #include "links.h"
@@ -44,21 +44,31 @@ public:
 	
 	vect rep_force_vec;
 	vect nuc_repulsion_displacement_vec;
-    vect viscous_force_vec;
-    double viscous_force_recip_dist_sum;
+    //vect viscous_force_vec;
+    //double viscous_force_recip_dist_sum;
 	vector <links> listoflinks;
 
 	double linkforce_transverse, linkforce_radial,  // index is the threadnum
 			 repforce_transverse, repforce_radial,
 			 links_broken;
 	
-	double nucleator_impacts;
-    vect nucleator_link_force;
+	double nucleator_impacts;	// keeps track of ejections of node from nucleator
+								// merely for display of ejection forces
+								// segmented in segments.cpp
+								// not used in moving node, nucleator etc.
+								// that is done directly at the mo.
 
-    bool insidenucleator;
+    vect nucleator_link_force;	// force on nodes by the link to the nucleator 
+								// again merely for display purposes
+								// segmented in segments.cpp
+								// nucleator attachements are dealt with in actin::nucleator_node_interactions()
+
+    //bool insidenucleator;
+
+	int threadnum;    
 
 	int gridx, gridy, gridz;
-	vect delta;
+	//vect delta;
 	void updategrid(void);
 	void removefromgrid(void);
 	void addtogrid(void);
@@ -75,9 +85,12 @@ public:
 	double phi;
 	int savelinks(ofstream * outstream);
 	bool onseg;
+	double dist_from_surface;
 
     bool stucktonucleator;
     vect nucleator_stuck_position;
+
+	bool move_harbinger_this_time;
     
 
     //bool dontupdate;
@@ -86,8 +99,8 @@ public:
 
     //void (nodes::*p_applyforces_fn)(void);
     
-	void applyforces_novisc();
-    void applyforces_visc();
+	void applyforces();
+    //void applyforces_visc();
 
 	void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
 	{
@@ -113,6 +126,9 @@ public:
 		repforce_radial      = 
 		links_broken	     =
  		nucleator_impacts    = 0;
+
+		nucleator_link_force.zero();
+
 	}
 
 	void setunitvec(void)
@@ -120,26 +136,22 @@ public:
 
 		if (NUCSHAPE == nucleator::sphere)
 		{
-            double len = this->length();
-            unit_vec_posn = *this * (1/len);  // set unit vector position
-            if (len < RADIUS)
-                insidenucleator = true;
-            else
-                insidenucleator = false;
+            dist_from_surface = this->length();	 // not really dist_from_surface yet, need to subtract radius
+            unit_vec_posn = *this * (1/dist_from_surface);  // set unit vector position
+			dist_from_surface -= RADIUS;
+
 		}
 		else
 		{	// capsule
 			if (fabs(z) < CAPSULE_HALF_LINEAR)
 			{  // on cylinder, no z component
-				double len = calcdist(x,y);
-				unit_vec_posn = vect(x/len, y/len, 0);
+
+				dist_from_surface = calcdist(x,y);   // not really dist_from_surface yet, need to subtract radius
+				unit_vec_posn = vect(x/dist_from_surface, y/dist_from_surface, 0);
+				dist_from_surface -= RADIUS;
 
 				onseg = true;
 
-                if (len < RADIUS)
-                    insidenucleator = true;
-                else
-                    insidenucleator = false;
 			}
 			else
 			{	// on ends
@@ -151,35 +163,29 @@ public:
 					vect offsetvec = *this;
 					offsetvec.z -= CAPSULE_HALF_LINEAR;
 
-                    double len = offsetvec.length();
+                    dist_from_surface = offsetvec.length();	// not really dist_from_surface yet, need to subtract radius
 
-                    unit_vec_posn = offsetvec * (1/len);  // set unit vector position
+                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
 
-					if (len < RADIUS)
-                        insidenucleator = true;
-                    else
-                        insidenucleator = false;
+
+					dist_from_surface -= RADIUS;
+
 				}
 				else
 				{
 					vect offsetvec = *this;
 					offsetvec.z += CAPSULE_HALF_LINEAR;
 
-                    double len = offsetvec.length();
+                    dist_from_surface = offsetvec.length();	 // not really dist_from_surface yet, need to subtract radius
 
-                    unit_vec_posn = offsetvec * (1/len);  // set unit vector position
+                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
 
-					if (len < RADIUS)
-                        insidenucleator = true;
-                    else
-                        insidenucleator = false;
+					dist_from_surface -= RADIUS;
+
 				}	
 			}
 		}
 	}
-
-
-    
 };
 
 #endif

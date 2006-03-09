@@ -160,11 +160,11 @@ class vect
     const inline vect unitvec() const
 	{
 	    vect temp;
-	    double len = length();
+	    double recip_len = 1/length();
 	    
-	    temp.x = x/len;
-	    temp.y = y/len;
-	    temp.z = z/len;
+	    temp.x = x*recip_len;
+	    temp.y = y*recip_len;
+	    temp.z = z*recip_len;
 	    
 	    return temp;
 	}

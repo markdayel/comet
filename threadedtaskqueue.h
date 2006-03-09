@@ -7,6 +7,7 @@
 #include <vector>
 #include <queue>
 
+
 class TaskQueue // sorry couldn't look at lower case user defined types any longer
 {
 protected:

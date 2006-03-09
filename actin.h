@@ -101,10 +101,10 @@ public:
 
     bool BMP_intensity_scaling;
 
-	rotationmatrix actin_rotation, camera_rotation, 
+	rotationmatrix actin_rotation, camera_rotation, camera_rotation2,
 			reverse_camera_rotation;
 
-	int num_rotate, num_displace;
+	//int num_rotate, num_displace;
 
 	int crosslinknewnodes(int numnewnodes);
 
@@ -113,7 +113,7 @@ public:
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
 	int collisiondetection(void);
-	void ejectfromnucleator(void);
+	void nucleator_node_interactions(void);
 	void move_and_rotate(void);
 
 	int applyforces(void);	
@@ -144,6 +144,9 @@ public:
 	
 	int setnodecols(void);
 
+	vector <double> speckle_array;
+	int speckle_array_size;
+
 	static vector <nodes> node;
 	static vector <bool> donenode;	
     static Nodes2d nodes_by_thread;
@@ -153,7 +156,7 @@ public:
     //static vector <int> recti_near_nodes_size;
     //static vector <int> nodes_on_same_gridpoint_size;
 
-	static Nodes1d nodes_within_nucleator;	
+	//static Nodes1d nodes_within_nucleator;	
 	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
     static int findnearbynodes_col(const nodes& ournode, const int& threadnum);
 
@@ -164,7 +167,7 @@ public:
 	static bool isinthread;
 	// -- Threading add worker functions
 	static void *collisiondetectiondowork(void* arg);//, pthread_mutex_t *mutex);
-    static void *collisiondetectiondoworkvisc(void* arg);//, pthread_mutex_t *mutex);
+    //static void *collisiondetectiondoworkvisc(void* arg);//, pthread_mutex_t *mutex);
 	static void *linkforcesdowork(void* arg);//, pthread_mutex_t *mutex);
 	static void *applyforcesdowork(void* threadarg);//, pthread_mutex_t *mutex);
 	// --

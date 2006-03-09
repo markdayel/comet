@@ -65,6 +65,11 @@ public:
 	//vector <double> fbar_bdy_y;
 
 
+	inline bool is_sphere()
+	{
+		return (geometry == sphere);
+	}
+
     void move_nuc(vect& origin_of_movement, vect& tomove);
 
 	int addnodes(void);

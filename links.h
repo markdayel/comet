@@ -31,6 +31,8 @@ public:
 	double orig_dist;
 	double orig_dist_recip;
 
+	double last_dist;
+
 	bool broken;
 	int breakcount;
 	bool breaklastiter;

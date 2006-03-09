@@ -78,7 +78,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		num_segs = num_cap_segs * 2 + num_straight_segs * 2;
 	}
 
-	// allocate and zero the 2d vectors
+	// allocate and zero the 3d vectors
 
 	       numnodes.resize(3);			
 	     rep_radial.resize(3);
@@ -86,6 +86,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	    link_radial.resize(3);
 	link_transverse.resize(3);
 	   links_broken.resize(3);
+  surfacestuckforce.resize(3);
 
 	for (int axis = 0; axis < 3; ++axis)
 	{
@@ -95,6 +96,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		    link_radial[axis].resize(num_segs);
 		link_transverse[axis].resize(num_segs);
 		   links_broken[axis].resize(num_segs);
+	  surfacestuckforce[axis].resize(num_segs);
 
         for(int i = 0; i<num_segs; ++i)
 		{
@@ -104,6 +106,8 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			    link_radial[axis][i].resize(num_dist_segs);
 			link_transverse[axis][i].resize(num_dist_segs);
 			   links_broken[axis][i].resize(num_dist_segs);
+		  surfacestuckforce[axis][i].resize(2);  // this is the direction, 0=radial, 1=transverse
+
 		}
 	}
 
@@ -122,6 +126,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	{
 		surfaceimpacts[axis].resize(num_segs);
 	}
+
 
     // allocate stddev vectors
 
@@ -271,9 +276,12 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 // (integral of surface multiplied by orthoganal scaling factor used
 // during the impacts)
 // but use lengths for now:
-	curved_seg_area   = cap_seg_len;
-	straight_seg_area =  straight_seg_len;
-	// capsule_z_seg_area = 
+
+	straight_seg_area = straight_seg_len;// CAPSULE_HALF_LINEAR * 2 * 2 * PI * RADIUS /  (2 * num_straight_segs) ;
+
+	curved_seg_area   = straight_seg_len;// (3 * PI * RADIUS * RADIUS * RADIUS / 4) /	(2 * num_cap_segs);
+
+	
 
     numnodes_scalefactor = 0.1;
 	rep_radial_scalefactor = 0.1;
@@ -317,26 +325,31 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 
 		if (x>0)	// RHS
 		{
-			return num_cap_segs + (int) (((CAPSULE_HALF_LINEAR) - y)/straight_seg_len);
+			return num_cap_segs + (int) ((CAPSULE_HALF_LINEAR - y) / straight_seg_len);
 		}
 		else		// LHS
 		{
 			return 2 * num_cap_segs + num_straight_segs 
-						        + (int) ((y + (CAPSULE_HALF_LINEAR))/straight_seg_len);
+						        + (int) ((y + CAPSULE_HALF_LINEAR) / straight_seg_len);
 		}
 	} 
-	else if (y > 0)
-	{	// top cap
-
-		return (int)((double)num_cap_segs * (1+ (atan2(-(y - (CAPSULE_HALF_LINEAR)),x) / PI)) );
-
-	}
-	else	//  (y < CAPSULE_HALF_LINEAR)
-	{	// bottom cap
-
-		return num_straight_segs
-			+ (int)((double)num_cap_segs * (1+ (atan2((y + (CAPSULE_HALF_LINEAR)),-x) / PI)) );
+	else
+	{	
+		if (y > 0)
+		{
+			// top cap
+			//int tmp =
+			return  (int)((double)num_cap_segs * (1+ (atan2(-(y - CAPSULE_HALF_LINEAR), x) / PI)) );
+			//return tmp;
+		}
+		else	//  (y < CAPSULE_HALF_LINEAR)
+		{	// bottom cap
+			//int tmp=
+			return num_straight_segs + num_cap_segs
+				+  (int)((double)num_cap_segs * (1+ (atan2( (y + CAPSULE_HALF_LINEAR),-x) / PI)) );
+			//return tmp;
 		
+		}
 	}
 
 }
@@ -414,13 +427,17 @@ void segments::addnode(const nodes& node)
 	double radius;
 
 	nodes rot_pos;
-	vect rot_unit;
+	vect rot_unit, rot_nuc_link_force;
+	vect xfacvec, yfacvec, zfacvec;
 
 	rot_pos = node;
 	rot_unit = node.unit_vec_posn;
+	rot_nuc_link_force = node.nucleator_link_force;
 
 	p_actin->camera_rotation.rotate(rot_pos); 
 	p_actin->camera_rotation.rotate(rot_unit); 
+	p_actin->camera_rotation.rotate(rot_nuc_link_force);
+
 
 	getsegmentnum(rot_pos, xseg, yseg, zseg);
 	getsegmentdist(rot_pos, xdist, ydist, zdist);
@@ -428,36 +445,64 @@ void segments::addnode(const nodes& node)
 	// find scaling factor if off-axis, using rotated vector
 	// and radius using normal pos'n
 
-	xfactor = calcdist(rot_unit.y,rot_unit.z);
-	yfactor = calcdist(rot_unit.x,rot_unit.z);
+	xfacvec = vect(0,rot_unit.y,rot_unit.z); 
+	yfacvec = vect(rot_unit.x,0,rot_unit.z); 
 
-	if (p_nuc->geometry == nucleator::sphere)
+	//xfactor = calcdist(rot_unit.y,rot_unit.z);
+	//yfactor = calcdist(rot_unit.x,rot_unit.z);
+
+	if (p_nuc->is_sphere())
 	{
-		zfactor = calcdist(rot_unit.x,rot_unit.y);	
-		radius = node.length() - RADIUS;
+		zfacvec = vect(rot_unit.x,rot_unit.y,0);
+		//zfactor = calcdist(rot_unit.x,rot_unit.y);	
+		//radius = node.length() - RADIUS;
 	}
 	else
 	{
 		if (node.onseg)
 		{  // on cylinder, don't scale by z component
+			zfacvec = vect(rot_unit.x,rot_unit.y,0);
 			zfactor = 1;
-			radius = calcdist(node.x,node.y) - RADIUS;
+			//radius = calcdist(node.x,node.y) - RADIUS;
 		}
 		else
 		{	// on ends
+			zfacvec = vect(rot_unit.x,rot_unit.y,(fabs(node.z) - CAPSULE_HALF_LINEAR) - RADIUS); 
 
-			zfactor = calcdist(rot_unit.x,rot_unit.y);	
-			radius = calcdist(node.x,node.y,fabs(node.z) - CAPSULE_HALF_LINEAR) - RADIUS;
+			zfactor = calcdist(rot_unit.x,rot_unit.y);
+			//radius = calcdist(node.x,node.y,fabs(node.z) - CAPSULE_HALF_LINEAR) - RADIUS;
 		}
 
 	}
 
-    if (radius < 0)
+	xfactor = xfacvec.length();
+	yfactor = yfacvec.length();
+	zfactor = zfacvec.length();
+
+	radius = node.dist_from_surface;
+
+	if (radius < 0)
         radius = SQRT_ACCURACY_LOSS;
 
-	surfaceimpacts[0][xseg] += xfactor * node.nucleator_impacts;
-	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts;
+
+	surfaceimpacts[0][xseg] += xfactor * node.nucleator_impacts; 
+	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts; 
 	surfaceimpacts[2][zseg] += zfactor * node.nucleator_impacts;
+
+	//if ((xseg==11))
+	//	cout << "node.nucleator_impacts: "  << setw(30) << setprecision(20) << node.nucleator_impacts << endl;
+
+	// check this, may not be right
+
+	surfacestuckforce[0][xseg][0] += xfactor * rot_nuc_link_force.y; 
+	surfacestuckforce[0][xseg][1] += xfactor * rot_nuc_link_force.z;
+
+	surfacestuckforce[1][yseg][0] += yfactor * rot_nuc_link_force.x;
+	surfacestuckforce[1][yseg][1] += yfactor * rot_nuc_link_force.z; 
+
+	surfacestuckforce[2][zseg][0] += zfactor * rot_nuc_link_force.x;
+	surfacestuckforce[2][zseg][1] += zfactor * rot_nuc_link_force.y;
+
 
 	if (xdist!=-1)
 	{
@@ -502,6 +547,7 @@ void segments::addnode(const nodes& node)
 	    radial_link_radial[dist] += node.linkforce_radial;
 	    radial_link_transverse[dist] += node.linkforce_transverse;
 	    radial_links_broken[dist] += node.links_broken;
+        
     }
 
 }
@@ -512,17 +558,24 @@ void segments::clearbins(void)
 	{
 		for(int seg = 0; seg<num_segs; ++seg)
 		{
-		surfaceimpacts[axis][seg]=0;
+			surfaceimpacts[axis][seg]=0;
 
-		for(int dist = 0; dist<num_dist_segs; ++dist)
-    		{
-				       numnodes[axis][seg][dist]=0;
-				     rep_radial[axis][seg][dist]=0;
+			for(int dist = 0; dist<num_dist_segs; ++dist)
+			{
+					   numnodes[axis][seg][dist]=0;
+					 rep_radial[axis][seg][dist]=0;
 				 rep_transverse[axis][seg][dist]=0;
-				    link_radial[axis][seg][dist]=0;
+					link_radial[axis][seg][dist]=0;
 				link_transverse[axis][seg][dist]=0;
-	   			   links_broken[axis][seg][dist]=0;
+   				   links_broken[axis][seg][dist]=0;
+			  
 			}
+
+			for(int dirn = 0; dirn<2; ++dirn)
+			{
+				surfacestuckforce[axis][seg][dirn]=0;
+			}
+
 		}
 	}
 	
@@ -593,11 +646,6 @@ void segments::drawoutline(ostream& drawcmd, const int& axis) const
 			<< "180,360";
     }
  
-
-	// draw segment divisions?
-
-
-
 }
 
 int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double scale) const
@@ -634,8 +682,12 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 			seg_area = curved_seg_area;
 		}
 	
+		// draw the surface impacts:
+
 		unscaledlen = surfaceimpacts[axis][i] * scale
                             / (seg_area * surfaceimpacts_scalefactor);
+
+		//cout << setw(10) << setprecision(5) << unscaledlen << endl;
 
 		//cout << "surfaceimpacts[" << axis <<"][" <<i<<"]" << surfaceimpacts[axis][i] << endl;
 
@@ -653,9 +705,12 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 		// don't plot zero length lines
 		if ( (p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
 			 (p_actin->pixels(starty) == p_actin->pixels(starty + liney)) )
-			continue;
+		{
+		}
+		else
+		{
 
-		numlinesplotted++;
+		//numlinesplotted++;
 
 		drawcmd << " line "
 				<< centerx + p_actin->pixels(startx) << "," 
@@ -663,6 +718,50 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 
 				<< centerx + p_actin->pixels(startx + linex) << ","
 				<< centery + p_actin->pixels(starty + liney);
+				
+				numlinesplotted++;
+
+		}
+		// draw the nucleator link forces impacts:
+
+		unscaledlen = calcdist(surfacestuckforce[axis][i][0],surfacestuckforce[axis][i][1]) * scale
+                            / (seg_area * surfaceimpacts_scalefactor);  // same scale factor as above
+
+		//cout << setw(70) << setprecision(64) << unscaledlen << endl;
+
+		//cout << "surfaceimpacts[" << axis <<"][" <<i<<"]" << surfaceimpacts[axis][i] << endl;
+
+		linex = - surfacestuckforce[axis][i][0] * scale / (seg_area * surfaceimpacts_scalefactor);
+		liney = - surfacestuckforce[axis][i][1] * scale / (seg_area * surfaceimpacts_scalefactor);
+
+		linelen = calcdist(linex,liney);
+
+		if (linelen > 0.9 * RADIUS)
+		{
+			linex *= 0.9 * RADIUS / linelen;
+			liney *= 0.9 * RADIUS / linelen;			
+		}
+
+		// don't plot zero length lines
+		if ( (p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
+			 (p_actin->pixels(starty) == p_actin->pixels(starty + liney)) )
+		{
+		}
+		else
+		{
+
+		//numlinesplotted++;
+
+		drawcmd << " line "
+				<< centerx + p_actin->pixels(startx) << "," 
+				<< centery + p_actin->pixels(starty) << " "
+
+				<< centerx + p_actin->pixels(startx + linex) << ","
+				<< centery + p_actin->pixels(starty + liney);
+				
+				numlinesplotted++;
+
+		}
 
 	}
 
@@ -1134,43 +1233,6 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 	nodes dummynode;
 
 	double value;
-
-//	double maxval = SQRT_ACCURACY_LOSS;
-
-	// set max value:
-
-	//for (int ax = 0; ax < 3; ++ax)
-	//	for(int seg = 0; seg<num_segs; ++seg)
-	//		for(int dist = 0; dist<num_dist_segs; ++dist)
-	//		{
-	//			if (var[ax][seg][dist] > maxval)
-	//				maxval = var[ax][seg][dist];
-	//		}
-
-	//for(int seg = 0; seg<num_segs; ++seg)
-	//	for(int dist = 0; dist<num_dist_segs; ++dist)
-	//	{
-	//		value = var[axis][seg][dist] / maxval;  // scaled between 0 and 1
-
-	//		if (value < 0.00001)	// skip if zero
-	//			continue;
-
-	//		dummynode.colour.setcol(value);
-
-	//		for (vector <int>::iterator i=segment_pixel[axis][seg][dist].begin(); i<segment_pixel[axis][seg][dist].end() ; i++ )
-	//		{	 
-
-	//		x = *i;
-
-	//		i++;
-	//		y = *i;
-
-	//		imageR[x][y] = dummynode.colour.r;
-	//		imageG[x][y] = dummynode.colour.g;
-	//		imageB[x][y] = dummynode.colour.b;
-
-	//		}
-		//}
 
 	// go through bitmap
 

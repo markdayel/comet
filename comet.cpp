@@ -36,17 +36,25 @@ double GAUSSFWHM =  0.266;
 
 bool NUCLEATOR_FORCES = true;
 
-int BMP_WIDTH = 800;
+int BMP_WIDTH  = 800;
 int BMP_HEIGHT = 600;
 
 double INIT_R_GAIN = 20;
 double INIT_G_GAIN = 20;
 double INIT_B_GAIN = 20;
 
-int SPECKLE_FACTOR = 1;
+bool ALLOW_HARBINGERS_TO_MOVE = false;
+
+bool   SPECKLE = false;
+double SPECKLE_FACTOR = 1;
 
 bool ROTATION = true;
 bool GRASS_IS_GREEN = true;
+bool DRAW_CAGE = false;
+
+bool SEGMENT_BINS = true;
+
+bool CAGE_ON_SIDE = true;
 
 double MofI =  0.1;
 
@@ -68,7 +76,7 @@ int NUMBER_RECORDINGS = 0;
 
 double FORCE_SCALE_FACT = 0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
 					        // this is related to effective viscosity and effective size of node
-//double FORCEBAR_SCALE   = 10;	// scale for relating force to image bar
+double FORCE_BAR_SCALE   = 1;	// scale for relating force to image bar
 
 double XLINK_NODE_RANGE =  1.0;		// Limit crosslink to within this range
 //double NODE_INCOMPRESSIBLE_RADIUS = 0.2;	// repulsion is zero here
@@ -80,18 +88,28 @@ double LINK_BREAKAGE_STRAIN = 1.15;
 double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NODE = 100;
 
+double NUCLEATOR_INERTIA = 10;
+
 double NUC_LINK_FORCE = 0.25;
-double NUC_LINK_BREAKAGE_DIST = 2;
+double NUC_LINK_BREAKAGE_FORCE = 2;
 
 double LINK_TAUT_FORCE =  5;
 double LINK_TAUT_RATIO =  1.1;
 
-double VISCOSITY_EDGE_THRESHOLD = 10;
-double VISCOSITY_UNWEIGHTING_FACTOR = 100;
+double IMPOSED_NUC_ROT_SPEED = 1;
+bool   IMPOSED_NUC_ROT = false;
+
+bool WRITE_BMPS_PRE_SYMBREAK = false;
+
+bool QUIET = false;
+
+double VISCOSITY_FACTOR = 0.1;
+//double VISCOSITY_UNWEIGHTING_FACTOR = 100;
 
 //char temp_BMP_filename[255];
 
 bool STICK_TO_NUCLEATOR = false;
+bool RESTICK_TO_NUCLEATOR = true;
 
 double LINK_FORCE = 0.1;
 double P_XLINK =  0.5;
@@ -123,6 +141,9 @@ int CROSSLINKDELAY = 20;  // number of interations before crosslinking
 
 double NODE_REPULSIVE_MAG =  0.00000001;
 double NODE_REPULSIVE_RANGE = 1.0;
+
+double NODE_FORCE_TO_DIST;
+double NODE_DIST_TO_FORCE;
 
 int ASYMMETRIC_NUCLEATION = 0;
 
@@ -164,7 +185,7 @@ vector <bool>   actin::donenode;
 Nodes2d actin::nodes_by_thread;
 Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
-Nodes1d actin::nodes_within_nucleator;
+//Nodes1d actin::nodes_within_nucleator;
 
 //vector <int> actin::recti_near_nodes_size;
 //vector <int> actin::nodes_on_same_gridpoint_size;
@@ -203,7 +224,9 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
 int main(int argc, char* argv[])
 {
-    if(argc < 2 || argc > 3) 
+	cout << endl; 
+
+    if(argc < 2 || argc > 4) 
 	{
 	    cerr << "Usage:" << endl << endl << argv[0] << " numThreads [R]" << endl << endl;
 	    cerr << "where numThreads is the number of threads to use per calculation stage" << endl;
@@ -212,13 +235,20 @@ int main(int argc, char* argv[])
 	    exit(EXIT_FAILURE);
 	}
 
-    if (argc == 2 &&  strcmp(argv[1], "sym") == 0 ) 
+    if (argc == 2) 
 	{
-		REWRITESYMBREAK = true;
+		if (strcmp(argv[1], "sym") == 0 ) 
+			REWRITESYMBREAK = true;
 	}
-	else if (argc > 2 &&  strcmp(argv[1], "post") == 0 ) 
+	else if (argc > 2)
 	{
-        POST_PROCESS = true;
+		if (strcmp(argv[1], "post") == 0 )
+			POST_PROCESS = true;
+
+	} else if (argc > 3) 
+	{
+		if (strcmp(argv[3], "q") == 0 || strcmp(argv[3], "Q") == 0)
+			QUIET = true;
 	}
  
   	NUM_THREADS = atoi(argv[1]);
@@ -266,6 +296,16 @@ int main(int argc, char* argv[])
 
 	char command1[255];
 
+	cout << "Working Directory: ";
+	cout.flush();
+
+#ifndef _WIN32
+    system("pwd");
+#else
+	system("chdir");
+#endif
+
+	
 #ifndef NOKBHIT
 #ifndef _WIN32
     keyboard keyb;
@@ -275,7 +315,7 @@ int main(int argc, char* argv[])
 #ifndef _WIN32
 	
 	sprintf(command1, "mkdir %s 2>/dev/null", VRMLDIR  );
-	system(command1);
+	system(command1);	
 	sprintf(command1, "mkdir %s 2>/dev/null", DATADIR  );
 	system(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", REPORTDIR  );
@@ -283,6 +323,18 @@ int main(int argc, char* argv[])
 	sprintf(command1, "mkdir %s 2>/dev/null", BITMAPDIR  );
 	system(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", TEMPDIR  );
+	system(command1);
+#else
+	
+	sprintf(command1, "mkdir %s", VRMLDIR  );
+	system(command1);
+	sprintf(command1, "mkdir %s", DATADIR  );
+	system(command1);
+	sprintf(command1, "mkdir %s", REPORTDIR  );
+	system(command1);
+	sprintf(command1, "mkdir %s", BITMAPDIR  );
+	system(command1);
+	sprintf(command1, "mkdir %s", TEMPDIR  );
 	system(command1);
 #endif
 
@@ -304,10 +356,10 @@ int main(int argc, char* argv[])
 	}
 
 
-	ifstream param("cometparams.ini"); 
+	ifstream param(COMET_PARAMS_FILE); 
 	if(!param) 
 	{
-		cerr << "Cannot open cometparams.ini" << endl << endl;
+		cerr << "Cannot open " << COMET_PARAMS_FILE << endl << endl;
 		exit(EXIT_FAILURE);
 	}
 
@@ -333,11 +385,11 @@ if (!REWRITESYMBREAK)
         strcmp( hostname, "thymine.cgl.ucsf.edu") == 0||
         strcmp( hostname, "uracil.cgl.ucsf.edu")== 0 )
     {
-        // don't renice for small socrates nodes
+        nice(19);
     }
     else
     {
-	    nice(10);
+	    nice(15);
     }
 #else
 	//SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_LOWEST);
@@ -349,309 +401,233 @@ if (!REWRITESYMBREAK)
 
 	// read the parameters file:
 
-	double MAX_DISP = 1;
+	cout << endl << "Parsing parameters file..." << endl << endl;
+
+	//double MAX_DISP = 1;
 
 	string buffer;
-    while (getline(param, buffer)) 
-	   { 
-               istringstream ss(buffer);
-               string tag, buff2;
-               ss >> tag >> std::ws;
-               if (tag.size() == 0 || tag[0] == '#')
-                       // skip empty line or comment
-                       continue;
+	string unrecognisedlines;
 
-			if (tag == "TOTAL_SIMULATION_TIME") 
-			{
-				ss >> TOTAL_SIMULATION_TIME;
-				continue;
-			} 
-			else if (tag == "DELTA_T") 
-			{
-				ss >> DELTA_T;
-				continue;
-			} 
-			else if (tag == "MIN_TORQUE_TO_UPDATE") 
-			{
-				ss >> MIN_TORQUE_TO_UPDATE;
-				continue;
-			} 
-			else if (tag == "MIN_DISPLACEMENT_TO_UPDATE") 
-			{
-				ss >> MIN_DISPLACEMENT_TO_UPDATE;
-				continue;
-			} 
-			else if (tag == "RECORDING_INTERVAL") 
-			{
-				ss >> RECORDING_INTERVAL;
-				continue;
-			} 
-			else if (tag == "RESTORE_FROM_ITERATION") 
-			{
-				ss >> RESTORE_FROM_ITERATION;
-				continue;
-			} 
-			else if (tag == "NUCLEATOR_FORCES") 
-			{
-				ss >> NUCLEATOR_FORCES;
-				continue;
-			} 
-			else if (tag == "FORCE_SCALE_FACT") 
-			{
-				ss >> FORCE_SCALE_FACT;
-				continue;
-			} 
-			//else if (tag == "FORCEBAR_SCALE") 
-			//{
-			//	ss >> FORCEBAR_SCALE;
-			//	continue;
-			//} 
-			else if (tag == "XLINK_NODE_RANGE") 
-			{
-				ss >> XLINK_NODE_RANGE;
-				continue;
-			} 
-			//else if (tag == "NODE_INCOMPRESSIBLE_RADIUS") 
-			//{
-			//	ss >> NODE_INCOMPRESSIBLE_RADIUS;
-			//	continue;
-			//} 
-			else if (tag == "P_XLINK") 
-			{
-				ss >> P_XLINK;
-				continue;
-			} 
-            else if (tag == "NUC_LINK_FORCE") 
-			{
-				ss >> NUC_LINK_FORCE;
-				continue;
-			}
-            else if (tag == "NUC_LINK_BREAKAGE_DIST") 
-			{
-				ss >> NUC_LINK_BREAKAGE_DIST;
-				continue;
-			}
-			else if (tag == "LINK_BREAKAGE_FORCE") 
-			{
-				ss >> LINK_BREAKAGE_FORCE;
-				continue;
-			}
-            else if (tag == "LINK_BREAKAGE_STRAIN") 
-			{
-				ss >> LINK_BREAKAGE_STRAIN;
-				continue;
-			} 
-			else if (tag == "P_LINK_BREAK_IF_OVER") 
-			{
-				ss >> P_LINK_BREAK_IF_OVER;
-				continue;
-			} 
-			else if (tag == "LINK_FORCE") 
-			{
-				ss >> LINK_FORCE;
-				continue;
-			}
-            else if (tag == "STICK_TO_NUCLEATOR") 
-			{
-			    ss >> buff2;
-			    if(buff2=="true")
-				    STICK_TO_NUCLEATOR = true;
-			    else
-				    STICK_TO_NUCLEATOR = false;
-			    continue;
-			}
-			else if (tag == "USETHREAD_COLLISION") 
-			{
-			    ss >> buff2;
-			    if(buff2=="true")
-				    USETHREAD_COLLISION = true;
-			    else
-				    USETHREAD_COLLISION = false;
-			    continue;
-			}
-			else if (tag == "USETHREAD_LINKFORCES") 
-			{
-			    ss >> buff2;
-			    if(buff2=="true")
-				    USETHREAD_LINKFORCES = true;
-			    else
-				    USETHREAD_LINKFORCES = false;
-			    continue;
-			}
-			else if (tag == "USETHREAD_APPLYFORCES") 
-			{
-			    ss >> buff2;
-			    if(buff2=="true")
-				    USETHREAD_APPLYFORCES = true;
-			    else
-				    USETHREAD_APPLYFORCES = false;
-			    continue;
-			} 
-        	else if (tag == "USE_BREAKAGE_STRAIN") 
-			{
-			    ss >> buff2;
-			    if(buff2=="true")
-				    USE_BREAKAGE_STRAIN = true;
-			    else
-				    USE_BREAKAGE_STRAIN = false;
-			    continue;
-			} 
-			else if (tag == "P_NUC") 
-			{
-                ss >> P_NUC;
-                continue;
-			} 
-            else if (tag == "VISCOSITY_EDGE_THRESHOLD") 
-			{
-                ss >> VISCOSITY_EDGE_THRESHOLD;
-                continue;
-			} 
-            else if (tag == "VISCOSITY_UNWEIGHTING_FACTOR") 
-			{
-                ss >> VISCOSITY_UNWEIGHTING_FACTOR;
-                continue;
-			} 
-            else if (tag == "VISCOSITY") 
-			{
-			    ss >> buff2;
-			    if(buff2=="true")
-				VISCOSITY = true;
-			    else
-				VISCOSITY = false;
-			    continue;
-			} 
-			else if (tag == "RADIUS") 
-			{
-                ss >> RADIUS;
-                continue;
-			} 
-			else if (tag == "CAPSULE_HALF_LINEAR") 
-			{
-                ss >> CAPSULE_HALF_LINEAR;
-                continue;
-			} 
-			else if (tag == "MAX_LINKS_PER_NODE") 
-			{
-				ss >> MAX_LINKS_PER_NODE;
-				continue;
-			} 
-			else if (tag == "NODE_REPULSIVE_MAG") 
-			{
-                ss >> NODE_REPULSIVE_MAG;
-                continue;
-			} 
-			else if (tag == "NODE_REPULSIVE_RANGE") 
-			{
-                ss >> NODE_REPULSIVE_RANGE;
-                continue;
-			} 
-			else if (tag == "LINK_TAUT_FORCE") 
-			{
-                ss >> LINK_TAUT_FORCE;
-                continue;
-			} 
-			else if (tag == "LINK_TAUT_RATIO") 
-			{
-                ss >> LINK_TAUT_RATIO;
-                continue;
-			}
-			else if (tag == "ASYMMETRIC_NUCLEATION") 
-			{
-				ss >> ASYMMETRIC_NUCLEATION;
-				continue;
-			} 
-			else if (tag == "RADIAL_SEGMENTS") 
-			{
-				ss >> RADIAL_SEGMENTS;
-				continue;
-			} 
-			else if (tag == "XLINK_NEAREST") 
-			{
-				ss >> XLINK_NEAREST;
-				continue;
-			} 
-			else if (tag == "VIEW_HEIGHT") 
-			{
-				ss >> VIEW_HEIGHT;
-				continue;
-			} 
-			else if (tag == "NODES_TO_UPDATE") 
-			{
-				ss >> NODES_TO_UPDATE;
-				continue;
-			} 
-			else if (tag == "DISTANCE_TO_UPDATE") 
-			{
-				ss >> DISTANCE_TO_UPDATE;
-				continue;
-			} 
-			else if (tag == "GAUSSFWHM") 
-			{
-				ss >> GAUSSFWHM;
-				continue;
-			} 
-			else if (tag == "SPECKLE_FACTOR") 
-			{
-				ss >> SPECKLE_FACTOR;
-				continue;				
-			} 
-			else if (tag == "INIT_R_GAIN") 
-			{
-				ss >> INIT_R_GAIN;
-				continue;
-			} 
-			else if (tag == "INIT_G_GAIN") 
-			{
-				ss >> INIT_G_GAIN;
-				continue;
-			} 
-			else if (tag == "INIT_B_GAIN") 
-			{
-				ss >> INIT_B_GAIN;
-				continue;
-			} 
-			else if (tag == "ROTATION") 
-			{
-				ss >> ROTATION;
-				continue;
-			} 
-			else if (tag == "MofI") 
-			{
-				ss >> MofI;
-				continue;						  
-			} 
-			else if (tag == "NO_IMAGE_TEXT") 
-			{
-				ss >> NO_IMAGE_TEXT;
-				continue;						  
-			} 
-			else if (tag == "BMP_COMPRESSION") 
-			{
-				ss >> BMP_COMPRESSION;
-				if (BMP_COMPRESSION > 100)
-					BMP_COMPRESSION = 100;
-				else if (BMP_COMPRESSION < 0)
-					BMP_COMPRESSION = 0;
-				continue;						  
-			} 
-			else if (tag == "BMP_OUTPUT_FILETYPE") 
-			{
-				ss >> BMP_OUTPUT_FILETYPE;
-				continue;						  
-			} 
-			else if (tag == "SHAPE") 
-			{
-				ss >> buff2;
-				if (buff2 == "CAPSULE") 
-					NUCSHAPE = nucleator::capsule;
-				else
-					NUCSHAPE = nucleator::sphere;
-                continue;
-			}
-       }
- 
+	while (getline(param, buffer)) 
+	{ 
+		istringstream ss(buffer);
+
+		string tag, buff2;
+
+		ss >> tag >> std::ws;
+
+		if (tag.size() == 0 || tag[0] == '#')
+			// skip empty line or comment
+            continue;
+
+		if (tag == "TOTAL_SIMULATION_TIME") 
+			{ss >> TOTAL_SIMULATION_TIME; } 
+
+		else if (tag == "DELTA_T") 
+			{ss >> DELTA_T;	}
+
+		else if (tag == "CROSSLINKDELAY")	  
+			{ss >> CROSSLINKDELAY;	}
+
+		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
+			{ss >> buff2; if (buff2=="true") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false; }
+
+		else if (tag == "CAGE_ON_SIDE") 
+			{ss >> buff2; if (buff2=="true") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false; }
+
+		else if (tag == "MIN_TORQUE_TO_UPDATE")	   
+			{ss >> MIN_TORQUE_TO_UPDATE;	} 
+
+		else if (tag == "MIN_DISPLACEMENT_TO_UPDATE") 
+			{ss >> MIN_DISPLACEMENT_TO_UPDATE;	} 
+
+		else if (tag == "RECORDING_INTERVAL") 
+			{ss >> RECORDING_INTERVAL;	} 
+
+		else if (tag == "RESTORE_FROM_ITERATION") 
+			{ss >> RESTORE_FROM_ITERATION;	} 
+
+		else if (tag == "NUCLEATOR_FORCES") 
+			{ss >> NUCLEATOR_FORCES;	} 
+
+		else if (tag == "FORCE_SCALE_FACT") 
+			{ss >> FORCE_SCALE_FACT;	} 
+
+		else if (tag == "FORCE_BAR_SCALE") 
+			{ss >> FORCE_BAR_SCALE;	} 
+
+		else if (tag == "NUCLEATOR_INERTIA") 
+			{ss >> NUCLEATOR_INERTIA;	} 
+
+		else if (tag == "XLINK_NODE_RANGE") 
+			{ss >> XLINK_NODE_RANGE;	} 
+
+		else if (tag == "SEGMENT_BINS") 
+			{ss >> buff2; if(buff2=="true") SEGMENT_BINS = true; else SEGMENT_BINS = false; }
+
+		else if (tag == "DRAW_CAGE")
+			{ss >> buff2; if(buff2=="true") DRAW_CAGE = true; else DRAW_CAGE = false; }
+
+		else if (tag == "P_XLINK") 
+			{ss >> P_XLINK;	} 
+
+		else if (tag == "NUC_LINK_FORCE") 
+			{ss >> NUC_LINK_FORCE;	}
+
+		else if (tag == "NUC_LINK_BREAKAGE_FORCE") 
+			{ss >> NUC_LINK_BREAKAGE_FORCE;	}
+
+		else if (tag == "LINK_BREAKAGE_FORCE") 
+			{ss >> LINK_BREAKAGE_FORCE;	}
+
+		else if (tag == "LINK_BREAKAGE_STRAIN") 
+			{ss >> LINK_BREAKAGE_STRAIN;	} 
+
+		else if (tag == "P_LINK_BREAK_IF_OVER") 
+			{ss >> P_LINK_BREAK_IF_OVER;	} 
+		
+		else if (tag == "LINK_FORCE") 
+			{ss >> LINK_FORCE;	}
+        
+		else if (tag == "STICK_TO_NUCLEATOR") 
+			{ss >> buff2; if(buff2=="true") STICK_TO_NUCLEATOR = true; else STICK_TO_NUCLEATOR = false; }
+
+		else if (tag == "RESTICK_TO_NUCLEATOR") 
+			{ss >> buff2; if(buff2=="true") RESTICK_TO_NUCLEATOR = true; else RESTICK_TO_NUCLEATOR = false; }
+		
+		else if (tag == "USETHREAD_COLLISION") 
+			{ss >> buff2; if(buff2=="true") USETHREAD_COLLISION = true; else USETHREAD_COLLISION = false; }
+		
+		else if (tag == "USETHREAD_LINKFORCES") 
+			{ss >> buff2; if(buff2=="true") USETHREAD_LINKFORCES = true; else USETHREAD_LINKFORCES = false; }
+		
+		else if (tag == "USETHREAD_APPLYFORCES") 
+			{ss >> buff2; if(buff2=="true") USETHREAD_APPLYFORCES = true; else USETHREAD_APPLYFORCES = false; } 
+    	
+		else if (tag == "USE_BREAKAGE_STRAIN") 
+			{ss >> buff2; if(buff2=="true") USE_BREAKAGE_STRAIN = true; else USE_BREAKAGE_STRAIN = false; } 
+		
+		else if (tag == "P_NUC") 
+			{ss >> P_NUC; }
+
+		else if (tag == "VISCOSITY") 
+			{ss >> buff2; if(buff2=="true") VISCOSITY = true; else VISCOSITY = false; } 
+		
+		else if (tag == "VISCOSITY_FACTOR") 
+			{ss >> VISCOSITY_FACTOR; } 
+        
+		else if (tag == "IMPOSED_NUC_ROT_SPEED") 
+			{ss >> IMPOSED_NUC_ROT_SPEED; } 
+
+		else if (tag == "IMPOSED_NUC_ROT") 
+			{ss >> buff2; if(buff2=="true") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false; }
+		
+		else if (tag == "WRITE_BMPS_PRE_SYMBREAK") 
+			{ss >> buff2; if(buff2=="true") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false; }
+
+		else if (tag == "RADIUS") 
+			{ss >> RADIUS; } 
+		
+		else if (tag == "CAPSULE_HALF_LINEAR") 
+			{ss >> CAPSULE_HALF_LINEAR; } 
+		
+		else if (tag == "MAX_LINKS_PER_NODE") 
+			{ss >> MAX_LINKS_PER_NODE; } 
+		
+		else if (tag == "NODE_REPULSIVE_MAG") 
+			{ss >> NODE_REPULSIVE_MAG; } 
+		
+		else if (tag == "NODE_REPULSIVE_RANGE") 
+			{ss >> NODE_REPULSIVE_RANGE; } 
+		
+		else if (tag == "LINK_TAUT_FORCE") 
+			{ss >> LINK_TAUT_FORCE; } 
+		
+		else if (tag == "LINK_TAUT_RATIO") 
+			{ss >> LINK_TAUT_RATIO; }
+		
+		else if (tag == "ASYMMETRIC_NUCLEATION") 
+			{ss >> ASYMMETRIC_NUCLEATION; } 
+		
+		else if (tag == "RADIAL_SEGMENTS") 
+			{ss >> RADIAL_SEGMENTS; } 
+		
+		else if (tag == "XLINK_NEAREST") 
+			{ss >> XLINK_NEAREST; } 
+		
+		else if (tag == "VIEW_HEIGHT") 
+			{ss >> VIEW_HEIGHT;} 
+		
+		else if (tag == "NODES_TO_UPDATE") 
+			{ss >> NODES_TO_UPDATE;} 
+		
+		else if (tag == "DISTANCE_TO_UPDATE") 
+			{ss >> DISTANCE_TO_UPDATE;} 
+		
+		else if (tag == "GAUSSFWHM") 
+			{ss >> GAUSSFWHM;} 
+		
+		else if (tag == "SPECKLE") 
+			{ss >> buff2;if(buff2=="true") SPECKLE = true;else SPECKLE = false;} 
+		
+		else if (tag == "SPECKLE_FACTOR") 
+			{ss >> SPECKLE_FACTOR;} 
+		
+		else if (tag == "INIT_R_GAIN") 
+			{ss >> INIT_R_GAIN;} 
+		
+		else if (tag == "INIT_G_GAIN") 
+			{ss >> INIT_G_GAIN;} 
+		
+		else if (tag == "INIT_B_GAIN") 
+			{ss >> INIT_B_GAIN;} 
+		
+		else if (tag == "ROTATION") 
+			{ss >> buff2;if(buff2=="true")ROTATION = true;else ROTATION = false; } 
+		
+		else if (tag == "MofI") 
+			{ss >> MofI;} 
+		
+		else if (tag == "NO_IMAGE_TEXT") 
+			{ss >> buff2;if(buff2=="true") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false; } 
+		
+		else if (tag == "BMP_COMPRESSION") 
+			{ss >> BMP_COMPRESSION;	if (BMP_COMPRESSION > 100) BMP_COMPRESSION = 100; else if (BMP_COMPRESSION < 0)	BMP_COMPRESSION = 0;  } 
+		
+		else if (tag == "BMP_OUTPUT_FILETYPE") 
+			{ss >> BMP_OUTPUT_FILETYPE;	} 
+		
+		else if (tag == "SHAPE") 
+			{ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere; }
+
+		else 
+		{
+			unrecognisedlines += buffer;
+			unrecognisedlines += "\n";
+			continue;
+		}
+
+		// got to here so line was recognised
+
+		istringstream ss2(buffer);
+
+		string tag2, buff3;
+
+		ss2 >> tag2 >> buff3 >> std::ws;
+
+		cout << setw(30) << tag2.c_str() << setw(7) << buff3.c_str() << endl;
+
+	 }
+
 	param.close();
 
+	if (unrecognisedlines.length()!=0)
+	{
+		cerr << endl;
+		cerr << "Warning---The following lines were unrecognised:" << endl << endl;
+		cerr << unrecognisedlines << endl;
+		cerr << endl << endl;
+	}
 
 	// calculate commonly used constants from parameters:
 
@@ -664,13 +640,27 @@ if (!REWRITESYMBREAK)
 	// loop iterations per recorded timestep
 	InterRecordIterations = RECORDING_INTERVAL;
 	NUMBER_RECORDINGS = int(TOTAL_ITERATIONS / RECORDING_INTERVAL);
+
+	NODE_FORCE_TO_DIST = DELTA_T * FORCE_SCALE_FACT;
+	NODE_DIST_TO_FORCE = 1.0/(DELTA_T * FORCE_SCALE_FACT);
+
+
 	//RADIUS = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
 
-	if (SPECKLE_FACTOR<1)
+	if (SPECKLE_FACTOR<0)
 	{
         SPECKLE_FACTOR = 1;
-		cout << "SPECKLE_FACTOR reset to 1" << endl;
+		SPECKLE = false;
+		cout << "Negative SPECKLE_FACTOR reset" << endl;
 	}
+
+	if (SPECKLE)
+	{	// is speckle is on, scale the gain
+		INIT_R_GAIN *= (1/SPECKLE_FACTOR);
+		INIT_G_GAIN *= (1/SPECKLE_FACTOR);
+		INIT_B_GAIN *= (1/SPECKLE_FACTOR);
+	}
+
 
 	// create main objects
 	// create as static otherwise exit() doesn't call their destructors (!)
@@ -687,58 +677,8 @@ if (!REWRITESYMBREAK)
 
 	cout << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
 	cout << "Delta_t:                    " << DELTA_T << endl;
-	cout << "NODES_TO_UPDATE:            " << NODES_TO_UPDATE << endl;
-	cout << "DISTANCE_TO_UPDATE:         " << DISTANCE_TO_UPDATE << endl;
-	cout << "     (actual distance:      " << DISTANCE_TO_UPDATE*RADIUS << ")" << endl;
-	cout << "MAX_DISP:                   " << MAX_DISP << endl;
-	if (NUCSHAPE == nucleator::capsule)
-	{
-	cout << "Capsule radius:             " << RADIUS << endl;
-	cout << "CAPSULE_HALF_LINEAR:        " << CAPSULE_HALF_LINEAR << endl;
-	}
-	else
-	{
-	cout << "Sphere radius:              " << RADIUS << endl;
-	}
-	cout << "ROTATION:                   " << ROTATION << endl;
-	cout << "P(nuc):                     " << P_NUC << endl;
-	cout << "Force scale factor:         " << FORCE_SCALE_FACT << endl;
-	cout << "Crosslink node range:       " << XLINK_NODE_RANGE << endl;
-	//cout << "Node Incompressible Radius: " << NODE_INCOMPRESSIBLE_RADIUS << endl;
-	cout << "Node Repulsion Range:       " << NODE_REPULSIVE_RANGE << endl;
-	cout << "Node Repulsion Magnitude:   " << NODE_REPULSIVE_MAG << endl;
-	cout << "Max links per node:         " << MAX_LINKS_PER_NODE << endl;
-	cout << "Link Taut Force:          " << LINK_TAUT_FORCE << endl;
-	cout << "Link Taut Ratio:          " << LINK_TAUT_RATIO << endl;
-	cout << "Link breakage force:        " << LINK_BREAKAGE_FORCE << endl;
-	cout << "Link force:                 " << LINK_FORCE << endl;
-	cout << "Max P(link):                " << P_XLINK << endl;
-	cout << "P(link break):              " << P_LINK_BREAK_IF_OVER << endl << endl;
 
 	// and file
-
-	theactin.opruninfo << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
-	theactin.opruninfo << "Delta_t:                    " << DELTA_T << endl;
-	theactin.opruninfo << "MAX_DISP:                   " << MAX_DISP << endl;
-	theactin.opruninfo << "NODES_TO_UPDATE:            " << NODES_TO_UPDATE << endl;
-	theactin.opruninfo << "DISTANCE_TO_UPDATE:         " << DISTANCE_TO_UPDATE << endl;
-	theactin.opruninfo << "Nucleator radius:           " << RADIUS << endl;
-if (NUCSHAPE == nucleator::capsule)
-    theactin.opruninfo << "Nucleator Segment:          " << 2*CAPSULE_HALF_LINEAR << endl;
-	theactin.opruninfo << "P(nuc):                     " << P_NUC << endl;
-	theactin.opruninfo << "Force scale factor:         " << FORCE_SCALE_FACT << endl;
-	theactin.opruninfo << "Crosslink node range:       " << XLINK_NODE_RANGE << endl;
-	//theactin.opruninfo << "Node Incompressible Radius: " << NODE_INCOMPRESSIBLE_RADIUS << endl;
-	theactin.opruninfo << "Node Repulsion Range:       " << NODE_REPULSIVE_RANGE << endl;
-	theactin.opruninfo << "Node Repulsion Magnitude:   " << NODE_REPULSIVE_MAG << endl;	
-	theactin.opruninfo << "Max links per node:         " << MAX_LINKS_PER_NODE << endl;
-	theactin.opruninfo << "Link Taut Force:          " << LINK_TAUT_FORCE << endl;
-	theactin.opruninfo << "Link Taut Ratio:          " << LINK_TAUT_RATIO << endl;
-	theactin.opruninfo << "Max P(link):                " << P_XLINK << endl;
-	theactin.opruninfo << "Link breakage force:        " << LINK_BREAKAGE_FORCE << endl;
-	theactin.opruninfo << "Link force:                 " << LINK_FORCE << endl;
-	theactin.opruninfo << "P(link break):              " << P_LINK_BREAK_IF_OVER << endl << endl;
-
 
 	unsigned int rand_num_seed;
 
@@ -751,7 +691,7 @@ if (NUCSHAPE == nucleator::capsule)
 	} 
 	else
 	{
-		rand_num_seed = (unsigned)time( NULL );
+		rand_num_seed = (unsigned)time(NULL);
 		theactin.opruninfo << "Time-based random number seed (" << rand_num_seed << ") used" << endl;
 		cerr << "Time-based random number seed (" << rand_num_seed << ") used" << endl;
     }
@@ -842,6 +782,27 @@ if (NUCSHAPE == nucleator::capsule)
 		system(command1);        
 
 		cout << "done." << endl;
+#else
+
+		cout << "Deleting old save files...";
+		cout.flush();
+		// only if starting a new calculation from scratch, clear the directories
+
+		sprintf(command1, "del /q %s*_0*.%s", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
+		system(command1);
+		sprintf(command1, "del /q %s*.wrz", VRMLDIR );
+		system(command1);
+		sprintf(command1, "del /q %s*.gz", REPORTDIR );
+		system(command1);
+		sprintf(command1, "del /q %s*.gz", DATADIR );
+		system(command1);
+		sprintf(command1, "del /q %s*.wrl %s*.txt", TEMPDIR, TEMPDIR );
+		system(command1);
+        sprintf(command1, "del /q %s", SYM_BREAK_FILE );
+		system(command1);        
+
+		cout << "done." << endl;
+
 #endif
 
 	}
@@ -850,13 +811,23 @@ if (NUCSHAPE == nucleator::capsule)
 
     char last_symbreak_bmp_filename[255] = "";
 
-	cout << "Starting iterations..." << endl;
-	cout << "(Press 'q' to abort run)" << endl << endl;
+	cout << endl;
+	cout << "Starting iterations..." << endl << endl; 
 
-	cout << "Itternum|TotNode|NewLinks|RemLinks|distance|Rotation  |Num Rotns|SnpshTm|SaveNum" << endl << endl;
+	cout << "(Press 'q' to abort run, or 'm' to make quicktime movie of frames so far)" << endl << endl;
 
+	
+	if (QUIET)
+	{
+		cout << "Running in quiet mode (no continual progress display)" << endl;
+	}
+	else
+	{
+		cout << "Itternum|TotNode|Links+|Links-|dist   |Rotn   |T   |SaveNum" << endl << endl;
 
-	lastitertime = starttime = (unsigned) time( NULL );
+	}
+
+	lastitertime = starttime = (unsigned) time(NULL);
 
 	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++)
 	{
@@ -866,7 +837,7 @@ if (NUCSHAPE == nucleator::capsule)
 		/*if ((i % 10) == 1)
 			srand( rand_num_seed );*/
 
-		nowtime = (unsigned) time( NULL );
+		nowtime = (unsigned) time(NULL);
 
 		if ((nowtime > lasttime) || ((i % InterRecordIterations) == 1))
 		{
@@ -878,25 +849,50 @@ if (NUCSHAPE == nucleator::capsule)
             if (kbhit())  // taken out of main loop
 		    {
 			    int ch = getch();
-			    if (( ch=='q' ) || ( ch=='Q'))
+			    if (( ch=='q' ) || ( ch=='Q') || ( ch=='m' ) || ( ch=='M'))
 			    {
-				    cout << endl << "Abort run(y/n)?";
-				    cout.flush();
-				    int ch;
 
-				    do { ch = getch(); } while (( ch=='q' ) || ( ch=='Q'));
+					if (( ch=='q' ) || ( ch=='Q'))
+				    {
+						cout << endl << "Abort run(y/n)?";
+						cout.flush();
+						int ch;
+						do 
+						{
+							ch = getch();
+						} 
+						while (( ch=='q' ) || ( ch=='Q'));
 
-				    if (( ch=='y' ) || ( ch=='Y'))
-				    {
-					    cout << "y - Run aborted" << endl;
-					    cout.flush();
-					    break;
-				    }
-				    else
-				    {
-					    cout << "\r";
-				    }
-			    }
+						if (( ch=='y' ) || ( ch=='Y'))
+						{
+							cout << "y - Run aborted" << endl;
+							cout.flush();
+							break;
+						}
+						else
+						{
+							cout << "\r";
+						}
+					}
+	 				else
+					{
+						cout << endl << endl << "Directory:";
+						cout.flush();
+
+#ifndef _WIN32
+						system("pwd");
+#else
+						system("chdir");
+#endif
+						cout << endl << "Making movie of frames so far..." << endl;
+						cout.flush();
+						cout << endl;
+						system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//x_proj_%05d.png -vcodec mpeg4 -strict 100 x_proj.mov");
+						system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//y_proj_%05d.png -vcodec mpeg4 -strict 100 y_proj.mov");
+						system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//z_proj_%05d.png -vcodec mpeg4 -strict 100 z_proj.mov");
+						cout << endl;
+					}
+				}
 		    }
 
 #endif
@@ -917,23 +913,17 @@ if (NUCSHAPE == nucleator::capsule)
 					<< " updating only newest " << NODES_TO_UPDATE << " nodes" << endl;
 			}
 
-
-			cout << "I" << setw(7) << i 
-			<< "|N"<< setw(6)<< theactin.highestnodecount
-			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
-			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
-            << "|d " << setw(6) << setprecision(3) << distfromorigin
-			//<< "|x " << setw(6) << setprecision(3) << center.x
-			//<< "|y " << setw(6) << setprecision(3) << center.y
-			//<< "|z " << setw(6) << setprecision(3) << center.z	
-            << "|Rot " << setw(6) << setprecision(1) << (180/PI) * tot_rot
-			//<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
-			//<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
-			//<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
-			<< "|NR " << setw(6) <<  theactin.num_rotate	
-			//<< "|ND " << setw(6) <<  theactin.num_displace
-			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime) << "\r";
-
+			if (!QUIET)
+			{
+				cout << "I" << setw(7) << i 
+				<< "|N"<< setw(6)<< theactin.highestnodecount
+				<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
+				<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
+				<< "|d" << setw(6) << setprecision(3) << distfromorigin
+				<< "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot
+				//<< "|NR" << setw(5) <<  theactin.num_rotate	
+				<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime) << "\r";
+			}
 			cout.flush();
 		}
 
@@ -966,39 +956,38 @@ srand( rand_num_seed );
 				<< center.z << "," 
 				<< delta_center.length() << endl;
 
-			cout << "I" << setw(7) << i 
-			<< "|N"<< setw(6)<< theactin.highestnodecount
-			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
-			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
-            << "|d " << setw(6) << setprecision(3) << distfromorigin
-			//<< "|x " << setw(6) << setprecision(3) << center.x
-			//<< "|y " << setw(6) << setprecision(3) << center.y
-			//<< "|z " << setw(6) << setprecision(3) << center.z	
-            << "|Rot " << setw(6) << setprecision(1) << (180/PI) * tot_rot
-			//<< "|Dir " << setw(6) << setprecision(1) << (180/PI) * x_angle
-			//<< "  " << setw(6) << setprecision(1) << (180/PI) * y_angle
-			//<< "  " << setw(6) << setprecision(1) << (180/PI) * z_angle
-			<< "|NR " << setw(6) <<  theactin.num_rotate
-			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
+			if (!QUIET)
+			{
+				cout << "I" << setw(7) << i 
+				<< "|N"<< setw(6)<< theactin.highestnodecount
+				<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
+				<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
+				<< "|d" << setw(6) << setprecision(3) << distfromorigin
+				<< "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot
+				//<< "|NR" << setw(5) <<  theactin.num_rotate	
+				<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime);
 
-			cout << "|S " << setw(3) <<  (int)filenum  
-				<< "/" << NUMBER_RECORDINGS;
+				cout << "|S " << setw(3) <<  (int)filenum  
+					<< "/" << NUMBER_RECORDINGS;
 
-			if ((strlen(last_symbreak_bmp_filename)!=0) || (!theactin.brokensymmetry))
-				cout << " *";
-			
-			cout << endl;
+				if ((!WRITE_BMPS_PRE_SYMBREAK) && 
+					((strlen(last_symbreak_bmp_filename)!=0) || (!theactin.brokensymmetry)))
+					cout << "*";
+				
+				cout << endl;
 
-			cout.flush();
+				cout.flush();
+
+			}
 
 			theactin.opruninfo << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
-			<< "|L+" << setw(6) << (theactin.linksformed-lastlinksformed)/2 << "|L-"
-			<< setw(6) << (theactin.linksbroken-lastlinksbroken)/2
-			<< "|x " << setw(6) << setprecision(3) << center.x
-			<< "|y " << setw(6) << setprecision(3) << center.y
-			<< "|z " << setw(6) << setprecision(3) << center.z
-			<< "|T" <<  setw(6) <<((unsigned) time( NULL ) - lastitertime);
+			<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
+			<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
+            << "|d" << setw(6) << setprecision(3) << distfromorigin
+            << "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot
+			//<< "|NR" << setw(5) <<  theactin.num_rotate	
+			<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime);
 			//<< "|H" <<  setw(6) << theactin.harbinger;
 			theactin.opruninfo << "|S" << setw(3) <<  (int)filenum  
 				<< "/" << NUMBER_RECORDINGS << endl ;
@@ -1006,27 +995,49 @@ srand( rand_num_seed );
             // we don't use vrml anymore, so don't bother with it for now
 			// theactin.savevrml(filenum);
 
-             if (((i % (5 * InterRecordIterations)) == 0) 
-                 && (!theactin.brokensymmetry) && (theactin.BMP_intensity_scaling == true))
-             {
-                nuc_object.segs.addallnodes();  // put node data into segment bins
-                nuc_object.segs.set_scale_factors();
+			if (WRITE_BMPS_PRE_SYMBREAK)
+			{
+				 if (!theactin.brokensymmetry)
+				 {
+					nuc_object.segs.addallnodes();  // put node data into segment bins
+					nuc_object.segs.set_scale_factors();
 
-                // calculate but don't write bitmaps to get scaling factors
-			    theactin.savebmp(filenum, actin::xaxis, actin::runfg, false);
-			    theactin.savebmp(filenum, actin::yaxis, actin::runfg, false);
-			    theactin.savebmp(filenum, actin::zaxis, actin::runfg, false);
-                cout << "\r";
-			    cout.flush();
-            
-             }
+					theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);
+					theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);
+					theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
+
+					cout << "\r";
+					cout.flush();
+				}
+			}
+			else
+			{  // calc every 5 for scaling
+
+				 if (((i % (5 * InterRecordIterations)) == 0) &&
+					  (!theactin.brokensymmetry) && 
+					  (theactin.BMP_intensity_scaling == true))
+				 {
+					nuc_object.segs.addallnodes();  // put node data into segment bins
+					nuc_object.segs.set_scale_factors();
+
+					// calculate but don't write bitmaps to get scaling factors
+					theactin.savebmp(filenum, actin::xaxis, actin::runfg, false);
+					theactin.savebmp(filenum, actin::yaxis, actin::runfg, false);
+					theactin.savebmp(filenum, actin::zaxis, actin::runfg, false);
+
+					cout << "\r";
+					cout.flush();
+		        
+				 }
+
+			}
 
 			if ((!theactin.brokensymmetry) && (distfromorigin > RADIUS))
-			{	
-				// symmetry broke
+			{	// symmetry broke: set directions, scale factors etc.
+				
 				theactin.brokensymmetry = true;
 
-				// set camera rotation for save 
+				// set camera rotation for save  
 				theactin.set_sym_break_axes();
 				theactin.save_sym_break_axes();
 
@@ -1035,8 +1046,11 @@ srand( rand_num_seed );
 			    theactin.savebmp(filenum, actin::yaxis, actin::runfg, false);
 			    theactin.savebmp(filenum, actin::zaxis, actin::runfg, false);
 
-                cout << "\r";
-				cout.flush();
+				if (!QUIET)
+				{
+					cout << "\r";
+					cout.flush();
+				}
 
                 // lock the bitmap scaling factors
                 theactin.BMP_intensity_scaling = false;
@@ -1054,11 +1068,21 @@ srand( rand_num_seed );
 				cout << "Spawning new background process to write bitmaps 1--" << filenum-1 
 					<< " and continuing..." << endl;
 
-				sprintf(command1, "%s sym 1>/dev/null 2>/dev/null &", argv[0]);
-				system(command1);
-
+				// look for existance of this file to tell when the process has finished
 				sprintf(last_symbreak_bmp_filename, "%sz_proj_%05i.%s",BITMAPDIR, 
 							1 ,BMP_OUTPUT_FILETYPE.c_str());
+
+				if (WRITE_BMPS_PRE_SYMBREAK)
+				{
+					// if we have already written draft bitmaps, need to delete this one
+					// so we know when it's re-written
+					sprintf(command1, "rm %s 1>/dev/null 2>/dev/null", last_symbreak_bmp_filename);
+					system(command1);
+				}
+
+				// call self with 'sym' argument to re-write the bitmaps
+				sprintf(command1, "%s sym 1>/dev/null 2>/dev/null &", argv[0]);
+				system(command1);
 
 				// kludge to move the last save
 				// so we can re-load to the point we left off
@@ -1125,12 +1149,12 @@ srand( rand_num_seed );
 			lastlinksformed = theactin.linksformed;
 			lastlinksbroken = theactin.linksbroken;
 
-			theactin.num_rotate = 0;
-			theactin.num_displace = 0;
+			//theactin.num_rotate = 0;
+			//theactin.num_displace = 0;
 
 			theactin.opruninfo.flush();
 
-			lastitertime = (unsigned) time( NULL );
+			lastitertime = (unsigned) time(NULL);
 		}
 	}
 
@@ -1138,10 +1162,17 @@ srand( rand_num_seed );
 
 	theactin.saveinfo();
 
-	endtime = (unsigned) time( NULL );
+	endtime = (unsigned) time(NULL);
 
-	cout << endl << "Time : " << (endtime-starttime) << " seconds" << endl;	
-	theactin.opruninfo << endl << "Time : " << (endtime-starttime) << " seconds" << endl;	
+	cout << endl << "Time : " 
+		<< ((endtime-starttime) / 3600) << "h " 
+		<< ((endtime-starttime) / 60) % 60 << "m " 
+		<< ((endtime-starttime) % 60) << "s " << endl;
+
+	theactin.opruninfo << endl << "Time : " 
+		<< ((endtime-starttime) / 3600) << "h " 
+		<< ((endtime-starttime) / 60) % 60 << "m " 
+		<< ((endtime-starttime) % 60) << "s " << endl;;	
 	
 	exit(EXIT_SUCCESS);
 }

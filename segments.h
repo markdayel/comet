@@ -121,6 +121,9 @@ public:
     Dbl2d							// 2d vector for surface [axis][segnum]
 		surfaceimpacts;
 
+	Dbl3d
+		surfacestuckforce;  // [axis][segment][direction] where direction: 0=radial, 1=transverse
+
 	Dbl2d 							// 2d vectors for SD [axis][dist]
 		numnodes_SD,
 		rep_radial_SD,

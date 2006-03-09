@@ -1,8 +1,9 @@
 #include "threadedtaskqueue.h"
 
+#include "stdafx.h"
 #include <assert.h>
-#include <iostream>
-// #include "stdafx.h"
+#include <iostream> 
+
 
 // static members are not *guaranteed* to have C linkage
 extern "C" void* wrapper_activate_workers(void *my_this)
@@ -108,7 +109,7 @@ void TaskQueue::start_tasks()
     finished_tasks = false;
     
     // set predicate and start the team
-    ntasks_todo = tasks.size(); // number in the queue
+    ntasks_todo = (int) tasks.size(); // number in the queue
     ready = true;
     int err = pthread_cond_broadcast(&start);
     if(err != 0){

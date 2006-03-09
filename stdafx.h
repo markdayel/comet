@@ -15,6 +15,13 @@ removed without prior written permission from the author.
 #ifndef stdafx_H
 #define stdafx_H
 
+// compile-time options:
+
+#define GRIDBOUNDS 100.0	  // size of grid in um (i.e. bead can move half of this from origin)
+#define GRIDRES      0.8	  // low res grid range
+
+const int MAXNODES = 100000;			
+
 #ifdef _WIN32
 
 	#pragma warning(disable: 4511) // unable to generate copy constructor
@@ -22,16 +29,22 @@ removed without prior written permission from the author.
 
 	#pragma warning(disable: 4127)  // constant conditional expression
 
+	#pragma warning(disable: 4996) // turn off depreciated warnings
+
+
 	//#pragma inline_depth( 64 )
 	//#pragma inline_recursion( on )
 	#pragma auto_inline( on )
 	
 	//#define inline __forceinline
 
+	#define _CRT_SECURE_NO_DEPRECATE
+
 #endif
 
 #define SYM_BREAK_FILE "sym_break_axis.txt"
 #define SEG_SCALE_FILE "segscalefactors.txt"
+#define COMET_PARAMS_FILE "cometparams.ini"
 
 #ifndef _WIN32
 
@@ -41,8 +54,8 @@ removed without prior written permission from the author.
 	#define REPORTDIR "reports/"
 	#define BITMAPDIR "bitmaps/"
 	#define TEMPDIR "temp/"
-
-
+	#define IMAGEMAGICKCONVERT "convert"
+	
 #else
 	
 	#define VRMLDIR "vrml\\"
@@ -50,6 +63,7 @@ removed without prior written permission from the author.
 	#define REPORTDIR "reports\\"
 	#define BITMAPDIR "bitmaps\\"
 	#define TEMPDIR "temp\\"
+	#define IMAGEMAGICKCONVERT "convert"
 
 #endif
 
@@ -67,6 +81,8 @@ removed without prior written permission from the author.
 #define mymin(a,b)            (((a) < (b)) ? (a) : (b))
 #endif
   
+extern bool ALLOW_HARBINGERS_TO_MOVE;
+extern bool CAGE_ON_SIDE;
 
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
@@ -134,6 +150,9 @@ extern TaskQueue thread_queue;
 extern bool USETHREAD_LINKFORCES;
 extern bool USETHREAD_APPLYFORCES;
 extern bool USETHREAD_COLLISION;
+
+extern bool SEGMENT_BINS;
+extern bool DRAW_CAGE;
 //-- 
 
 //extern pthread_attr_t thread_attr;
@@ -230,16 +249,17 @@ extern double MIN_DISPLACEMENT_TO_UPDATE;
 extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
 
 extern bool STICK_TO_NUCLEATOR;
+extern bool RESTICK_TO_NUCLEATOR;
 
 extern bool NUCLEATOR_FORCES;
 
 
 extern double NUC_LINK_FORCE;
-extern double NUC_LINK_BREAKAGE_DIST;
+extern double NUC_LINK_BREAKAGE_FORCE;
 
 extern double FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
 										// this is related to effective viscosity and effective size of node
-//extern double FORCEBAR_SCALE;  // scale force for bars in output
+extern double FORCE_BAR_SCALE;  // scale force for bars in output
 
 extern double XLINK_NODE_RANGE;	// Limit crosslink to within this range
 //extern double NODE_INCOMPRESSIBLE_RADIUS;// repulsion is zero here
@@ -258,14 +278,27 @@ extern bool NO_IMAGE_TEXT;
 extern int BMP_COMPRESSION;
 extern string BMP_OUTPUT_FILETYPE;
 
-extern double VISCOSITY_EDGE_THRESHOLD;
-extern double VISCOSITY_UNWEIGHTING_FACTOR;
+extern bool QUIET;
+
+extern double VISCOSITY_FACTOR;
+//extern double VISCOSITY_UNWEIGHTING_FACTOR;
 
 extern double GAUSSFWHM;
-extern int SPECKLE_FACTOR;
+extern double SPECKLE_FACTOR;
+extern bool SPECKLE;
 extern double INIT_R_GAIN;
 extern double INIT_G_GAIN;
 extern double INIT_B_GAIN;
+
+extern double NODE_FORCE_TO_DIST;
+extern double NODE_DIST_TO_FORCE;
+
+extern double IMPOSED_NUC_ROT_SPEED;
+extern bool   IMPOSED_NUC_ROT;
+
+extern bool WRITE_BMPS_PRE_SYMBREAK;
+
+extern double NUCLEATOR_INERTIA;
 
 extern double RADIUS;   // radius and segment are the true radius and segment of nucleator
 extern double CAPSULE_HALF_LINEAR;
@@ -303,17 +336,12 @@ extern double MofI;
 extern bool FORCES_ON_SIDE;
 
 
-// compile-time options:
 
-#define GRIDBOUNDS (double)100	  // size of grid in um
-#define GRIDRES (double)0.5	  // low res grid range
-
-const int MAXNODES = 100000;			// max nodes
 //const double GLOBAL_DAMPING = 
 
-#define HIST_MIN 1.0
-#define HIST_MAX 3.0
-#define HIST_BINS 20
+//#define HIST_MIN 1.0
+//#define HIST_MAX 3.0
+//#define HIST_BINS 20
 
 extern int TOTAL_ITERATIONS;  // these variables are global and are calculated from others
 extern int NODE_REPULSIVE_GRIDSEARCH;
@@ -321,6 +349,7 @@ extern int NODE_REPULSIVE_RANGE_GRIDSEARCH;
 extern int NODE_XLINK_GRIDSEARCH;
 //extern int GRIDSIZE;
 const int GRIDSIZE =  (int) (GRIDBOUNDS/GRIDRES);
+
 
 //extern const double RECIP_RAND_MAX;
 const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);

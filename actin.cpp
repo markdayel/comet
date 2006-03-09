@@ -60,6 +60,8 @@ actin::actin(void)
 	node.resize(MAXNODES);
 	donenode.resize(MAXNODES);
 
+	
+
 	for (int i=0; i<MAXNODES; i++)
 	{
 		node[i].nodenum=i;
@@ -67,8 +69,8 @@ actin::actin(void)
         node[i].listoflinks.reserve(MAX_LINKS_PER_NODE+1);
 	}
 
-	cout << "GridExtent : " << GRIDBOUNDS << " uM" << endl;
-	cout << "GridResolution : " << GRIDRES << " uM" << endl;
+	cout << "     GridExtent : " << GRIDBOUNDS << " uM" << endl;
+	cout << " GridResolution : " << GRIDRES << " uM" << endl;
 	cout << "TotalGridpoints : " << (GRIDSIZE*GRIDSIZE*GRIDSIZE) << endl;
 
 	cout << "Zeroing Grid...";
@@ -85,6 +87,50 @@ actin::actin(void)
 	}
 
 	cout << "Done" << endl << endl;
+
+	speckle_array_size = 10000;
+	speckle_array.resize(speckle_array_size);
+
+
+	double x1, x2, w, y1, y2;
+
+	for (int i=0; i<speckle_array_size; i++)
+	{
+		// gaussian random numbers (see http://www.taygeta.com/random/gaussian.html)
+
+		do
+		{
+
+			do
+			{
+				x1 = 2.0 * ((double) rand() / (double) RAND_MAX) - 1.0;
+				x2 = 2.0 * ((double) rand() / (double) RAND_MAX) - 1.0;
+				w = x1 * x1 + x2 * x2;
+			} while ( w >= 1.0 );
+
+			w = sqrt( (-2.0 * log( w ) ) / w );
+
+			y1 = x1 * w;
+			y2 = x2 * w;
+
+			y1 *= (1.0/7.0);
+			y1 += 0.5;
+
+		} while ( (y1<0) || (y1>1) );
+
+		if (rand() < SPECKLE_FACTOR * RAND_MAX)
+			speckle_array[i] = y1;
+		else
+			speckle_array[i] = 0;
+		
+		//opruninfo << y1 << endl;
+
+		//if (rand() > SPECKLE_FACTOR * RAND_MAX)
+		//	speckle_array[i] = false;
+		//else
+		//	speckle_array[i] = true;
+	}
+
 
 	//nucleatorgrid.reserve(5000);
 	
@@ -114,11 +160,12 @@ actin::actin(void)
         linkremoveto[i].resize(0);
 	}
 
-	nodes_within_nucleator.reserve(10000);
+	//nodes_within_nucleator.reserve(10000);
 	linkformto.reserve(100);
 
-
 	cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
+
+	cout << "Memory for nodes: " << (node.size() * sizeof(node[0])/(1024*1024)) << " MB" << endl;
 
 	highestnodecount = 0;
 	iteration_num = 0;
@@ -132,8 +179,8 @@ actin::actin(void)
 
 	//debug:
 
-	num_rotate = 0;
-	num_displace = 0;
+	//num_rotate = 0;
+	//num_displace = 0;
 
 	int x,y;
 
@@ -303,6 +350,13 @@ int actin::crosslinknewnodes(int numnewnodes)
 		}
 
 		node[i].harbinger = false;  // crosslinked: now node exists
+
+		if (!ALLOW_HARBINGERS_TO_MOVE)
+		{
+			node[i].setunitvec();
+			node[i].rep_force_vec.zero();
+			node[i].link_force_vec.zero();
+		}
 
         if (STICK_TO_NUCLEATOR)
         {
@@ -480,8 +534,10 @@ int actin::iterate()  // this is the main iteration loop call
     }
 
 
-	ejectfromnucleator();	    // do forcable node ejection
+	nucleator_node_interactions();	    // do forcable node ejection
 	
+
+
 	move_and_rotate();		    // move and rotation of the actin based on 
 							    // nucleator ejection data
 
@@ -502,10 +558,11 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 
 	double pxlink;
 
-	if (linknode1==linknode2) return 0;
+	if (linknode1==linknode2) return 0; // can't link to self
 
-	if ((!node[linknode1].polymer)  || (!node[linknode2].polymer) ||
-		(!node[linknode1].harbinger))
+	if ((!node[linknode1].polymer) ||  // make sure polymer
+		(!node[linknode2].polymer) ||
+		(!node[linknode1].harbinger))  // and is not harbinger
 		return 0;
 
 	//if ((linknode1==178) || (linknode1==180) ||
@@ -561,68 +618,57 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 	return 0;
 }
 
-void actin::ejectfromnucleator()
+void actin::nucleator_node_interactions()
 {
-//	vect nodeposvec, oldnucposn;
-//	nodes *nodeptr, *startnodeptr;
-//
-////  check node-nucleator repulsion
-//// collect the nodes:
-//
-//	nodes_within_nucleator.resize(0);
-//
-//	for (vector <int_vect>::iterator i=nucleatorgrid.begin(); i<nucleatorgrid.end() ; i++ )
-//	{	 
-//		nodeptr=nodegrid[i->x][i->y][i->z];
-//		startnodeptr=nodeptr;
-//			if (nodeptr!=0) 
-//			{
-//				do
-//				{
-//					if ((p_nuc->iswithinnucleator(nodeptr->x,nodeptr->y,nodeptr->z))
-//						&& (nodeptr->polymer))
-//					{	// inside nucleator
-//						nodes_within_nucleator.push_back(nodeptr);						
-//					}
-//
-//					nodeptr = nodeptr->nextnode;
-//				}
-//				while (nodeptr!=startnodeptr);  //until back to start
-//				
-//			}
-//	}
-//
-//	oldnucposn = p_nuc->position;
-//
-//	// do the ejection:
-//
-//	for (vector <nodes*>::iterator i=nodes_within_nucleator.begin(); i<nodes_within_nucleator.end() ; i++ )
-//	{  //eject them
-//		if (p_nuc->collision(*(*i))) // (*i)->x,(*i)->y,(*i)->z)==0)  
-//			(*i)->updategrid();  // ejected OK
-//		else
-//			(*i)->depolymerize();  // not ejected OK, depolymerize
-//	}
+
+	vect disp,forcevec;
+	double dist, force;
 
     // now using insidenucleator flag set in setunitvec() of node
 
-    for (int i=lowestnodetoupdate; i<highestnodecount; ++i)
+    for (int n=lowestnodetoupdate; n<highestnodecount; ++n)
 	{
-        if (node[i].insidenucleator)            
+        if (node[n].dist_from_surface < 0) // if node is inside nucleator           
         {   
-            if (p_nuc->collision(node[i])) // (*i)->x,(*i)->y,(*i)->z)==0)  
-			    node[i].updategrid();  // ejected OK
+            if (p_nuc->collision(node[n])) // (*i)->x,(*i)->y,(*i)->z)==0)  
+			    node[n].updategrid();  // ejected OK
 		    else
-			    node[i].depolymerize();  // not ejected OK, depolymerize
+			    node[n].depolymerize();  // not ejected OK, depolymerize
         }
 
-        if (node[i].stucktonucleator)
-        {
-            vect tomove = node[i].nucleator_link_force * DELTA_T * FORCE_SCALE_FACT;
-            p_nuc->move_nuc(node[i],tomove);
-            //p_nuc->position += node[i].nucleator_link_force * p_nuc->movability;
-            node[i].nucleator_link_force.zero();
+		// do node-nucleator links:
+
+        if (node[n].stucktonucleator)
+		{
+            disp = node[n] - node[n].nucleator_stuck_position;
+	        dist = disp.length();
+    	    
+            force = NUC_LINK_FORCE * dist ;
+	        
+            if (force > NUC_LINK_BREAKAGE_FORCE)
+            {
+                //node[n].nucleator_link_force.zero();
+                node[n].stucktonucleator = false;   // no longer stuck
+            }
+            else
+            {
+                forcevec = disp * (force/dist);  // '(disp/dist)' is just to get the unit vector
+
+                node[n].link_force_vec -= forcevec;			// add to move node
+				
+                // add to node segment stats (tension only since default dist is zero)
+		        node[n].adddirectionalmags(forcevec, node[n].linkforce_radial, node[n].linkforce_transverse);
+
+				vect tomove = -forcevec * DELTA_T * FORCE_SCALE_FACT;  // convert force to distance
+
+				p_nuc->move_nuc(node[n],tomove);		// add to nucleator movement vector
+
+				node[n].nucleator_link_force += tomove;	// add to nuc link force stats
+
+            }
+            
         }
+
 	}
 
 }
@@ -635,10 +681,53 @@ void actin::move_and_rotate()
 //bool toupdategrid = false;
 
 
-	if (ROTATION && (p_nuc->torque.length() > MIN_TORQUE_TO_UPDATE))
+	// rotate with torque:
+	//if (IMPOSED_NUC_ROT)
+	//{
+	//	vect attachement(0,1,0);
+	//	vect force(0,0,IMPOSED_NUC_ROT_SPEED * DELTA_T);
+	//	p_nuc->move_nuc(attachement,force);
+	//	attachement = -attachement;
+	//	force = -force;
+	//	p_nuc->move_nuc(attachement,force);
+	//}
+
+
+	if (IMPOSED_NUC_ROT)
+		{
+			double x_angle = IMPOSED_NUC_ROT_SPEED * 2 * PI * DELTA_T;
+
+			rotationmatrix torque_rotate; // ( x_angle, rotationmatrix::xaxis);
+
+			torque_rotate.rotatematrix( x_angle, 0, 0);
+
+			// rotate the actin:
+
+			for (int i=0; i<highestnodecount; ++i)
+			{
+				torque_rotate.rotate(node[i]);
+			}
+
+			// rotate the nucleator:
+
+			p_nuc->nucleator_rotation.rotatematrix( -x_angle, 0, 0);
+
+
+			// rotate the actin reference frame:
+
+			actin_rotation.rotatematrix( x_angle, 0, 0);
+
+			// clear the torque vectors:
+
+			p_nuc->torque.zero();
+
+		}
+	else if (ROTATION && (p_nuc->torque.length() > MIN_TORQUE_TO_UPDATE))
 	{
 
-        num_rotate++;
+        //num_rotate++;
+
+		// rotate const speed
 
 		double x_angle = p_nuc->torque.x / 
 				p_nuc->momentofinertia.x;
@@ -648,10 +737,6 @@ void actin::move_and_rotate()
 
 		double z_angle = p_nuc->torque.z / 
 				p_nuc->momentofinertia.z;
-
-		//double x_angle = 0;  // for debugging
-		//double y_angle = 0;
-		//double z_angle = 0.00002;
 
 		rotationmatrix torque_rotate; // ( x_angle, rotationmatrix::xaxis);
 
@@ -665,7 +750,7 @@ void actin::move_and_rotate()
 			torque_rotate.rotate(node[i]);
 		}
 
-        // rotate the nucleator:
+		// rotate the nucleator:
 
 		p_nuc->nucleator_rotation.rotatematrix( -x_angle, -y_angle, -z_angle);
 
@@ -678,7 +763,7 @@ void actin::move_and_rotate()
 		// clear the torque vectors:
 
 		p_nuc->torque.zero();
-
+	
 		//toupdategrid = true;
 
 	}
@@ -689,7 +774,7 @@ void actin::move_and_rotate()
 	if ((p_nuc->deltanucposn.length() > MIN_DISPLACEMENT_TO_UPDATE))
 	{
 
-		num_displace++;
+		//num_displace++;
 
 		// move the nucleator by moving nodes in opposite direction
 		// note this is *before* rotating the deltanucposn vector, since the
@@ -736,14 +821,14 @@ int actin::collisiondetection(void)
 	        collision_thread_data_array[i].endnode = 0;
 	        collision_thread_data_array[i].threadnum = i;
     	    
-            if (VISCOSITY)
-            {
-                thread_queue.queue_task(&collisiondetectiondoworkvisc, &collision_thread_data_array[i]);
-            }
-            else
-            {
+            //if (VISCOSITY)
+            //{
+            //    thread_queue.queue_task(&collisiondetectiondoworkvisc, &collision_thread_data_array[i]);
+            //}
+            //else
+            //{
                 thread_queue.queue_task(&collisiondetectiondowork, &collision_thread_data_array[i]);
-            }
+            //}
 	    
 	    }
 
@@ -756,14 +841,14 @@ int actin::collisiondetection(void)
 	    collision_thread_data_array[0].endnode = 0;
 	    collision_thread_data_array[0].threadnum = 0;
 	    
-        if (VISCOSITY)
-        {
-            collisiondetectiondoworkvisc(&collision_thread_data_array[0]);//, NULL);
-        }
-        else
-        {
+        //if (VISCOSITY)
+        //{
+        //    collisiondetectiondoworkvisc(&collision_thread_data_array[0]);//, NULL);
+        //}
+        //else
+        //{
             collisiondetectiondowork(&collision_thread_data_array[0]);//, NULL);
-        }
+        //}
     }
     
     return 0;
@@ -830,11 +915,13 @@ int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const
 	    maxz = GRIDSIZE;
     
     // do adjgridpoints by adjgridpoints scan on grid
-    for (int x = minx; x != maxx; ++x) 
+    
+	int x,y,z;	
+	for (x = minx; x != maxx; ++x) 
     {
-	    for (int y = miny; y != maxy; ++y) 
+	    for (y = miny; y != maxy; ++y) 
             {
-	            for (int z = minz; z != maxz; ++z) 
+	            for (z = minz; z != maxz; ++z) 
                 {
             	    nodeptr=nodegrid[x][y][z];
 		            startnodeptr=nodeptr;
@@ -966,9 +1053,8 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
     // cast arg
     const thread_data* dat = (thread_data*) arg;
 
-    
-    static const double local_NODE_REPULSIVE_RANGE = NODE_REPULSIVE_RANGE;
-    static const double local_NODE_REPULSIVE_MAG = NODE_REPULSIVE_MAG;
+    const double local_NODE_REPULSIVE_RANGE = NODE_REPULSIVE_RANGE;
+    const double local_NODE_REPULSIVE_MAG = NODE_REPULSIVE_MAG;
 
     vect nodeposvec;
     double distsqr,dist;
@@ -1043,10 +1129,55 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                     //tomove = disp * ( force_over_dist);
                     //tomove = disp * ( force / dist);
         			
+					// if harbinger, ramp up the repulsive forces gradually (linearly with itter no):
+
+					if (p_sameGPnode->harbinger)
+					{
+
+						tomove *= (double) ( (iteration_num - p_sameGPnode->creation_iter_num) % CROSSLINKDELAY) / (double) CROSSLINKDELAY;
+						//if (p_sameGPnode->nodenum % 100 == 0)
+						//	cout << "F Node: " << setprecision(3) << p_sameGPnode->nodenum << " scale: " << (double) ( (iteration_num - p_sameGPnode->creation_iter_num) % CROSSLINKDELAY) / (double) CROSSLINKDELAY << endl;
+					}
+
+					if (p_nearnode->harbinger)
+					{
+						tomove *= (double) ( (iteration_num - p_nearnode->creation_iter_num) % CROSSLINKDELAY) / (double) CROSSLINKDELAY;
+						//if (p_nearnode->nodenum % 100 == 0)
+						//	cout << "R Node: " << setprecision(3) << p_nearnode->nodenum << " scale: " << (double) ( (iteration_num - p_nearnode->creation_iter_num) % CROSSLINKDELAY) / (double) CROSSLINKDELAY << endl;
+					
+						if (p_sameGPnode->harbinger)
+						{	// two harbingers, so move them
+							p_sameGPnode->move_harbinger_this_time = true;
+						}
+					}
+
+
 				    p_sameGPnode->rep_force_vec -= tomove ;
 
 				    p_sameGPnode->adddirectionalmags(tomove, p_sameGPnode->repforce_radial,
 								    p_sameGPnode->repforce_transverse);
+
+					
+					// can we save time by doing same for paired node?  No
+
+					//if (donenode[p_sameGPnode->nodenum])
+					//	continue;  // skip if nearnode already done
+					//
+					//if (p_nearnode->threadnum == dat->threadnum)
+					//{	// is the paired node on the same thread? if so we can do that now too
+					//	// just give it the opposite force
+
+					//	p_nearnode->rep_force_vec += tomove ;
+
+					//	p_nearnode->adddirectionalmags(-tomove, p_nearnode->repforce_radial,
+					//			    p_nearnode->repforce_transverse);
+
+					//	if ((p_sameGPnode->harbinger) && (p_nearnode->harbinger))
+					//		p_nearnode->move_harbinger_this_time = true;
+
+					//	donenode[p_sameGPnode->nodenum] = true;
+
+					//}
 
                     //p_sameGPnode->viscous_force_vec -= p_nearnode->delta * recip_distsqr;
                     //p_sameGPnode->viscous_force_recip_dist_sum += recip_distsqr;
@@ -1059,104 +1190,104 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
     return (void*) NULL;
 }
 
-
-void * actin::collisiondetectiondoworkvisc(void* arg)//, pthread_mutex_t *mutex)
-{	
-    // cast arg
-    const thread_data* dat = (thread_data*) arg;
-
-    
-    static const double local_NODE_REPULSIVE_RANGE = NODE_REPULSIVE_RANGE;
-    static const double local_NODE_REPULSIVE_MAG = NODE_REPULSIVE_MAG;
-
-    vect nodeposvec;
-    double distsqr,dist;
-    double recip_dist;//, force_over_dist;
-    double recip_distsqr;
-    //double force;
-    vect tomove;
-    vect disp;
-    nodes *p_nearnode, *p_sameGPnode;
-
-    int sameGPnodenum;
-
-    // loop over the nodes given to this thread
-    for(vector <nodes*>::iterator thisnode=nodes_by_thread[dat->threadnum].begin(); 
-	        thisnode<nodes_by_thread[dat->threadnum].end();
-	        ++thisnode) 
-    {	
-        if(donenode[(*thisnode)->nodenum])
-	        continue;  // skip nodes already done
-	   	  
-	    // find nodes on same gridpoint, and nodes within repulsive range
-        // skip if zero
-	    if (findnearbynodes(**thisnode,NODE_REPULSIVE_RANGE_GRIDSEARCH, dat->threadnum)==0)
-	        continue;	// find nodes within 1 grid point
-
-	    // loop over nodes on same gridpoint:
-	    for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
-	        sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
-	        sameGPnode++) 
-        {
-            p_sameGPnode = *sameGPnode;
-
-            sameGPnodenum = p_sameGPnode->nodenum;
-    	    
-	        if (donenode[sameGPnodenum])
-		      continue;  // skip if done
-    	    
-			// REVISIT ML: remove this mutex, should never conflict
-			//pthread_mutex_lock(&nodedone_mutex);
-			donenode[sameGPnodenum] = true;  // mark node as done
-			//pthread_mutex_unlock(&nodedone_mutex);
-    		
-			// of these nodes, calculate euclidian dist
-			nodeposvec = *p_sameGPnode;	// get xyz of our node
-
-			for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
-			    nearnode<recti_near_nodes[dat->threadnum].end();
-			    nearnode++) {
-
-                p_nearnode = *nearnode;
-
-			    if ( p_sameGPnode == p_nearnode)
-				    continue;  // skip if self
-    			  			
-			    disp = *p_nearnode - nodeposvec; 
-			    distsqr = disp.sqrlength();
-    			
-			    if (distsqr < SQRT_ACCURACY_LOSS)
-		    		continue;
-   			
-			    if (distsqr < local_NODE_REPULSIVE_RANGE * local_NODE_REPULSIVE_RANGE)
-			    {
-				    // calc dist between nodes
-				    dist = sqrt(distsqr); 
-                    recip_dist = 1/dist;
-                    recip_distsqr = recip_dist * recip_dist;
-
-				    //force = local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE) * dist;
-				    //force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
-				    tomove = disp * (recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE));
-
-                    //tomove = disp * ( force_over_dist);
-                    //tomove = disp * ( force / dist);
-        			
-				    p_sameGPnode->rep_force_vec -= tomove ;
-
-				    p_sameGPnode->adddirectionalmags(tomove, p_sameGPnode->repforce_radial,
-								    p_sameGPnode->repforce_transverse);
-
-                    p_sameGPnode->viscous_force_vec -= p_nearnode->delta * recip_distsqr;
-                    p_sameGPnode->viscous_force_recip_dist_sum += recip_distsqr;
-    			
-			    }
-			}
-	    }
-    }
-
-    return (void*) NULL;
-}
+//
+//void * actin::collisiondetectiondoworkvisc(void* arg)//, pthread_mutex_t *mutex)
+//{	
+//    // cast arg
+//    const thread_data* dat = (thread_data*) arg;
+//
+//    
+//    static const double local_NODE_REPULSIVE_RANGE = NODE_REPULSIVE_RANGE;
+//    static const double local_NODE_REPULSIVE_MAG = NODE_REPULSIVE_MAG;
+//
+//    vect nodeposvec;
+//    double distsqr,dist;
+//    double recip_dist;//, force_over_dist;
+//    double recip_distsqr;
+//    //double force;
+//    vect tomove;
+//    vect disp;
+//    nodes *p_nearnode, *p_sameGPnode;
+//
+//    int sameGPnodenum;
+//
+//    // loop over the nodes given to this thread
+//    for(vector <nodes*>::iterator thisnode=nodes_by_thread[dat->threadnum].begin(); 
+//	        thisnode<nodes_by_thread[dat->threadnum].end();
+//	        ++thisnode) 
+//    {	
+//        if(donenode[(*thisnode)->nodenum])
+//	        continue;  // skip nodes already done
+//	   	  
+//	    // find nodes on same gridpoint, and nodes within repulsive range
+//        // skip if zero
+//	    if (findnearbynodes(**thisnode,NODE_REPULSIVE_RANGE_GRIDSEARCH, dat->threadnum)==0)
+//	        continue;	// find nodes within 1 grid point
+//
+//	    // loop over nodes on same gridpoint:
+//	    for(vector <nodes*>::iterator sameGPnode=nodes_on_same_gridpoint[dat->threadnum].begin(); 
+//	        sameGPnode<nodes_on_same_gridpoint[dat->threadnum].end();
+//	        sameGPnode++) 
+//        {
+//            p_sameGPnode = *sameGPnode;
+//
+//            sameGPnodenum = p_sameGPnode->nodenum;
+//    	    
+//	        if (donenode[sameGPnodenum])
+//		      continue;  // skip if done
+//    	    
+//			// REVISIT ML: remove this mutex, should never conflict
+//			//pthread_mutex_lock(&nodedone_mutex);
+//			donenode[sameGPnodenum] = true;  // mark node as done
+//			//pthread_mutex_unlock(&nodedone_mutex);
+//    		
+//			// of these nodes, calculate euclidian dist
+//			nodeposvec = *p_sameGPnode;	// get xyz of our node
+//
+//			for( vector <nodes*>::iterator nearnode=recti_near_nodes[dat->threadnum].begin(); 
+//			    nearnode<recti_near_nodes[dat->threadnum].end();
+//			    nearnode++) {
+//
+//                p_nearnode = *nearnode;
+//
+//			    if ( p_sameGPnode == p_nearnode)
+//				    continue;  // skip if self
+//    			  			
+//			    disp = *p_nearnode - nodeposvec; 
+//			    distsqr = disp.sqrlength();
+//    			
+//			    if (distsqr < SQRT_ACCURACY_LOSS)
+//		    		continue;
+//   			
+//			    if (distsqr < local_NODE_REPULSIVE_RANGE * local_NODE_REPULSIVE_RANGE)
+//			    {
+//				    // calc dist between nodes
+//				    dist = sqrt(distsqr); 
+//                    recip_dist = 1/dist;
+//                    recip_distsqr = recip_dist * recip_dist;
+//
+//				    //force = local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE) * dist;
+//				    //force_over_dist = recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE);
+//				    tomove = disp * (recip_dist * local_NODE_REPULSIVE_MAG - (local_NODE_REPULSIVE_MAG / local_NODE_REPULSIVE_RANGE));
+//
+//                    //tomove = disp * ( force_over_dist);
+//                    //tomove = disp * ( force / dist);
+//        			
+//				    p_sameGPnode->rep_force_vec -= tomove ;
+//
+//				    p_sameGPnode->adddirectionalmags(tomove, p_sameGPnode->repforce_radial,
+//								    p_sameGPnode->repforce_transverse);
+//
+//                    p_sameGPnode->viscous_force_vec -= p_nearnode->delta * recip_distsqr;
+//                    p_sameGPnode->viscous_force_recip_dist_sum += recip_distsqr;
+//    			
+//			    }
+//			}
+//	    }
+//    }
+//
+//    return (void*) NULL;
+//}
 
 
 /*
@@ -1591,35 +1722,58 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
     // cast arg
     const thread_data* dat = (thread_data*) arg;
     
-    if (VISCOSITY)
-    {
+    //if (VISCOSITY)
+    //{
 
-        //if ((iteration_num % 500) == 0)
-        //    cout << node[dat->startnode + (dat->endnode - dat->startnode) * (double) rand() / (double)RAND_MAX].viscous_force_recip_dist_sum << endl;
+    //    //if ((iteration_num % 500) == 0)
+    //    //    cout << node[dat->startnode + (dat->endnode - dat->startnode) * (double) rand() / (double)RAND_MAX].viscous_force_recip_dist_sum << endl;
 
-        // sum forces etc. over all threads
-        for (int i=dat->startnode; i<dat->endnode; ++i)
-        {
-	        if(node[i].polymer)
-            {
-	            node[i].applyforces_visc();  // note this is the num of the thread that put the
-                                        // data there, not our thread
-            }
-        }
-    }
-    else
-    {
+    //    // sum forces etc. over all threads
+    //    for (int i=dat->startnode; i<dat->endnode; ++i)
+    //    {
+	   //     if(node[i].polymer)
+    //        {
+	   //         node[i].applyforces_visc();  // note this is the num of the thread that put the
+    //                                    // data there, not our thread
+    //        }
+    //    }
+    //}
+    //else
+    //{
          // sum forces etc. over all threads
-        for (int i=dat->startnode; i<dat->endnode; ++i)
+
+	if (ALLOW_HARBINGERS_TO_MOVE)
+	{
+		for (int i=dat->startnode; i<dat->endnode; ++i)
         {
-	        if(node[i].polymer)
+			if (node[i].polymer)
             {
-	            node[i].applyforces_novisc();  // note this is the num of the thread that put the
-                                        // data there, not our thread
+	            node[i].applyforces();  
             }
         }
+	}
+	else
+	{
+		for (int i=dat->startnode; i<dat->endnode; ++i)
+        {
+			if (!node[i].polymer)
+				continue;
 
-    }
+			if (!node[i].harbinger)     
+            {	// move if not harbinger
+	            node[i].applyforces();  
+            }
+			else if (node[i].move_harbinger_this_time)
+			{	// special case: move harbinger if it is repelled by another harbinger
+				node[i].applyforces();
+				node[i].move_harbinger_this_time = false;
+			}
+        }
+	}
+
+
+
+    //}
 
 
     return NULL;
@@ -1696,7 +1850,7 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
     double dist;
     double force;
     vect nodeposvec, disp;
-    vect tomove;
+    vect forcevec;
     
     // go through all nodes
     for(int n=(dat->startnode); n<(dat->endnode); ++n)
@@ -1727,52 +1881,27 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 	        } 
             else 
             {
-		        tomove = disp * (force/dist);  
+		        forcevec = disp * (force/dist);  
 
 		        // we're scaling the force by vector disp
 		        // to get the *direction*, so we need to
 		        // divide by the length of disp (i.e. dist)
 		        // to prevent the length amplifying the force
         		
-		        node[n].link_force_vec += tomove;
+		        node[n].link_force_vec += forcevec;
         		
 		        if (force < 0) // put tension into link forces
 		        {
-		            node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
+		            node[n].adddirectionalmags(forcevec, node[n].linkforce_radial, node[n].linkforce_transverse);
 		        } 
                 else 
                 {	   // but put compression into repulsive forces
-		            node[n].adddirectionalmags(tomove, node[n].repforce_radial , node[n].repforce_transverse );
+		            node[n].adddirectionalmags(forcevec, node[n].repforce_radial , node[n].repforce_transverse );
 		        }
 	        }
-	    }
+		}
 
-        if (node[n].stucktonucleator)
-        {
 
-            disp = nodeposvec - node[n].nucleator_stuck_position;
-	        dist = disp.length();
-    	    
-            force = NUC_LINK_FORCE * dist ;
-	        
-            if (dist > NUC_LINK_BREAKAGE_DIST)
-            {
-                node[n].nucleator_link_force.zero();
-                node[n].stucktonucleator = false;   // no longer stuck
-            }
-            else
-            {
-                tomove = disp * (force/dist);
-
-                node[n].link_force_vec += tomove;
-        		
-                // tension only since default dist is zero
-		        node[n].adddirectionalmags(tomove, node[n].linkforce_radial, node[n].linkforce_transverse);
-            
-                //node[n].nucleator_link_force = -tomove;
-            }
-            
-        }
     }
 
 
@@ -1780,8 +1909,6 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 
     return NULL;
 }
-// -- END from threading branch
-// - - - - - - - - - - - - - - 
 
 int actin::setnodecols(void)
 {
@@ -1897,9 +2024,11 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		temp_BMP_filename = temp_BMP_filename_z;
 	}
 
-	cout << "Processing "<< projletter << "-axis BMP";
-	cout.flush();
-
+	if (!QUIET)
+	{
+		cout << projletter << "-axis BMP";
+		cout.flush();
+	}
 
 	double minx, miny, minz;
 	double maxx, maxy, maxz; 
@@ -1911,9 +2040,38 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	
 	int x,y;
 
-	double gaussmax = (double) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
+	// precalculate gaussian for psf
 
-	//double imageRmax[proj], imageGmax[proj], imageBmax[proj];
+	double gaussmax = (double) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
+	
+	Dbl2d GaussMat, GaussMat2;
+
+	const int xgmax = pixels(gaussmax);  // was BMP_WIDTH
+	const int ygmax = pixels(gaussmax);
+
+	int xg,yg;
+
+	GaussMat.resize(2*xgmax);
+	GaussMat2.resize(2*xgmax);
+
+	for(xg = -xgmax; xg<xgmax; xg++)
+	{
+		GaussMat[xg+xgmax].resize(2*ygmax);
+		GaussMat2[xg+xgmax].resize(2*ygmax);
+		for(yg = -ygmax; yg<ygmax; yg++)
+		{
+			if ((xg*xg+yg*yg)>(xgmax*ygmax))
+				continue;  // don't do corners
+
+			GaussMat[xg+xgmax][yg+ygmax] 
+					= exp(-3*((double)(xg*xg+yg*yg))/(double)(xgmax*ygmax));
+
+			GaussMat2[xg+xgmax][yg+ygmax] 
+					= exp(-9*((double)(xg*xg+yg*yg))/(double)(xgmax*ygmax));
+		}
+	}
+
+	// clear the image array
 
 	for (x = 0; x<BMP_WIDTH; x++)
 		{
@@ -1925,10 +2083,13 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 			}
 		}
 
+
+	// determine size
+
 	minx = miny = minz = 0;
 	maxx = maxy = maxz = 0;
 
-	// determine size
+	// find extents of network
 
 	for (int i=0; i<highestnodecount; i++)
 	{
@@ -1947,39 +2108,21 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 	double meanx, meany, meanz;
 
-	// temp: reset center:
-	meanx = -p_nuc->position.x; 
-	meany = -p_nuc->position.y; 
-	meanz = -p_nuc->position.z; 
+	// nucleator position
+	meanx = p_nuc->position.x; 
+	meany = p_nuc->position.y; 
+	meanz = p_nuc->position.z; 
 
 	p_nuc->nucleator_rotation.rotate(meanx,meany,meanz);
-	camera_rotation.rotate(meanx,meany,meanz); 
-	//camera_rotation2.rotate(meanx,meany,meanz); 
-
 	
-	// precalculate gaussian
+	meanx = -meanx;
+	meany = -meany;
+	meanz = -meanz;
 
-	Dbl2d GaussMat;
+	camera_rotation.rotate(meanx,meany,meanz); 
 
-	const int xgmax = pixels(gaussmax);  // was BMP_WIDTH
-	const int ygmax = pixels(gaussmax);
 
-	int xg,yg;
-
-	GaussMat.resize(2*xgmax);
-
-	for(xg = -xgmax; xg<xgmax; xg++)
-	{
-		GaussMat[xg+xgmax].resize(2*ygmax);
-		for(yg = -ygmax; yg<ygmax; yg++)
-		{
-			if ((xg*xg+yg*yg)>(xgmax*ygmax))
-				continue;  // don't do corners
-
-			GaussMat[xg+xgmax][yg+ygmax] 
-					= exp(-3*((double)(xg*xg+yg*yg))/(double)(xgmax*ygmax));
-		}
-	}
+	// determine offset to keep bead in picture
 
 	double keep_within_border;
 
@@ -1987,6 +2130,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		 keep_within_border = 2* RADIUS;
 	else
 		 keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
+
 
 	
 	if (proj == xaxis)  // choose projection
@@ -2025,6 +2169,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 
 	vect rot;
+	double mult;
 
 	for (int i=0; i<highestnodecount; i++)
 	{
@@ -2063,7 +2208,13 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		}
 		else
 		{
-			if ((i%SPECKLE_FACTOR)==0)
+			if (!SPECKLE)
+				mult = 1;
+			else
+				mult = speckle_array[i % speckle_array_size];
+
+			//if ((!SPECKLE) || ((SPECKLE) && (speckle_array[i % speckle_array_size])))
+			{
 				for(xg = -xgmax; xg<xgmax; ++xg)
 					for(yg = -ygmax; yg<ygmax; ++yg)
 					{
@@ -2073,12 +2224,20 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
 						//	node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
 						
-						imageG[x+xg+xgmax][y+yg+ygmax]+=
+						imageG[x+xg+xgmax][y+yg+ygmax]+= 
 								1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
+						
+						if (SPECKLE)
+							imageR[x+xg+xgmax][y+yg+ygmax]+= mult *
+									1 * GaussMat2[xg+xgmax][yg+ygmax];  // amount of actin
 
 					}
+			}
 		}
 	}
+
+
+
 
     if (BMP_intensity_scaling)
     {
@@ -2137,67 +2296,88 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     if (!writefile)
         return;
 
+	double cagedispx = meanx;
+	double cagedispy = meany;
+	double cagedispz = meanz;
+	int cagemovex = movex;
+	int cagemovey = movey;
 
-	if (ROTATION)
+	if ((CAGE_ON_SIDE) && (p_nuc->is_sphere()))
+	{
+		cagedispx = cagedispy = cagedispz = 0.0;
+		cagemovex = p_nuc->segs.centerx - BMP_WIDTH/2 - xgmax;
+		cagemovey = p_nuc->segs.centery - BMP_HEIGHT/2 - ygmax + BMP_HEIGHT/4;
+	}
+
+	if ((ROTATION) || (DRAW_CAGE))
 	{ // draw the nucleator points cage only if rotation is turned on
 
-	for (vector <vect>::iterator point=p_nuc->cagepoints.begin(); 
-	      point<p_nuc->cagepoints.end() ; ++point )
+	    for (vector <vect>::iterator point=p_nuc->cagepoints.begin(); 
+	        point<p_nuc->cagepoints.end() ; ++point )
+	    {
+		    // rotate point	
+
+		    rot = *point;
+		    p_nuc->nucleator_rotation.rotate(rot);
+		    camera_rotation.rotate(rot); 
+		    //camera_rotation2.rotate(rot); 
+
+		    if (proj == xaxis)  // choose projection
+		    {
+			    x = pixels(rot.y - cagedispy) +  BMP_WIDTH/2; // was BMP_WIDTH
+			    y = pixels(rot.z - cagedispz) + BMP_HEIGHT/2;
+		    }
+		    else if (proj == yaxis)
+		    {
+			    x = pixels(rot.x - cagedispx)+  BMP_WIDTH/2; // was BMP_WIDTH
+			    y = pixels(rot.z - cagedispz)+ BMP_HEIGHT/2;
+		    }
+		    else 
+		    {
+			    x = pixels(rot.x - cagedispx) +  BMP_WIDTH/2; // was BMP_WIDTH
+			    y = pixels(rot.y - cagedispy) + BMP_HEIGHT/2;
+		    }
+
+		    x += cagemovex;  // displace to bring bead back in bounds
+		    y += cagemovey;
+
+		    if (((x+xgmax)<0) || ((x+xgmax)>=BMP_WIDTH) ||
+			   ((y+ygmax)<0) || ((y+ygmax)>=BMP_HEIGHT))  // only plot if point in bounds
+			    continue;
+    		
+		    imageR[x+xgmax][y+ygmax] = 1; //mymax(imageR[x+xgmax][y+ygmax]+p_nuc->colour.r,1);
+		    imageG[x+xgmax][y+ygmax] = 1; //mymax(imageG[x+xgmax][y+ygmax]+p_nuc->colour.g,1);
+		    imageB[x+xgmax][y+ygmax] = 1; //mymax(imageB[x+xgmax][y+ygmax]+p_nuc->colour.b,1);
+		    //imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax[proj] / 2.0) / 2.0;
+		    //imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax[proj] / 2.0) / 2.0;
+
+	    }
+
+	}
+	
+	if (!QUIET)
 	{
-		// rotate point	
-
-		rot = *point;
-		p_nuc->nucleator_rotation.rotate(rot);
-		camera_rotation.rotate(rot); 
-		//camera_rotation2.rotate(rot); 
-
-		if (proj == xaxis)  // choose projection
-		{
-			x = pixels(rot.y - meany) +  BMP_WIDTH/2; // was BMP_WIDTH
-			y = pixels(rot.z - meanz) + BMP_HEIGHT/2;
-		}
-		else if (proj == yaxis)
-		{
-			x = pixels(rot.x - meanx)+  BMP_WIDTH/2; // was BMP_WIDTH
-			y = pixels(rot.z - meanz)+ BMP_HEIGHT/2;
-		}
-		else 
-		{
-			x = pixels(rot.x - meanx) +  BMP_WIDTH/2; // was BMP_WIDTH
-			y = pixels(rot.y - meany) + BMP_HEIGHT/2;
-		}
-
-		x+=movex;  // displace to bring bead back in bounds
-		y+=movey;
-
-		if (((x+xgmax)<0) || ((x+xgmax)>=BMP_WIDTH) ||
-			(((y+ygmax)<0) || ((y+ygmax)>=BMP_HEIGHT)))  // only plot if point in bounds
-			continue;
-		
-		imageR[x+xgmax][y+ygmax] = p_nuc->colour.r;
-		imageG[x+xgmax][y+ygmax] = p_nuc->colour.g;
-		imageB[x+xgmax][y+ygmax] = p_nuc->colour.b;
-		//imageG[x+xgmax][y+ygmax] = (imageG[x+xgmax][y+ygmax] + imageGmax[proj] / 2.0) / 2.0;
-		//imageB[x+xgmax][y+ygmax] = (imageB[x+xgmax][y+ygmax] + imageBmax[proj] / 2.0) / 2.0;
-
+		cout << ".";
+		cout.flush();
 	}
-
-	}
-	cout << ".";
-	cout.flush();
 
 	// write the bins graphics
 
-	p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
+	if (SEGMENT_BINS)
+	{
+		p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
 				    p_nuc->segs.link_transverse, p_nuc->segs.link_transverse_scalefactor, proj);
-
+	}
 	// write the bitmap file
 		
 	writebitmapfile(*p_outbmpfile, imageR, imageG, imageB);
 
-	cout << ".";
-	cout.flush();
-
+	
+	if (!QUIET)
+	{
+		cout << ".";
+		cout.flush();
+	}
 	// add the imagemagick overlays
 	
 	char command1[10240], command3[20480];
@@ -2209,8 +2389,6 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	// to use as disposable objects
 	// .clear() or .str("") don't seem to work.
 
-	
-
 	drawcmd << "-fill none -stroke grey -draw \"";
 	p_nuc->segs.drawoutline(drawcmd,proj);				// draw outline of nucleator
 					
@@ -2221,18 +2399,20 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     // note the values are already scaled to have a max of 1 from the symmetry breaking
     // so we're scaling the 3 colors mainly to show the range of small values
 	
-    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj,8) > 0)		
-		drawcmd << "\" -stroke blue -draw \"" << tmp_drawcmd1.str();
+    //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj, 1 * FORCE_BAR_SCALE) > 0)		
+	//	drawcmd << "\" -stroke blue -draw \"" << tmp_drawcmd1.str();
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,2) > 0)	
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.5 * FORCE_BAR_SCALE) > 0)	
 		drawcmd << "\" -stroke red -draw \"" << tmp_drawcmd2.str();	
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj,0.5) > 0)	
+	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.1 * FORCE_BAR_SCALE) > 0)	
 		drawcmd << "\" -stroke yellow -draw \"" << tmp_drawcmd3.str();
 
 	drawcmd << "\"";
 
-    int scalebarlength = pixels(5.0);
+	int scalebarmicrons = (int)ceil(RADIUS*2);
+
+    int scalebarlength = pixels(scalebarmicrons);
 
     // drawing image text takes forever on alpha and OSX
     // so have option to bypass
@@ -2240,46 +2420,17 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     if (NO_IMAGE_TEXT)
     {	
 		sprintf(command1,
-		"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s %s%s_proj_%05i.%s",
-		    BMP_COMPRESSION, scalebarlength+5,drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR, 
+		"%s -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s %s%s_proj_%05i.%s", IMAGEMAGICKCONVERT, BMP_COMPRESSION, scalebarlength+5,drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR, 
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
     else 
     {
 		sprintf(command1,
-		"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '5uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 6i\\nTime % 6.1f'\" %s %s %s%s_proj_%05i.%s",
-			BMP_COMPRESSION, scalebarlength+5,  projletter, filenum,
+		"%s -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '%iuM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 6i\\nTime % 6.1f'\" %s %s %s%s_proj_%05i.%s", IMAGEMAGICKCONVERT,
+			BMP_COMPRESSION, scalebarmicrons, scalebarlength+5,  projletter, filenum,
 			filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
-
-	    //sprintf(command2,
-		   // "convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", 
-		   // BMP_COMPRESSION, drawcmd.str().c_str(), BITMAPDIR, 
-		   // projletter, filenum, BMP_OUTPUT_FILETYPE.c_str(), BITMAPDIR, 
-		   // projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
-
-  //  if (NO_IMAGE_TEXT)
-  //  {	
-		//sprintf(command1,
-		//"convert -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s%s_proj_%05i.%s",
-		//    BMP_COMPRESSION, scalebarlength+5, temp_BMP_filename, BITMAPDIR, 
-		//	projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
-  //  }
-  //  else 
-  //  {
-		//sprintf(command1,
-		//"convert -quality %i -font helvetica -fill white -pointsize 20 -draw \"text 5 595 '1uM' rectangle 5 576 %i 573 text +5+20 '%s-projection  \\nFrame % 4i\\nG-gain % 4i'\" %s %s%s_proj_%05i.%s",
-		//	BMP_COMPRESSION, scalebarlength+5, projletter, filenum,
-		//	(int)((1000/(double)imageGmax[proj])+0.5),  temp_BMP_filename, BITMAPDIR,
-		//	projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
-  //  }
-
-	 //   sprintf(command2,
-		//    "convert -quality %i %s %s%s_proj_%05i.%s %s%s_forces_%05i.%s", 
-		//    BMP_COMPRESSION, drawcmd.str().c_str(), BITMAPDIR, 
-		//    projletter, filenum, BMP_OUTPUT_FILETYPE.c_str(), BITMAPDIR, 
-		//    projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
     if (fgbg == runbg)
 	    sprintf(command3, "%s &", command1);
@@ -2290,21 +2441,11 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 	system(command3);
 
-    //system(command1);
-    //system(command2);
-
-	// opruninfo << endl << command1 << endl << command2 << endl;
-
-    //#ifdef _WIN32  // use 'del' on windows, 'rm' on unix:
-    //	sprintf(command2 , "del %s 2>/dev/null", filename);
-    //#else
-    //	sprintf(command2 , "rm -f %s 2>/dev/null", filename);
-    //#endif
-    //
-    //	system(command2);	
-
+	if (!QUIET)
+	{
 	cout << ". ";
 	cout.flush();
+	}
 
 	return;
 }
@@ -2539,6 +2680,7 @@ void actin::sortnodesbygridpoint(void)
 			do
 			{
                 nodes_by_thread[threadnum].push_back(nodeptr);
+				nodeptr->threadnum = threadnum;
 				donenode[nodeptr->nodenum] = true;  // mark node as done
 
 				nodeptr = nodeptr->nextnode;					
@@ -2572,7 +2714,7 @@ void actin::compressfilesdowork(const int & filenum)
 {
 	char command1[255];
 
-
+#ifndef _WIN32
 	// report files
 		
 	sprintf(command1, "(gzip -q -f -9 %s*report*.txt 2>/dev/null; mv %s*report*.gz %s 2>/dev/null) &"
@@ -2590,6 +2732,28 @@ void actin::compressfilesdowork(const int & filenum)
 	sprintf(command1 , "(gzip -f -9 %snodes%05i.wrl 2>/dev/null; mv %snodes%05i.wrl.gz %snodes%05i.wrz 2>/dev/null) &",
 						TEMPDIR, filenum, TEMPDIR,filenum, VRMLDIR,filenum );
 	system(command1);
+
+#else
+
+	sprintf(command1, "gzip -q -f -9 %s*report*.txt & mv %s*report*.gz %s"
+		,TEMPDIR,TEMPDIR, REPORTDIR);
+	system(command1);
+
+	// save data file
+
+	sprintf(command1 , "gzip -q -f -9 %s*data*.txt & mv %s*data*.gz %s 2>/dev/null",
+		TEMPDIR, TEMPDIR, DATADIR);
+	system(command1);
+
+	// wrl file
+
+	sprintf(command1 , "gzip -f -9 %snodes%05i.wrl & mv %snodes%05i.wrl.gz %snodes%05i.wrz",
+						TEMPDIR, filenum, TEMPDIR,filenum, VRMLDIR,filenum );
+	system(command1);
+
+
+#endif
+
 
 }
 
@@ -2623,7 +2787,8 @@ int actin::save_data(ofstream &ofstrm)
 	   << linksbroken  << "," 
 	   << linksformed << endl
     	   << actin_rotation << ","
-	   << camera_rotation << endl;
+	   << camera_rotation << ","
+	   << camera_rotation2 << endl;
     
     // save nodes
     ofstrm << "nodes-links:" << endl;
@@ -2674,7 +2839,8 @@ int actin::load_data(ifstream &ifstr)
 	  >> linksbroken      >> ch 
 	  >> linksformed      
 	  >> actin_rotation   >> ch
-	  >> camera_rotation;
+	  >> camera_rotation  >> ch
+	  >> camera_rotation2;
 
     ifstr >> str;
     // load nodes
@@ -2863,12 +3029,20 @@ void actin::set_sym_break_axes(void)
 	// need to assemble them in the right (reverse) order z,y,x
 	// to get the rotation matrix
 
-	camera_rotation.settoidentity();
+	// camera_rotation includes a pre-rotation with the old x angle
+	// to prevent it moving always onto the z-axis
+	// camera_rotation2 does not have this
 
+	camera_rotation.settoidentity();
     camera_rotation.rotatematrix(-x_angle, rotationmatrix::xaxis);
 	camera_rotation.rotatematrix(maxchiangle, rotationmatrix::zaxis);
 	camera_rotation.rotatematrix(y_angle, rotationmatrix::yaxis);
 	camera_rotation.rotatematrix(x_angle, rotationmatrix::xaxis);
+
+	camera_rotation2.settoidentity();
+	camera_rotation2.rotatematrix(maxchiangle, rotationmatrix::zaxis);
+	camera_rotation2.rotatematrix(y_angle, rotationmatrix::yaxis);
+	camera_rotation2.rotatematrix(x_angle, rotationmatrix::xaxis);
 
 	reverse_camera_rotation.settoidentity();
 	//reverse_camera_rotation2.settoidentity();

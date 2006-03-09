@@ -31,26 +31,47 @@ class rotationmatrix
     
     //void rotate(vect& v);
     
-    inline rotationmatrix rotate(double &x, double &y, double &z)
+    inline void rotate(double &x, double &y, double &z) const
 	{
-	    static double tmp_x, tmp_y;
+	    //double tmp_x, tmp_y;
 	    
-	    tmp_x = x*xx + y*yx + z*zx;
-	    tmp_y = x*xy + y*yy + z*zy;
-	    z = x*xz + y*yz + z*zz;
+	    register double tmp_x = x*xx + y*yx + z*zx;
+	    register double tmp_y = x*xy + y*yy + z*zy;
+	                        z = x*xz + y*yz + z*zz;
 	    
 	    x = tmp_x;
 	    y = tmp_y;
 	    
-	    return *this;
+	    return;
 	    
 	}
     
-    inline rotationmatrix rotate(vect& v)
+    inline void rotate(vect& v) const
 	{
-	    return rotate(v.x,v.y,v.z);
+		rotate(v.x,v.y,v.z);
+	    return;
 	}
     
+ //   inline rotationmatrix rotate(double &x, double &y, double &z) const
+	//{
+	//    static double tmp_x, tmp_y;
+	//    
+	//    tmp_x = x*xx + y*yx + z*zx;
+	//    tmp_y = x*xy + y*yy + z*zy;
+	//        z = x*xz + y*yz + z*zz;
+	//    
+	//    x = tmp_x;
+	//    y = tmp_y;
+	//    
+	//    return *this;
+	//    
+	//}
+ //   
+ //   inline rotationmatrix rotate(vect& v) const
+	//{
+	//    return rotate(v.x,v.y,v.z);
+	//}
+
     void getangles(double& x_angle, double& y_angle, double& z_angle);    
 };
 

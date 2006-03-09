@@ -23,30 +23,6 @@ double NUCPOINT_SCALE = 1.001;
 			
 nucleator::nucleator(void)
 {  
-	// this should never be called anyhow.  Needs pointer to actin
-
-	//radius = RADIUS;
-	//segment = 2*CAPSULE_HALF_LINEAR;
-	////P_NUC = (double) 0.8 / (4*PI*radius*radius);
-	//geometry = sphere;
-	//position.zero();
-	//surf_area = 4 * PI * radius * radius;
- //   // inverse ratio of 'viscosities' of node and bead
- //   movability = FORCE_SCALE_FACT * NODE_INCOMPRESSIBLE_RADIUS / radius;    
-
-	//deltanucposn.zero();
-
-	//torque.zero();
-
-	//centerofmass.zero();
-
-	//momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
-	//momentofinertia.y = 1000 * MofI;
-	//momentofinertia.z = 500 * MofI;
-
- //   definecagepoints();
-	//colour.r = colour.g = colour.b = 1.0;
-
 }
 
 nucleator::~nucleator(void)
@@ -58,22 +34,29 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 	//radius = RADIUS;
 	//segment = 2*CAPSULE_HALF_LINEAR;
 	//P_NUC = (double)0.8 / (4*PI*radius*radius);
+
 	geometry = set_geometry;
 
 	if (geometry==sphere)
 	{
 		surf_area = 4 * PI * RADIUS * RADIUS;
-		movability = FORCE_SCALE_FACT * 0.5 / RADIUS;
+		movability = 0.25 / (RADIUS * NUCLEATOR_INERTIA);
+
+		momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
+		momentofinertia.y = 1000 * MofI;
+		momentofinertia.z = 1000 * MofI;
 	}
 	else
 	{
 		surf_area = 4 * PI * RADIUS * RADIUS  +  4 * PI * RADIUS * CAPSULE_HALF_LINEAR;
-		movability = FORCE_SCALE_FACT * 0.5 / (RADIUS + CAPSULE_HALF_LINEAR/2);   // what should this be??
+		movability = 0.25 / (NUCLEATOR_INERTIA * (RADIUS + CAPSULE_HALF_LINEAR/2));   // what should this be??
+	
+	    momentofinertia.x = 1000 * CAPSULE_HALF_LINEAR * MofI;  // mark:  todo: calculate these numbers
+		momentofinertia.y = 1000 * CAPSULE_HALF_LINEAR * MofI;
+		momentofinertia.z = 1000 * MofI;
 	}
 
-    momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
-	momentofinertia.y = 1000 * MofI;
-	momentofinertia.z =  500 * MofI;
+
 
 	ptheactin = actinptr;
 	ptheactin->p_nuc = this;
@@ -476,20 +459,27 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 	oldpos = node;
 
-	double rad = RADIUS * (double) 1.001; // needed to prevent rounding errors putting back inside nuclator
+	double rad = RADIUS * NUCPOINT_SCALE; // needed to prevent rounding errors putting back inside nuclator
 
     // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
 	switch (geometry)
 	{
 	    case (sphere):
 	    {
-		    r = node.length();;
+		    r = node.length();
 
-		    scale = rad / r;
+			if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
+			{
+				node.stucktonucleator = true;
+				node.nucleator_stuck_position = node * (1/r); // link to point *on* the nucleator surface
+			}
+
+			scale = rad / r;
 
 		    node *= scale;
         	
             node.nucleator_impacts += (rad-r);
+
 
 		    break;
 	    }
@@ -497,34 +487,59 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 	    case (capsule):
 
 	    {
-		    if ((fabs(node.z)<(CAPSULE_HALF_LINEAR)))
+		    if ((fabs(node.z)<CAPSULE_HALF_LINEAR))
 		    { 
 			    // on the cylinder
 
 			    r = calcdist(node.x,node.y);
-			    scale = rad / r;
+
+				if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
+				{
+					node.stucktonucleator = true;
+					node.nucleator_stuck_position.x = node.x * (1/r);
+					node.nucleator_stuck_position.y = node.y * (1/r);
+					node.nucleator_stuck_position.z = node.z;// link to point *on* the nucleator surface
+				}
+
+			    scale = rad * (1/r);
 			    node.x *= scale;
 			    node.y *= scale;
     			
                 node.nucleator_impacts += (rad-r);
+
+
 		    }
 		    else
 		    {	// on the ends
     			
-			    if (node.z<0)  // make into a sphere again
-				    z2 = node.z + (CAPSULE_HALF_LINEAR);
-			    else
-				    z2 = node.z - (CAPSULE_HALF_LINEAR);
-
 			    // calculate theta, phi :
 
-			    r = calcdist(node.x,node.y,z2);
+				if (node.z<0)  // make into a sphere again
+				    z2 = node.z + CAPSULE_HALF_LINEAR;
+			    else
+				    z2 = node.z - CAPSULE_HALF_LINEAR;
+
+				r = calcdist(node.x,node.y,z2);
+
+				if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
+				{
+					node.stucktonucleator = true;
+					node.nucleator_stuck_position.x = node.x * (1/r);
+					node.nucleator_stuck_position.y = node.y * (1/r);
+					
+					if (node.z<0)  // make into a sphere again
+						node.nucleator_stuck_position.z = z2 * (1/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
+					else
+						node.nucleator_stuck_position.z = z2 * (1/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
+					
+				}
+
 			    scale = rad / r;
 			    node.x *= scale;
 			    node.y *= scale;
 			    z2 *= scale;
 
-			    if (node.z<0)  
+				if (node.z<0)
 				    node.z = z2 - (CAPSULE_HALF_LINEAR);
 			    else
 				    node.z = z2 + (CAPSULE_HALF_LINEAR);
@@ -543,49 +558,34 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 	    (fabs(node_disp.y) > 0.2*RADIUS) ||
 	    (fabs(node_disp.z) > 0.2*RADIUS))
     {
-	    cout << "node nucleus ejection too great " <<  endl;
+		cout << endl;
+		cout << "node " << node.nodenum << " nucleus ejection too great. radius:" << oldpos.length() <<  endl;
 	    cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
 	    cout << "new (x,y,z): " <<  node.x << ", " << node.y << ", " << node.z <<  endl;
+		cout << "#links: " << (int) node.listoflinks.size() << endl;
 	    return false;  // failed
     }
-
-//#ifndef SEED_INSIDE
-//
-//    deltanucposn -= node_disp * movability;  // move the nucleator
-//
-//    node -= node_disp * movability;	
-//
-//    // rotate the nucleator
-//
-//    // calculate torque (as pos x disp)
-//
-//    if (ROTATION)
-//    {
-//	    torque.x += ((oldpos.y-centerofmass.y)*node_disp.z - (oldpos.z-centerofmass.z)*node_disp.y);
-//	    torque.y += ((oldpos.z-centerofmass.z)*node_disp.x - (oldpos.x-centerofmass.x)*node_disp.z);
-//	    torque.z += ((oldpos.x-centerofmass.x)*node_disp.y - (oldpos.y-centerofmass.y)*node_disp.x);
-//    }
-//
-//    node.insidenucleator = false;
-//
-// #endif
 
 
 #ifndef SEED_INSIDE
 
-    node -= node_disp * movability;
+    node -= node_disp * movability;  // move the node *back* scaled by movibility (since nucleator should move this much
 
     move_nuc(oldpos,node_disp);
 
-    node.insidenucleator = false;
-
 #endif
+
+
 
 	return true; // sucessful node ejection
 }
 
 void nucleator::move_nuc(vect& origin_of_movement, vect& tomove)
 {
+	// updates the vectors for moving and rotating the nucleator
+	// taking tomove as the movement vector from the origin_of_movement
+	// doesn't actually move anything---that is done in actin::move_and_rotate()
+
     // displacement is easy:
     deltanucposn -= tomove * movability;
 

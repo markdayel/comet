@@ -17,6 +17,7 @@ removed without prior written permission from the author.
 
 nodes::nodes(void)
 : onseg(false)
+//: local_NODE_FORCE_TO_DIST(DELTA_T * FORCE_SCALE_FACT)
 {
 	nextnode = this;  // initialise to point to self
 	prevnode = this;
@@ -26,22 +27,27 @@ nodes::nodes(void)
 	
     link_force_vec.zero();
 	rep_force_vec.zero();
-    viscous_force_vec.zero();
+    //viscous_force_vec.zero();
 	nuc_repulsion_displacement_vec.zero();
-    viscous_force_recip_dist_sum = 0;
+    //viscous_force_recip_dist_sum = 0;
 
 	unit_vec_posn.zero();
 
     nucleator_link_force.zero();
 
+	threadnum = 0;
 
-    insidenucleator = false;
+	listoflinks.reserve(MAX_LINKS_PER_NODE);
+
+    //insidenucleator = false;
 	polymer = false;
 	colour.setcol(0);
 	creation_iter_num = 0;
 	nodelinksbroken = 0;
-	harbinger = false;
+	harbinger = true;
 //	dontupdate = false;
+
+	move_harbinger_this_time = false;
 
     stucktonucleator = false;
     nucleator_stuck_position.zero();
@@ -51,6 +57,7 @@ nodes::nodes(void)
 }
 
 nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
+//: local_NODE_FORCE_TO_DIST(DELTA_T * FORCE_SCALE_FACT)
 {
 	gridx = gridy = gridz = -1;	
     nextnode = this;  // initialise to point to self
@@ -58,94 +65,92 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 
 	link_force_vec.zero();
 	rep_force_vec.zero();
-    viscous_force_vec.zero();
+    //viscous_force_vec.zero();
 	nuc_repulsion_displacement_vec.zero();
-    viscous_force_recip_dist_sum = 0;
+    //viscous_force_recip_dist_sum = 0;
 
     nucleator_link_force.zero();
 
 	clearstats();
 
+	threadnum = 0;
+
+	listoflinks.reserve(MAX_LINKS_PER_NODE);
+
 	colour.setcol(0);
 	creation_iter_num = ptheactin->iteration_num;
 	nodelinksbroken =0;
-	harbinger = false;
+	harbinger = true;
 //	dontupdate = false;
-    insidenucleator = false;
+//    insidenucleator = false;
 
 	polymerize(set_x,  set_y,  set_z);
 
     stucktonucleator = false;
     nucleator_stuck_position.zero();
 
-}
+	move_harbinger_this_time = false;
+
+}											    
 
 nodes::~nodes(void)
 {
 }
 
-void nodes::applyforces_visc()
+//void nodes::applyforces_visc()
+//{	
+//
+//    static const double local_DELTA_T = DELTA_T;
+//    static const double local_FORCE_SCALE_FACT = FORCE_SCALE_FACT;
+//    static const double local_VISCOSITY_EDGE_THRESHOLD = VISCOSITY_EDGE_THRESHOLD;
+//    static const double local_VISCOSITY_UNWEIGHTING_FACTOR = VISCOSITY_UNWEIGHTING_FACTOR;
+//
+//    // link and repulsive forces actin on node
+//
+//	delta = (link_force_vec + rep_force_vec ) 
+//                * local_DELTA_T * local_FORCE_SCALE_FACT;
+//    
+//    // the viscous_force_vec's are weighted by their recirocal distances,
+//    // so need to be scaled back by dividing by viscous_force_recip_dist_sum
+//
+//    // if on edge of network, viscous_force_recip_dist_sum will be low,
+//    // by increasing, we essentially weight the average towards zero
+//
+//    if (viscous_force_recip_dist_sum < local_VISCOSITY_EDGE_THRESHOLD)
+//        viscous_force_recip_dist_sum = local_VISCOSITY_EDGE_THRESHOLD;  // ?? what should this number be?
+//
+//    // viscosity: weighted average of 'velocities'
+//
+//    delta =   ( delta * local_VISCOSITY_UNWEIGHTING_FACTOR + viscous_force_vec ) 
+//                    * (1 / (local_VISCOSITY_UNWEIGHTING_FACTOR + viscous_force_recip_dist_sum));
+//
+//    //delta += nuc_repulsion_displacement_vec;  // this is a displacement, therefore not scaled
+//
+//	*this += delta;
+//
+//    setunitvec();
+//
+//	rep_force_vec.zero();
+//	link_force_vec.zero();
+//	viscous_force_vec.zero();
+//    viscous_force_recip_dist_sum = 0;
+//    //nuc_repulsion_displacement_vec.zero();
+//}
+
+void nodes::applyforces() 
 {	
 
-    static const double local_DELTA_T = DELTA_T;
-    static const double local_FORCE_SCALE_FACT = FORCE_SCALE_FACT;
-    static const double local_VISCOSITY_EDGE_THRESHOLD = VISCOSITY_EDGE_THRESHOLD;
-    static const double local_VISCOSITY_UNWEIGHTING_FACTOR = VISCOSITY_UNWEIGHTING_FACTOR;
+	*this += (link_force_vec + rep_force_vec ) 
+                * NODE_FORCE_TO_DIST;
 
-    // link and repulsive forces actin on node
+    setunitvec();  // we've moved the node, so reset the unit vector
 
-	delta = (link_force_vec + rep_force_vec ) 
-                * local_DELTA_T * local_FORCE_SCALE_FACT;
-    
-    // the viscous_force_vec's are weighted by their recirocal distances,
-    // so need to be scaled back by dividing by viscous_force_recip_dist_sum
-
-    // if on edge of network, viscous_force_recip_dist_sum will be low,
-    // by increasing, we essentially weight the average towards zero
-
-    if (viscous_force_recip_dist_sum < local_VISCOSITY_EDGE_THRESHOLD)
-        viscous_force_recip_dist_sum = local_VISCOSITY_EDGE_THRESHOLD;  // ?? what should this number be?
-
-    // viscosity: weighted average of 'velocities'
-
-    delta =   ( delta * local_VISCOSITY_UNWEIGHTING_FACTOR + viscous_force_vec ) 
-                    * (1 / (local_VISCOSITY_UNWEIGHTING_FACTOR + viscous_force_recip_dist_sum));
-
-    //delta += nuc_repulsion_displacement_vec;  // this is a displacement, therefore not scaled
-
-	*this += delta;
-
-    setunitvec();
+	// note: remember to do this clearing too when switch clearing harbinger flag
+	//       in crosslinknewnodes()
 
 	rep_force_vec.zero();
-	link_force_vec.zero();
-	viscous_force_vec.zero();
-    viscous_force_recip_dist_sum = 0;
-    //nuc_repulsion_displacement_vec.zero();
-}
+	link_force_vec.zero();     
 
-void nodes::applyforces_novisc()
-{	
-
-    static const double local_DELTA_T = DELTA_T;
-    static const double local_FORCE_SCALE_FACT = FORCE_SCALE_FACT;
-
-    // link and repulsive forces actin on node
-
-	delta = (link_force_vec + rep_force_vec ) 
-                * local_DELTA_T * local_FORCE_SCALE_FACT;
-
-    //delta += nuc_repulsion_displacement_vec;  // this is a displacement, therefore not scaled
-
-	*this += delta;
-
-    setunitvec();
-
-	rep_force_vec.zero();
-	link_force_vec.zero();
-	//viscous_force_vec.zero();
-    //viscous_force_recip_dist_sum = 0;
-    //nuc_repulsion_displacement_vec.zero();
 }
 
 bool nodes::depolymerize(void) 
@@ -211,6 +216,10 @@ int nodes::save_data(ofstream &ostr)
 	 << repforce_radial << "," 
 	 << links_broken << "," 
 	 << nucleator_impacts << ","
+	 << stucktonucleator << ","
+     << nucleator_link_force.x << ","
+     << nucleator_link_force.y << ","
+     << nucleator_link_force.z << ","
 	 << creation_iter_num << ":";
     
     // now the links
@@ -241,6 +250,10 @@ int nodes::load_data(ifstream &istrm)
 	  >> repforce_radial >> ch 
 	  >> links_broken >> ch 
 	  >> nucleator_impacts >> ch
+	  >> stucktonucleator >> ch
+      >> nucleator_link_force.x >> ch
+      >> nucleator_link_force.y >> ch
+      >> nucleator_link_force.z >> ch
 	  >> creation_iter_num >> ch;
 
 	//if (nucleator_impacts>0.00001)
