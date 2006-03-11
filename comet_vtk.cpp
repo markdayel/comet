@@ -12,6 +12,10 @@
   removed without prior written permission from the author.
 */
 
+#include "stdafx.h"
+
+#ifdef LINK_VTK
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -340,7 +344,7 @@ void CometVtkVis::addCapsuleNucleator()
     // -- endcap source
     // create top sphere geometry
     vtkSphereSource *endcap = vtkSphereSource::New();
-    endcap->SetRadius(RADIUS); // can't we get radius through nucleator:: ??
+    endcap->SetRadius(0.95*RADIUS); // can't we get radius through nucleator:: ??
     endcap->SetThetaResolution(18);
     endcap->SetPhiResolution(18);
     endcap->SetStartPhi(0);
@@ -352,7 +356,7 @@ void CometVtkVis::addCapsuleNucleator()
     
     // - body source
     vtkCylinderSource *body = vtkCylinderSource::New();
-    body->SetRadius(RADIUS); // why not through nucleator:: ??
+    body->SetRadius(0.95*RADIUS); // why not through nucleator:: ??
     body->SetHeight(2*CAPSULE_HALF_LINEAR);
     body->SetResolution(18);
     body->CappingOff();
@@ -431,7 +435,7 @@ void CometVtkVis::addSphericalNucleator()
 {   
     // create sphere geometry
     vtkSphereSource *sphere = vtkSphereSource::New();
-    double radius_pixels = (double)p_actin->pixels(RADIUS)/voxel_scale;
+    double radius_pixels = (double)p_actin->pixels(0.95*RADIUS)/voxel_scale;
     cout << "  voxel_scale: " << voxel_scale << endl;
     cout << "  nucleator radius: " << radius_pixels << endl;
     sphere->SetRadius(radius_pixels);
@@ -1373,3 +1377,7 @@ void CometVtkVis::reportOptions()
     cout << "file_prefix           = " << file_prefix           << endl;
     cout << "projection_scale      = " << p_scale               << endl;
 }
+
+
+#endif
+

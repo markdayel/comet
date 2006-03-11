@@ -15,6 +15,8 @@ removed without prior written permission from the author.
 #ifndef stdafx_H
 #define stdafx_H
 
+#define LINK_VTK 1
+
 // compile-time options:
 
 #define GRIDBOUNDS 100.0	  // size of grid in um (i.e. bead can move half of this from origin)

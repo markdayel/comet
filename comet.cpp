@@ -338,39 +338,7 @@ int main(int argc, char* argv[])
 	system(command1);
 #endif
 
-	vector<int> postprocess_iterations;
-	postprocess_iterations.resize(0);
-
-    if (POST_PROCESS)
-    {
-        cout << "Postprocessing iterations: ";
-	    get_postprocess_iterations(argv[2], postprocess_iterations);
-    }
-        
-    if (!REWRITESYMBREAK  && !POST_PROCESS)
-	{	// not re-writing symmetry breaking bitmaps or post-processing
-		// so this is a new calculation and no other process is using temp bmp files
-		// and can clear them
-		sprintf(command1, "rm -f %s*.bmp 2>/dev/null", TEMPDIR);
-		system(command1);
-	}
-
-
-	ifstream param(COMET_PARAMS_FILE); 
-	if(!param) 
-	{
-		cerr << "Cannot open " << COMET_PARAMS_FILE << endl << endl;
-		exit(EXIT_FAILURE);
-	}
-
-#ifdef NO_IMAGEMAGICK
-	cerr << "Warning: compiled with ImageMagick support turned off" << endl << endl;
-#else 
-	if (NO_IMAGE_TEXT)
-		cerr << "Warning: image text turned off" << endl << endl;
-#endif
-
-
+	
 if (!REWRITESYMBREAK)
 {	// don't drop priority if re-writing bitmaps
 	// because calling thread already has low priority
@@ -402,6 +370,13 @@ if (!REWRITESYMBREAK)
 	// read the parameters file:
 
 	cout << endl << "Parsing parameters file..." << endl << endl;
+
+	ifstream param(COMET_PARAMS_FILE); 
+	if(!param) 
+	{
+		cerr << "Cannot open " << COMET_PARAMS_FILE << endl << endl;
+		exit(EXIT_FAILURE);
+	}
 
 	//double MAX_DISP = 1;
 
@@ -662,6 +637,38 @@ if (!REWRITESYMBREAK)
 	}
 
 
+	
+	vector<int> postprocess_iterations;
+	postprocess_iterations.resize(0);
+
+    if (POST_PROCESS)
+    {
+        cout << "Postprocessing iterations: ";
+	    get_postprocess_iterations(argv[2], postprocess_iterations);
+    }
+        
+    if (!REWRITESYMBREAK  && !POST_PROCESS)
+	{	// not re-writing symmetry breaking bitmaps or post-processing
+		// so this is a new calculation and no other process is using temp bmp files
+		// and can clear them
+		sprintf(command1, "rm -f %s*.bmp 2>/dev/null", TEMPDIR);
+		system(command1);
+	}
+
+
+
+
+#ifdef NO_IMAGEMAGICK
+	cerr << "Warning: compiled with ImageMagick support turned off" << endl << endl;
+#else 
+	if (NO_IMAGE_TEXT)
+		cerr << "Warning: image text turned off" << endl << endl;
+#endif
+
+
+
+
+
 	// create main objects
 	// create as static otherwise exit() doesn't call their destructors (!)
 	static actin theactin;
@@ -682,21 +689,7 @@ if (!REWRITESYMBREAK)
 
 	unsigned int rand_num_seed;
 
-	if (argc < 3) 
-	{
-		cerr << "Warning: Static random number seed used" <<  endl;
-		theactin.opruninfo << "Warning: Static random number seed used" <<  endl;
 
-		rand_num_seed = 200;
-	} 
-	else
-	{
-		rand_num_seed = (unsigned)time(NULL);
-		theactin.opruninfo << "Time-based random number seed (" << rand_num_seed << ") used" << endl;
-		cerr << "Time-based random number seed (" << rand_num_seed << ") used" << endl;
-    }
-
-	srand(rand_num_seed);
 
 	theactin.opruninfo.flush();
 
@@ -806,6 +799,22 @@ if (!REWRITESYMBREAK)
 #endif
 
 	}
+
+	if (argc < 3) 
+	{
+		cerr << "Warning: Static random number seed used" <<  endl;
+		theactin.opruninfo << "Warning: Static random number seed used" <<  endl;
+
+		rand_num_seed = 200;
+	} 
+	else
+	{
+		rand_num_seed = (unsigned)time(NULL);
+		theactin.opruninfo << "Time-based random number seed (" << rand_num_seed << ") used" << endl;
+		cerr << "Time-based random number seed (" << rand_num_seed << ") used" << endl;
+    }
+
+	srand(rand_num_seed);
 
 	int filenum = 0;
 
@@ -1291,13 +1300,13 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 	    cerr << "ERROR: too few values in range request (2 min):" << iterdesc << endl;
 	    exit(EXIT_FAILURE);
 	} else if(postprocess_iterations.size() == 2) {
-	    start = postprocess_iterations[0];
-	    step = 1;
-	    end = postprocess_iterations[1];
+	    start = postprocess_iterations[0] * InterRecordIterations;
+	    step = InterRecordIterations;
+	    end = postprocess_iterations[1] * InterRecordIterations;
 	} else if(postprocess_iterations.size() == 3) {
-	    start = postprocess_iterations[0];
-	    step = postprocess_iterations[1];
-	    end = postprocess_iterations[2];	    
+	    start = postprocess_iterations[0] * InterRecordIterations;
+	    step = postprocess_iterations[1] * InterRecordIterations;
+	    end = postprocess_iterations[2] * InterRecordIterations;	    
 	} else if(postprocess_iterations.size() > 3) {
 	    cerr << "ERROR: too many values in range request (3 max):" << iterdesc << endl;
 	    exit(EXIT_FAILURE);
@@ -1332,15 +1341,15 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 	 << postprocess_iterations.size()
 	 <<  " data sets." << endl;
     
-    int frame = postprocess_iterations.size() - 1;
+    int frame = (int) postprocess_iterations.size() - 1;
     for(vector<int>::reverse_iterator iteration = postprocess_iterations.rbegin(); 
 	iteration != postprocess_iterations.rend(); ++iteration) {
 	
 	filenum = (int)(*iteration/InterRecordIterations);
-	
-	cout << "Post processing iteration: " << *iteration 
-	     << ", filenumber " << filenum << "/" 
-	     << ((*postprocess_iterations.end())/InterRecordIterations) 
+
+	cout << "Post processing iteration: " << *iteration << " file " << filenum 
+	     << " (" << (postprocess_iterations.size() - frame) << "/" 
+	     << postprocess_iterations.size() << ")"
 	     << endl; 
 	
 	load_data(theactin, *iteration);
@@ -1357,12 +1366,14 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
         nuc_object.segs.saveradialaxisreport(filenum, 2);
 	
 	cout << "- bitmaps:" << endl;
-	theactin.savebmp(frame, actin::xaxis, actin::runbg, true);  // was bg
-	theactin.savebmp(frame, actin::yaxis, actin::runbg, true);  // was bg
-	theactin.savebmp(frame, actin::zaxis, actin::runfg, true);
+	theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
+	theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);  // was bg
+	theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
 	
-	cout << endl << "- visualisation: " << frame << endl;
-	vtkvis.buildVTK(frame--);
+	cout << endl << "- visualisation: " << filenum << endl;
+	vtkvis.buildVTK(filenum);
+
+	frame--;
     }
 }
 
