@@ -31,13 +31,14 @@ public:
 	double orig_dist;
 	double orig_dist_recip;
 
-	double last_dist;
+	//double last_dist;
+	//double last_but_one_dist;
 
-	bool broken;
 	int breakcount;
+	bool broken;	
 	bool breaklastiter;
-	double theta;
-	double phi;
+	//double theta;
+	//double phi;
 
 	double getlinkforces(const double& dist);
 	

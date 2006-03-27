@@ -92,6 +92,8 @@ public:
 	ofstream opvelocityinfo;
 	ofstream outbmpfile_x,outbmpfile_y,outbmpfile_z;
 
+    
+
     int lowestnodetoupdate;
 	int highestnodecount;
 
@@ -106,7 +108,7 @@ public:
 
 	//int num_rotate, num_displace;
 
-	int crosslinknewnodes(int numnewnodes);
+	int crosslinknewnodes(int numnewnodes); 
 
 	//vector <int_vect> nucleatorgrid;
 	vector <int> crosslinknodesdelay;
@@ -147,18 +149,29 @@ public:
 	vector <double> speckle_array;
 	int speckle_array_size;
 
+//#ifdef NODE_GRID_USE_ARRAYS
+//	static nodes** __restrict nodegrid;
+//#else
+//	static Nodes3d nodegrid;
+//#endif
+
 	static vector <nodes> node;
 	static vector <bool> donenode;	
     static Nodes2d nodes_by_thread;
 	static Nodes2d recti_near_nodes;
 	static Nodes2d nodes_on_same_gridpoint;
+	static vector <int> nearby_collision_gridpoint_offsets;
+	static vector <int>::iterator offset_begin;
+	static vector <int>::iterator offset_end;
 
     //static vector <int> recti_near_nodes_size;
     //static vector <int> nodes_on_same_gridpoint_size;
 
 	//static Nodes1d nodes_within_nucleator;	
 	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
-    static int findnearbynodes_col(const nodes& ournode, const int& threadnum);
+    static int findnearbynodes_collision(const nodes& ournode, const int& threadnum);
+
+	void findnearbynodes_collision_setup(const int& adjgridpoints);
 
     // -- Threading, comment these out
 	// static void *collisiondetectionthread(void* threadarg);
@@ -172,6 +185,8 @@ public:
 	static void *applyforcesdowork(void* threadarg);//, pthread_mutex_t *mutex);
 	// --
 	//static Bool2d repulsedone;
+
+	//static Node3d nodegrid;
 
 	static void *applyforcesthread(void* threadarg);
 	static Nodes2d linkremovefrom;
@@ -199,15 +214,71 @@ public:
 	{  // convert simulation distance into pixel distance
 		return (int)((double) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
 	}
+
+	inline double dbl_pixels(const double & coord) const
+	{  // convert simulation distance into pixel distance
+		return ((double) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
+	}
 	
 	inline double unpixels(const int & pix) const
 	{  // convert pixel distance into simulation distance
 		return ((double) pix / (double) BMP_HEIGHT) * (double) VIEW_HEIGHT;
 	}
 
+	//void removenodefromgrid(nodes* remnode)
+	//{
+	//	// are we on the grid?
+	//	if (remnode->gridx==-1) return;  // return if not
+
+	//	// are we the only grid node?
+	//	if ((remnode->nextnode==remnode) &&
+	//			(NODEGRID(remnode->gridx,remnode->gridy,remnode->gridz) == remnode))
+	//		{	// if so, just delete the grid reference
+	//			NODEGRID(remnode->gridx,remnode->gridy,remnode->gridz) = 0;
+	//		}
+	//		else
+	//		{	// other nodes on grid
+	//			if (NODEGRID(remnode->gridx,remnode->gridy,remnode->gridz) == remnode)
+	//			{  // if we're the grid reference set ref to next node
+	//				NODEGRID(remnode->gridx,remnode->gridy,remnode->gridz) = remnode->nextnode;
+	//			}
+
+	//			remnode->nextnode->prevnode = remnode->prevnode;  //  remove self from circular list
+	//			remnode->prevnode->nextnode = remnode->nextnode;
+
+	//		}
+
+	//		remnode->gridx=remnode->gridy=remnode->gridz=-1;
+
+	//	return;
+	//}
+
+	//void addnodetogrid(nodes* addnode)
+	//{
+	//	// are we already on the grid?
+	//	//if (gridx!=-1) return 0;
+
+	//	// is the new grid node empty?
+	//	if ((NODEGRID(addnode->gridx,addnode->gridy,addnode->gridz) == 0))
+	//	{	// if so, just add self to the grid reference
+	//		NODEGRID(addnode->gridx,addnode->gridy,addnode->gridz) = addnode;
+	//		addnode->nextnode = addnode->prevnode = addnode;  // and loop to self
+	//	}
+	//	else
+	//	{	// otherwise sew into loop
+	//		addnode->nextnode = NODEGRID(addnode->gridx,addnode->gridy,addnode->gridz);  // our next is the grid
+	//		addnode->prevnode = addnode->nextnode->prevnode;  //our new previous is the new next's old previous
+
+	//		addnode->nextnode->prevnode = addnode;  // and we are theirs
+	//		addnode->prevnode->nextnode = addnode;
+	//	}
+
+	//return;
+	//}
+
 
     void keep_mem_resident(void);
-    void reservemorenodes(int extranodes);
+    void reservemorenodes(const int extranodes);
 };
 
 #endif

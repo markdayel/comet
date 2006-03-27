@@ -75,8 +75,8 @@ public:
 	//void clearsurfaceimpacts(void);
 	void clearbins(void);
 
-	nucleator * p_nuc;
-	actin * p_actin;
+	nucleator *  p_nuc;
+	actin *  p_actin;
 
 	int num_segs;					// number of segments all the way round
 	int num_cap_segs;				// num segs on *one* cap

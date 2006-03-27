@@ -35,9 +35,24 @@ class rotationmatrix
 	{
 	    //double tmp_x, tmp_y;
 	    
-	    register double tmp_x = x*xx + y*yx + z*zx;
-	    register double tmp_y = x*xy + y*yy + z*zy;
-	                        z = x*xz + y*yz + z*zz;
+	    double tmp_x = x*xx + y*yx + z*zx;
+	    double tmp_y = x*xy + y*yy + z*zy;
+	               z = x*xz + y*yz + z*zz;
+	    
+	    x = tmp_x;
+	    y = tmp_y;
+	    
+	    return;
+	    
+	}
+
+	inline void rotate(float &x, float &y, float &z) const
+	{
+	    //double tmp_x, tmp_y;
+	    
+	    float tmp_x = x*(float)xx + y*(float)yx + z*(float)zx;
+	    float tmp_y = x*(float)xy + y*(float)yy + z*(float)zy;
+	              z = x*(float)xz + y*(float)yz + z*(float)zz;
 	    
 	    x = tmp_x;
 	    y = tmp_y;

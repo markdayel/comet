@@ -16,6 +16,8 @@ removed without prior written permission from the author.
 #include "comet.h"
 #include "threadedtaskqueue.h"
 
+//#include "consts.h"
+
 // vtk
 #ifdef LINK_VTK
   #include "comet_vtk.h"
@@ -25,6 +27,13 @@ removed without prior written permission from the author.
 
 // #include "nucleator.h"
 // #include "string.h"
+
+double GRIDBOUNDS =  50.0;	  // size of grid in um (i.e. bead can move half of this from origin)
+double GRIDRES    =   0.8;	  // low res grid range
+
+int GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
+
+int MAXNODES = 50000;
 
 double TOTAL_SIMULATION_TIME = 20000;  
 double DELTA_T = 0.1;	
@@ -39,9 +48,19 @@ bool NUCLEATOR_FORCES = true;
 int BMP_WIDTH  = 800;
 int BMP_HEIGHT = 600;
 
+int VTK_WIDTH  = 800;
+int VTK_HEIGHT = 600;
+int VTK_AA_FACTOR = 1;
+double VTK_LINK_COLOUR_GAMMA = 1.8;
+bool VTK_MOVE_WITH_BEAD = false;
+
 double INIT_R_GAIN = 20;
 double INIT_G_GAIN = 20;
 double INIT_B_GAIN = 20;
+
+bool POST_BMP = true;
+bool POST_VTK = false;
+bool POST_REPORTS = false;
 
 bool ALLOW_HARBINGERS_TO_MOVE = false;
 
@@ -49,7 +68,7 @@ bool   SPECKLE = false;
 double SPECKLE_FACTOR = 1;
 
 bool ROTATION = true;
-bool GRASS_IS_GREEN = true;
+//bool GRASS_IS_GREEN = true;
 bool DRAW_CAGE = false;
 
 bool SEGMENT_BINS = true;
@@ -58,7 +77,12 @@ bool CAGE_ON_SIDE = true;
 
 double MofI =  0.1;
 
-bool VISCOSITY = false;
+bool X_BMP = true;
+bool Y_BMP = true;
+bool Z_BMP = true;
+
+//int SAVE_DATA_PRECISION	= 4;
+
 
 //bool FORCES_ON_SIDE = true;
 
@@ -86,15 +110,15 @@ double LINK_BREAKAGE_FORCE =  2;	 // breakage force per link
 bool USE_BREAKAGE_STRAIN = false;
 double LINK_BREAKAGE_STRAIN = 1.15;
 double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
-unsigned int MAX_LINKS_PER_NODE = 100;
+unsigned int MAX_LINKS_PER_NEW_NODE = 100;
 
 double NUCLEATOR_INERTIA = 10;
 
 double NUC_LINK_FORCE = 0.25;
 double NUC_LINK_BREAKAGE_FORCE = 2;
 
-double LINK_TAUT_FORCE =  5;
-double LINK_TAUT_RATIO =  1.1;
+//double LINK_TAUT_FORCE =  5;
+//double LINK_TAUT_RATIO =  1.1;
 
 double IMPOSED_NUC_ROT_SPEED = 1;
 bool   IMPOSED_NUC_ROT = false;
@@ -103,13 +127,20 @@ bool WRITE_BMPS_PRE_SYMBREAK = false;
 
 bool QUIET = false;
 
+bool VISCOSITY = false;
+double NON_VISC_WEIGHTING = 1.0;
+double MAX_VISC_WEIGHTING = 10.0;
 double VISCOSITY_FACTOR = 0.1;
+double VISCOSITY_EDGE_FACTOR = 4.0;
+double VISC_DIST = 0.7;
 //double VISCOSITY_UNWEIGHTING_FACTOR = 100;
 
 //char temp_BMP_filename[255];
 
 bool STICK_TO_NUCLEATOR = false;
 bool RESTICK_TO_NUCLEATOR = true;
+
+
 
 double LINK_FORCE = 0.1;
 double P_XLINK =  0.5;
@@ -139,8 +170,11 @@ int CROSSLINKDELAY = 20;  // number of interations before crosslinking
 						 //  (to allow position to be equilibrated to something
 						 //       reasonable before locking node in place)
 
-double NODE_REPULSIVE_MAG =  0.00000001;
+double NODE_REPULSIVE_MAG =  1.5;
 double NODE_REPULSIVE_RANGE = 1.0;
+double NODE_REPULSIVE_BUCKLE_RANGE = NODE_REPULSIVE_RANGE * 0.3;
+double NODE_REPULSIVE_BUCKLE_MAG = NODE_REPULSIVE_MAG * 0.7;
+double NODE_REPULSIVE_BUCKLE_TO	= 0.2;
 
 double NODE_FORCE_TO_DIST;
 double NODE_DIST_TO_FORCE;
@@ -179,12 +213,26 @@ vector<struct thread_data>  applyforces_thread_data_array;
 
 // these variables need to be static/global for sharing across threads:
 
-Nodes3d nodegrid;
+
+
+#ifdef NODE_GRID_USE_ARRAYS
+	nodes** __restrict nodegrid;
+#else
+	Nodes3d nodegrid;
+#endif
+
+int Node_Grid_Dim;
+
 vector <nodes>	actin::node;
 vector <bool>   actin::donenode;	
 Nodes2d actin::nodes_by_thread;
 Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
+vector <int> actin::nearby_collision_gridpoint_offsets;
+
+vector<int>::iterator actin::offset_begin;
+vector<int>::iterator actin::offset_end;
+
 //Nodes1d actin::nodes_within_nucleator;
 
 //vector <int> actin::recti_near_nodes_size;
@@ -205,10 +253,10 @@ int load_data(actin &theactin, int iteration);
 int save_data(actin &theactin, int iteration);
 string get_datafilename(const int iteration);
 void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations);
-void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations);
+void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations, char* argv[]);
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
-//#define NOKBHIT 1
+bool POST_PROCESS4CPU = false;
 
 #ifndef NOKBHIT
 #ifndef _WIN32
@@ -245,25 +293,74 @@ int main(int argc, char* argv[])
 		if (strcmp(argv[1], "post") == 0 )
 			POST_PROCESS = true;
 
-	} else if (argc > 3) 
+		if (strcmp(argv[1], "p4") == 0 )
+		{
+			POST_PROCESS = true;
+			POST_PROCESS4CPU = true;
+		}
+
+		if (strcmp(argv[2], "q") == 0 || strcmp(argv[2], "Q") == 0)
+			QUIET = true;
+	} 
+		
+	if (argc > 3) 
 	{
 		if (strcmp(argv[3], "q") == 0 || strcmp(argv[3], "Q") == 0)
 			QUIET = true;
 	}
  
+
+	if (!POST_PROCESS && !REWRITESYMBREAK)
+	{	// don't drop priority if re-writing bitmaps
+		// because calling thread already has low priority
+		// and this would drop it further
+		// so process would halt on single cpu machine
+
+#ifndef _WIN32
+
+		int nicelevel = 0;
+
+		char hostname[255];
+
+		gethostname( hostname, 255);
+
+		if (strcmp( hostname, "adenine.cgl.ucsf.edu") == 0 ||
+			strcmp( hostname, "cytosine.cgl.ucsf.edu") == 0||
+			strcmp( hostname, "thymine.cgl.ucsf.edu") == 0||
+			strcmp( hostname, "uracil.cgl.ucsf.edu")== 0 )
+		{
+			nicelevel = 19;
+		} else if (strcmp( hostname, "r2d2") == 0)
+		{
+			nicelevel = 19;
+		}							
+		else
+		{
+			nicelevel = 19;
+		}
+
+		nice(nicelevel);
+		
+
+#else
+		//SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_LOWEST);
+#endif
+	}
+
+
   	NUM_THREADS = atoi(argv[1]);
 
 	if (NUM_THREADS < 2)
 	{
-		cout << "Running in Single Threaded mode" << endl;
-		NUM_THREADS = 1;
 		USE_THREADS = false;
+		NUM_THREADS = 1;		
 	}
 	else
 	{
-		cout << "Running in multithreaded mode with " << NUM_THREADS << " threads (including parent)" << endl;
 		USE_THREADS = true;
 	}
+
+	NUM_THREAD_DATA_CHUNKS = NUM_THREADS;
 
     // create threads:
 	// -- Threading TaskTeam, create and intialise the team
@@ -283,8 +380,13 @@ int main(int argc, char* argv[])
 	    thread_queue.create_threads(NUM_THREADS);
 	}
 
+	if (USE_THREADS)
+		cout << "Running in multithreaded mode with " << NUM_THREADS << " threads (including parent)" << endl;
+	else
+		cout << "Running in Single Threaded mode" << endl;
 
-	NUM_THREAD_DATA_CHUNKS = NUM_THREADS;  // was NUM_THREADS*4
+
+	  // was NUM_THREADS*4
 
 	// data for threads (managed outside queue
 	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
@@ -299,7 +401,7 @@ int main(int argc, char* argv[])
 	cout << "Working Directory: ";
 	cout.flush();
 
-#ifndef _WIN32
+#ifndef USEWINDOWSCOMMANDS
     system("pwd");
 #else
 	system("chdir");
@@ -312,7 +414,7 @@ int main(int argc, char* argv[])
 #endif
 #endif
 
-#ifndef _WIN32
+#ifndef USEWINDOWSCOMMANDS
 	
 	sprintf(command1, "mkdir %s 2>/dev/null", VRMLDIR  );
 	system(command1);	
@@ -323,6 +425,8 @@ int main(int argc, char* argv[])
 	sprintf(command1, "mkdir %s 2>/dev/null", BITMAPDIR  );
 	system(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", TEMPDIR  );
+	system(command1);
+	sprintf(command1, "mkdir %s 2>/dev/null", VTKDIR  );
 	system(command1);
 #else
 	
@@ -336,34 +440,12 @@ int main(int argc, char* argv[])
 	system(command1);
 	sprintf(command1, "mkdir %s", TEMPDIR  );
 	system(command1);
+	sprintf(command1, "mkdir %s", VTKDIR  );
+	system(command1);
 #endif
 
-	
-if (!REWRITESYMBREAK)
-{	// don't drop priority if re-writing bitmaps
-	// because calling thread already has low priority
-	// and this would drop it further
-	// so process would halt on single cpu machine
-
-#ifndef _WIN32
-    char hostname[255];
-    gethostname( hostname, 255);
-    if (strcmp( hostname, "adenine.cgl.ucsf.edu") == 0 ||
-        strcmp( hostname, "cytosine.cgl.ucsf.edu") == 0||
-        strcmp( hostname, "thymine.cgl.ucsf.edu") == 0||
-        strcmp( hostname, "uracil.cgl.ucsf.edu")== 0 )
-    {
-        nice(19);
-    }
-    else
-    {
-	    nice(15);
-    }
-#else
-	//SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_LOWEST);
-#endif
-}
-
+			
+    int RAND_SEED = -1; 
 
 	// main parameters:
 
@@ -398,14 +480,65 @@ if (!REWRITESYMBREAK)
 		if (tag == "TOTAL_SIMULATION_TIME") 
 			{ss >> TOTAL_SIMULATION_TIME; } 
 
+		else if (tag == "RAND_SEED") 
+			{ss >> RAND_SEED;	}
+
+		//else if (tag == "SAVE_DATA_PRECISION") 
+		//	{ss >> SAVE_DATA_PRECISION;	}
+
 		else if (tag == "DELTA_T") 
 			{ss >> DELTA_T;	}
+
+		else if (tag == "GRIDBOUNDS") 
+			{ss >> GRIDBOUNDS;	}  
+
+		else if (tag == "MAXNODES") 
+			{ss >> MAXNODES;	}
+
+		else if (tag == "BMP_WIDTH")	  
+			{ss >> BMP_WIDTH;	}
+
+		else if (tag == "BMP_HEIGHT")	  
+			{ss >> BMP_HEIGHT;	}
+
+		else if (tag == "VTK_WIDTH")	  
+			{ss >> VTK_WIDTH;	}
+
+		else if (tag == "VTK_HEIGHT")	  
+			{ss >> VTK_HEIGHT;	}
+
+		else if (tag == "VTK_MOVE_WITH_BEAD") 
+			{ss >> buff2; if (buff2=="true") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false; }
+
+		else if (tag == "VTK_AA_FACTOR")	  
+			{ss >> VTK_AA_FACTOR;	}
+
+		else if (tag == "VTK_LINK_COLOUR_GAMMA")	  
+			{ss >> VTK_LINK_COLOUR_GAMMA;	}
 
 		else if (tag == "CROSSLINKDELAY")	  
 			{ss >> CROSSLINKDELAY;	}
 
 		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
 			{ss >> buff2; if (buff2=="true") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false; }
+
+		else if (tag == "POST_BMP") 
+			{ss >> buff2; if (buff2=="true") POST_BMP = true; else POST_BMP = false; }
+
+		else if (tag == "POST_VTK") 
+			{ss >> buff2; if (buff2=="true") POST_VTK = true; else POST_VTK = false; }
+
+		else if (tag == "POST_REPORTS") 
+			{ss >> buff2; if (buff2=="true") POST_REPORTS = true; else POST_REPORTS = false; }
+
+		else if (tag == "X_BMP") 
+			{ss >> buff2; if (buff2=="true") X_BMP = true; else X_BMP = false; }
+
+		else if (tag == "Y_BMP") 
+			{ss >> buff2; if (buff2=="true") Y_BMP = true; else Y_BMP = false; }
+
+		else if (tag == "Z_BMP") 
+			{ss >> buff2; if (buff2=="true") Z_BMP = true; else Z_BMP = false; }
 
 		else if (tag == "CAGE_ON_SIDE") 
 			{ss >> buff2; if (buff2=="true") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false; }
@@ -490,8 +623,20 @@ if (!REWRITESYMBREAK)
 		
 		else if (tag == "VISCOSITY_FACTOR") 
 			{ss >> VISCOSITY_FACTOR; } 
+
+		else if (tag == "VISCOSITY_EDGE_FACTOR") 
+			{ss >> VISCOSITY_EDGE_FACTOR; }
+
+		else if (tag == "VISC_DIST") 
+			{ss >> VISC_DIST; }
+
+		else if (tag == "NON_VISC_WEIGHTING") 
+			{ss >> NON_VISC_WEIGHTING; }
+
+		else if (tag == "MAX_VISC_WEIGHTING") 
+			{ss >> MAX_VISC_WEIGHTING; }
         
-		else if (tag == "IMPOSED_NUC_ROT_SPEED") 
+		else if (tag == "IMPOSED_NUC_ROT_SPEED")  
 			{ss >> IMPOSED_NUC_ROT_SPEED; } 
 
 		else if (tag == "IMPOSED_NUC_ROT") 
@@ -506,20 +651,29 @@ if (!REWRITESYMBREAK)
 		else if (tag == "CAPSULE_HALF_LINEAR") 
 			{ss >> CAPSULE_HALF_LINEAR; } 
 		
-		else if (tag == "MAX_LINKS_PER_NODE") 
-			{ss >> MAX_LINKS_PER_NODE; } 
+		else if (tag == "MAX_LINKS_PER_NEW_NODE") 
+			{ss >> MAX_LINKS_PER_NEW_NODE; } 
 		
 		else if (tag == "NODE_REPULSIVE_MAG") 
 			{ss >> NODE_REPULSIVE_MAG; } 
 		
 		else if (tag == "NODE_REPULSIVE_RANGE") 
-			{ss >> NODE_REPULSIVE_RANGE; } 
-		
-		else if (tag == "LINK_TAUT_FORCE") 
-			{ss >> LINK_TAUT_FORCE; } 
-		
-		else if (tag == "LINK_TAUT_RATIO") 
-			{ss >> LINK_TAUT_RATIO; }
+			{ss >> NODE_REPULSIVE_RANGE; }
+
+		else if (tag == "NODE_REPULSIVE_BUCKLE_RANGE") 
+			{ss >> NODE_REPULSIVE_BUCKLE_RANGE; }
+
+		else if (tag == "NODE_REPULSIVE_BUCKLE_MAG") 
+			{ss >> NODE_REPULSIVE_BUCKLE_MAG; }
+
+		else if (tag == "NODE_REPULSIVE_BUCKLE_TO") 
+			{ss >> NODE_REPULSIVE_BUCKLE_TO; }
+
+		//else if (tag == "LINK_TAUT_FORCE") 
+		//	{ss >> LINK_TAUT_FORCE; } 
+		//
+		//else if (tag == "LINK_TAUT_RATIO") 
+		//	{ss >> LINK_TAUT_RATIO; }
 		
 		else if (tag == "ASYMMETRIC_NUCLEATION") 
 			{ss >> ASYMMETRIC_NUCLEATION; } 
@@ -575,14 +729,18 @@ if (!REWRITESYMBREAK)
 		else if (tag == "SHAPE") 
 			{ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere; }
 
-		else 
+		else if (tag.find("VIS") == 0)
+		{
+			// VTK stuff, ignore for now---perhaps put VTK stuff in here?
+		}
+		else
 		{
 			unrecognisedlines += buffer;
 			unrecognisedlines += "\n";
 			continue;
 		}
 
-		// got to here so line was recognised
+		// got to here so line was recognised, add it to the unrecognisedlines string
 
 		istringstream ss2(buffer);
 
@@ -602,15 +760,77 @@ if (!REWRITESYMBREAK)
 		cerr << "Warning---The following lines were unrecognised:" << endl << endl;
 		cerr << unrecognisedlines << endl;
 		cerr << endl << endl;
+		
+ #ifndef NOKBHIT
+		if (!REWRITESYMBREAK && !POST_PROCESS && !QUIET)
+		{        
+			cout << "Ignore errors and start run anyway(y/n)?";
+		    
+			cout.flush();
+			int ch;
+			do 
+			{
+				ch = getch();
+			} 
+			while (( ch!='y' ) && ( ch!='Y') && ( ch!='n') && ( ch!='N'));
+
+			if (( ch=='n' ) || ( ch=='N'))
+			{
+				cout << "n - Run aborted" << endl;
+				cout.flush();
+				exit(1);
+			}
+			else
+			{
+				cout << "\r";
+			}	
+
+		}
+#endif
+
 	}
 
 	// calculate commonly used constants from parameters:
 
-	TOTAL_ITERATIONS = (int) (((double)TOTAL_SIMULATION_TIME / (double)DELTA_T)+0.5);
+	double grid_scan_range;
 
-	//NODE_REPULSIVE_GRIDSEARCH = (int) ceil(((double) NODE_INCOMPRESSIBLE_RADIUS )/GRIDRES) + 1;
-	NODE_XLINK_GRIDSEARCH = (int) ceil(((double) XLINK_NODE_RANGE )/GRIDRES) + 1;
-	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) ceil(((double) NODE_REPULSIVE_RANGE )/GRIDRES) + 1;
+#ifdef PROXIMITY_VISCOSITY 
+	
+	// if using proximity-based viscosity, we might need to increase the collision-detection scan dist
+
+	if (VISCOSITY) 
+		grid_scan_range =  mymax(NODE_REPULSIVE_RANGE,VISC_DIST);
+	else
+	    grid_scan_range =  NODE_REPULSIVE_RANGE;
+
+#else
+
+	    grid_scan_range =  NODE_REPULSIVE_RANGE;
+
+#endif
+
+	GRIDRES = 1.01 * grid_scan_range;	// make the grid res a bit bigger so that only scan one GP in either dirn
+	GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
+	Node_Grid_Dim = GRIDSIZE;
+
+	NODE_XLINK_GRIDSEARCH = (int) ceil(((double) XLINK_NODE_RANGE )/GRIDRES) + 2; 
+	// leave +2 because of 
+	// truncation to save time
+	// in findnearbynodes assumes grid res is > 1/2 of range
+	// and the xlink isn't called very often at all so doesn't need to be fast
+
+#ifdef PROXIMITY_VISCOSITY 
+	
+	// if using proximity-based viscosity, we might need to increase the collision-detection scan dist
+	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) floor(( grid_scan_range ) / GRIDRES) + 1;
+
+#else
+
+	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) floor(((double) NODE_REPULSIVE_RANGE )/GRIDRES) + 1
+
+#endif
+
+	TOTAL_ITERATIONS = (int) (((double)TOTAL_SIMULATION_TIME / (double)DELTA_T)+0.5);
 
 	// loop iterations per recorded timestep
 	InterRecordIterations = RECORDING_INTERVAL;
@@ -619,8 +839,6 @@ if (!REWRITESYMBREAK)
 	NODE_FORCE_TO_DIST = DELTA_T * FORCE_SCALE_FACT;
 	NODE_DIST_TO_FORCE = 1.0/(DELTA_T * FORCE_SCALE_FACT);
 
-
-	//RADIUS = RADIUS;//+ NODE_INCOMPRESSIBLE_RADIUS/2;
 
 	if (SPECKLE_FACTOR<0)
 	{
@@ -666,13 +884,13 @@ if (!REWRITESYMBREAK)
 #endif
 
 
-
-
-
 	// create main objects
 	// create as static otherwise exit() doesn't call their destructors (!)
+
+	//static consts CONST;
+
 	static actin theactin;
-	static nucleator nuc_object(NUCSHAPE, &theactin);
+	static nucleator nuc_object(NUCSHAPE, &theactin); 
 
 	if (REWRITESYMBREAK)
 	{
@@ -680,23 +898,18 @@ if (!REWRITESYMBREAK)
 		exit(EXIT_SUCCESS);
 	}
 
-	// write out parameters to screen
+	// write out parameters to screen and file
 
 	cout << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
 	cout << "Delta_t:                    " << DELTA_T << endl;
 
-	// and file
-
-	unsigned int rand_num_seed;
-
-
-
 	theactin.opruninfo.flush();
-
 
 	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
 	cout << "Saving snapshot every " << InterRecordIterations  
 		<< " iterations (" << NUMBER_RECORDINGS << " total)" << endl;
+
+	
 
 	unsigned int starttime, endtime, lasttime ,nowtime, lastitertime;
 
@@ -725,7 +938,7 @@ if (!REWRITESYMBREAK)
 	// Breakout if we are post processing
 	if( !postprocess_iterations.empty() )
 	{
-		postprocess(nuc_object, theactin, postprocess_iterations );
+		postprocess(nuc_object, theactin, postprocess_iterations,  argv );
 	    exit(EXIT_SUCCESS); // FIXME: early finish, move to two fcns (ML)
 	}
 
@@ -756,12 +969,13 @@ if (!REWRITESYMBREAK)
 	}
 	else
 	{
-#ifndef _WIN32
+#ifndef USEWINDOWSCOMMANDS
 
 		cout << "Deleting old save files...";
 		cout.flush();
 		// only if starting a new calculation from scratch, clear the directories
 		sprintf(command1, "rm -f %s*_0*.%s 2>/dev/null", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
+		//cout << command1 << endl;
 		system(command1);
 		sprintf(command1, "rm -f %s*.wrz 2>/dev/null", VRMLDIR );
 		system(command1);
@@ -772,6 +986,8 @@ if (!REWRITESYMBREAK)
 		sprintf(command1, "rm -f %s*.wrl %s*.txt 2>/dev/null", TEMPDIR, TEMPDIR );
 		system(command1);
         sprintf(command1, "rm -f %s 2>/dev/null", SYM_BREAK_FILE );
+		system(command1);
+		sprintf(command1, "rm -f %s*.* 2>/dev/null", VTKDIR );
 		system(command1);        
 
 		cout << "done." << endl;
@@ -792,7 +1008,9 @@ if (!REWRITESYMBREAK)
 		sprintf(command1, "del /q %s*.wrl %s*.txt", TEMPDIR, TEMPDIR );
 		system(command1);
         sprintf(command1, "del /q %s", SYM_BREAK_FILE );
-		system(command1);        
+		system(command1);
+		sprintf(command1, "del /q %s*.*", VTKDIR );
+		system(command1);
 
 		cout << "done." << endl;
 
@@ -800,18 +1018,27 @@ if (!REWRITESYMBREAK)
 
 	}
 
-	if (argc < 3) 
+	unsigned int rand_num_seed;
+
+	if (RAND_SEED != -1) 
 	{
 		cerr << "Warning: Static random number seed used" <<  endl;
 		theactin.opruninfo << "Warning: Static random number seed used" <<  endl;
 
-		rand_num_seed = 200;
+		rand_num_seed = RAND_SEED;
 	} 
 	else
-	{
-		rand_num_seed = (unsigned)time(NULL);
-		theactin.opruninfo << "Time-based random number seed (" << rand_num_seed << ") used" << endl;
-		cerr << "Time-based random number seed (" << rand_num_seed << ") used" << endl;
+	{			  
+//#ifndef _WIN32
+		rand_num_seed = (unsigned int)( time(NULL) * getpid());
+		theactin.opruninfo << "Time and PID based random number seed (" << rand_num_seed << ") used" << endl;
+		cerr << "Time and PID based random number seed (" << rand_num_seed << ") used" << endl;
+//#else
+//		rand_num_seed = (unsigned int)( time(NULL) );
+//		theactin.opruninfo << "Time based random number seed (" << rand_num_seed << ") used" << endl;
+//		cerr << "Time based random number seed (" << rand_num_seed << ") used" << endl;
+//
+//#endif
     }
 
 	srand(rand_num_seed);
@@ -823,12 +1050,15 @@ if (!REWRITESYMBREAK)
 	cout << endl;
 	cout << "Starting iterations..." << endl << endl; 
 
-	cout << "(Press 'q' to abort run, or 'm' to make quicktime movie of frames so far)" << endl << endl;
-
+	if (!QUIET)
+	{
+		cout << "(Press 'q' to abort run, or 'm' to make quicktime movies of frames so far)" << endl << endl;
+	}
 	
 	if (QUIET)
 	{
-		cout << "Running in quiet mode (no continual progress display)" << endl;
+		cout << "Running in quiet mode (no continual progress display)" << endl
+			<< "Use kill " << getpid() << " to terminate"<< endl;
 	}
 	else
 	{
@@ -853,59 +1083,64 @@ if (!REWRITESYMBREAK)
 
             if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
                 theactin.reservemorenodes(10000);
-
+			 
+			if (!QUIET)
+			{
 #ifndef NOKBHIT
-            if (kbhit())  // taken out of main loop
-		    {
-			    int ch = getch();
-			    if (( ch=='q' ) || ( ch=='Q') || ( ch=='m' ) || ( ch=='M'))
-			    {
-
-					if (( ch=='q' ) || ( ch=='Q'))
-				    {
-						cout << endl << "Abort run(y/n)?";
-						cout.flush();
-						int ch;
-						do 
-						{
-							ch = getch();
-						} 
-						while (( ch=='q' ) || ( ch=='Q'));
-
-						if (( ch=='y' ) || ( ch=='Y'))
-						{
-							cout << "y - Run aborted" << endl;
-							cout.flush();
-							break;
-						}
-						else
-						{
-							cout << "\r";
-						}
-					}
-	 				else
+				if (kbhit())  // taken out of main loop
+				{
+					int ch = getch();
+					if (( ch=='q' ) || ( ch=='Q') || ( ch=='m' ) || ( ch=='M'))
 					{
-						cout << endl << endl << "Directory:";
-						cout.flush();
 
-#ifndef _WIN32
-						system("pwd");
-#else
-						system("chdir");
-#endif
-						cout << endl << "Making movie of frames so far..." << endl;
-						cout.flush();
-						cout << endl;
-						system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//x_proj_%05d.png -vcodec mpeg4 -strict 100 x_proj.mov");
-						system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//y_proj_%05d.png -vcodec mpeg4 -strict 100 y_proj.mov");
-						system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//z_proj_%05d.png -vcodec mpeg4 -strict 100 z_proj.mov");
-						cout << endl;
+						if (( ch=='q' ) || ( ch=='Q'))
+						{
+							cout << endl << "Abort run(y/n)?";
+							cout.flush();
+							int ch;
+							do 
+							{
+								ch = getch();
+							} 
+							while (( ch=='q' ) || ( ch=='Q'));
+
+							if (( ch=='y' ) || ( ch=='Y'))
+							{
+								cout << "y - Run aborted" << endl;
+								cout.flush();
+								break;
+							}
+							else
+							{
+								cout << "\r";
+							}
+						}
+	 					else
+						{
+							cout << endl << endl << "Directory:";
+							cout.flush();
+
+	#ifndef USEWINDOWSCOMMANDS
+							system("pwd");
+	#else
+							system("chdir");
+	#endif
+							cout << endl << "Making movie of frames so far..." << endl;
+							cout.flush();
+							cout << endl;
+							system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//x_proj_%05d.png -vcodec mpeg4 -strict 100 x_proj.mov");
+							system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//y_proj_%05d.png -vcodec mpeg4 -strict 100 y_proj.mov");
+							system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//z_proj_%05d.png -vcodec mpeg4 -strict 100 z_proj.mov");
+							cout << endl;
+						}
 					}
 				}
-		    }
+			
 
 #endif
-            //theactin.keep_mem_resident();            
+			}
+			
+			//theactin.keep_mem_resident();            
 
 			lasttime = nowtime;
 			theactin.find_center(center);
@@ -932,8 +1167,9 @@ if (!REWRITESYMBREAK)
 				<< "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot
 				//<< "|NR" << setw(5) <<  theactin.num_rotate	
 				<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime) << "\r";
+				cout.flush();
 			}
-			cout.flush();
+			
 		}
 
 		theactin.iterate();
@@ -984,9 +1220,27 @@ srand( rand_num_seed );
 					cout << "*";
 				
 				cout << endl;
-
 				cout.flush();
+			}
+			else
+			{
+				cout << "PID: " << getpid()
+					<< "|N"<< setw(6)<< theactin.highestnodecount
+					<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
+					<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
+					<< "|d" << setw(6) << setprecision(3) << distfromorigin
+					<< "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot	
+					<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime)
+					<< "|S " << setw(3) <<  (int)filenum  
+					<< "/" << NUMBER_RECORDINGS;
 
+				if ((!WRITE_BMPS_PRE_SYMBREAK) && 
+					((strlen(last_symbreak_bmp_filename)!=0) || (!theactin.brokensymmetry)))
+					cout << "*";
+				
+				cout << endl;
+				cout.flush();
+ 
 			}
 
 			theactin.opruninfo << "I" << setw(7) << i 
@@ -1078,8 +1332,21 @@ srand( rand_num_seed );
 					<< " and continuing..." << endl;
 
 				// look for existance of this file to tell when the process has finished
-				sprintf(last_symbreak_bmp_filename, "%sz_proj_%05i.%s",BITMAPDIR, 
+				if (Z_BMP)
+				{
+					sprintf(last_symbreak_bmp_filename, "%sz_proj_%05i.%s",BITMAPDIR, 
 							1 ,BMP_OUTPUT_FILETYPE.c_str());
+				}
+				else if (Y_BMP)
+				{
+					sprintf(last_symbreak_bmp_filename, "%sy_proj_%05i.%s",BITMAPDIR, 
+							1 ,BMP_OUTPUT_FILETYPE.c_str());
+				} else
+				{
+					sprintf(last_symbreak_bmp_filename, "%sx_proj_%05i.%s",BITMAPDIR, 
+							1 ,BMP_OUTPUT_FILETYPE.c_str());
+				}
+				
 
 				if (WRITE_BMPS_PRE_SYMBREAK)
 				{
@@ -1199,20 +1466,32 @@ string get_datafilename(const int iteration)
 int load_data(actin &theactin, int iteration)
 {
 
-    char command1[255];
+    
     string filename = get_datafilename(iteration);
 
+	char tmpdatafile[255];
+
+	sprintf(tmpdatafile, "%stempdata_%u_%u.txt", TEMPDIR,
+		(unsigned int) getpid(), (unsigned int) time(NULL) );
+
+#ifdef _WIN32
+	filename = DATADIR2 + filename;
+#else
 	filename = DATADIR + filename;
-    
-    sprintf(command1, "gunzip %s",filename.c_str());
+#endif
+
+#ifndef _WIN32
+	char command1[255];
+    sprintf(command1, "gunzip --stdout %s > %s",filename.c_str(), tmpdatafile);
     system(command1);
+#endif
     
-    ifstream ifstrm( filename.c_str() );
+    ifstream ifstrm( tmpdatafile );
     if(!ifstrm) {
-	cout << "Unable to open file " << filename << " for input";
+	cout << "Unable to open file " << tmpdatafile << " / " << filename << " for input" << endl;
 	return 1;
     }
-    
+
     string str;    
     // load header
     ifstrm >> str;
@@ -1227,10 +1506,11 @@ int load_data(actin &theactin, int iteration)
     theactin.load_data(ifstrm);
     
     ifstrm.close();
-    
-    sprintf(command1, "gzip %s",filename.c_str());
+#ifndef _WIN32 
+    sprintf(command1, "rm  %s",tmpdatafile);
     system(command1);
-    
+#endif
+
     // check the iteration is correct
     if( saved_iteration != iteration ){
 	cout << "error in saved file, saved iteration." << endl;
@@ -1247,7 +1527,7 @@ int save_data(actin &theactin, int iteration)
 
     ofstream ofstrm( filename.c_str() );    
     if(!ofstrm) {
-	cout << "Unable to open file " << filename;
+	cout << "Unable to open file " << filename << " for output" << endl;
 	return 1;
     } 
     
@@ -1255,6 +1535,8 @@ int save_data(actin &theactin, int iteration)
     ofstrm << "comet:" << endl
 	   << iteration << endl;
     
+	//ofstrm << setprecision(SAVE_DATA_PRECISION);
+
     // actin does all the real work
     theactin.save_data(ofstrm);
     
@@ -1323,58 +1605,130 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 // otherwise I've lumped it with the bitmap processing here
 // the frame counting is seperated, but consider unifying 
 // this once we are happy with how it all works.
-void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations)
+void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations, char* argv[])
 {
-    int filenum;
-    theactin.load_sym_break_axes();
-    
-    if(nuc_object.segs.load_scalefactors() ){
-	// if we're able to load the scale factors
-	// turn off the auto-scaling
-	theactin.BMP_intensity_scaling = false;
-    }
-    
-    // vtk
-    CometVtkVis vtkvis(&theactin);
-    
-    cout << "Post processing " 
-	 << postprocess_iterations.size()
-	 <<  " data sets." << endl;
-    
-    int frame = (int) postprocess_iterations.size() - 1;
-    for(vector<int>::reverse_iterator iteration = postprocess_iterations.rbegin(); 
-	iteration != postprocess_iterations.rend(); ++iteration) {
-	
-	filenum = (int)(*iteration/InterRecordIterations);
+	if (POST_PROCESS4CPU)
+	{
+		int threads = 4;
+		int firstframe = *postprocess_iterations.begin() / InterRecordIterations;
+		int lastframe  = *(postprocess_iterations.end()-1) / InterRecordIterations;
 
-	cout << "Post processing iteration: " << *iteration << " file " << filenum 
-	     << " (" << (postprocess_iterations.size() - frame) << "/" 
-	     << postprocess_iterations.size() << ")"
-	     << endl; 
-	
-	load_data(theactin, *iteration);
-	
-	theactin.load_sym_break_axes();   // overwrite rotation matrixes	
-	nuc_object.segs.addallnodes();  // put node data into segment bins
-	
-	cout << "- reports:" << endl;
-        nuc_object.segs.savereport(filenum);
-        nuc_object.segs.saveSDreport(filenum);
-	nuc_object.segs.saveradialreport(filenum);       
-        nuc_object.segs.saveradialaxisreport(filenum, 0);
-        nuc_object.segs.saveradialaxisreport(filenum, 1);
-        nuc_object.segs.saveradialaxisreport(filenum, 2);
-	
-	cout << "- bitmaps:" << endl;
-	theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
-	theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);  // was bg
-	theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
-	
-	cout << endl << "- visualisation: " << filenum << endl;
-	vtkvis.buildVTK(filenum);
+		//lastframe = lastframe - (lastframe % 4);  // make # frames divisible by 4 for quicktime compat
 
-	frame--;
-    }
+		char command1[255];
+
+		for (int i = 0; i != threads; ++i)
+		{
+			sprintf(command1, "%s post %i:%i:%i &", argv[0], firstframe + i, threads, lastframe);
+			system(command1);
+			//cout << command1 << endl;
+		}
+
+	} else
+	{
+
+		int filenum;
+		theactin.load_sym_break_axes();
+	    
+		if(nuc_object.segs.load_scalefactors() ){
+		// if we're able to load the scale factors
+		// turn off the auto-scaling
+		theactin.BMP_intensity_scaling = false;
+		}
+	    
+		// vtk
+		CometVtkVis vtkvis(&theactin);
+	    
+		cout << "Post processing " 
+		 << postprocess_iterations.size()
+		 <<  " data sets." << endl;
+	    
+		int frame = (int) postprocess_iterations.size() - 1;
+
+		//for(vector<int>::reverse_iterator iteration = postprocess_iterations.rbegin(); 
+		//iteration != postprocess_iterations.rend(); ++iteration)
+		for(vector<int>::iterator iteration  = postprocess_iterations.begin(); 
+								  iteration != postprocess_iterations.end();
+								++iteration)
+		{
+
+		filenum = (int)(*iteration/InterRecordIterations);
+
+		cout << "Post processing iteration: " << *iteration << " file " << filenum 
+			 << " (" << (postprocess_iterations.size() - frame) << "/" 
+			 << postprocess_iterations.size() << ")"
+			 << endl; 
+		
+		load_data(theactin, *iteration);
+		
+		theactin.load_sym_break_axes();   // overwrite rotation matrixes
+
+		if (POST_BMP || POST_REPORTS)
+		{		  
+			nuc_object.segs.addallnodes();  // put node data into segment bins
+		}
+
+		if (POST_REPORTS)
+		{
+			nuc_object.segs.savereport(filenum);
+			nuc_object.segs.saveSDreport(filenum);
+			nuc_object.segs.saveradialreport(filenum);       
+			nuc_object.segs.saveradialaxisreport(filenum, 0);
+			nuc_object.segs.saveradialaxisreport(filenum, 1);
+			nuc_object.segs.saveradialaxisreport(filenum, 2);
+		}
+
+		if (POST_BMP)
+		{	
+			// one has to be run in foreground, else will catch up with Imagemagick
+
+			actin::processfgbg xfg,yfg,zfg;
+
+			xfg = yfg = zfg = actin::runbg;
+
+			
+			if (Z_BMP)
+			{
+				zfg = actin::runfg;
+			}
+			else if (Y_BMP)
+			{
+				yfg = actin::runfg;
+			} else
+			{
+				xfg = actin::runfg;
+			}
+
+			theactin.savebmp(filenum, actin::xaxis, xfg, true); 
+			theactin.savebmp(filenum, actin::yaxis, yfg, true); 
+			theactin.savebmp(filenum, actin::zaxis, zfg, true);
+
+			cout << endl;
+
+		}
+
+		if (POST_VTK)
+		{
+			//cout << "- visualisation: " << filenum << endl;
+			vtkvis.buildVTK(filenum);
+		}
+
+		frame--;
+		}
+	}
+
+	if (POST_REPORTS)
+	{
+		char command1[255];
+		sprintf(command1, "(gzip -q -f -9 %s*report*.txt 2>/dev/null; mv %s*report*.gz %s 2>/dev/null) &"
+			,TEMPDIR,TEMPDIR, REPORTDIR);
+		system(command1);
+	}
+
+
+	if (POST_BMP)
+		system("sleep 5");	 // give time for convert to work on bitmap before calling actin destructor
+
 }
 
 // void postprocess(nucleator& nuc_object, actin &theactin, 

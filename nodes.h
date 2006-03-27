@@ -27,16 +27,18 @@ class nodes: public vect
 {
 public:
 
+	
+	bool onseg;
     bool polymer;
-	nodes(void);
-	~nodes(void);
-	nodes(const double& set_x,const double& set_y,const double& set_z);
+    bool harbinger;
+	bool stucktonucleator;
+	bool move_harbinger_this_time;
+
+	actin* ptheactin;
 	nodes* nextnode;
 	nodes* prevnode;
-	bool depolymerize(void);
-	bool polymerize(const double& set_x, const double& set_y, const double& set_z);
-	int save_data(ofstream &ofstr);
-	int load_data(ifstream &ifstr);
+
+    int nodenum;
 
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
 
@@ -44,9 +46,16 @@ public:
 	
 	vect rep_force_vec;
 	vect nuc_repulsion_displacement_vec;
-    //vect viscous_force_vec;
-    //double viscous_force_recip_dist_sum;
+ 	vect nucleator_stuck_position;
+	vect delta;
+	vect viscosity_velocity_sum;
+
 	vector <links> listoflinks;
+
+    vect nucleator_link_force;	// force on nodes by the link to the nucleator 
+								// again merely for display purposes
+								// segmented in segments.cpp
+								// nucleator attachements are dealt with in actin::nucleator_node_interactions()
 
 	double linkforce_transverse, linkforce_radial,  // index is the threadnum
 			 repforce_transverse, repforce_radial,
@@ -58,57 +67,95 @@ public:
 								// not used in moving node, nucleator etc.
 								// that is done directly at the mo.
 
-    vect nucleator_link_force;	// force on nodes by the link to the nucleator 
-								// again merely for display purposes
-								// segmented in segments.cpp
-								// nucleator attachements are dealt with in actin::nucleator_node_interactions()
-
-    //bool insidenucleator;
 
 	int threadnum;    
 
 	int gridx, gridy, gridz;
 	//vect delta;
+
+	
+	int	nodelinksbroken;
+	
+	Colour colour;
+	
+	int creation_iter_num;
+	
+	//double theta;
+	//double phi;
+	int savelinks(ofstream * outstream);
+	
+	double dist_from_surface;
+
+	double viscosity_velocity_unweight;
+
+
+    
+	nodes(void);
+	~nodes(void);
+	nodes(const double& set_x, const double& set_y,const double& set_z);
+
+	bool depolymerize(void);
+	bool polymerize(const double& set_x, const double& set_y, const double& set_z);
+	int save_data(ofstream &ofstr);
+	int load_data(ifstream &ifstr);
+
+	int addlink(nodes* linkto, const double& dist);
+	int removelink(nodes* link);
+
 	void updategrid(void);
 	void removefromgrid(void);
 	void addtogrid(void);
 	void setgridcoords(void);
-	int nodenum;
-	int	nodelinksbroken;
-	int addlink(nodes* linkto, const double& dist);
-	int removelink(nodes* link);
-	Colour colour;
-	actin *ptheactin;
-	int creation_iter_num;
-	bool harbinger;
-	double theta;
-	double phi;
-	int savelinks(ofstream * outstream);
-	bool onseg;
-	double dist_from_surface;
 
-    bool stucktonucleator;
-    vect nucleator_stuck_position;
+	inline void applyforces() 
+	{	
 
-	bool move_harbinger_this_time;
-    
+	if (VISCOSITY)
+	{
+		// simple average weighted by VISCOSITY_FACTOR
+		//
+		//delta = (delta + (viscosity_velocity_sum * VISCOSITY_FACTOR )) / 
+		//	                     ( 1 + VISCOSITY_FACTOR + mymax(VISCOSITY_EDGE_FACTOR, viscosity_velocity_unweight));
 
-    //bool dontupdate;
+		delta = ( (link_force_vec + rep_force_vec ) * NODE_FORCE_TO_DIST * NON_VISC_WEIGHTING + 
+			    (viscosity_velocity_sum	* VISCOSITY_FACTOR )) / 
+			                     ( NON_VISC_WEIGHTING + VISCOSITY_FACTOR * mymax(VISCOSITY_EDGE_FACTOR, viscosity_velocity_unweight));
+	} else
+	{
+		delta = (link_force_vec + rep_force_vec)				
+                * NODE_FORCE_TO_DIST;
+	}
 
-    //typedef void (nodes::*p_applyforces_fn)();
+	*this += delta;
 
-    //void (nodes::*p_applyforces_fn)(void);
-    
-	void applyforces();
-    //void applyforces_visc();
+    setunitvec();  // we've moved the node, so reset the unit vector
+	clearforces();   // and clear force sums we just used
 
-	void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
+	// note: remember to do this clearing too when switch clearing harbinger flag
+	//       in crosslinknewnodes()
+}
+
+	inline void clearforces()
+	{
+		
+	if (VISCOSITY)
+	{
+		viscosity_velocity_unweight = 0.0;
+		viscosity_velocity_sum.zero();
+	}
+
+	rep_force_vec.zero();
+	link_force_vec.zero();
+
+	}
+
+	inline void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag) const
 	{
 		dotmag = fabs(unit_vec_posn.dot(displacement));
 		crossmag = displacement.length() - dotmag;
 	}
 
-	void adddirectionalmags(const vect &displacement, double &dotmag, double &crossmag)
+	inline void adddirectionalmags(const vect &displacement, double &dotmag, double &crossmag) const
 	{  
 		double tmp_dotmag; 
 		

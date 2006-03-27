@@ -33,8 +33,7 @@ public:
 	~nucleator(void);
 	nucleator(shape set_geometry, actin *ptheactin);
 	shape geometry;
-	//double radius;
-	//double segment;
+
 	double surf_area;
 	double movability;
 	actin *ptheactin;
@@ -50,19 +49,6 @@ public:
 	Colour colour;
 
 	vector <vect> cagepoints;
-
-	//vector <double> radial_rep_distrib_x;
-	//vector <double> radial_rep_distrib_y;
-	//vector <double> radial_rep_distrib_z;
-	
-	//int nbdy_segs;
-	//int ncap_segs;
-
-	//vector <double> fbar_cap_x;
-	//vector <double> fbar_cap_y;
-	//vector <double> fbar_cap_ang;
-	//vector <double> fbar_bdy_x;
-	//vector <double> fbar_bdy_y;
 
 
 	inline bool is_sphere()

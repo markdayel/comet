@@ -34,9 +34,13 @@ class CometVtkVis {
   double vx_intensity_scale;
   std::string file_prefix;
 
+  rotationmatrix vtk_cam_rot;
+
   vtkRenderer *renderer;
   vtkRenderWindow *render_win;
   vtkRenderWindowInteractor *iren;
+
+  double radius_pixels;
   
   bool OptsInteractive;
   bool OptsRenderNucleator;
@@ -76,10 +80,10 @@ class CometVtkVis {
   void reportOptions();
   void createGaussianVoxelRepresentation(vtkStructuredPoints *vx);
   void setProjection();
-  void fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx,
-				    double vd, double* min);
+  void fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx);// ,double vd, double* min);
   void saveImage(char *filename);
   void renderProjections(vtkRenderWindow *render_win, string base_filename);
   double getMeanNodeLinkForce(const int node_i);
 };
+
 

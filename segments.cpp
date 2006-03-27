@@ -277,9 +277,10 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 // during the impacts)
 // but use lengths for now:
 
+
 	straight_seg_area = straight_seg_len;// CAPSULE_HALF_LINEAR * 2 * 2 * PI * RADIUS /  (2 * num_straight_segs) ;
 
-	curved_seg_area   = straight_seg_len;// (3 * PI * RADIUS * RADIUS * RADIUS / 4) /	(2 * num_cap_segs);
+	curved_seg_area   = cap_seg_len;// (3 * PI * RADIUS * RADIUS * RADIUS / 4) /	(2 * num_cap_segs);
 
 	
 
@@ -426,13 +427,11 @@ void segments::addnode(const nodes& node)
 	double xfactor,yfactor,zfactor;
 	double radius;
 
-	nodes rot_pos;
-	vect rot_unit, rot_nuc_link_force;
+	nodes           rot_pos = node;
+	vect           rot_unit = node.unit_vec_posn;
+	vect rot_nuc_link_force = node.nucleator_link_force;
+	
 	vect xfacvec, yfacvec, zfacvec;
-
-	rot_pos = node;
-	rot_unit = node.unit_vec_posn;
-	rot_nuc_link_force = node.nucleator_link_force;
 
 	p_actin->camera_rotation.rotate(rot_pos); 
 	p_actin->camera_rotation.rotate(rot_unit); 
@@ -696,6 +695,7 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 
 		linelen = calcdist(linex,liney);
 
+		// truncate if too long
 		if (linelen > 0.9 * RADIUS)
 		{
 			linex *= 0.9 * RADIUS / linelen;
@@ -705,12 +705,10 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 		// don't plot zero length lines
 		if ( (p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
 			 (p_actin->pixels(starty) == p_actin->pixels(starty + liney)) )
-		{
+		{   // do nothing
 		}
 		else
 		{
-
-		//numlinesplotted++;
 
 		drawcmd << " line "
 				<< centerx + p_actin->pixels(startx) << "," 
@@ -722,45 +720,45 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 				numlinesplotted++;
 
 		}
-		// draw the nucleator link forces impacts:
 
-		unscaledlen = calcdist(surfacestuckforce[axis][i][0],surfacestuckforce[axis][i][1]) * scale
-                            / (seg_area * surfaceimpacts_scalefactor);  // same scale factor as above
-
-		//cout << setw(70) << setprecision(64) << unscaledlen << endl;
-
-		//cout << "surfaceimpacts[" << axis <<"][" <<i<<"]" << surfaceimpacts[axis][i] << endl;
-
-		linex = - surfacestuckforce[axis][i][0] * scale / (seg_area * surfaceimpacts_scalefactor);
-		liney = - surfacestuckforce[axis][i][1] * scale / (seg_area * surfaceimpacts_scalefactor);
-
-		linelen = calcdist(linex,liney);
-
-		if (linelen > 0.9 * RADIUS)
-		{
-			linex *= 0.9 * RADIUS / linelen;
-			liney *= 0.9 * RADIUS / linelen;			
-		}
-
-		// don't plot zero length lines
-		if ( (p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
-			 (p_actin->pixels(starty) == p_actin->pixels(starty + liney)) )
-		{
-		}
-		else
+		if (STICK_TO_NUCLEATOR)
 		{
 
-		//numlinesplotted++;
+			// draw the nucleator link forces:
 
-		drawcmd << " line "
-				<< centerx + p_actin->pixels(startx) << "," 
-				<< centery + p_actin->pixels(starty) << " "
+			unscaledlen = calcdist(surfacestuckforce[axis][i][0],surfacestuckforce[axis][i][1]) * scale
+								/ (seg_area * surfaceimpacts_scalefactor);  // same scale factor as above
 
-				<< centerx + p_actin->pixels(startx + linex) << ","
-				<< centery + p_actin->pixels(starty + liney);
-				
-				numlinesplotted++;
+			linex = - surfacestuckforce[axis][i][0] * scale / (seg_area * surfaceimpacts_scalefactor);
+			liney = - surfacestuckforce[axis][i][1] * scale / (seg_area * surfaceimpacts_scalefactor);
 
+			linelen = calcdist(linex,liney);
+
+			// truncate if too long
+			if (linelen > 2 * RADIUS)
+			{
+				linex *= 2 * RADIUS / linelen;
+				liney *= 2 * RADIUS / linelen;			
+			}
+
+			// don't plot zero length lines
+			if ( (p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
+				 (p_actin->pixels(starty) == p_actin->pixels(starty + liney)) )
+			{	// do nothing
+			}
+			else
+			{
+
+			drawcmd << " line "
+					<< centerx + p_actin->pixels(startx) << "," 
+					<< centery + p_actin->pixels(starty) << " "
+
+					<< centerx + p_actin->pixels(startx + linex) << ","
+					<< centery + p_actin->pixels(starty + liney);
+					
+					numlinesplotted++;
+
+			}
 		}
 
 	}
@@ -887,6 +885,8 @@ void segments::savereport(const int& filenum) const
 
 	// write header
 	
+	opreport << setprecision(4);
+
 	opreport << "Axis,segment,distseg,x,y,z,Radius,area,capsuleside,numnodes,RepForceRadial,RepForceTrans,LinkForceRadial,LinkForceTrans,LinksBroken" << endl;
 
 

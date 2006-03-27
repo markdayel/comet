@@ -1,9 +1,9 @@
-#include "threadedtaskqueue.h"
+
 
 #include "stdafx.h"
 #include <assert.h>
 #include <iostream> 
-
+#include "threadedtaskqueue.h"
 
 // static members are not *guaranteed* to have C linkage
 extern "C" void* wrapper_activate_workers(void *my_this)
@@ -63,10 +63,10 @@ void TaskQueue::queue_task(TaskFcn_ptr task_fcn, void* task_args)
     assert(task_args!=0);
     
     TaskDetails task(task_fcn, task_args);
-    
-    int err = pthread_mutex_lock(&queue_mtx);
-    tasks.push(task); // add the function and args for this task
-    err = pthread_mutex_unlock(&queue_mtx);
+     
+	pthread_mutex_lock(&queue_mtx);
+    tasks.push(task); // add the function and args for this task= 
+	pthread_mutex_unlock(&queue_mtx);
 }
 
 void TaskQueue::clear_tasks()
@@ -148,7 +148,7 @@ void TaskQueue::complete_queued_tasks()
 // Treat as a private/protected member fcn
 void* TaskQueue::activate_workers()
 {  
-    while(1) 
+    while(true) 
     { 
 	// FIXME allow thread termination?
 	

@@ -15,14 +15,23 @@ removed without prior written permission from the author.
 #ifndef stdafx_H
 #define stdafx_H
 
-#define LINK_VTK 1
-
 // compile-time options:
 
-#define GRIDBOUNDS 100.0	  // size of grid in um (i.e. bead can move half of this from origin)
-#define GRIDRES      0.8	  // low res grid range
+//#define LINK_VTK 1
+//#define LINK_VISCOSITY 1
+#define PROXIMITY_VISCOSITY 1
 
-const int MAXNODES = 100000;			
+//#define NODE_GRID_USE_ARRAYS 1
+
+//#define NOKBHIT 1
+#define VTK_USE_ANSI_STDLIB
+
+#ifdef NODE_GRID_USE_ARRAYS
+	#define NODEGRID(i,j,k)  *(nodegrid + ((((Node_Grid_Dim*Node_Grid_Dim*(i)) + (Node_Grid_Dim*(j)) + (k)))))
+#else
+	#define NODEGRID(i,j,k)	 nodegrid[(i)][(j)][(k)]
+#endif
+
 
 #ifdef _WIN32
 
@@ -32,13 +41,9 @@ const int MAXNODES = 100000;
 	#pragma warning(disable: 4127)  // constant conditional expression
 
 	#pragma warning(disable: 4996) // turn off depreciated warnings
+	#pragma warning(disable: 4530) // turn off exception handling warning
 
-
-	//#pragma inline_depth( 64 )
-	//#pragma inline_recursion( on )
-	#pragma auto_inline( on )
-	
-	//#define inline __forceinline
+	//#pragma auto_inline( on )
 
 	#define _CRT_SECURE_NO_DEPRECATE
 
@@ -48,7 +53,13 @@ const int MAXNODES = 100000;
 #define SEG_SCALE_FILE "segscalefactors.txt"
 #define COMET_PARAMS_FILE "cometparams.ini"
 
-#ifndef _WIN32
+// whether to use windows commands (/ or \ etc)
+// this is not strictly a _WIN32 thing, since we may be using cygwin
+#ifdef _WIN32
+	#define USEWINDOWSCOMMANDS
+#endif
+
+#ifndef USEWINDOWSCOMMANDS
 
 	//#include <unistd.h>
 	#define VRMLDIR "vrml/"
@@ -56,19 +67,27 @@ const int MAXNODES = 100000;
 	#define REPORTDIR "reports/"
 	#define BITMAPDIR "bitmaps/"
 	#define TEMPDIR "temp/"
+	#define VTKDIR "vtk/"
+
 	#define IMAGEMAGICKCONVERT "convert"
-	
+	#define IMAGEMAGICKMOGRIFY "mogrify"
+
 #else
 	
 	#define VRMLDIR "vrml\\"
 	#define DATADIR "data\\"
+    #define DATADIR2 "data\\"
 	#define REPORTDIR "reports\\"
 	#define BITMAPDIR "bitmaps\\"
 	#define TEMPDIR "temp\\"
+	#define TEMPDIR2 "temp/"
+	#define VTKDIR "vtk\\"
+
 	#define IMAGEMAGICKCONVERT "convert"
+	#define IMAGEMAGICKMOGRIFY "mogrify"
 
 #endif
-
+ 
 // defines
 
 // #define FORCES_BOTH_WAYS 1
@@ -82,9 +101,6 @@ const int MAXNODES = 100000;
 #ifndef mymin
 #define mymin(a,b)            (((a) < (b)) ? (a) : (b))
 #endif
-  
-extern bool ALLOW_HARBINGERS_TO_MOVE;
-extern bool CAGE_ON_SIDE;
 
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
@@ -114,7 +130,9 @@ extern bool CAGE_ON_SIDE;
 	#include <unistd.h>
     #include <sys/mman.h>
 #else
-	//#include <Windows.h>
+	#include <process.h>
+	#define getpid _getpid
+	//#include <windows.h>
 #endif
 
 #ifdef _NUMA
@@ -124,24 +142,26 @@ extern bool CAGE_ON_SIDE;
     //extern cpuset_t cpuset;
 #endif
 
-//#include <pstream>
-
-
 // namespace:
 
 using namespace std;
 
 // pthreads stuff:
 
-//#include "sched.h"
-
-//extern char temp_BMP_filename[];
-
 #include "pthread.h"
 #include "semaphore.h"
 #include "threadedtaskqueue.h"
 
+extern bool ALLOW_HARBINGERS_TO_MOVE;
+extern bool CAGE_ON_SIDE;
+
+extern double GRIDBOUNDS;
+extern double GRIDRES;
+
 extern bool VISCOSITY;
+extern double VISCOSITY_EDGE_FACTOR;
+extern double VISC_DIST;
+extern double MAX_VISC_WEIGHTING;
 
 extern bool USE_THREADS;
 extern int NUM_THREADS;
@@ -237,10 +257,12 @@ int threadnum;
 
 // global variables:
 
+extern int MAXNODES;
+
 extern bool REWRITESYMBREAK;
 extern bool POST_PROCESS;
 
-extern bool GRASS_IS_GREEN;  // this is a kludge to get rid of compiler warnings
+//const bool GRASS_IS_GREEN = true;  // this is a kludge to get rid of compiler warnings
 
 extern double TOTAL_SIMULATION_TIME;  
 extern double DELTA_T;
@@ -276,13 +298,23 @@ extern double P_XLINK;
 extern double P_NUC;
 
 extern int BMP_WIDTH,BMP_HEIGHT;
+extern int VTK_WIDTH;
+extern int VTK_HEIGHT;
+extern int VTK_AA_FACTOR;
+extern double VTK_LINK_COLOUR_GAMMA;
+extern bool VTK_MOVE_WITH_BEAD;
 extern bool NO_IMAGE_TEXT;
 extern int BMP_COMPRESSION;
 extern string BMP_OUTPUT_FILETYPE;
 
 extern bool QUIET;
 
+extern bool X_BMP;										 
+extern bool Y_BMP;
+extern bool Z_BMP;
+
 extern double VISCOSITY_FACTOR;
+extern double NON_VISC_WEIGHTING;
 //extern double VISCOSITY_UNWEIGHTING_FACTOR;
 
 extern double GAUSSFWHM;
@@ -315,16 +347,19 @@ extern double DISTANCE_TO_UPDATE;
 
 extern double NODE_REPULSIVE_MAG;
 extern double NODE_REPULSIVE_RANGE;
+extern double NODE_REPULSIVE_BUCKLE_RANGE;
+extern double NODE_REPULSIVE_BUCKLE_MAG;
+extern double NODE_REPULSIVE_BUCKLE_TO;
 extern int InterRecordIterations;
-extern unsigned int MAX_LINKS_PER_NODE;
+extern unsigned int MAX_LINKS_PER_NEW_NODE;
 
 extern int RADIAL_SEGMENTS;
 extern int XLINK_NEAREST;
 
 extern double VIEW_HEIGHT;
 
-extern double LINK_TAUT_FORCE;
-extern double LINK_TAUT_RATIO;
+//extern double LINK_TAUT_FORCE;
+//extern double LINK_TAUT_RATIO;
 
 extern int ASYMMETRIC_NUCLEATION;
 
@@ -350,7 +385,7 @@ extern int NODE_REPULSIVE_GRIDSEARCH;
 extern int NODE_REPULSIVE_RANGE_GRIDSEARCH;
 extern int NODE_XLINK_GRIDSEARCH;
 //extern int GRIDSIZE;
-const int GRIDSIZE =  (int) (GRIDBOUNDS/GRIDRES);
+extern int GRIDSIZE;
 
 
 //extern const double RECIP_RAND_MAX;
@@ -366,16 +401,42 @@ inline void endian_swap(unsigned short& x);
 inline void endian_swap(unsigned int& x);
 
 
+
 // own headers
 #include "comet.h"
 #include "nucleator.h"
 
+
+
 extern nucleator::shape NUCSHAPE;  //default to sphere
 
 #include "nodes.h"
+
+typedef vector<nodes*> Nodes1d;
+typedef vector<Nodes1d> Nodes2d;
+typedef vector<Nodes2d> Nodes3d;
+
+typedef vector<signed char> Bool1d;
+typedef vector<Bool1d> Bool2d;
+
+typedef vector<double> Dbl1d;
+typedef vector<Dbl1d> Dbl2d;
+
+#ifdef NODE_GRID_USE_ARRAYS
+	extern nodes** __restrict nodegrid;
+#else
+	extern Nodes3d nodegrid;
+#endif
+
+extern int Node_Grid_Dim;
+
 #include "links.h"
 #include "actin.h"
 #include "vect.h"
+
+//#include "consts.h"
+
+//extern consts CONST;
 
 inline double calcdist(const vect & v1, const vect & v2);
 
@@ -505,17 +566,9 @@ inline void endian_swap(unsigned long long& x)
 
 //extern nodes* nodegrid[GRIDSIZE+1][GRIDSIZE+1][GRIDSIZE+1];
 
-typedef vector<nodes*> Nodes1d;
-typedef vector<Nodes1d> Nodes2d;
-typedef vector<Nodes2d> Nodes3d;
 
-typedef vector<signed char> Bool1d;
-typedef vector<Bool1d> Bool2d;
 
-typedef vector<double> Dbl1d;
-typedef vector<Dbl1d> Dbl2d;
 
-extern Nodes3d nodegrid;
 
 //extern inline double fastsqrt(float n);
 //extern float sse_sqrt(float n);

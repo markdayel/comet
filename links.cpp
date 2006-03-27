@@ -19,7 +19,7 @@ links::links(void)
 {
 	orig_distsqr = 0.0;
 	orig_dist = 0.0;
-	last_dist = 0.0;
+//	last_dist = 0.0;
 	breakcount = 0;
 	breaklastiter = 0;
 	broken = true;
@@ -35,7 +35,7 @@ links::links(nodes* linknodep, double dist)
 {
 	orig_distsqr = dist*dist;
 	orig_dist = dist;
-	last_dist = dist;
+//	last_dist = dist;
 	orig_dist_recip = 1/dist;
 	broken = false;
 	breakcount = 0;
@@ -45,30 +45,16 @@ links::links(nodes* linknodep, double dist)
 
 double links::getlinkforces(const double & dist)
 {  // return force (nominally in pN)
-	double force;//=0.0;
-    double strain = dist / orig_dist;
-	double stress_over_breakage;
-	// is link loose or taut?
-
-    //static const bool local_USE_BREAKAGE_STRAIN = USE_BREAKAGE_STRAIN;
-	//static const double local_NODE_FORCE_TO_DIST = DELTA_T * FORCE_SCALE_FACT;
-	//static const double local_NODE_DIST_TO_FORCE = 1/(DELTA_T * FORCE_SCALE_FACT);
 
     // calculate forces:
 
-    force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
-
-	if (dist > (orig_dist * LINK_TAUT_RATIO))
-	{  // filaments taut:  go to high strain regime
-
-		force += - ( LINK_TAUT_FORCE  * 
-            (dist - (orig_dist * LINK_TAUT_RATIO)) * orig_dist_recip );
-    }
+    double force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
 
     // decide if link broken:
 
     if (USE_BREAKAGE_STRAIN)
-    {
+    {	
+		double strain = dist / orig_dist;
 	    if (strain > LINK_BREAKAGE_STRAIN)
 		{
 			breakcount++;
@@ -88,8 +74,8 @@ double links::getlinkforces(const double & dist)
     else
     { // just using force
 		if (-force > LINK_BREAKAGE_FORCE)
-		{
-			stress_over_breakage = -force / LINK_BREAKAGE_FORCE;
+		{   
+			double stress_over_breakage = -force / LINK_BREAKAGE_FORCE;
 			breakcount++;
 
 			if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) * RAND_MAX > 
@@ -107,23 +93,86 @@ double links::getlinkforces(const double & dist)
 		}
     }
 
-	if (VISCOSITY)
-	{
-		force -= VISCOSITY_FACTOR * (dist - last_dist) * NODE_DIST_TO_FORCE;
-	}
-
-	last_dist = dist;
-
 	return force;
 }
 
+
+//double links::getlinkforces(const double & dist)
+//{  // return force (nominally in pN)
+//
+//	double force;//=0.0;
+//
+//    // calculate forces:
+//
+//    force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
+//
+//	if (dist > (orig_dist * LINK_TAUT_RATIO))
+//	{  // filaments taut:  go to high strain regime
+//
+//		force += - ( LINK_TAUT_FORCE  * 
+//            (dist - (orig_dist * LINK_TAUT_RATIO)) * orig_dist_recip );
+//    }
+//
+//    // decide if link broken:
+//
+//    if (USE_BREAKAGE_STRAIN)
+//    {	
+//		double strain = dist / orig_dist;
+//	    if (strain > LINK_BREAKAGE_STRAIN)
+//		{
+//			breakcount++;
+//
+//			if ( breakcount * P_LINK_BREAK_IF_OVER * DELTA_T * RAND_MAX > rand() )
+//			{
+//				broken = true;
+//				force = 0;  
+//			}
+//
+//		}
+//		else
+//		{
+//			breakcount = 0;
+//		}
+//    }
+//    else
+//    { // just using force
+//		if (-force > LINK_BREAKAGE_FORCE)
+//		{   
+//			double stress_over_breakage = -force / LINK_BREAKAGE_FORCE;
+//			breakcount++;
+//
+//			if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) * RAND_MAX > 
+//					rand() )
+//			//if ((++breakcount>MAX_LINK_BREAKCOUNT) && breaklastiter)
+//			{
+//				broken = true;
+//                force = 0;
+//			}
+//
+//		}
+//		else
+//		{
+//			breakcount = 0;
+//		}
+//    }
+//
+//	if (VISCOSITY)
+//	{
+//		force -= VISCOSITY_FACTOR * (dist - last_dist) * NODE_DIST_TO_FORCE;
+//	}
+//
+//	last_dist = dist;
+//
+//	return force;
+//}
+//
 int links::save_data(ofstream &ostr) 
 {
     ostr << broken << "," 
 	 << breakcount << "," 
 	 << breaklastiter << "," 
 	 << orig_dist << ","
-	 << last_dist << ","
+//	 << last_dist << ","
 	 << linkednodeptr->nodenum;
 
     //if(linkednodeptr != NULL)
@@ -140,7 +189,7 @@ int links::load_data(ifstream &istr)
 	 >> breakcount >> ch 
 	 >> breaklastiter >> ch 
 	 >> orig_dist >> ch 
-	 >> last_dist >> ch
+//	 >> last_dist >> ch
 	 >> linkednodenumber;
     return 0;
 }

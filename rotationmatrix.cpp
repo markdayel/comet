@@ -121,15 +121,27 @@ void rotationmatrix::getangles(double& x_angle, double& y_angle, double& z_angle
 
 
 ostream& operator<<(ostream &ostm, rotationmatrix const &rm){
+  //  ostm << rm.xx << rm.xy << rm.xz 
+	 //<< rm.yx  << rm.yy << rm.yz 
+	 //<< rm.zx  << rm.zy  << rm.zz;
     ostm << rm.xx << " " << rm.xy << " " << rm.xz << " "
-	 << rm.yx << " " << rm.yy << " " << rm.yz << " "
-	 << rm.zx << " " << rm.zy << " " << rm.zz;
+		 << rm.yx << " " << rm.yy << " " << rm.yz << " "
+		 << rm.zx << " " << rm.zy << " " << rm.zz;
     return ostm;
 }
 
 istream& operator>>(istream& istm, rotationmatrix &rm){
-    istm >> rm.xx >> rm.xy >> rm.xz
-	 >> rm.yx >> rm.yy >> rm.yz
-	 >> rm.zx >> rm.zy >> rm.zz;
+    
+	//istm >> rm.xx >> rm.xy  >> rm.xz 
+	// >> rm.yx  >> rm.yy  >> rm.yz 
+	// >> rm.zx  >> rm.zy  >> rm.zz;
+	
+	
+	//unsigned char ch;
+	
+	istm >> rm.xx  >> rm.xy  >> rm.xz 
+		 >> rm.yx  >> rm.yy  >> rm.yz 
+		 >> rm.zx  >> rm.zy >> rm.zz;
+
     return istm;
 }

@@ -15,15 +15,24 @@ removed without prior written permission from the author.
 #include "stdafx.h"
 #include "nodes.h"
 
-nodes::nodes(void)
-: onseg(false)
+nodes::nodes(void) :
+onseg(false),
+polymer(false),
+harbinger(true),
+stucktonucleator(false),
+move_harbinger_this_time(false),
+threadnum(0),
+gridx(-1),gridy(-1),gridz(-1),
+nodelinksbroken(0),
+creation_iter_num(0)
+//, ptheactin(NULL)
 //: local_NODE_FORCE_TO_DIST(DELTA_T * FORCE_SCALE_FACT)
 {
 	nextnode = this;  // initialise to point to self
 	prevnode = this;
 	
 	x = y = z = 0.0;
-	gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
+	//gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
 	
     link_force_vec.zero();
 	rep_force_vec.zero();
@@ -35,28 +44,31 @@ nodes::nodes(void)
 
     nucleator_link_force.zero();
 
-	threadnum = 0;
+	//threadnum = 0;
 
-	listoflinks.reserve(MAX_LINKS_PER_NODE);
+	listoflinks.reserve(MAX_LINKS_PER_NEW_NODE*2);
 
     //insidenucleator = false;
-	polymer = false;
+	//polymer = false;
 	colour.setcol(0);
-	creation_iter_num = 0;
-	nodelinksbroken = 0;
-	harbinger = true;
+	//creation_iter_num = 0;
+	//nodelinksbroken = 0;
+	//harbinger = true;
 //	dontupdate = false;
 
-	move_harbinger_this_time = false;
+	//move_harbinger_this_time = false;
 
-    stucktonucleator = false;
-    nucleator_stuck_position.zero();
+    //stucktonucleator = false;
+    
+	nucleator_stuck_position.zero();
 
+	clearforces();
 	clearstats();
 
 }
 
 nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
+//: ptheactin(pactin)
 //: local_NODE_FORCE_TO_DIST(DELTA_T * FORCE_SCALE_FACT)
 {
 	gridx = gridy = gridz = -1;	
@@ -75,7 +87,7 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 
 	threadnum = 0;
 
-	listoflinks.reserve(MAX_LINKS_PER_NODE);
+	listoflinks.reserve(MAX_LINKS_PER_NEW_NODE*2);
 
 	colour.setcol(0);
 	creation_iter_num = ptheactin->iteration_num;
@@ -89,6 +101,8 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
     stucktonucleator = false;
     nucleator_stuck_position.zero();
 
+	clearforces();
+
 	move_harbinger_this_time = false;
 
 }											    
@@ -97,65 +111,15 @@ nodes::~nodes(void)
 {
 }
 
-//void nodes::applyforces_visc()
-//{	
-//
-//    static const double local_DELTA_T = DELTA_T;
-//    static const double local_FORCE_SCALE_FACT = FORCE_SCALE_FACT;
-//    static const double local_VISCOSITY_EDGE_THRESHOLD = VISCOSITY_EDGE_THRESHOLD;
-//    static const double local_VISCOSITY_UNWEIGHTING_FACTOR = VISCOSITY_UNWEIGHTING_FACTOR;
-//
-//    // link and repulsive forces actin on node
-//
-//	delta = (link_force_vec + rep_force_vec ) 
-//                * local_DELTA_T * local_FORCE_SCALE_FACT;
-//    
-//    // the viscous_force_vec's are weighted by their recirocal distances,
-//    // so need to be scaled back by dividing by viscous_force_recip_dist_sum
-//
-//    // if on edge of network, viscous_force_recip_dist_sum will be low,
-//    // by increasing, we essentially weight the average towards zero
-//
-//    if (viscous_force_recip_dist_sum < local_VISCOSITY_EDGE_THRESHOLD)
-//        viscous_force_recip_dist_sum = local_VISCOSITY_EDGE_THRESHOLD;  // ?? what should this number be?
-//
-//    // viscosity: weighted average of 'velocities'
-//
-//    delta =   ( delta * local_VISCOSITY_UNWEIGHTING_FACTOR + viscous_force_vec ) 
-//                    * (1 / (local_VISCOSITY_UNWEIGHTING_FACTOR + viscous_force_recip_dist_sum));
-//
-//    //delta += nuc_repulsion_displacement_vec;  // this is a displacement, therefore not scaled
-//
-//	*this += delta;
-//
-//    setunitvec();
-//
-//	rep_force_vec.zero();
-//	link_force_vec.zero();
-//	viscous_force_vec.zero();
-//    viscous_force_recip_dist_sum = 0;
-//    //nuc_repulsion_displacement_vec.zero();
-//}
 
-void nodes::applyforces() 
-{	
 
-	*this += (link_force_vec + rep_force_vec ) 
-                * NODE_FORCE_TO_DIST;
 
-    setunitvec();  // we've moved the node, so reset the unit vector
-
-	// note: remember to do this clearing too when switch clearing harbinger flag
-	//       in crosslinknewnodes()
-
-	rep_force_vec.zero();
-	link_force_vec.zero();     
-
-}
 
 bool nodes::depolymerize(void) 
-{
+{	
 	removefromgrid();
+	//ptheactin->removenodefromgrid(this);
+	
 	x = y = z = 0.0;
 	polymer = false;
 
@@ -188,6 +152,7 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 
 	setgridcoords(); // set grid by x,y,z
 	addtogrid();     // add node to the grid
+	//ptheactin->addnodetogrid(this);     // add node to the grid
 	unit_vec_posn=this->unitvec();
 
 	colour=ptheactin->newnodescolour;
@@ -208,8 +173,12 @@ int nodes::save_data(ofstream &ostr)
     // save the nodes
     ostr << nodenum << "," 
 	 << x << "," << y << "," << z << "," 
-	 << harbinger << "," << polymer << "," 
+	 << harbinger << "," 
+	 << polymer << "," 
 	 << colour.r << "," << colour.g << "," << colour.b << ","
+	 << delta.x << ","
+	 << delta.y << ","
+	 << delta.z << ","
 	 << linkforce_transverse << "," 
 	 << linkforce_radial << "," 
 	 << repforce_transverse << "," 
@@ -217,6 +186,9 @@ int nodes::save_data(ofstream &ostr)
 	 << links_broken << "," 
 	 << nucleator_impacts << ","
 	 << stucktonucleator << ","
+	 << nucleator_stuck_position.x << ","
+     << nucleator_stuck_position.y << ","
+     << nucleator_stuck_position.z << ","
      << nucleator_link_force.x << ","
      << nucleator_link_force.y << ","
      << nucleator_link_force.z << ","
@@ -242,8 +214,12 @@ int nodes::load_data(ifstream &istrm)
     char ch;    
     istrm >> nodenum >> ch 
 	  >> x >> ch >> y >> ch >> z >> ch
-	  >> harbinger >> ch >> polymer >> ch
+	  >> harbinger >> ch 
+	  >> polymer >> ch
 	  >> colour.r >> ch >> colour.g >> ch >> colour.b >> ch
+	  >> delta.x >> ch
+      >> delta.y >> ch
+      >> delta.z >> ch
 	  >> linkforce_transverse >> ch 
 	  >> linkforce_radial >> ch 
 	  >> repforce_transverse >> ch 
@@ -251,6 +227,9 @@ int nodes::load_data(ifstream &istrm)
 	  >> links_broken >> ch 
 	  >> nucleator_impacts >> ch
 	  >> stucktonucleator >> ch
+	  >> nucleator_stuck_position.x >> ch
+      >> nucleator_stuck_position.y >> ch
+      >> nucleator_stuck_position.z >> ch
       >> nucleator_link_force.x >> ch
       >> nucleator_link_force.y >> ch
       >> nucleator_link_force.z >> ch
@@ -272,7 +251,7 @@ int nodes::load_data(ifstream &istrm)
 	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
 	     << endl;
 	return 1;
-    }
+    }							
   
     listoflinks.clear(); // note doesn't free memory
     listoflinks.resize(linklistsize);
@@ -348,6 +327,7 @@ void nodes::updategrid(void)
 		gridtmpz = gridz; gridz = oldgridz;
 
 		removefromgrid();
+		//ptheactin->removenodefromgrid(this);
 
 		gridx = gridtmpx;  // restore new grid co-ords
 		gridy = gridtmpy;
@@ -357,8 +337,11 @@ void nodes::updategrid(void)
 
 	// add self to new grid position if not depolymerized
 
-	if (polymer) 
+	if (polymer)
+	{
 		addtogrid();
+		//ptheactin->addnodetogrid(this);
+	}
 			
 	return;
 }
@@ -370,15 +353,15 @@ void nodes::removefromgrid(void)
 
 	// are we the only grid node?
 		if ((nextnode==this) &&
-			(nodegrid[gridx][gridy][gridz] == this))
+			(NODEGRID(gridx,gridy,gridz) == this))
 		{	// if so, just delete the grid reference
-			nodegrid[gridx][gridy][gridz] = 0;
+			NODEGRID(gridx,gridy,gridz) = 0;
 		}
 		else
 		{	// other nodes on grid
-			if (nodegrid[gridx][gridy][gridz] == this)
+			if (NODEGRID(gridx,gridy,gridz) == this)
 			{  // if we're the grid reference set ref to next node
-				nodegrid[gridx][gridy][gridz] = nextnode;
+				NODEGRID(gridx,gridy,gridz) = nextnode;
 			}
 
             nextnode->prevnode = prevnode;  //  remove self from circular list
@@ -397,14 +380,14 @@ void nodes::addtogrid(void)
 	//if (gridx!=-1) return 0;
 
 	// is the new grid node empty?
-	if ((nodegrid[gridx][gridy][gridz] == 0))
+	if ((NODEGRID(gridx,gridy,gridz) == 0))
 	{	// if so, just add self to the grid reference
-		nodegrid[gridx][gridy][gridz] = this;
+		NODEGRID(gridx,gridy,gridz) = this;
 		nextnode = prevnode = this;  // and loop to self
 	}
 	else
 	{	// otherwise sew into loop
-		nextnode = nodegrid[gridx][gridy][gridz];  // our next is the grid
+		nextnode = NODEGRID(gridx,gridy,gridz);  // our next is the grid
 		prevnode = nextnode->prevnode;  //our new previous is the new next's old previous
 
 		nextnode->prevnode = this;  // and we are theirs
@@ -427,10 +410,10 @@ void nodes::setgridcoords(void)
 int nodes::addlink(nodes* linkto, const double& dist)
 {
 
-	//if (listoflinks.size()<MAX_LINKS_PER_NODE)
+	//if (listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
 	//{
 		listoflinks.push_back(links(linkto,dist));
-		ptheactin->linksformed++;
+		(ptheactin->linksformed)++;
 		return true;
 	//}
 
@@ -443,13 +426,19 @@ int nodes::removelink(nodes* link)
 
 	//int templinksbroken = ptheactin->linksbroken;
 
-	for (vector <links>::iterator i=listoflinks.end()-1; i>=listoflinks.begin() ; --i )
+	if (listoflinks.size()==0)
+		return 0;
+
+	for (vector<links>::iterator i  = listoflinks.begin();
+		                         i != listoflinks.end() ;
+								  ++i )
 	{	 
 		if (i->linkednodeptr==link)
 		{
 			listoflinks.erase(i);
 			ptheactin->linksbroken++;
-			continue;
+			break;
+			//continue;
 		}
 	}
 

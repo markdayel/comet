@@ -16,7 +16,7 @@ removed without prior written permission from the author.
 #include "nucleator.h"
 
 #ifdef SEED_INSIDE			
-double NUCPOINT_SCALE = 0.9;
+double NUCPOINT_SCALE = 0.9;				 
 #else
 double NUCPOINT_SCALE = 1.001;
 #endif
@@ -66,9 +66,9 @@ nucleator::nucleator(shape set_geometry, actin *actinptr)
 
 	deltanucposn.zero();
 
-	centerofmass.zero();;
+	centerofmass.zero();
 
-	torque.zero();;
+	torque.zero();
 
 	definecagepoints();
 	colour.r = colour.g = colour.b = 1.0;

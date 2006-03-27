@@ -1,21 +1,36 @@
-PROG = comet2
+PROG = comet
 SRCS = actin.cpp Colour.cpp comet.cpp links.cpp nodes.cpp \
        nucleator.cpp rotationmatrix.cpp segments.cpp \
-       kbhit.cpp
+       kbhit.cpp threadedtaskqueue.cpp
 OBJS = $(SRCS:.cpp=.o)
-#LIBS =  -lm -lpthread
-#LIBS =  -lcxml -lpthread
-LIBS =  -lm -lpthread /usr/lib/librt.a
-#CXXFLAGS = -O5 -fp_reorder -fast -std strict_ansi -w0 -pg
-#CXXFLAGS = -O5 -fp_reorder -fast -std strict_ansi -w0 -pthread
-#CXXFLAGS = -O5 -arch ev67 -inline speed -std gnu \
-#           -D__USE_STD_IOSTREAM -w0 -pthread -d
+#LIBS =  -lcxml -lpthread -lnuma
+LIBS =  -lpthreads -lpthread -lm
+#/usr/lib/librt.a
 #debug
-#CXXFLAGS = -arch ev67 -fast -inline speed -pg -gall -std gnu \
-#           -D__USE_STD_IOSTREAM -w0 -pthread -d
+#CXXFLAGS = -arch ev7 
+#CXXFLAGS = -arch ev68
+#           -fast -inline speed -gall -std gnu \
+#          -D__USE_STD_IOSTREAM -w0 -pthread -d \
+# -pg
+
+# -D_NUMA
 # normal:
-CXXFLAGS = -O5 -arch ev67 -fast -inline speed -std gnu \
-           -D__USE_STD_IOSTREAM -w0 -pthread -d
+#CXXFLAGS = -O3 -arch ev68
+#CXXFLAGS = -O3 -arch ev7
+
+CXXFLAGS = -O3 -arch ev68 \
+        -fast -std gnu \
+        -D__USE_STD_IOSTREAM -w0 -pthread -d \
+        -DNDEBUG -accept restrict_keyword -model ansi \
+        -noexceptions -nortti \
+        -nocleanup -non_shared
+# -DNOKBHIT
+#        -inline speed
+#        -om 
+
+# -inline speed
+# -D_NUMA
+# -tune ev7
 # profile:
 #CXXFLAGS = -O5 -arch ev67 -fast -std gnu \
 #           -D__USE_STD_IOSTREAM -w0 -pthread -d -gall -pg

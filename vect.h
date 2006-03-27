@@ -57,6 +57,7 @@ class vect
 	    
 	    return tmp;
 	}
+
     
     inline vect operator-(const vect &param) const
 	{
@@ -91,9 +92,21 @@ class vect
 	    
 	    return tmp;
 	}
+
+	inline vect operator/(const double &scale) const
+	{
+	    vect tmp;
+		double recip_scale = 1/scale;
+	    
+	    tmp.x = x * recip_scale;
+	    tmp.y = y * recip_scale;
+	    tmp.z = z * recip_scale;
+	    
+	    return tmp;
+	}
     
     
-    inline vect operator+=(const vect &param)
+    inline vect& operator+=(const vect &param)
 	{
 	    x += param.x;
 	    y += param.y;
@@ -102,7 +115,7 @@ class vect
 	    return *this;
 	}
     
-    inline vect operator-=(const vect &param)
+    inline vect& operator-=(const vect &param)
 	{
 	    x -= param.x;
 	    y -= param.y;
@@ -111,7 +124,7 @@ class vect
 	    return *this;
 	}
     
-    inline vect operator*=(const double &scale)
+    inline vect& operator*=(const double &scale)
 	{
 	    x *= scale;
 	    y *= scale;

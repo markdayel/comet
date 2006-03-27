@@ -18,13 +18,14 @@
 
 class CometVtkVis {
  public:
-  CometVtkVis(actin* theactin) {};
+  CometVtkVis(actin*) {};
   ~CometVtkVis() {};
   
-  void buildVTK(int framenumber);
+  void buildVTK(int);
 };
 
-void CometVtkVis::buildVTK(int framenumber) 
+void CometVtkVis::buildVTK(int) 
 {
   cout << "(vtk not linked)" << endl;
 };
+

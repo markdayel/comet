@@ -16,6 +16,23 @@
 
 #ifdef LINK_VTK
 
+/// win32 vtk 4.2 libaries need floats not doubles
+#ifdef _WIN32
+  #define VTK_FLOAT_PRECISION float
+#else
+  #define VTK_FLOAT_PRECISION double
+#endif
+
+#ifndef NOKBHIT
+#ifndef _WIN32
+	#include "kbhit.h"
+	#define kbhit keyb.kbhit
+    #define getch keyb.getch
+#else
+	#include <conio.h>
+#endif
+#endif
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -48,7 +65,10 @@
 #include "vtkLight.h"
 #include "vtkCamera.h"
 #include "vtkLookupTable.h"
+#include "vtkInteractorObserver.h"
+#include "vtkImageData.h"
 
+#include "vtkLightCollection.h"
 // vol rend
 #include "vtkImageImport.h"
 #include "vtkPiecewiseFunction.h"
@@ -59,6 +79,8 @@
 #include "vtkVolumeRayCastMapper.h"
 #include "vtkImageCast.h"
 #include "vtkShepardMethod.h"
+
+#include "vtkSmoothPolyDataFilter.h"
 
 // output
 #include "vtkDataWriter.h"
@@ -109,14 +131,16 @@ CometVtkVis::CometVtkVis(actin * theactin)
     renderwin_npy = 0;
 
     setOptions();
+
+	radius_pixels = p_actin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
     
     if(renderwin_npx == 0 || renderwin_npy == 0) {
 	if(OptsInteractive) {
-	    renderwin_npx = 300;
-	    renderwin_npy = 300;
+	    renderwin_npx = VTK_WIDTH;
+	    renderwin_npy = VTK_HEIGHT;
 	} else {
-	    renderwin_npx = 800;
-	    renderwin_npy = 600;
+	    renderwin_npx = VTK_WIDTH * VTK_AA_FACTOR;
+	    renderwin_npy = VTK_HEIGHT * VTK_AA_FACTOR;
 	}
     }
     cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
@@ -141,16 +165,27 @@ CometVtkVis::~CometVtkVis()
 void CometVtkVis::buildVTK(int framenumber)
 {
     char filename[255];
-    sprintf(filename , "%s_%05i.png", file_prefix.c_str(), framenumber);
+    sprintf(filename , "%s%s_%05i.png", VTKDIR, file_prefix.c_str(), framenumber);
   
     renderer = vtkRenderer::New();
     render_win = vtkRenderWindow::New();
-    renderer->SetBackground(0, 0, 0);
+    renderer->SetBackground(0, 0, 0);		
+
+	if(OptsInteractive)	 // increase quality for non-interactive
+	{
+		render_win->LineSmoothingOn();
+		render_win->PointSmoothingOn();
+		render_win->PolygonSmoothingOn();
+		render_win->SetAAFrames(10);
+	}
+
+	//render_win->SetStereoRender(2);
+
 
     render_win->SetSize(renderwin_npx, renderwin_npy);  
     if(!OptsInteractive) {
 	render_win->OffScreenRenderingOn();
-    }
+    }												
     render_win->AddRenderer(renderer);    
     
     // set projection early
@@ -181,16 +216,30 @@ void CometVtkVis::buildVTK(int framenumber)
     
     // -- rendering
     if(OptsInteractive) {
+
+	render_win-> Render();
+
 	// allow interaction
 	iren = vtkRenderWindowInteractor::New();
 	iren->SetRenderWindow(render_win);
-	iren->Start();      
-	render_win->Render();      
-	// user terminates with key 'e' or 'q'
+	iren->Initialize();
+	iren->Start();
+	
 	iren->Delete();
-    } else {
-	render_win->Render();
-	saveImage(filename);
+    } else 
+	{
+		render_win->Render();
+		saveImage(filename);
+		if (VTK_AA_FACTOR!=1)
+		{
+			char command1[255];
+			sprintf(command1, 
+ "%s -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
+				IMAGEMAGICKMOGRIFY, 100/(double)VTK_AA_FACTOR,  
+			    framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
+			//cout << command1 << endl;
+			system(command1);
+		}
     }
     
     // clear all actors from the renderer
@@ -208,9 +257,9 @@ void CometVtkVis::addAxes()
 {
     // see finance.cxx in vtk examples
     vtkAxes *axes = vtkAxes::New();
-    double origin[3] = {0.0, 0.0, 0.0};
+    VTK_FLOAT_PRECISION origin[3] = {0.0, 0.0, 0.0};
     axes->SetOrigin( origin );
-    axes->SetScaleFactor(1.3*p_actin->pixels(RADIUS)/voxel_scale);
+    axes->SetScaleFactor(1.3*p_actin->dbl_pixels(RADIUS)/voxel_scale);
     
     vtkTubeFilter *axes_tubes = vtkTubeFilter::New();
     axes_tubes->SetInput( axes->GetOutput() );
@@ -231,7 +280,7 @@ void CometVtkVis::addVoxelBound()
 {
     // Add a crude voxel bounding box, sometimes useful
     // create lines
-    double pt[3];
+    VTK_FLOAT_PRECISION pt[3];
     
     vtkLineSource *line1 = vtkLineSource::New();
     vtkPolyDataMapper *map1 = vtkPolyDataMapper::New();
@@ -379,7 +428,7 @@ void CometVtkVis::addCapsuleNucleator()
     // actor coordinates geometry, properties, transformation
     vtkActor *endcap1_actor = vtkActor::New();
     endcap1_actor->SetMapper(endcap_mapper);
-    double centre[3];
+    VTK_FLOAT_PRECISION centre[3];
     centre[0] = 0;
     centre[1] = 0;
     centre[2] = +CAPSULE_HALF_LINEAR;
@@ -435,22 +484,29 @@ void CometVtkVis::addSphericalNucleator()
 {   
     // create sphere geometry
     vtkSphereSource *sphere = vtkSphereSource::New();
-    double radius_pixels = (double)p_actin->pixels(0.95*RADIUS)/voxel_scale;
-    cout << "  voxel_scale: " << voxel_scale << endl;
-    cout << "  nucleator radius: " << radius_pixels << endl;
+    
+    //cout << "  voxel_scale: " << voxel_scale << endl;
+    //cout << "  nucleator radius: " << radius_pixels << endl;
     sphere->SetRadius(radius_pixels);
-    sphere->SetThetaResolution(18);
-    sphere->SetPhiResolution(18);
+    sphere->SetThetaResolution(256);
+    sphere->SetPhiResolution(256);
 
     double nx, ny, nz;
     
     // temp: reset center:
-    nx = -p_actin->p_nuc->position.x; 
-    ny = -p_actin->p_nuc->position.y; 
-    nz = -p_actin->p_nuc->position.z; 
-    
+	if (!VTK_MOVE_WITH_BEAD)
+	{
+		nx = -p_actin->p_nuc->position.x; 
+		ny = -p_actin->p_nuc->position.y; 
+		nz = -p_actin->p_nuc->position.z; 
+	}
+	else
+	{
+		nx = ny = nz = 0.0;
+
+	}
     p_actin->p_nuc->nucleator_rotation.rotate(nx, ny, nz);
-    p_actin->camera_rotation.rotate(nx, ny, nz); 
+    vtk_cam_rot.rotate(nx, ny, nz); 
 
     // stops bead 
     double keep_within_border;
@@ -484,9 +540,9 @@ void CometVtkVis::addSphericalNucleator()
     if(beadmaxz > nk)
 	movez = -(beadmaxz - nk);
     
-    nx = p_actin->pixels(-nx)/voxel_scale; 
-    ny = p_actin->pixels(-ny)/voxel_scale; 
-    nz = p_actin->pixels(-nz)/voxel_scale;
+    nx = p_actin->dbl_pixels(-nx)/voxel_scale; 
+    ny = p_actin->dbl_pixels(-ny)/voxel_scale; 
+    nz = p_actin->dbl_pixels(-nz)/voxel_scale;
     
     // displace to bring nucleator back in bounds
     nx += movex;
@@ -504,7 +560,7 @@ void CometVtkVis::addSphericalNucleator()
     nuc_actor->SetPosition(nx, ny, nz);
     map->Delete();
 
-    nuc_actor->GetProperty ()->SetColor(1, 1, 1); // sphere color 
+    nuc_actor->GetProperty ()->SetColor(0.7, 0.7, 0.7); // sphere color 
     nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
 	
     // add the actor to the scene
@@ -512,8 +568,8 @@ void CometVtkVis::addSphericalNucleator()
     nuc_actor->Delete();
 }
 
-void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx,
-					     double vd, double *min)
+void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx)
+					    // double vd, double *min)
 {
     // zero the voxel set
     for(int i=0; i<ni; ++i) {
@@ -532,14 +588,14 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     meanz = -p_actin->p_nuc->position.z; 
   
     p_actin->p_nuc->nucleator_rotation.rotate(meanx, meany, meanz);
-    p_actin->camera_rotation.rotate(meanx, meany, meanz); 
+    vtk_cam_rot.rotate(meanx, meany, meanz); 
   
     // move to static
     // Gaussian splat
     double gaussmax = (double) GAUSSFWHM * 3/2.0;  
     // full extent of gaussian radius -  fwhm is 2/3 this
   
-    const int splat_sz = (int)(p_actin->pixels(gaussmax) / voxel_scale); // as in actin 
+    const int splat_sz = (int)(p_actin->dbl_pixels(gaussmax) / voxel_scale); // as in actin 
     cout << "  gaussian splat extent: "<< splat_sz << endl;
   
     vector< vector< vector<double > > >  splat;
@@ -614,7 +670,7 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
 	node_pos = p_actin->node[n]; // copy x,y,z coords from node[n]
     
 	p_actin->p_nuc->nucleator_rotation.rotate(node_pos); 
-	p_actin->camera_rotation.rotate(node_pos); // bring rip to y-axis
+	vtk_cam_rot.rotate(node_pos); // bring rip to y-axis
     
 	// node centre in local voxel coords (nuc at centre) 
 	// REVISIT: check why we need to add one here
@@ -714,8 +770,8 @@ void CometVtkVis::createGaussianVoxelRepresentation(vtkStructuredPoints *sp)
     // fill voxel set from the actin node data
     cout << "  filling vtk voxel data " << endl;
     const double vd = 1;
-    double vx_orig[3] = {-ni/2.0-1, -nj/2.0-1, -nk/2.0-1};
-    fillVoxelSetFromActinNodes(vx, vd, vx_orig);
+    VTK_FLOAT_PRECISION vx_orig[3] = {-ni/2.0-1, -nj/2.0-1, -nk/2.0-1};
+    fillVoxelSetFromActinNodes(vx); //, vd, vx_orig);
     
 
     // set up the spoints for volume rendering
@@ -815,8 +871,14 @@ void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp)
     iso_surf->SetInput( sp );
     iso_surf->SetValue(0, 50);
 
+	vtkSmoothPolyDataFilter *smooth = vtkSmoothPolyDataFilter::New();
+	smooth->SetInput(iso_surf->GetOutput());
+	smooth->SetNumberOfIterations( 100 );
+	smooth->SetRelaxationFactor( 0.05 );
+
     vtkPolyDataMapper *iso_mapper = vtkPolyDataMapper::New();
-    iso_mapper->SetInput( iso_surf->GetOutput() );
+    //iso_mapper->SetInput( iso_surf->GetOutput() );
+	iso_mapper->SetInput( smooth->GetOutput() );
     iso_mapper->ScalarVisibilityOff();
     iso_surf->Delete();
     
@@ -824,7 +886,7 @@ void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp)
     iso_actor->SetMapper(iso_mapper);
     iso_mapper->Delete();
     
-    iso_actor->GetProperty()->SetOpacity(0.4);
+    iso_actor->GetProperty()->SetOpacity(1.0);
     iso_actor->GetProperty()->SetColor(0.0, 1.0, 0.0);
     
     renderer->AddActor(iso_actor);
@@ -890,7 +952,7 @@ void CometVtkVis::addNodes()
     
     // create sphere geometry
     vtkSphereSource *sphere = vtkSphereSource::New();
-    sphere->SetRadius( 0.05*p_actin->pixels(RADIUS)/voxel_scale ); // scale with the nucleator
+    sphere->SetRadius( 0.05*p_actin->dbl_pixels(RADIUS)/voxel_scale ); // scale with the nucleator
     sphere->SetThetaResolution(10); // low res is fine
     sphere->SetPhiResolution(10);
     
@@ -906,7 +968,7 @@ void CometVtkVis::addNodes()
     meanz = -p_actin->p_nuc->position.z; 
     
     p_actin->p_nuc->nucleator_rotation.rotate(meanx, meany, meanz);
-    p_actin->camera_rotation.rotate(meanx, meany, meanz); 
+    vtk_cam_rot.rotate(meanx, meany, meanz); 
 
     // stops bead 
     double keep_within_border;
@@ -949,11 +1011,11 @@ void CometVtkVis::addNodes()
 	ncz = p_actin->node[i].z;
 
 	p_actin->p_nuc->nucleator_rotation.rotate(ncx, ncy, ncz); 
-	p_actin->camera_rotation.rotate(ncx, ncy, ncz); // bring rip to y-axis
+	vtk_cam_rot.rotate(ncx, ncy, ncz); // bring rip to y-axis
 	
-	ncx = p_actin->pixels(ncx - meanx)/voxel_scale; 
-	ncy = p_actin->pixels(ncy - meany)/voxel_scale;
-	ncz = p_actin->pixels(ncz - meanz)/voxel_scale;
+	ncx = p_actin->dbl_pixels(ncx - meanx)/voxel_scale; 
+	ncy = p_actin->dbl_pixels(ncy - meany)/voxel_scale;
+	ncz = p_actin->dbl_pixels(ncz - meanz)/voxel_scale;
 	
 	// displace to bring node back in bounds
 	ncx += movex;
@@ -986,13 +1048,17 @@ void CometVtkVis::addLinks()
 {	
     // Move to fcn
     // temp: reset center:
-    double meanx, meany, meanz;
-    meanx = -p_actin->p_nuc->position.x; 
-    meany = -p_actin->p_nuc->position.y; 
-    meanz = -p_actin->p_nuc->position.z; 
+    double meanx = 0.0, meany=0.0, meanz=0.0;
+
+	if (!VTK_MOVE_WITH_BEAD)
+	{
+		meanx = -p_actin->p_nuc->position.x; 
+		meany = -p_actin->p_nuc->position.y; 
+		meanz = -p_actin->p_nuc->position.z;
+	}
   
     p_actin->p_nuc->nucleator_rotation.rotate(meanx, meany, meanz);
-    p_actin->camera_rotation.rotate(meanx, meany, meanz); 
+    vtk_cam_rot.rotate(meanx, meany, meanz); 
   
     // stops bead 
     double keep_within_border;
@@ -1033,19 +1099,30 @@ void CometVtkVis::addLinks()
     lut->SetNumberOfColors(100);
     lut->Build();
     // ML REVISIT, crude linear ramp, must be a better wat to do this via vtkLut calls
-    double rgba[4];
-    for(int i=0; i<100; i++) {
-	rgba[0] = (i+1)/100.0;
-	rgba[1] = 0;
-	rgba[2] = (100-i+1)/100.0;
+    
+	Colour col;
+	
+	VTK_FLOAT_PRECISION rgba[4];
+    for(int i=0; i<100; i++) 
+	{
+	col.setcol((double)i/100.0);
+
+	rgba[0] = col.r;
+	rgba[1] = col.g;
+	rgba[2] = col.b;
 	rgba[3] = 1.0;
+
+	//rgba[0] = (i+1)/100.0;
+	//rgba[1] = 0;
+	//rgba[2] = (100-i+1)/100.0;
+	//rgba[3] = 1.0;
 	// cout << rgba[0] << " " <<  rgba[1] << " " <<  rgba[2] << " " <<  rgba[3] << endl;
 	lut->SetTableValue(i, rgba);
     }
     
     // loop over the nodes
-    double n_pt[3];
-    double l_pt[3];
+    VTK_FLOAT_PRECISION n_pt[3];
+    VTK_FLOAT_PRECISION l_pt[3];
     vect nodeposvec;
     int step = p_actin->highestnodecount / 25;
     int s = 0;
@@ -1066,11 +1143,11 @@ void CometVtkVis::addLinks()
 	
 	// -- Move to fcn
 	p_actin->p_nuc->nucleator_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); 
-	p_actin->camera_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); // bring rip to y-axis
+	vtk_cam_rot.rotate(n_pt[0], n_pt[1], n_pt[2]); // bring rip to y-axis
 	
-	n_pt[0] = p_actin->pixels(n_pt[0] - meanx)/voxel_scale; 
-	n_pt[1] = p_actin->pixels(n_pt[1] - meany)/voxel_scale;
-	n_pt[2] = p_actin->pixels(n_pt[2] - meanz)/voxel_scale;
+	n_pt[0] = p_actin->dbl_pixels(n_pt[0] - meanx)/voxel_scale; 
+	n_pt[1] = p_actin->dbl_pixels(n_pt[1] - meany)/voxel_scale;
+	n_pt[2] = p_actin->dbl_pixels(n_pt[2] - meanz)/voxel_scale;
 	
 	// displace to bring node back in bounds
 	n_pt[0] += movex;
@@ -1103,11 +1180,11 @@ void CometVtkVis::addLinks()
 
 		// -- Move to fcn
 		p_actin->p_nuc->nucleator_rotation.rotate(l_pt[0], l_pt[1], l_pt[2]); 
-		p_actin->camera_rotation.rotate(l_pt[0], l_pt[1], l_pt[2]); // bring rip to y-axis
+		vtk_cam_rot.rotate(l_pt[0], l_pt[1], l_pt[2]); // bring rip to y-axis
 	
-		l_pt[0] = p_actin->pixels(l_pt[0] - meanx)/voxel_scale; 
-		l_pt[1] = p_actin->pixels(l_pt[1] - meany)/voxel_scale;
-		l_pt[2] = p_actin->pixels(l_pt[2] - meanz)/voxel_scale;
+		l_pt[0] = p_actin->dbl_pixels(l_pt[0] - meanx)/voxel_scale; 
+		l_pt[1] = p_actin->dbl_pixels(l_pt[1] - meany)/voxel_scale;
+		l_pt[2] = p_actin->dbl_pixels(l_pt[2] - meanz)/voxel_scale;
 	
 		// displace to bring node back in bounds
 		l_pt[0] += movex;
@@ -1122,16 +1199,33 @@ void CometVtkVis::addLinks()
 		map->SetInput(line->GetOutput());
 		line->Delete();
 	
+		Colour col;
+
 		// actor coordinates geometry, properties, transformation
 		vtkActor *link_actor = vtkActor::New();
+														
 		if(OptsShadeLinks) {
 		  vect displacement = nodeposvec - *(link_i->linkednodeptr);
 		  double distance = displacement.length();      
-		  double strain = distance / link_i->orig_dist;
+		  double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;
 		  
-		  double is = strain / LINK_BREAKAGE_STRAIN;
+		  double y = strain / LINK_BREAKAGE_STRAIN;
 		  
-		  link_actor->GetProperty ()->SetColor( lut->GetColor(is)  ); // link strain from lut
+		  //double y = fabs( link_i->getlinkforces( distance) ) / LINK_BREAKAGE_FORCE;
+
+
+		  //y = (5+log(y))/5;	 // log transform
+
+		  //double VTK_LINK_COLOUR_GAMMA = 1.8;
+
+		  y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);
+
+		  y = y*0.9+0.1; // prevent zeros  because colorscheme makes them black
+
+		  col.setcol(y);
+
+		  //link_actor->GetProperty ()->SetColor( lut->GetColor(is)  ); // link strain from lut
+		  link_actor->GetProperty ()->SetColor(col.r, col.g, col.b); // link strain from lut
 		} else {
 		  link_actor->GetProperty ()->SetColor(1.0, 1.0, 1.0); // links white
 		}
@@ -1171,42 +1265,82 @@ double CometVtkVis::getMeanNodeLinkForce(const int id)
 
 void CometVtkVis::addLight()
 {
-    vtkLight *light = vtkLight::New();
+    //vtkLight *light = vtkLight::New();
+    ////light->SetLightTypeToCameraLight();
+    ////light->SetFocalPoint(0, 0, 0);
+    //light->SetPosition(0, 0, 0);
+    //renderer->AddLight(light);
+    //light->Delete();
 
-    //light->SetLightTypeToCameraLight();
-    //light->SetFocalPoint(0, 0, 0);
-    light->SetPosition(0, 0, 0);
+	// remove random lights that may have appeared from nowhere
 
+	renderer->GetLights()->RemoveAllItems();
+
+	renderer->SetAmbient(0); // turn off ambient lighting
+
+ // vtkLightCollection *lights = renderer->GetLights();
+ // int numlights = lights->  //GetNumberOfItems();
+ //   vtkLight *light_to_remove;
+ //   lights->InitTraversal();
+ //   for(int i=0; i<numlights; ++i) 
+ //   {
+ //       light_to_remove = lights->GetNextItem();
+ //	      renderer->RemoveLight(light_to_remove);
+ //   }
+
+	// add our own lights
+
+	vtkLight *light = vtkLight::New();
+	
+	light->SetIntensity(0.5);
+	light->SetColor(1,0.5,0.5);
+    light->SetPosition(radius_pixels*5, -radius_pixels*10, -radius_pixels*10);
     renderer->AddLight(light);
-  
     light->Delete();
+
+	vtkLight *light2 = vtkLight::New();
+	light2->SetIntensity(0.5);
+	light2->SetColor(0.5,0.5,1.0);
+    light2->SetPosition(radius_pixels*5, +radius_pixels*10, -radius_pixels*10);
+    renderer->AddLight(light2);
+    light2->Delete();
+
+
+
+
 }
 
 void CometVtkVis::setProjection()
 {
     if(OptsRenderProjection==X){
-	// x
-	renderer->GetActiveCamera()->SetPosition(-2.0*ni, 0, 0);
-	renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+		// x
+		vtk_cam_rot = p_actin->camera_rotation;
+		renderer->GetActiveCamera()->SetPosition(-radius_pixels*7, 0, 0);
+		renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
     } else if(OptsRenderProjection==Y){
 	// y
-	renderer->GetActiveCamera()->SetPosition(0, 2*nj, 0);
-	renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+		vtk_cam_rot = p_actin->camera_rotation;
+		renderer->GetActiveCamera()->SetPosition(0, radius_pixels*7, 0);
+		renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
     } else if(OptsRenderProjection==Z){
 	// z
-	renderer->GetActiveCamera()->SetPosition(0, 0, -2*nk);
-	renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
+		vtk_cam_rot = p_actin->camera_rotation;
+		renderer->GetActiveCamera()->SetPosition(0, 0, -radius_pixels*7);
+		renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
     } else if(OptsRenderProjection==RIP){
+
+		vtk_cam_rot = p_actin->camera_rotation2;	  // note using different rotation matrix!
 	// rip
-	cout << "  projection: rip" << endl;
-	renderer->GetActiveCamera()->SetPosition(0.5*ni, 2*nj, 0);
-	renderer->GetActiveCamera()->SetViewUp(0, 0, -1);    
+	//cout << "  projection: rip" << endl;
+	renderer->GetActiveCamera()->SetPosition(radius_pixels*4, 0, -radius_pixels*7);
+	renderer->GetActiveCamera()->SetViewUp(1, 0, 0);    
     } else {
 	cout << "!ERROR: unknown projection:" << OptsRenderProjection << endl;
     }
     
     renderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
-    renderer->GetActiveCamera()->ParallelProjectionOn();
+	renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
+	renderer->GetActiveCamera()->SetViewAngle(40);
     // FIXME: ML
     // should scale properly here to a value linked to the render setup
     renderer->GetActiveCamera()->SetParallelScale(p_scale);
@@ -1331,6 +1465,8 @@ void CometVtkVis::setOptions()
 	}
 
     }
+
+	
   
 }
 
