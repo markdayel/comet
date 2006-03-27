@@ -68,6 +68,13 @@
 #include "vtkInteractorObserver.h"
 #include "vtkImageData.h"
 
+#include "vtkPolyData.h"
+#include "vtkCellArray.h"
+#include "vtkIdType.h"
+#include "vtkCellData.h"
+#include "vtkDataSet.h"
+
+
 #include "vtkLightCollection.h"
 // vol rend
 #include "vtkImageImport.h"
@@ -1050,7 +1057,7 @@ void CometVtkVis::addLinks()
   // temp: reset center:
   double meanx = 0.0, meany=0.0, meanz=0.0;
   
-  if (!VTK_MOVE_WITH_BEAD) {
+  if(!VTK_MOVE_WITH_BEAD) {
     meanx = -p_actin->p_nuc->position.x; 
     meany = -p_actin->p_nuc->position.y; 
     meanz = -p_actin->p_nuc->position.z;
@@ -1117,8 +1124,15 @@ void CometVtkVis::addLinks()
   VTK_FLOAT_PRECISION n_pt[3];
   VTK_FLOAT_PRECISION l_pt[3];
   vect nodeposvec;
-  // minor performance improvement by using an ActorCollection
-  vtkActorCollection *link_actors = vtkActorCollection::New();
+  
+  // use a cell array to store line data 
+  vtkCellArray *cellarray = vtkCellArray::New();
+  // with scalars
+  vtkFloatArray *cellscalars = vtkFloatArray::New();  
+  // made up of lines
+  vtkPolyData *linedata = vtkPolyData::New();
+  vtkPoints *linepts = vtkPoints::New();
+  
   for(int i=0; i<p_actin->highestnodecount; i++) {      
     nodeposvec = p_actin->node[i];
     
@@ -1155,9 +1169,6 @@ void CometVtkVis::addLinks()
 	  continue;
 	
 	// create line for the link
-	vtkLineSource *line = vtkLineSource::New();
-	// worldToVoxelCoord( pt[0], pt[1], pt[2]);
-	line->SetPoint1( n_pt );
 	l_pt[0] = (*link_i).linkednodeptr->x;
 	l_pt[1] = (*link_i).linkednodeptr->y;
 	l_pt[2] = (*link_i).linkednodeptr->z;
@@ -1175,18 +1186,14 @@ void CometVtkVis::addLinks()
 	l_pt[1] += movey;
 	l_pt[2] += movez;
 	// -- ^^ Move to fcn
-	
-	line->SetPoint2( l_pt );
-	
-	// map
-	vtkPolyDataMapper *map = vtkPolyDataMapper::New();
-	map->SetInput(line->GetOutput());
-	line->Delete();
+
+	vtkIdType linept_ids[2];	
+	linept_ids[0] = linepts->InsertNextPoint( n_pt );
+	linept_ids[1] = linepts->InsertNextPoint( l_pt );
+	vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);	
 	
 	Colour col;	  
-	// actor coordinates geometry, properties, transformation
-	vtkActor *link_actor = vtkActor::New();
-	
+	// Set scalar for the line
 	if(OptsShadeLinks) {
 	  vect displacement = nodeposvec - *(link_i->linkednodeptr);
 	  double distance = displacement.length();      
@@ -1199,28 +1206,32 @@ void CometVtkVis::addLinks()
 	  y = y*0.9+0.1; // prevent zeros  because colorscheme makes them black
 	  col.setcol(y);
 	  
-	  //link_actor->GetProperty ()->SetColor( lut->GetColor(is)  ); // link strain from lut
-	  link_actor->GetProperty ()->SetColor(col.r, col.g, col.b); // link strain from lut
+	  cellscalars->InsertValue(cell_id, y);
 	} else {
-	  link_actor->GetProperty ()->SetColor(1.0, 1.0, 1.0); // links white
-	}
-	link_actor->SetMapper(map);
-	map->Delete();
-	
-	// add the actor to the scene
-	link_actors->AddItem(link_actor);
-	// renderer->AddActor(link_actor);
-	link_actor->Delete();
+	  cellscalars->InsertValue(cell_id, 1.0);
+	}	
       } // links loop
     }
-  } // node loop    
+  } // node loop
+  linedata->SetPoints(linepts);
+  linepts->Delete();
+  linedata->SetLines(cellarray);
+  cellarray->Delete();
+  linedata->GetCellData()->SetScalars(cellscalars);
+  
+  // mapper
+  vtkPolyDataMapper *map = vtkPolyDataMapper::New();
+  map->SetLookupTable( lut );
+  map->SetInput( linedata );
+  linedata->Delete();
+  // actor
+  vtkActor *lines_actor = vtkActor::New();
+  lines_actor->SetMapper(map);
+  //render
+  renderer->AddActor(lines_actor);
+  
   lut->Delete();
-  link_actors->InitTraversal();
-  int na = link_actors->GetNumberOfItems();
-  for(int i=0; i<na; ++i) {
-    renderer->AddActor( link_actors->GetNextActor() );
-  }
-  link_actors->Delete();    
+  lines_actor->Delete();
 }
 // ML FIXME:  This is wrong, sort out a better method for mean strain
 double CometVtkVis::getMeanNodeLinkForce(const int id) 
