@@ -1046,200 +1046,181 @@ void CometVtkVis::addNodes()
 
 void CometVtkVis::addLinks()
 {	
-    // Move to fcn
-    // temp: reset center:
-    double meanx = 0.0, meany=0.0, meanz=0.0;
-
-	if (!VTK_MOVE_WITH_BEAD)
-	{
-		meanx = -p_actin->p_nuc->position.x; 
-		meany = -p_actin->p_nuc->position.y; 
-		meanz = -p_actin->p_nuc->position.z;
-	}
+  // Move to fcn
+  // temp: reset center:
+  double meanx = 0.0, meany=0.0, meanz=0.0;
   
-    p_actin->p_nuc->nucleator_rotation.rotate(meanx, meany, meanz);
-    vtk_cam_rot.rotate(meanx, meany, meanz); 
+  if (!VTK_MOVE_WITH_BEAD) {
+    meanx = -p_actin->p_nuc->position.x; 
+    meany = -p_actin->p_nuc->position.y; 
+    meanz = -p_actin->p_nuc->position.z;
+  }
   
-    // stops bead 
-    double keep_within_border;
-    if( p_actin->p_nuc->geometry == nucleator::sphere )
-	keep_within_border = 2*RADIUS;
-    else
-	keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
+  p_actin->p_nuc->nucleator_rotation.rotate(meanx, meany, meanz);
+  vtk_cam_rot.rotate(meanx, meany, meanz); 
   
-    int beadminx = int(p_actin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
-    int beadminy = int(p_actin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadminz = int(p_actin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
-    int beadmaxx = int(p_actin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
-    int beadmaxy = int(p_actin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadmaxz = int(p_actin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+  // stops bead 
+  double keep_within_border;
+  if( p_actin->p_nuc->geometry == nucleator::sphere )
+    keep_within_border = 2*RADIUS;
+  else
+    keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
   
-    int movex = 0;
-    int movey = 0;
-    int movez = 0;
+  int beadminx = int(p_actin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
+  int beadminy = int(p_actin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
+  int beadminz = int(p_actin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+  int beadmaxx = int(p_actin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
+  int beadmaxy = int(p_actin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
+  int beadmaxz = int(p_actin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
   
-    if(beadminx < 0)
-	movex = -(beadminx);
-    if(beadminy < 0)
-	movey = -(beadminy);
-    if(beadminz < 0)
-	movez = -(beadminz);    
+  int movex = 0;
+  int movey = 0;
+  int movez = 0;
+  
+  if(beadminx < 0)
+    movex = -(beadminx);
+  if(beadminy < 0)
+    movey = -(beadminy);
+  if(beadminz < 0)
+    movez = -(beadminz);    
+  
+  if(beadmaxx > ni)
+    movex = -(beadmaxx - ni);
+  if(beadmaxy > nj)
+    movey = -(beadmaxy - nj);
+  if(beadmaxz > nk)
+    movez = -(beadmaxz - nk);
+  // -- ^^ Move to fcn
+  
+  // only used for strain coloring
+  vtkLookupTable *lut = vtkLookupTable::New();
+  lut->SetRange(0.7, 1.0);
+  lut->SetNumberOfColors(100);
+  lut->Build();
+  // ML REVISIT, crude linear ramp, 
+  // do this better way to do this via vtkLut calls
+  
+  Colour col;
+  
+  VTK_FLOAT_PRECISION rgba[4];
+  for(int i=0; i<100; i++) {
+    col.setcol((double)i/100.0);
     
-    if(beadmaxx > ni)
-	movex = -(beadmaxx - ni);
-    if(beadmaxy > nj)
-	movey = -(beadmaxy - nj);
-    if(beadmaxz > nk)
-	movez = -(beadmaxz - nk);
+    rgba[0] = col.r;
+    rgba[1] = col.g;
+    rgba[2] = col.b;
+    rgba[3] = 1.0;	
+    lut->SetTableValue(i, rgba);
+  }
+  
+  // loop over the nodes
+  VTK_FLOAT_PRECISION n_pt[3];
+  VTK_FLOAT_PRECISION l_pt[3];
+  vect nodeposvec;
+  // minor performance improvement by using an ActorCollection
+  vtkActorCollection *link_actors = vtkActorCollection::New();
+  for(int i=0; i<p_actin->highestnodecount; i++) {      
+    nodeposvec = p_actin->node[i];
+    
+    n_pt[0] = p_actin->node[i].x;
+    n_pt[1] = p_actin->node[i].y;
+    n_pt[2] = p_actin->node[i].z;		
+    
+    // -- Move to fcn
+    p_actin->p_nuc->nucleator_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); 
+    vtk_cam_rot.rotate(n_pt[0], n_pt[1], n_pt[2]); // bring rip to y-axis
+    
+    n_pt[0] = p_actin->dbl_pixels(n_pt[0] - meanx)/voxel_scale; 
+    n_pt[1] = p_actin->dbl_pixels(n_pt[1] - meany)/voxel_scale;
+    n_pt[2] = p_actin->dbl_pixels(n_pt[2] - meanz)/voxel_scale;
+    
+    // displace to bring node back in bounds
+    n_pt[0] += movex;
+    n_pt[1] += movey;
+    n_pt[2] += movez;
     // -- ^^ Move to fcn
     
-    // only used for strain coloring
-    vtkLookupTable *lut = vtkLookupTable::New();
-    lut->SetRange(0.7, 1.0);
-    lut->SetNumberOfColors(100);
-    lut->Build();
-    // ML REVISIT, crude linear ramp, must be a better wat to do this via vtkLut calls
-    
-	Colour col;
+    if(!p_actin->node[i].listoflinks.empty()) {
+      // nodes thisnode = p_actin->node[i];
+      
+      // loop over linked nodes
+      // check this out if we use this function
+      for(vector<links>::iterator link_i=p_actin->node[i].listoflinks.begin(); 
+	  link_i != p_actin->node[i].listoflinks.end();
+	  ++link_i) {
 	
-	VTK_FLOAT_PRECISION rgba[4];
-    for(int i=0; i<100; i++) 
-	{
-	col.setcol((double)i/100.0);
-
-	rgba[0] = col.r;
-	rgba[1] = col.g;
-	rgba[2] = col.b;
-	rgba[3] = 1.0;
-
-	//rgba[0] = (i+1)/100.0;
-	//rgba[1] = 0;
-	//rgba[2] = (100-i+1)/100.0;
-	//rgba[3] = 1.0;
-	// cout << rgba[0] << " " <<  rgba[1] << " " <<  rgba[2] << " " <<  rgba[3] << endl;
-	lut->SetTableValue(i, rgba);
-    }
-    
-    // loop over the nodes
-    VTK_FLOAT_PRECISION n_pt[3];
-    VTK_FLOAT_PRECISION l_pt[3];
-    vect nodeposvec;
-    int step = p_actin->highestnodecount / 25;
-    int s = 0;
-    for(int i=0; i<p_actin->highestnodecount; i++) {
+	// assume links to nodes 'less' than us have already been added
+	// cout << i << "==" << p_actin->node[i].nodenum << endl;
+	if( (*link_i).linkednodenumber < i)
+	  continue;
 	
-	if(step>500 && i%step == 0) {
-	    string as(s, '*');
-	    string bs(25-s, '.');
-	    cout << "  this takes a while (" << as << bs << ")\r";
-	    cout.flush();
-	    ++s;
-	}
-	nodeposvec = p_actin->node[i];
-	
-	n_pt[0] = p_actin->node[i].x;
-	n_pt[1] = p_actin->node[i].y;
-	n_pt[2] = p_actin->node[i].z;		
+	// create line for the link
+	vtkLineSource *line = vtkLineSource::New();
+	// worldToVoxelCoord( pt[0], pt[1], pt[2]);
+	line->SetPoint1( n_pt );
+	l_pt[0] = (*link_i).linkednodeptr->x;
+	l_pt[1] = (*link_i).linkednodeptr->y;
+	l_pt[2] = (*link_i).linkednodeptr->z;
 	
 	// -- Move to fcn
-	p_actin->p_nuc->nucleator_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); 
-	vtk_cam_rot.rotate(n_pt[0], n_pt[1], n_pt[2]); // bring rip to y-axis
+	p_actin->p_nuc->nucleator_rotation.rotate(l_pt[0], l_pt[1], l_pt[2]); 
+	vtk_cam_rot.rotate(l_pt[0], l_pt[1], l_pt[2]); // bring rip to y-axis
 	
-	n_pt[0] = p_actin->dbl_pixels(n_pt[0] - meanx)/voxel_scale; 
-	n_pt[1] = p_actin->dbl_pixels(n_pt[1] - meany)/voxel_scale;
-	n_pt[2] = p_actin->dbl_pixels(n_pt[2] - meanz)/voxel_scale;
+	l_pt[0] = p_actin->dbl_pixels(l_pt[0] - meanx)/voxel_scale; 
+	l_pt[1] = p_actin->dbl_pixels(l_pt[1] - meany)/voxel_scale;
+	l_pt[2] = p_actin->dbl_pixels(l_pt[2] - meanz)/voxel_scale;
 	
 	// displace to bring node back in bounds
-	n_pt[0] += movex;
-	n_pt[1] += movey;
-	n_pt[2] += movez;
+	l_pt[0] += movex;
+	l_pt[1] += movey;
+	l_pt[2] += movez;
 	// -- ^^ Move to fcn
 	
-	if(!p_actin->node[i].listoflinks.empty()) {
-	    // nodes thisnode = p_actin->node[i];
-	    
-	    // loop over linked nodes
-	    // FIXME: Draws each link twice (loops over nodes)
-	    // check this out if we use this function
-	    for(vector<links>::iterator link_i=p_actin->node[i].listoflinks.begin(); 
-		link_i != p_actin->node[i].listoflinks.end();
-		++link_i) {
-
-		// assume links to nodes 'less' than us have already been added
-		// cout << i << "==" << p_actin->node[i].nodenum << endl;
-		if( (*link_i).linkednodenumber < i)
-		    continue;
-		
-		// create line for the link
-		vtkLineSource *line = vtkLineSource::New();
-		// worldToVoxelCoord( pt[0], pt[1], pt[2]);
-		line->SetPoint1( n_pt );
-		l_pt[0] = (*link_i).linkednodeptr->x;
-		l_pt[1] = (*link_i).linkednodeptr->y;
-		l_pt[2] = (*link_i).linkednodeptr->z;
-
-		// -- Move to fcn
-		p_actin->p_nuc->nucleator_rotation.rotate(l_pt[0], l_pt[1], l_pt[2]); 
-		vtk_cam_rot.rotate(l_pt[0], l_pt[1], l_pt[2]); // bring rip to y-axis
+	line->SetPoint2( l_pt );
 	
-		l_pt[0] = p_actin->dbl_pixels(l_pt[0] - meanx)/voxel_scale; 
-		l_pt[1] = p_actin->dbl_pixels(l_pt[1] - meany)/voxel_scale;
-		l_pt[2] = p_actin->dbl_pixels(l_pt[2] - meanz)/voxel_scale;
+	// map
+	vtkPolyDataMapper *map = vtkPolyDataMapper::New();
+	map->SetInput(line->GetOutput());
+	line->Delete();
 	
-		// displace to bring node back in bounds
-		l_pt[0] += movex;
-		l_pt[1] += movey;
-		l_pt[2] += movez;
-		// -- ^^ Move to fcn
+	Colour col;	  
+	// actor coordinates geometry, properties, transformation
+	vtkActor *link_actor = vtkActor::New();
 	
-		line->SetPoint2( l_pt );
-	
-		// map
-		vtkPolyDataMapper *map = vtkPolyDataMapper::New();
-		map->SetInput(line->GetOutput());
-		line->Delete();
-	
-		Colour col;
-
-		// actor coordinates geometry, properties, transformation
-		vtkActor *link_actor = vtkActor::New();
-														
-		if(OptsShadeLinks) {
-		  vect displacement = nodeposvec - *(link_i->linkednodeptr);
-		  double distance = displacement.length();      
-		  double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;
-		  
-		  double y = strain / LINK_BREAKAGE_STRAIN;
-		  
-		  //double y = fabs( link_i->getlinkforces( distance) ) / LINK_BREAKAGE_FORCE;
-
-
-		  //y = (5+log(y))/5;	 // log transform
-
-		  //double VTK_LINK_COLOUR_GAMMA = 1.8;
-
-		  y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);
-
-		  y = y*0.9+0.1; // prevent zeros  because colorscheme makes them black
-
-		  col.setcol(y);
-
-		  //link_actor->GetProperty ()->SetColor( lut->GetColor(is)  ); // link strain from lut
-		  link_actor->GetProperty ()->SetColor(col.r, col.g, col.b); // link strain from lut
-		} else {
-		  link_actor->GetProperty ()->SetColor(1.0, 1.0, 1.0); // links white
-		}
-		link_actor->SetMapper(map);
-		map->Delete();
-	
-		// add the actor to the scene
-		renderer->AddActor(link_actor);
-		link_actor->Delete();
-	    } // links loop
+	if(OptsShadeLinks) {
+	  vect displacement = nodeposvec - *(link_i->linkednodeptr);
+	  double distance = displacement.length();      
+	  double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
+	  double y = strain / LINK_BREAKAGE_STRAIN;
+	  //double y = fabs( link_i->getlinkforces( distance) ) / LINK_BREAKAGE_FORCE;
+	  //y = (5+log(y))/5;	 // log transform	    
+	  //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
+	  y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
+	  y = y*0.9+0.1; // prevent zeros  because colorscheme makes them black
+	  col.setcol(y);
+	  
+	  //link_actor->GetProperty ()->SetColor( lut->GetColor(is)  ); // link strain from lut
+	  link_actor->GetProperty ()->SetColor(col.r, col.g, col.b); // link strain from lut
+	} else {
+	  link_actor->GetProperty ()->SetColor(1.0, 1.0, 1.0); // links white
 	}
-    } // node loop
-    lut->Delete();
-  
+	link_actor->SetMapper(map);
+	map->Delete();
+	
+	// add the actor to the scene
+	link_actors->AddItem(link_actor);
+	// renderer->AddActor(link_actor);
+	link_actor->Delete();
+      } // links loop
+    }
+  } // node loop    
+  lut->Delete();
+  link_actors->InitTraversal();
+  int na = link_actors->GetNumberOfItems();
+  for(int i=0; i<na; ++i) {
+    renderer->AddActor( link_actors->GetNextActor() );
+  }
+  link_actors->Delete();    
 }
 // ML FIXME:  This is wrong, sort out a better method for mean strain
 double CometVtkVis::getMeanNodeLinkForce(const int id) 
