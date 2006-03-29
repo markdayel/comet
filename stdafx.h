@@ -303,6 +303,8 @@ extern int VTK_HEIGHT;
 extern int VTK_AA_FACTOR;
 extern double VTK_LINK_COLOUR_GAMMA;
 extern bool VTK_MOVE_WITH_BEAD;
+extern double VTK_VIEWANGLE;
+
 extern bool NO_IMAGE_TEXT;
 extern int BMP_COMPRESSION;
 extern string BMP_OUTPUT_FILETYPE;

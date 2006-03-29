@@ -58,6 +58,8 @@ double INIT_R_GAIN = 20;
 double INIT_G_GAIN = 20;
 double INIT_B_GAIN = 20;
 
+double VTK_VIEWANGLE = 40;
+
 bool POST_BMP = true;
 bool POST_VTK = false;
 bool POST_REPORTS = false;
@@ -516,8 +518,11 @@ int main(int argc, char* argv[])
 		else if (tag == "VTK_LINK_COLOUR_GAMMA")	  
 			{ss >> VTK_LINK_COLOUR_GAMMA;	}
 
+		else if (tag == "VTK_VIEWANGLE")	  
+			{ss >> VTK_VIEWANGLE;	}
+
 		else if (tag == "CROSSLINKDELAY")	  
-			{ss >> CROSSLINKDELAY;	}
+			{ss >> CROSSLINKDELAY;	}   
 
 		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
 			{ss >> buff2; if (buff2=="true") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false; }
@@ -1474,19 +1479,26 @@ int load_data(actin &theactin, int iteration)
 	sprintf(tmpdatafile, "%stempdata_%u_%u.txt", TEMPDIR,
 		(unsigned int) getpid(), (unsigned int) time(NULL) );
 
-#ifdef _WIN32
-	filename = DATADIR2 + filename;
-#else
-	filename = DATADIR + filename;
-#endif
+
 
 #ifndef _WIN32
+
+	filename = DATADIR2 + filename;
+
 	char command1[255];
     sprintf(command1, "gunzip --stdout %s > %s",filename.c_str(), tmpdatafile);
     system(command1);
-#endif
     
     ifstream ifstrm( tmpdatafile );
+
+#else
+
+	filename = DATADIR + filename;
+	ifstream ifstrm( filename.c_str() );
+
+#endif
+
+
     if(!ifstrm) {
 	cout << "Unable to open file " << tmpdatafile << " / " << filename << " for input" << endl;
 	return 1;

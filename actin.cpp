@@ -2537,9 +2537,9 @@ int actin::save_data(ofstream &ofstrm)
 	i < crosslinknodesdelay.end();i++) {
 	ofstrm << (*i);
 	if(i < crosslinknodesdelay.end()-1)
-	    ofstrm << ",";
+	    ofstrm << " ";
 	else
-	    ofstrm << "." << endl;
+	    ofstrm << endl;
     }
 
     // save nucleator
@@ -2613,8 +2613,13 @@ int actin::load_data(ifstream &ifstr)
 	    for(vector<links>::iterator l=node[i].listoflinks.begin(); 
 	        l<node[i].listoflinks.end(); ++l) 
         {
-	        // if(l->linkednodenumber>=0) // ensure the indx was explicitly set
-		    l->linkednodeptr = &node[l->linkednodenumber];
+		    //int lnn = l->linkednodenumber;
+
+	        if(l->linkednodenumber>=0) // ensure the indx was explicitly set
+				l->linkednodeptr = &node[l->linkednodenumber];
+			else
+				cout << "Link node < 0" << endl;
+				
 	    }
     }
 
@@ -2652,7 +2657,7 @@ int actin::load_data(ifstream &ifstr)
     // load each delay
     for(vector<int>::iterator i = crosslinknodesdelay.begin(); 
 	i < crosslinknodesdelay.end(); i++) {
-	ifstr >> (*i) >> ch;
+	ifstr >> (*i) ;
     }
 
     // load nucleator

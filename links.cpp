@@ -168,11 +168,11 @@ double links::getlinkforces(const double & dist)
 //
 int links::save_data(ofstream &ostr) 
 {
-    ostr << broken << "," 
-	 << breakcount << "," 
-	 << breaklastiter << "," 
-	 << orig_dist << ","
-//	 << last_dist << ","
+    ostr << broken << " " 
+	 << breakcount << " " 
+	 << breaklastiter << " " 
+	 << orig_dist << " "
+//	 << last_dist << " "
 	 << linkednodeptr->nodenum;
 
     //if(linkednodeptr != NULL)
@@ -185,11 +185,11 @@ int links::save_data(ofstream &ostr)
 int links::load_data(ifstream &istr) 
 {
     char ch;
-    istr >> broken >> ch
-	 >> breakcount >> ch 
-	 >> breaklastiter >> ch 
-	 >> orig_dist >> ch 
-//	 >> last_dist >> ch
+    istr >> broken 
+	 >> breakcount  
+	 >> breaklastiter  
+	 >> orig_dist  
+//	 >> last_dist 
 	 >> linkednodenumber;
     return 0;
 }

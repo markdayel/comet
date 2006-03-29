@@ -178,11 +178,12 @@ void CometVtkVis::buildVTK(int framenumber)
     render_win = vtkRenderWindow::New();
     renderer->SetBackground(0, 0, 0);		
 
-	if(OptsInteractive)	 // increase quality for non-interactive
+	render_win->LineSmoothingOn();
+	render_win->PointSmoothingOn();
+	//render_win->PolygonSmoothingOn();
+
+	if(!OptsInteractive)	 // increase quality for non-interactive
 	{
-		render_win->LineSmoothingOn();
-		render_win->PointSmoothingOn();
-		render_win->PolygonSmoothingOn();
 		render_win->SetAAFrames(10);
 	}
 
@@ -219,7 +220,7 @@ void CometVtkVis::buildVTK(int framenumber)
     
     // if(OptsRenderText)        
     // addVoxelBound(renderer);    
-    // addLight(renderer);
+    addLight();
     
     // -- rendering
     if(OptsInteractive) {
@@ -495,8 +496,8 @@ void CometVtkVis::addSphericalNucleator()
     //cout << "  voxel_scale: " << voxel_scale << endl;
     //cout << "  nucleator radius: " << radius_pixels << endl;
     sphere->SetRadius(radius_pixels);
-    sphere->SetThetaResolution(256);
-    sphere->SetPhiResolution(256);
+    sphere->SetThetaResolution(64);
+    sphere->SetPhiResolution(64);
 
     double nx, ny, nz;
     
@@ -567,8 +568,12 @@ void CometVtkVis::addSphericalNucleator()
     nuc_actor->SetPosition(nx, ny, nz);
     map->Delete();
 
-    nuc_actor->GetProperty ()->SetColor(0.7, 0.7, 0.7); // sphere color 
+    nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
     nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
+	nuc_actor->GetProperty()->SetDiffuse(0.25);
+	nuc_actor->GetProperty()->SetSpecular(1.0);
+	nuc_actor->GetProperty()->SetSpecularPower(5.0);
+
 	
     // add the actor to the scene
     renderer->AddActor(nuc_actor);
@@ -1268,7 +1273,7 @@ void CometVtkVis::addLight()
 
 	renderer->GetLights()->RemoveAllItems();
 
-	renderer->SetAmbient(0); // turn off ambient lighting
+	//renderer->SetAmbient(0); // this causes segfault for some reason
 
  // vtkLightCollection *lights = renderer->GetLights();
  // int numlights = lights->  //GetNumberOfItems();
@@ -1284,21 +1289,18 @@ void CometVtkVis::addLight()
 
 	vtkLight *light = vtkLight::New();
 	
-	light->SetIntensity(0.5);
-	light->SetColor(1,0.5,0.5);
-    light->SetPosition(radius_pixels*5, -radius_pixels*10, -radius_pixels*10);
+	light->SetIntensity(0.7);
+	light->SetColor(1,0.8,0.8);
+    light->SetPosition(radius_pixels*5, -radius_pixels*5, -radius_pixels*5);
     renderer->AddLight(light);
     light->Delete();
 
 	vtkLight *light2 = vtkLight::New();
-	light2->SetIntensity(0.5);
-	light2->SetColor(0.5,0.5,1.0);
-    light2->SetPosition(radius_pixels*5, +radius_pixels*10, -radius_pixels*10);
+	light2->SetIntensity(0.7);
+	light2->SetColor(0.9,0.9,1.0);
+    light2->SetPosition(radius_pixels*5, +radius_pixels*5, -radius_pixels*5);
     renderer->AddLight(light2);
     light2->Delete();
-
-
-
 
 }
 
@@ -1332,7 +1334,7 @@ void CometVtkVis::setProjection()
     
     renderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
 	renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
-	renderer->GetActiveCamera()->SetViewAngle(40);
+	renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
     // FIXME: ML
     // should scale properly here to a value linked to the render setup
     renderer->GetActiveCamera()->SetParallelScale(p_scale);

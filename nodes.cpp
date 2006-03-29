@@ -171,27 +171,27 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 int nodes::save_data(ofstream &ostr) 
 {
     // save the nodes
-    ostr << nodenum << "," 
-	 << x << "," << y << "," << z << "," 
-	 << harbinger << "," 
-	 << polymer << "," 
-	 << colour.r << "," << colour.g << "," << colour.b << ","
-	 << delta.x << ","
-	 << delta.y << ","
-	 << delta.z << ","
-	 << linkforce_transverse << "," 
-	 << linkforce_radial << "," 
-	 << repforce_transverse << "," 
-	 << repforce_radial << "," 
-	 << links_broken << "," 
-	 << nucleator_impacts << ","
-	 << stucktonucleator << ","
-	 << nucleator_stuck_position.x << ","
-     << nucleator_stuck_position.y << ","
-     << nucleator_stuck_position.z << ","
-     << nucleator_link_force.x << ","
-     << nucleator_link_force.y << ","
-     << nucleator_link_force.z << ","
+    ostr << nodenum << " " 
+	 << x << " " << y << " " << z << " " 
+	 << harbinger << " " 
+	 << polymer << " " 
+	 << colour.r << " " << colour.g << " " << colour.b << " "
+	 << delta.x << " "
+	 << delta.y << " "
+	 << delta.z << " "
+	 << linkforce_transverse << " " 
+	 << linkforce_radial << " " 
+	 << repforce_transverse << " " 
+	 << repforce_radial << " " 
+	 << links_broken << " " 
+	 << nucleator_impacts << " "
+	 << stucktonucleator << " "
+	 << nucleator_stuck_position.x << " "
+     << nucleator_stuck_position.y << " "
+     << nucleator_stuck_position.z << " "
+     << nucleator_link_force.x << " "
+     << nucleator_link_force.y << " "
+     << nucleator_link_force.z << " "
 	 << creation_iter_num << ":";
     
     // now the links
@@ -199,7 +199,7 @@ int nodes::save_data(ofstream &ostr)
     for(vector<links>::iterator l=listoflinks.begin(); l<listoflinks.end(); ++l)
     {
 	l->save_data(ostr);
-	ostr << ".";
+	ostr << " ";
     }
     
     // done
@@ -212,27 +212,27 @@ int nodes::load_data(ifstream &istrm)
 {
     // read in from the stream to our private data
     char ch;    
-    istrm >> nodenum >> ch 
-	  >> x >> ch >> y >> ch >> z >> ch
-	  >> harbinger >> ch 
-	  >> polymer >> ch
-	  >> colour.r >> ch >> colour.g >> ch >> colour.b >> ch
-	  >> delta.x >> ch
-      >> delta.y >> ch
-      >> delta.z >> ch
-	  >> linkforce_transverse >> ch 
-	  >> linkforce_radial >> ch 
-	  >> repforce_transverse >> ch 
-	  >> repforce_radial >> ch 
-	  >> links_broken >> ch 
-	  >> nucleator_impacts >> ch
-	  >> stucktonucleator >> ch
-	  >> nucleator_stuck_position.x >> ch
-      >> nucleator_stuck_position.y >> ch
-      >> nucleator_stuck_position.z >> ch
-      >> nucleator_link_force.x >> ch
-      >> nucleator_link_force.y >> ch
-      >> nucleator_link_force.z >> ch
+    istrm >> nodenum 
+	  >> x  >> y  >> z 
+	  >> harbinger  
+	  >> polymer 
+	  >> colour.r  >> colour.g  >> colour.b 
+	  >> delta.x 
+      >> delta.y 
+      >> delta.z 
+	  >> linkforce_transverse  
+	  >> linkforce_radial  
+	  >> repforce_transverse  
+	  >> repforce_radial  
+	  >> links_broken  
+	  >> nucleator_impacts 
+	  >> stucktonucleator 
+	  >> nucleator_stuck_position.x 
+      >> nucleator_stuck_position.y 
+      >> nucleator_stuck_position.z 
+      >> nucleator_link_force.x 
+      >> nucleator_link_force.y 
+      >> nucleator_link_force.z 
 	  >> creation_iter_num >> ch;
 
 	//if (nucleator_impacts>0.00001)
@@ -262,7 +262,7 @@ int nodes::load_data(ifstream &istrm)
 	links link;
 	link.load_data(istrm);
 	listoflinks[i] = link;
-	istrm >> ch;
+	//istrm >> ch;
     }
     // note we don't set pointer or build the grid here
     // because we need to be sure this is the node
@@ -458,11 +458,11 @@ int nodes::savelinks(ofstream * outputstream)
 	if (listoflinks.empty())
 		return 0;
 
-	*outputstream << nodenum << "," << (unsigned int) listoflinks.size();
+	*outputstream << nodenum << " " << (unsigned int) listoflinks.size();
 
 	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
 	{	 
-		*outputstream << "," << i->linkednodeptr->nodenum;
+		*outputstream << " " << i->linkednodeptr->nodenum;
 	}
 
 	*outputstream << endl;
