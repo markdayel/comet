@@ -75,11 +75,11 @@ double links::getlinkforces(const double & dist)
     { // just using force
 		if (-force > LINK_BREAKAGE_FORCE)
 		{   
-			double stress_over_breakage = -force / LINK_BREAKAGE_FORCE;
-			breakcount++;
+			//double stress_over_breakage = -force / LINK_BREAKAGE_FORCE;
+			//breakcount++;
 
-			if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) * RAND_MAX > 
-					rand() )
+			//if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) * RAND_MAX > 
+			//		rand() )
 			//if ((++breakcount>MAX_LINK_BREAKCOUNT) && breaklastiter)
 			{
 				broken = true;
@@ -184,7 +184,7 @@ int links::save_data(ofstream &ostr)
 
 int links::load_data(ifstream &istr) 
 {
-    char ch;
+    //char ch;
     istr >> broken 
 	 >> breakcount  
 	 >> breaklastiter  

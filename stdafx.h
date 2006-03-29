@@ -76,7 +76,7 @@ removed without prior written permission from the author.
 	
 	#define VRMLDIR "vrml\\"
 	#define DATADIR "data\\"
-    #define DATADIR2 "data\\"
+    //#define DATADIR2 "data\\"
 	#define REPORTDIR "reports\\"
 	#define BITMAPDIR "bitmaps\\"
 	#define TEMPDIR "temp\\"

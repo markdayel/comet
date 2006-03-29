@@ -1479,11 +1479,9 @@ int load_data(actin &theactin, int iteration)
 	sprintf(tmpdatafile, "%stempdata_%u_%u.txt", TEMPDIR,
 		(unsigned int) getpid(), (unsigned int) time(NULL) );
 
-
+	filename = DATADIR + filename;
 
 #ifndef _WIN32
-
-	filename = DATADIR2 + filename;
 
 	char command1[255];
     sprintf(command1, "gunzip --stdout %s > %s",filename.c_str(), tmpdatafile);
@@ -1493,7 +1491,6 @@ int load_data(actin &theactin, int iteration)
 
 #else
 
-	filename = DATADIR + filename;
 	ifstream ifstrm( filename.c_str() );
 
 #endif
@@ -1518,6 +1515,7 @@ int load_data(actin &theactin, int iteration)
     theactin.load_data(ifstrm);
     
     ifstrm.close();
+
 #ifndef _WIN32 
     sprintf(command1, "rm  %s",tmpdatafile);
     system(command1);
