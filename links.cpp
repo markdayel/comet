@@ -20,8 +20,8 @@ links::links(void)
 	orig_distsqr = 0.0;
 	orig_dist = 0.0;
 //	last_dist = 0.0;
-	breakcount = 0;
-	breaklastiter = 0;
+//	breakcount = 0;
+//	breaklastiter = 0;
 	broken = true;
 	linkednodeptr = 0;
 	linkednodenumber = -1;
@@ -38,8 +38,8 @@ links::links(nodes* linknodep, double dist)
 //	last_dist = dist;
 	orig_dist_recip = 1/dist;
 	broken = false;
-	breakcount = 0;
-	breaklastiter = 0;
+//	breakcount = 0;
+//	breaklastiter = 0;
 	linkednodeptr = linknodep;
 }
 
@@ -57,61 +57,29 @@ double links::getlinkforces(const double & dist)
 		double strain = dist / orig_dist;
 	    if (strain > LINK_BREAKAGE_STRAIN)
 		{
-			breakcount++;
-
-			if ( breakcount * P_LINK_BREAK_IF_OVER * DELTA_T * RAND_MAX > rand() )
-			{
-				broken = true;
-				force = 0;  
-			}
-
-		}
-		else
-		{
-			breakcount = 0;
+			broken = true;
+			force = 0;  
 		}
     }
     else
     { // just using force
 		if (-force > LINK_BREAKAGE_FORCE)
 		{   
-			//double stress_over_breakage = -force / LINK_BREAKAGE_FORCE;
-			//breakcount++;
-
-			//if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) * RAND_MAX > 
-			//		rand() )
-			//if ((++breakcount>MAX_LINK_BREAKCOUNT) && breaklastiter)
-			{
-				broken = true;
-                force = 0;
-			}
-
+			broken = true;
+            force = 0;
 		}
-		else
-		{
-			breakcount = 0;
-		}
+
     }
 
 	return force;
 }
 
-
 //double links::getlinkforces(const double & dist)
 //{  // return force (nominally in pN)
 //
-//	double force;//=0.0;
-//
 //    // calculate forces:
 //
-//    force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
-//
-//	if (dist > (orig_dist * LINK_TAUT_RATIO))
-//	{  // filaments taut:  go to high strain regime
-//
-//		force += - ( LINK_TAUT_FORCE  * 
-//            (dist - (orig_dist * LINK_TAUT_RATIO)) * orig_dist_recip );
-//    }
+//    double force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
 //
 //    // decide if link broken:
 //
@@ -120,7 +88,7 @@ double links::getlinkforces(const double & dist)
 //		double strain = dist / orig_dist;
 //	    if (strain > LINK_BREAKAGE_STRAIN)
 //		{
-//			breakcount++;
+//			//breakcount++;
 //
 //			if ( breakcount * P_LINK_BREAK_IF_OVER * DELTA_T * RAND_MAX > rand() )
 //			{
@@ -156,21 +124,14 @@ double links::getlinkforces(const double & dist)
 //		}
 //    }
 //
-//	if (VISCOSITY)
-//	{
-//		force -= VISCOSITY_FACTOR * (dist - last_dist) * NODE_DIST_TO_FORCE;
-//	}
-//
-//	last_dist = dist;
-//
 //	return force;
 //}
 //
 int links::save_data(ofstream &ostr) 
 {
     ostr << broken << " " 
-	 << breakcount << " " 
-	 << breaklastiter << " " 
+//	 << breakcount << " " 
+//	 << breaklastiter << " " 
 	 << orig_dist << " "
 //	 << last_dist << " "
 	 << linkednodeptr->nodenum;
@@ -186,8 +147,8 @@ int links::load_data(ifstream &istr)
 {
     //char ch;
     istr >> broken 
-	 >> breakcount  
-	 >> breaklastiter  
+//	 >> breakcount  
+//	 >> breaklastiter  
 	 >> orig_dist  
 //	 >> last_dist 
 	 >> linkednodenumber;
@@ -196,7 +157,7 @@ int links::load_data(ifstream &istr)
 
 void links::reset_link(void)
 {
-    breakcount = 0;
-    breaklastiter = false;
+//    breakcount = 0;
+//    breaklastiter = false;
     broken = false;
 }

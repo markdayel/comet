@@ -266,8 +266,6 @@ extern bool POST_PROCESS;
 
 extern double TOTAL_SIMULATION_TIME;  
 extern double DELTA_T;
-extern double MIN_TORQUE_TO_UPDATE;
-extern double MIN_DISPLACEMENT_TO_UPDATE;
 //extern double MAX_DISP_PERDT;
 //extern double MAX_DISP_PERDT_DIVSQRTTWO;
 extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
@@ -296,6 +294,7 @@ extern double LINK_BREAKAGE_STRAIN;
 extern double P_LINK_BREAK_IF_OVER;  // probablility that force will break link if over the link breakage force
 extern double P_XLINK;
 extern double P_NUC;
+extern double MAX_POLYMERISATION_PRESSURE;
 
 extern int BMP_WIDTH,BMP_HEIGHT;
 extern int VTK_WIDTH;
@@ -328,6 +327,8 @@ extern double INIT_B_GAIN;
 
 extern double NODE_FORCE_TO_DIST;
 extern double NODE_DIST_TO_FORCE;
+
+extern double COVERSLIPGAP;
 
 extern double IMPOSED_NUC_ROT_SPEED;
 extern bool   IMPOSED_NUC_ROT;

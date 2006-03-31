@@ -34,9 +34,9 @@ public:
 	//double last_dist;
 	//double last_but_one_dist;
 
-	int breakcount;
+	//int breakcount;
 	bool broken;	
-	bool breaklastiter;
+	//bool breaklastiter;
 	//double theta;
 	//double phi;
 

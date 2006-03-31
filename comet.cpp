@@ -37,8 +37,6 @@ int MAXNODES = 50000;
 
 double TOTAL_SIMULATION_TIME = 20000;  
 double DELTA_T = 0.1;	
-double MIN_TORQUE_TO_UPDATE = 0.2;
-double MIN_DISPLACEMENT_TO_UPDATE = 0.001;
 //double MAX_DISP_PERDT = 0.01;
 //double MAX_DISP_PERDT_DIVSQRTTWO = 0.00707;
 double GAUSSFWHM =  0.266;
@@ -147,8 +145,11 @@ bool RESTICK_TO_NUCLEATOR = true;
 double LINK_FORCE = 0.1;
 double P_XLINK =  0.5;
 double P_NUC =  0.08;
+double MAX_POLYMERISATION_PRESSURE = 1000;
+
 double RADIUS =  1.0;
 double CAPSULE_HALF_LINEAR =  6.0;
+double COVERSLIPGAP = 10000;
 
 nucleator::shape NUCSHAPE = nucleator::sphere;  //default to sphere
 
@@ -168,9 +169,9 @@ int NODES_TO_UPDATE = 5000;  //only update the NODES_TO_UPDATE newest nodes
 double DISTANCE_TO_UPDATE = 0;
 
 //double DAMPING_FACTOR = 10;
-int CROSSLINKDELAY = 20;  // number of interations before crosslinking 
-						 //  (to allow position to be equilibrated to something
-						 //       reasonable before locking node in place)
+int CROSSLINKDELAY = 200;  // number of interations before crosslinking 
+						  //  (to allow position to be equilibrated to something
+						  //       reasonable before locking node in place)
 
 double NODE_REPULSIVE_MAG =  1.5;
 double NODE_REPULSIVE_RANGE = 1.0;
@@ -335,7 +336,10 @@ int main(int argc, char* argv[])
 		} else if (strcmp( hostname, "r2d2") == 0)
 		{
 			nicelevel = 19;
-		}							
+		} else if (strcmp( hostname, "montecarlo.math.ucdavis.edu") == 0)
+		{
+			nicelevel = 19;
+		}
 		else
 		{
 			nicelevel = 19;
@@ -522,7 +526,10 @@ int main(int argc, char* argv[])
 			{ss >> VTK_VIEWANGLE;	}
 
 		else if (tag == "CROSSLINKDELAY")	  
-			{ss >> CROSSLINKDELAY;	}   
+			{ss >> CROSSLINKDELAY;	}
+		
+		else if (tag == "COVERSLIPGAP")	  
+			{ss >> COVERSLIPGAP;	}
 
 		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
 			{ss >> buff2; if (buff2=="true") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false; }
@@ -547,12 +554,6 @@ int main(int argc, char* argv[])
 
 		else if (tag == "CAGE_ON_SIDE") 
 			{ss >> buff2; if (buff2=="true") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false; }
-
-		else if (tag == "MIN_TORQUE_TO_UPDATE")	   
-			{ss >> MIN_TORQUE_TO_UPDATE;	} 
-
-		else if (tag == "MIN_DISPLACEMENT_TO_UPDATE") 
-			{ss >> MIN_DISPLACEMENT_TO_UPDATE;	} 
 
 		else if (tag == "RECORDING_INTERVAL") 
 			{ss >> RECORDING_INTERVAL;	} 
@@ -600,7 +601,10 @@ int main(int argc, char* argv[])
 			{ss >> P_LINK_BREAK_IF_OVER;	} 
 		
 		else if (tag == "LINK_FORCE") 
-			{ss >> LINK_FORCE;	}
+			{ss >> LINK_FORCE;	}	
+
+		else if (tag == "MAX_POLYMERISATION_PRESSURE") 
+			{ss >> MAX_POLYMERISATION_PRESSURE;	}
         
 		else if (tag == "STICK_TO_NUCLEATOR") 
 			{ss >> buff2; if(buff2=="true") STICK_TO_NUCLEATOR = true; else STICK_TO_NUCLEATOR = false; }
@@ -783,6 +787,7 @@ int main(int argc, char* argv[])
 			{
 				cout << "n - Run aborted" << endl;
 				cout.flush();
+				system("stty sane");
 				exit(1);
 			}
 			else
@@ -831,7 +836,7 @@ int main(int argc, char* argv[])
 
 #else
 
-	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) floor(((double) NODE_REPULSIVE_RANGE )/GRIDRES) + 1
+	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) floor(((double) NODE_REPULSIVE_RANGE )/GRIDRES) + 1;
 
 #endif
 
@@ -1049,6 +1054,7 @@ int main(int argc, char* argv[])
 	srand(rand_num_seed);
 
 	int filenum = 0;
+	double polrate = 0;
 
     char last_symbreak_bmp_filename[255] = "";
 
@@ -1067,7 +1073,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		cout << "Itternum|TotNode|Links+|Links-|dist   |Rotn   |T   |SaveNum" << endl << endl;
+		cout << "Itternum|TotNode|Pol  |Links+|Links-|dist   |Rotn   |T   |SaveNum" << endl << endl;
 
 	}
 
@@ -1088,7 +1094,10 @@ int main(int argc, char* argv[])
 
             if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
                 theactin.reservemorenodes(10000);
-			 
+			
+			if (theactin.polrate >0)
+				polrate = (double) theactin.attemptedpolrate / (double) theactin.polrate;// / (double) (i % InterRecordIterations);
+
 			if (!QUIET)
 			{
 #ifndef NOKBHIT
@@ -1116,7 +1125,7 @@ int main(int argc, char* argv[])
 								break;
 							}
 							else
-							{
+							{																				   
 								cout << "\r";
 							}
 						}
@@ -1133,9 +1142,14 @@ int main(int argc, char* argv[])
 							cout << endl << "Making movie of frames so far..." << endl;
 							cout.flush();
 							cout << endl;
-							system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//x_proj_%05d.png -vcodec mpeg4 -strict 100 x_proj.mov");
-							system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//y_proj_%05d.png -vcodec mpeg4 -strict 100 y_proj.mov");
-							system("ffmpeg -v 1 -hq -me full -qscale 1 -y -i bitmaps//z_proj_%05d.png -vcodec mpeg4 -strict 100 z_proj.mov");
+
+							if (X_BMP)
+								system("ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//x_proj_%05d.png -vcodec mpeg4 x_proj.mov");
+							if (Y_BMP)
+								system("ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//y_proj_%05d.png -vcodec mpeg4 y_proj.mov");
+							if (Z_BMP)
+								system("ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//z_proj_%05d.png -vcodec mpeg4 z_proj.mov");
+							
 							cout << endl;
 						}
 					}
@@ -1165,7 +1179,8 @@ int main(int argc, char* argv[])
 			if (!QUIET)
 			{
 				cout << "I" << setw(7) << i 
-				<< "|N"<< setw(6)<< theactin.highestnodecount
+				<< "|N" << setw(6) << theactin.highestnodecount
+				<< "|P" << setw(4) << setprecision(2) << polrate
 				<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
 				<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
 				<< "|d" << setw(6) << setprecision(3) << distfromorigin
@@ -1182,6 +1197,8 @@ int main(int argc, char* argv[])
 		
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
 		{
+		if (theactin.polrate >0)
+			polrate = (double) theactin.attemptedpolrate / (double) theactin.polrate;//nexttocrosslink;//polrate;// / (double) (i % InterRecordIterations);
 
 #ifdef NON_RANDOM
 
@@ -1209,7 +1226,8 @@ srand( rand_num_seed );
 			if (!QUIET)
 			{
 				cout << "I" << setw(7) << i 
-				<< "|N"<< setw(6)<< theactin.highestnodecount
+				<< "|N"<< setw(6) << theactin.highestnodecount
+				<< "|P" << setw(4) << setprecision(2) << polrate
 				<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
 				<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
 				<< "|d" << setw(6) << setprecision(3) << distfromorigin
@@ -1230,7 +1248,8 @@ srand( rand_num_seed );
 			else
 			{
 				cout << "PID: " << getpid()
-					<< "|N"<< setw(6)<< theactin.highestnodecount
+					<< "|N" << setw(6)<< theactin.highestnodecount
+					<< "|P" << setw(4) << setprecision(2) << polrate
 					<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
 					<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
 					<< "|d" << setw(6) << setprecision(3) << distfromorigin
@@ -1250,6 +1269,7 @@ srand( rand_num_seed );
 
 			theactin.opruninfo << "I" << setw(7) << i 
 			<< "|N"<< setw(6)<< theactin.highestnodecount
+			<< "|P" << setw(4) << setprecision(2) << polrate
 			<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
 			<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
             << "|d" << setw(6) << setprecision(3) << distfromorigin
@@ -1342,14 +1362,17 @@ srand( rand_num_seed );
 					sprintf(last_symbreak_bmp_filename, "%sz_proj_%05i.%s",BITMAPDIR, 
 							1 ,BMP_OUTPUT_FILETYPE.c_str());
 				}
-				else if (Y_BMP)
+				else 
 				{
-					sprintf(last_symbreak_bmp_filename, "%sy_proj_%05i.%s",BITMAPDIR, 
-							1 ,BMP_OUTPUT_FILETYPE.c_str());
-				} else
-				{
-					sprintf(last_symbreak_bmp_filename, "%sx_proj_%05i.%s",BITMAPDIR, 
-							1 ,BMP_OUTPUT_FILETYPE.c_str());
+					if (Y_BMP)
+					{
+						sprintf(last_symbreak_bmp_filename, "%sy_proj_%05i.%s",BITMAPDIR, 
+								1 ,BMP_OUTPUT_FILETYPE.c_str());
+					} else
+					{
+						sprintf(last_symbreak_bmp_filename, "%sx_proj_%05i.%s",BITMAPDIR, 
+								1 ,BMP_OUTPUT_FILETYPE.c_str());
+					}
 				}
 				
 
@@ -1701,12 +1724,15 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 			{
 				zfg = actin::runfg;
 			}
-			else if (Y_BMP)
+			else 
 			{
-				yfg = actin::runfg;
-			} else
-			{
-				xfg = actin::runfg;
+				if (Y_BMP)
+				{
+					yfg = actin::runfg;
+				} else
+				{
+					xfg = actin::runfg;
+				}
 			}
 
 			theactin.savebmp(filenum, actin::xaxis, xfg, true); 

@@ -50,6 +50,9 @@ public:
 	vect delta;
 	vect viscosity_velocity_sum;
 
+	double pressure;
+
+
 	vector <links> listoflinks;
 
     vect nucleator_link_force;	// force on nodes by the link to the nucleator 
@@ -147,6 +150,8 @@ public:
 	rep_force_vec.zero();
 	link_force_vec.zero();
 
+	pressure = 0;
+
 	}
 
 	inline void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag) const
@@ -167,6 +172,8 @@ public:
 
 	inline void clearstats()
 	{
+		// these stats are built up over many iterations, and cleared every readout frame
+
 		linkforce_transverse = 
 		linkforce_radial     = 
 		repforce_transverse  = 

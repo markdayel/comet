@@ -1,0 +1,85 @@
+#!/usr/local/bin/bash
+
+# Set up limit below
+NOTIFY="0.3"
+
+# admin user email id
+EMAIL="markdayel@gmail.com"
+
+
+# Os Specifc tweaks do not change anything below ;)
+OS="$(uname)"
+echo $OS
+TRUE="1"
+if [ "$OS" == "FreeBSD" ]; then
+        TEMPFILE="$(mktemp /tmp/$(basename $0).tmp.XXX)"
+     FTEXT='load averages:'
+elif [ "$OS" == "Linux" ]; then
+        TEMPFILE="$(mktemp)"
+     FTEXT='load average:'
+elif [ "$OS" == "OSF1" ]; then
+        TEMPFILE="$(mktemp)"
+     FTEXT='load average:'
+fi
+
+# Look if it crossed limit
+# compare it with last 15 min load average
+
+
+
+# get first 5 min load
+uptime="$(uptime)"
+F1M="$(echo $uptime | awk -F "$FTEXT" '{ print $2 }' | cut -d, -f1)"
+# 10 min
+F5M="$(echo $uptime | awk -F "$FTEXT" '{ print $2 }' | cut -d, -f2)"
+# 15 min
+F15M="$(echo $uptime | awk -F "$FTEXT" '{ print $2 }' | cut -d, -f3)"
+
+RESULT=$(echo "$F1M < $NOTIFY" | bc)
+
+echo "Load Average: $F1M"
+
+
+while [ "$RESULT" != "$TRUE" ]
+do
+sleep 60
+
+uptime="$(uptime)"
+F1M="$(echo $uptime | awk -F "$FTEXT" '{ print $2 }' | cut -d, -f1)"
+# 10 min
+F5M="$(echo $uptime | awk -F "$FTEXT" '{ print $2 }' | cut -d, -f2)"
+# 15 min
+F15M="$(echo $uptime | awk -F "$FTEXT" '{ print $2 }' | cut -d, -f3)"
+
+RESULT=$(echo "$F1M < $NOTIFY" | bc)
+
+echo "Load Average: $F1M"
+
+
+done
+
+# if so send an email
+if [ "$RESULT" == "$TRUE" ]; then
+	# Subject for email
+	SUBJECT="Alert $(hostname) load average $F15M"
+        echo "Sending Email" 
+
+
+	# mail message
+	# keep it short coz we may send it to page or as an short message (SMS)
+	echo "Load average Crossed allowed limit $NOTIFY." >> $TEMPFILE
+	echo "Hostname: $(hostname)" >> $TEMPFILE
+	echo "Local Date & Time : $(date)" >> $TEMPFILE	
+	echo "load average 5 mins: $F1M" >> $TEMPFILE
+	echo "load average 10 mins: $F5M" >> $TEMPFILE
+	echo "load average 15 mins: $F15M" >> $TEMPFILE
+
+
+        mail -s "$SUBJECT" "$EMAIL" < $TEMPFILE
+
+fi
+
+
+
+# remove file
+rm -f $TEMPFILE

@@ -82,7 +82,6 @@ public:
 	
 	actin(void);
 	~actin(void);
-	int nucleate();
 	int saveinfo(void);
 	int iterate(void);
 	int addlinks(const int& linknode1,const int& linknode2);
@@ -96,6 +95,7 @@ public:
 
     int lowestnodetoupdate;
 	int highestnodecount;
+	int lastsorthighestnode;
 
 	Dbl2d imageR, imageG, imageB;
 
@@ -108,7 +108,7 @@ public:
 
 	//int num_rotate, num_displace;
 
-	int crosslinknewnodes(int numnewnodes); 
+	void crosslinknewnodes(const int &numnewnodes); 
 
 	//vector <int_vect> nucleatorgrid;
 	vector <int> crosslinknodesdelay;
@@ -143,6 +143,8 @@ public:
 	int doreportmaxnodes;
 
 	bool brokensymmetry;
+
+	int attemptedpolrate, polrate;
 	
 	int setnodecols(void);
 

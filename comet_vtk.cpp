@@ -74,6 +74,8 @@
 #include "vtkCellData.h"
 #include "vtkDataSet.h"
 
+#include "vtkExporter.h"
+
 
 #include "vtkLightCollection.h"
 // vol rend
@@ -139,6 +141,7 @@ CometVtkVis::CometVtkVis(actin * theactin)
 
     setOptions();
 
+	// this is *.99 so that links on the surface don't look like they go inside the sphere
 	radius_pixels = p_actin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
     
     if(renderwin_npx == 0 || renderwin_npy == 0) {
@@ -182,10 +185,10 @@ void CometVtkVis::buildVTK(int framenumber)
 	render_win->PointSmoothingOn();
 	//render_win->PolygonSmoothingOn();
 
-	if(!OptsInteractive)	 // increase quality for non-interactive
-	{
-		render_win->SetAAFrames(10);
-	}
+	//if(!OptsInteractive)	 // increase quality for non-interactive
+	//{
+	//	render_win->SetAAFrames(5);
+	//}
 
 	//render_win->SetStereoRender(2);
 
@@ -220,7 +223,7 @@ void CometVtkVis::buildVTK(int framenumber)
     
     // if(OptsRenderText)        
     // addVoxelBound(renderer);    
-    addLight();
+    //addLight();
     
     // -- rendering
     if(OptsInteractive) {
@@ -355,7 +358,7 @@ void CometVtkVis::addVoxelBound()
 
 void CometVtkVis::saveImage(char* image_filename)
 {
-    cout << "  saving image to file: " << image_filename << endl;
+    cout << "Saving image to file: " << image_filename << endl;
   
     vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
     rwin_to_image->SetInput(render_win);
@@ -365,6 +368,13 @@ void CometVtkVis::saveImage(char* image_filename)
     png_writer->SetFileName( image_filename );
     png_writer->Write();    
     png_writer->Delete();
+
+	//vtkVRMLExporter *VRMLExporter = vtkVRMLExporter::New();'
+
+	//VRMLExporter->SetInput( rwin_to_image->GetOutput() );
+ //   VRMLExporter->SetFileName( image_filename );
+ //   VRMLExporter->Write();    
+ //   VRMLExporter->Delete();
   
     rwin_to_image->Delete();
 }
