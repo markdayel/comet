@@ -233,6 +233,10 @@ Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
 vector <int> actin::nearby_collision_gridpoint_offsets;
 
+rotationmatrix actin::torque_rotate;
+vect actin::nuc_disp;
+int actin::lowestnodetoupdate;
+
 vector<int>::iterator actin::offset_begin;
 vector<int>::iterator actin::offset_end;
 
@@ -342,7 +346,7 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			nicelevel = 19;
+			nicelevel = 0;
 		}
 
 		nice(nicelevel);
@@ -484,214 +488,214 @@ int main(int argc, char* argv[])
             continue;
 
 		if (tag == "TOTAL_SIMULATION_TIME") 
-			{ss >> TOTAL_SIMULATION_TIME; } 
+			{ss >> TOTAL_SIMULATION_TIME;} 
 
 		else if (tag == "RAND_SEED") 
-			{ss >> RAND_SEED;	}
+			{ss >> RAND_SEED;}
 
 		//else if (tag == "SAVE_DATA_PRECISION") 
-		//	{ss >> SAVE_DATA_PRECISION;	}
+		//	{ss >> SAVE_DATA_PRECISION;}
 
 		else if (tag == "DELTA_T") 
-			{ss >> DELTA_T;	}
+			{ss >> DELTA_T;}
 
 		else if (tag == "GRIDBOUNDS") 
-			{ss >> GRIDBOUNDS;	}  
+			{ss >> GRIDBOUNDS;}  
 
 		else if (tag == "MAXNODES") 
-			{ss >> MAXNODES;	}
+			{ss >> MAXNODES;}
 
 		else if (tag == "BMP_WIDTH")	  
-			{ss >> BMP_WIDTH;	}
+			{ss >> BMP_WIDTH;}
 
 		else if (tag == "BMP_HEIGHT")	  
-			{ss >> BMP_HEIGHT;	}
+			{ss >> BMP_HEIGHT;}
 
 		else if (tag == "VTK_WIDTH")	  
-			{ss >> VTK_WIDTH;	}
+			{ss >> VTK_WIDTH;}
 
 		else if (tag == "VTK_HEIGHT")	  
-			{ss >> VTK_HEIGHT;	}
+			{ss >> VTK_HEIGHT;}
 
 		else if (tag == "VTK_MOVE_WITH_BEAD") 
-			{ss >> buff2; if (buff2=="true") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false; }
+			{ss >> buff2; if (buff2=="true") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false;}
 
 		else if (tag == "VTK_AA_FACTOR")	  
-			{ss >> VTK_AA_FACTOR;	}
+			{ss >> VTK_AA_FACTOR;}
 
 		else if (tag == "VTK_LINK_COLOUR_GAMMA")	  
-			{ss >> VTK_LINK_COLOUR_GAMMA;	}
+			{ss >> VTK_LINK_COLOUR_GAMMA;}
 
 		else if (tag == "VTK_VIEWANGLE")	  
-			{ss >> VTK_VIEWANGLE;	}
+			{ss >> VTK_VIEWANGLE;}
 
 		else if (tag == "CROSSLINKDELAY")	  
-			{ss >> CROSSLINKDELAY;	}
+			{ss >> CROSSLINKDELAY;}
 		
 		else if (tag == "COVERSLIPGAP")	  
-			{ss >> COVERSLIPGAP;	}
+			{ss >> COVERSLIPGAP;}
 
 		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
-			{ss >> buff2; if (buff2=="true") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false; }
+			{ss >> buff2; if (buff2=="true") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false;}
 
 		else if (tag == "POST_BMP") 
-			{ss >> buff2; if (buff2=="true") POST_BMP = true; else POST_BMP = false; }
+			{ss >> buff2; if (buff2=="true") POST_BMP = true; else POST_BMP = false;}
 
 		else if (tag == "POST_VTK") 
-			{ss >> buff2; if (buff2=="true") POST_VTK = true; else POST_VTK = false; }
+			{ss >> buff2; if (buff2=="true") POST_VTK = true; else POST_VTK = false;}
 
 		else if (tag == "POST_REPORTS") 
-			{ss >> buff2; if (buff2=="true") POST_REPORTS = true; else POST_REPORTS = false; }
+			{ss >> buff2; if (buff2=="true") POST_REPORTS = true; else POST_REPORTS = false;}
 
 		else if (tag == "X_BMP") 
-			{ss >> buff2; if (buff2=="true") X_BMP = true; else X_BMP = false; }
+			{ss >> buff2; if (buff2=="true") X_BMP = true; else X_BMP = false;}
 
 		else if (tag == "Y_BMP") 
-			{ss >> buff2; if (buff2=="true") Y_BMP = true; else Y_BMP = false; }
+			{ss >> buff2; if (buff2=="true") Y_BMP = true; else Y_BMP = false;}
 
 		else if (tag == "Z_BMP") 
-			{ss >> buff2; if (buff2=="true") Z_BMP = true; else Z_BMP = false; }
+			{ss >> buff2; if (buff2=="true") Z_BMP = true; else Z_BMP = false;}
 
 		else if (tag == "CAGE_ON_SIDE") 
-			{ss >> buff2; if (buff2=="true") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false; }
+			{ss >> buff2; if (buff2=="true") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false;}
 
 		else if (tag == "RECORDING_INTERVAL") 
-			{ss >> RECORDING_INTERVAL;	} 
+			{ss >> RECORDING_INTERVAL;} 
 
 		else if (tag == "RESTORE_FROM_ITERATION") 
-			{ss >> RESTORE_FROM_ITERATION;	} 
+			{ss >> RESTORE_FROM_ITERATION;} 
 
 		else if (tag == "NUCLEATOR_FORCES") 
-			{ss >> NUCLEATOR_FORCES;	} 
+			{ss >> NUCLEATOR_FORCES;} 
 
 		else if (tag == "FORCE_SCALE_FACT") 
-			{ss >> FORCE_SCALE_FACT;	} 
+			{ss >> FORCE_SCALE_FACT;} 
 
 		else if (tag == "FORCE_BAR_SCALE") 
-			{ss >> FORCE_BAR_SCALE;	} 
+			{ss >> FORCE_BAR_SCALE;} 
 
 		else if (tag == "NUCLEATOR_INERTIA") 
-			{ss >> NUCLEATOR_INERTIA;	} 
+			{ss >> NUCLEATOR_INERTIA;} 
 
 		else if (tag == "XLINK_NODE_RANGE") 
-			{ss >> XLINK_NODE_RANGE;	} 
+			{ss >> XLINK_NODE_RANGE;} 
 
 		else if (tag == "SEGMENT_BINS") 
-			{ss >> buff2; if(buff2=="true") SEGMENT_BINS = true; else SEGMENT_BINS = false; }
+			{ss >> buff2; if(buff2=="true") SEGMENT_BINS = true; else SEGMENT_BINS = false;}
 
 		else if (tag == "DRAW_CAGE")
-			{ss >> buff2; if(buff2=="true") DRAW_CAGE = true; else DRAW_CAGE = false; }
+			{ss >> buff2; if(buff2=="true") DRAW_CAGE = true; else DRAW_CAGE = false;}
 
 		else if (tag == "P_XLINK") 
-			{ss >> P_XLINK;	} 
+			{ss >> P_XLINK;} 
 
 		else if (tag == "NUC_LINK_FORCE") 
-			{ss >> NUC_LINK_FORCE;	}
+			{ss >> NUC_LINK_FORCE;}
 
 		else if (tag == "NUC_LINK_BREAKAGE_FORCE") 
-			{ss >> NUC_LINK_BREAKAGE_FORCE;	}
+			{ss >> NUC_LINK_BREAKAGE_FORCE;}
 
 		else if (tag == "LINK_BREAKAGE_FORCE") 
-			{ss >> LINK_BREAKAGE_FORCE;	}
+			{ss >> LINK_BREAKAGE_FORCE;}
 
 		else if (tag == "LINK_BREAKAGE_STRAIN") 
-			{ss >> LINK_BREAKAGE_STRAIN;	} 
+			{ss >> LINK_BREAKAGE_STRAIN;} 
 
 		else if (tag == "P_LINK_BREAK_IF_OVER") 
-			{ss >> P_LINK_BREAK_IF_OVER;	} 
+			{ss >> P_LINK_BREAK_IF_OVER;} 
 		
 		else if (tag == "LINK_FORCE") 
-			{ss >> LINK_FORCE;	}	
+			{ss >> LINK_FORCE;}	
 
 		else if (tag == "MAX_POLYMERISATION_PRESSURE") 
-			{ss >> MAX_POLYMERISATION_PRESSURE;	}
+			{ss >> MAX_POLYMERISATION_PRESSURE;}
         
 		else if (tag == "STICK_TO_NUCLEATOR") 
-			{ss >> buff2; if(buff2=="true") STICK_TO_NUCLEATOR = true; else STICK_TO_NUCLEATOR = false; }
+			{ss >> buff2; if(buff2=="true") STICK_TO_NUCLEATOR = true; else STICK_TO_NUCLEATOR = false;}
 
 		else if (tag == "RESTICK_TO_NUCLEATOR") 
-			{ss >> buff2; if(buff2=="true") RESTICK_TO_NUCLEATOR = true; else RESTICK_TO_NUCLEATOR = false; }
+			{ss >> buff2; if(buff2=="true") RESTICK_TO_NUCLEATOR = true; else RESTICK_TO_NUCLEATOR = false;}
 		
 		else if (tag == "USETHREAD_COLLISION") 
-			{ss >> buff2; if(buff2=="true") USETHREAD_COLLISION = true; else USETHREAD_COLLISION = false; }
+			{ss >> buff2; if(buff2=="true") USETHREAD_COLLISION = true; else USETHREAD_COLLISION = false;}
 		
 		else if (tag == "USETHREAD_LINKFORCES") 
-			{ss >> buff2; if(buff2=="true") USETHREAD_LINKFORCES = true; else USETHREAD_LINKFORCES = false; }
+			{ss >> buff2; if(buff2=="true") USETHREAD_LINKFORCES = true; else USETHREAD_LINKFORCES = false;}
 		
 		else if (tag == "USETHREAD_APPLYFORCES") 
-			{ss >> buff2; if(buff2=="true") USETHREAD_APPLYFORCES = true; else USETHREAD_APPLYFORCES = false; } 
+			{ss >> buff2; if(buff2=="true") USETHREAD_APPLYFORCES = true; else USETHREAD_APPLYFORCES = false;} 
     	
 		else if (tag == "USE_BREAKAGE_STRAIN") 
-			{ss >> buff2; if(buff2=="true") USE_BREAKAGE_STRAIN = true; else USE_BREAKAGE_STRAIN = false; } 
+			{ss >> buff2; if(buff2=="true") USE_BREAKAGE_STRAIN = true; else USE_BREAKAGE_STRAIN = false;} 
 		
 		else if (tag == "P_NUC") 
-			{ss >> P_NUC; }
+			{ss >> P_NUC;}
 
 		else if (tag == "VISCOSITY") 
-			{ss >> buff2; if(buff2=="true") VISCOSITY = true; else VISCOSITY = false; } 
+			{ss >> buff2; if(buff2=="true") VISCOSITY = true; else VISCOSITY = false;} 
 		
 		else if (tag == "VISCOSITY_FACTOR") 
-			{ss >> VISCOSITY_FACTOR; } 
+			{ss >> VISCOSITY_FACTOR;} 
 
 		else if (tag == "VISCOSITY_EDGE_FACTOR") 
-			{ss >> VISCOSITY_EDGE_FACTOR; }
+			{ss >> VISCOSITY_EDGE_FACTOR;}
 
 		else if (tag == "VISC_DIST") 
-			{ss >> VISC_DIST; }
+			{ss >> VISC_DIST;}
 
 		else if (tag == "NON_VISC_WEIGHTING") 
-			{ss >> NON_VISC_WEIGHTING; }
+			{ss >> NON_VISC_WEIGHTING;}
 
 		else if (tag == "MAX_VISC_WEIGHTING") 
-			{ss >> MAX_VISC_WEIGHTING; }
+			{ss >> MAX_VISC_WEIGHTING;}
         
 		else if (tag == "IMPOSED_NUC_ROT_SPEED")  
-			{ss >> IMPOSED_NUC_ROT_SPEED; } 
+			{ss >> IMPOSED_NUC_ROT_SPEED;} 
 
 		else if (tag == "IMPOSED_NUC_ROT") 
-			{ss >> buff2; if(buff2=="true") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false; }
+			{ss >> buff2; if(buff2=="true") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false;}
 		
 		else if (tag == "WRITE_BMPS_PRE_SYMBREAK") 
-			{ss >> buff2; if(buff2=="true") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false; }
+			{ss >> buff2; if(buff2=="true") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false;}
 
 		else if (tag == "RADIUS") 
-			{ss >> RADIUS; } 
+			{ss >> RADIUS;} 
 		
 		else if (tag == "CAPSULE_HALF_LINEAR") 
-			{ss >> CAPSULE_HALF_LINEAR; } 
+			{ss >> CAPSULE_HALF_LINEAR;} 
 		
 		else if (tag == "MAX_LINKS_PER_NEW_NODE") 
-			{ss >> MAX_LINKS_PER_NEW_NODE; } 
+			{ss >> MAX_LINKS_PER_NEW_NODE;} 
 		
 		else if (tag == "NODE_REPULSIVE_MAG") 
-			{ss >> NODE_REPULSIVE_MAG; } 
+			{ss >> NODE_REPULSIVE_MAG;} 
 		
 		else if (tag == "NODE_REPULSIVE_RANGE") 
-			{ss >> NODE_REPULSIVE_RANGE; }
+			{ss >> NODE_REPULSIVE_RANGE;}
 
 		else if (tag == "NODE_REPULSIVE_BUCKLE_RANGE") 
-			{ss >> NODE_REPULSIVE_BUCKLE_RANGE; }
+			{ss >> NODE_REPULSIVE_BUCKLE_RANGE;}
 
 		else if (tag == "NODE_REPULSIVE_BUCKLE_MAG") 
-			{ss >> NODE_REPULSIVE_BUCKLE_MAG; }
+			{ss >> NODE_REPULSIVE_BUCKLE_MAG;}
 
 		else if (tag == "NODE_REPULSIVE_BUCKLE_TO") 
-			{ss >> NODE_REPULSIVE_BUCKLE_TO; }
+			{ss >> NODE_REPULSIVE_BUCKLE_TO;}
 
 		//else if (tag == "LINK_TAUT_FORCE") 
-		//	{ss >> LINK_TAUT_FORCE; } 
+		//	{ss >> LINK_TAUT_FORCE;} 
 		//
 		//else if (tag == "LINK_TAUT_RATIO") 
-		//	{ss >> LINK_TAUT_RATIO; }
+		//	{ss >> LINK_TAUT_RATIO;}
 		
 		else if (tag == "ASYMMETRIC_NUCLEATION") 
-			{ss >> ASYMMETRIC_NUCLEATION; } 
+			{ss >> ASYMMETRIC_NUCLEATION;} 
 		
 		else if (tag == "RADIAL_SEGMENTS") 
-			{ss >> RADIAL_SEGMENTS; } 
+			{ss >> RADIAL_SEGMENTS;} 
 		
 		else if (tag == "XLINK_NEAREST") 
-			{ss >> XLINK_NEAREST; } 
+			{ss >> XLINK_NEAREST;} 
 		
 		else if (tag == "VIEW_HEIGHT") 
 			{ss >> VIEW_HEIGHT;} 
@@ -721,22 +725,22 @@ int main(int argc, char* argv[])
 			{ss >> INIT_B_GAIN;} 
 		
 		else if (tag == "ROTATION") 
-			{ss >> buff2;if(buff2=="true")ROTATION = true;else ROTATION = false; } 
+			{ss >> buff2;if(buff2=="true")ROTATION = true;else ROTATION = false;} 
 		
 		else if (tag == "MofI") 
 			{ss >> MofI;} 
 		
 		else if (tag == "NO_IMAGE_TEXT") 
-			{ss >> buff2;if(buff2=="true") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false; } 
+			{ss >> buff2;if(buff2=="true") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false;} 
 		
 		else if (tag == "BMP_COMPRESSION") 
-			{ss >> BMP_COMPRESSION;	if (BMP_COMPRESSION > 100) BMP_COMPRESSION = 100; else if (BMP_COMPRESSION < 0)	BMP_COMPRESSION = 0;  } 
+			{ss >> BMP_COMPRESSION;	if (BMP_COMPRESSION > 100) BMP_COMPRESSION = 100; else if (BMP_COMPRESSION < 0)	BMP_COMPRESSION = 0;} 
 		
 		else if (tag == "BMP_OUTPUT_FILETYPE") 
-			{ss >> BMP_OUTPUT_FILETYPE;	} 
+			{ss >> BMP_OUTPUT_FILETYPE;} 
 		
 		else if (tag == "SHAPE") 
-			{ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere; }
+			{ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere;}
 
 		else if (tag.find("VIS") == 0)
 		{
@@ -1074,7 +1078,6 @@ int main(int argc, char* argv[])
 	else
 	{
 		cout << "Itternum|TotNode|Pol  |Links+|Links-|dist   |Rotn   |T   |SaveNum" << endl << endl;
-
 	}
 
 	lastitertime = starttime = (unsigned) time(NULL);
@@ -1154,7 +1157,6 @@ int main(int argc, char* argv[])
 						}
 					}
 				}
-			
 
 #endif
 			}

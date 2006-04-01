@@ -241,6 +241,7 @@ void CometVtkVis::buildVTK(int framenumber)
 	{
 		render_win->Render();
 		saveImage(filename);
+
 		if (VTK_AA_FACTOR!=1)
 		{
 			char command1[255];

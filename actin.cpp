@@ -198,6 +198,8 @@ actin::actin(void)
 
 	newnodescolour.setcol(0);
 
+	currentlyusingthreads = false;
+
 	//debug:
 
 	//num_rotate = 0;
@@ -536,8 +538,15 @@ int actin::savevrml(int filenum)
 }
 
 
-int actin::iterate()  // this is the main iteration loop call
+void actin::iterate()  // this is the main iteration loop call
 {
+	if (USE_THREADS)   // only use threads when we have enough nodes
+	{
+		if (highestnodecount > 400)
+			currentlyusingthreads = true;
+		else
+			currentlyusingthreads = false;
+	}
 	
 	int numnewnodes = p_nuc->addnodes();  // add new nodes
 	
@@ -568,7 +577,7 @@ int actin::iterate()  // this is the main iteration loop call
 	linkforces();			    // and link forces
 
 
-    if  (USE_THREADS && (USETHREAD_COLLISION || USETHREAD_LINKFORCES))
+    if  (currentlyusingthreads && (USETHREAD_COLLISION || USETHREAD_LINKFORCES))
     {
         thread_queue.complete_queued_tasks();
     }
@@ -576,21 +585,13 @@ int actin::iterate()  // this is the main iteration loop call
 
 	nucleator_node_interactions();	    // do forcable node ejection
 	
+	applyforces();              // move the nodes and update the grid
 
-
-	move_and_rotate();		    // move and rotation of the actin based on 
-							    // nucleator ejection data
-
-							    // Note: whole grid update (in applyforces()) 
-							    // must come immediately after move/rotate
-
-	applyforces();              // move the nodes by the forces and update the grid
-
-	squash(COVERSLIPGAP);
+	squash(COVERSLIPGAP);	 // this doesn't work
 
 	iteration_num++;
 
-	return 0;
+	return;
 }
 
 int actin::addlinks(const int& linknode1,const int& linknode2)
@@ -723,42 +724,8 @@ void actin::move_and_rotate()
 	//}
 
 
-	if (IMPOSED_NUC_ROT)
-		{
-			double x_angle = IMPOSED_NUC_ROT_SPEED * 2 * PI * DELTA_T;
-
-			rotationmatrix torque_rotate; // ( x_angle, rotationmatrix::xaxis);
-
-			torque_rotate.rotatematrix( x_angle, 0, 0);
-
-			// rotate the actin:
-			for (int i=0; i<highestnodecount; ++i)
-			{
-				torque_rotate.rotate(node[i]);
-			}
-
-			// rotate the nucleator:
-			p_nuc->nucleator_rotation.rotatematrix( -x_angle, 0, 0);
-
-			// rotate the actin reference frame:
-			actin_rotation.rotatematrix( x_angle, 0, 0);
-
-			// clear the torque vectors:
-			p_nuc->torque.zero();
-
-		}
-	else if (ROTATION)
+	if (IMPOSED_NUC_ROT || ROTATION)
 	{
-
-		// rotate const speed
-
-		double x_angle = p_nuc->torque.x / p_nuc->momentofinertia.x;
-		double y_angle = p_nuc->torque.y / p_nuc->momentofinertia.y;
-		double z_angle = p_nuc->torque.z / p_nuc->momentofinertia.z;
-
-		rotationmatrix torque_rotate; // ( x_angle, rotationmatrix::xaxis);
-
-		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);
 
 		// rotate the actin:
 		for (int i=0; i<highestnodecount; ++i)
@@ -767,15 +734,6 @@ void actin::move_and_rotate()
 				torque_rotate.rotate(node[i]);
 		}
 
-		// rotate the nucleator:
-		p_nuc->nucleator_rotation.rotatematrix( -x_angle, -y_angle, -z_angle);
-
-		// rotate the actin reference frame:
-		actin_rotation.rotatematrix( x_angle, y_angle, z_angle);
-
-		// clear the torque vectors:
-		p_nuc->torque.zero();
-	
 	}
 
 
@@ -787,45 +745,28 @@ void actin::move_and_rotate()
 			node[i]-=p_nuc->deltanucposn;
 	}
 
-
-	// rotate the nucleator displacement vector
-	p_nuc->nucleator_rotation.rotate(p_nuc->deltanucposn);
-
-	// update the nucleator position with the rotated vector
-	p_nuc->position+=p_nuc->deltanucposn;
-
-	// and zero
-	p_nuc->deltanucposn.zero();
-
 	return;
 }
 
 
-int actin::collisiondetection(void)
+void actin::collisiondetection(void)
 {
     fill(donenode.begin(), donenode.begin()+highestnodecount, false);
     
     // do collision detection
 
-    if(USE_THREADS && USETHREAD_COLLISION)
+    if(currentlyusingthreads && USETHREAD_COLLISION)
     {
 	    for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; i++)
 	    {
             // threads use the nodes_by_thread array
-            // so don't need to pass work here
+            // so don't need to pass work here, just the threadnum
             collision_thread_data_array[i].startnode = 0;
 	        collision_thread_data_array[i].endnode = 0;
 	        collision_thread_data_array[i].threadnum = i;
-    	    
-            //if (VISCOSITY)
-            //{
-            //    thread_queue.queue_task(&collisiondetectiondoworkvisc, &collision_thread_data_array[i]);
-            //}
-            //else
-            //{
-                thread_queue.queue_task(&collisiondetectiondowork, &collision_thread_data_array[i]);
-            //}
-	    
+
+            thread_queue.queue_task(&collisiondetectiondowork, &collision_thread_data_array[i]);
+    
 	    }
 
 	//thread_queue.complete_current_tasks();
@@ -837,21 +778,15 @@ int actin::collisiondetection(void)
 	    collision_thread_data_array[0].endnode = 0;
 	    collision_thread_data_array[0].threadnum = 0;
 	    
-        //if (VISCOSITY)
-        //{
-        //    collisiondetectiondoworkvisc(&collision_thread_data_array[0]);//, NULL);
-        //}
-        //else
-        //{
-            collisiondetectiondowork(&collision_thread_data_array[0]);//, NULL);
-        //}
+        collisiondetectiondowork(&collision_thread_data_array[0]);//, NULL);
+
     }
     
-    return 0;
+    return;
 }
 
 
-int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
+size_t actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum)
 {
     // create list of nodes on the same gridpoint, and on adjacent gridpoints (including same GP)
     // 	
@@ -862,7 +797,7 @@ int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const
     nodes *nodeptr, *startnodeptr;
     
 // save repeatedly dereferencing pointer by threadnum in inner loops:
-// (maybe compiler does this anyway?)
+// (maybe compiler does this anyway?)  prolly does, but loop is slow, so no harm making sure
 
     Nodes1d * const p_recti_near_nodeslist = &recti_near_nodes[threadnum];
     Nodes1d * const p_nodes_on_same_gridpoint = &nodes_on_same_gridpoint[threadnum];
@@ -1015,10 +950,7 @@ int actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, const
 	//        }
  //   }
 
-
-
-    
-    return (int) p_recti_near_nodeslist->size();
+    return p_recti_near_nodeslist->size();
 }
 
 
@@ -1047,7 +979,7 @@ void actin::findnearbynodes_collision_setup(const int& adjgridpoints)
 
 }
 
-int actin::findnearbynodes_collision(const nodes& ournode, const int& threadnum)
+size_t actin::findnearbynodes_collision(const nodes& ournode, const int& threadnum)
 {
 
 
@@ -1107,7 +1039,7 @@ int actin::findnearbynodes_collision(const nodes& ournode, const int& threadnum)
 
     }
 #endif
-    return (int) p_recti_near_nodeslist->size();
+    return p_recti_near_nodeslist->size();
 }
 
 
@@ -1300,46 +1232,85 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
 
 // ApplyForces
-int actin::applyforces(void)  // this just applys previously calculated forces (in dorepulsion())
+void actin::applyforces(void)  // this just applys previously calculated forces (in dorepulsion())
 {
+	if (highestnodecount == 0)
+		return;
+
+	// set the rotation matrix
+
+	double x_angle = 0.0;
+	double y_angle = 0.0;			
+	double z_angle = 0.0;
+
+	torque_rotate.settoidentity();
+
+	if (IMPOSED_NUC_ROT)
+	{
+		// rotate const speed
+
+		x_angle = IMPOSED_NUC_ROT_SPEED * 2 * PI * DELTA_T;
+
+		torque_rotate.rotatematrix( x_angle, 0, 0);
+
+	}
+	else if (ROTATION)
+	{
+		x_angle = p_nuc->torque.x / p_nuc->momentofinertia.x;
+		y_angle = p_nuc->torque.y / p_nuc->momentofinertia.y;
+		z_angle = p_nuc->torque.z / p_nuc->momentofinertia.z;
+
+		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);
+	}
+
+	if (IMPOSED_NUC_ROT || ROTATION)
+	{
+
+	// rotate the nucleator:
+	p_nuc->nucleator_rotation.rotatematrix( -x_angle, -y_angle, -z_angle);
+
+	// rotate the actin reference frame:
+	actin_rotation.rotatematrix( x_angle, y_angle, z_angle);
+
+	// rotate the nucleator displacement vector
+	p_nuc->nucleator_rotation.rotate(p_nuc->deltanucposn);
+
+	// update the nucleator position with the rotated vector
+	p_nuc->position+=p_nuc->deltanucposn;
+	
+	}
+
+	nuc_disp = p_nuc->deltanucposn;// store nucleator movement in static for threads
+
+	// and zero
+	p_nuc->deltanucposn.zero();
+
+	// clear the torque vector
+	p_nuc->torque.zero();
+	
+	
+
 #ifndef SEED_INSIDE
-    int numthreadnodes, start, end;
     
-    numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREAD_DATA_CHUNKS;
+	//const int lowestnodenum = lowestnodetoupdate;
+	const int lowestnodenum = 0;
 
-    // if there is a remainder, distribute it between the threads
-    if (((highestnodecount-lowestnodetoupdate) % NUM_THREAD_DATA_CHUNKS) != 0)
-        numthreadnodes += 1;
 
-    if (USE_THREADS && USETHREAD_APPLYFORCES)	
+    if (currentlyusingthreads && USETHREAD_APPLYFORCES)	
     {
-	    for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; i++)
-	    {
-	        start = i * numthreadnodes + lowestnodetoupdate;
-	        end = (i+1) * numthreadnodes + lowestnodetoupdate;
-    	    
-            // if there was a remainder, then last thread will be short, and
-            // allocation will overrun end of nodes, so truncate
-            if (end > highestnodecount)
-                end = highestnodecount;
 
-            //if (i==NUM_THREAD_DATA_CHUNKS-1)
-	        //{	// put remainder in last thread (cludge for now)
-		       // end += highestnodecount % NUM_THREAD_DATA_CHUNKS;
-	        //}
+		// add the ones up to lowestnodetoupdate
 
-  	        applyforces_thread_data_array[i].startnode = start;
-	        applyforces_thread_data_array[i].endnode = end;
-	        applyforces_thread_data_array[i].threadnum = i;
-	    
-	        thread_queue.queue_task(&applyforcesdowork, &applyforces_thread_data_array[i]);
-        }
+		if (lowestnodetoupdate > 0)
+			addapplyforcesthreads(lowestnodenum, lowestnodetoupdate);
+
+		addapplyforcesthreads(lowestnodetoupdate, highestnodecount);
 
 	    thread_queue.complete_queued_tasks();
     } 
     else 
     {
-	    applyforces_thread_data_array[0].startnode = lowestnodetoupdate;
+	    applyforces_thread_data_array[0].startnode = lowestnodenum;
 	    applyforces_thread_data_array[0].endnode = highestnodecount;
 	    applyforces_thread_data_array[0].threadnum = 0;
 
@@ -1349,14 +1320,50 @@ int actin::applyforces(void)  // this just applys previously calculated forces (
     // note: we have to updategrid() for *all* the nodes, because of
     // the rotation and translation, and we can't do it in threads because
     // of the linked list in the nodegrid
-
-    for (int i=0; i<highestnodecount; i++)
+	// this is relatively slow.  could possilbly thread this based on 
+	// xyz co-ords of nodes, if the removefromgrid function is OK
+    
+	for (int i=0; i<highestnodecount; i++)
     {
 	    node[i].updategrid(); // move the point on the grid if need to
     }
+
 #endif
-    return 0;
+    return;
 }
+
+void actin::addapplyforcesthreads(const int &lowestnodenum, const int &highestnodenum)
+{
+	if ((highestnodenum - lowestnodenum) <= 0)
+		return;
+
+	int numthreadnodes, start, end;
+
+	numthreadnodes = (highestnodenum-lowestnodenum) / NUM_THREAD_DATA_CHUNKS;
+
+	// if there is a remainder, distribute it between the threads
+	if (((highestnodenum-lowestnodenum) % NUM_THREAD_DATA_CHUNKS) != 0)
+		numthreadnodes += 1;
+
+    for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; i++)
+    {
+        start = i * numthreadnodes + lowestnodenum;
+        end = (i+1) * numthreadnodes + lowestnodenum;
+	    
+        // if there was a remainder, then last thread will be short, and
+        // allocation will overrun end of nodes, so truncate
+        if (end > highestnodenum)
+            end = highestnodenum;
+
+        applyforces_thread_data_array[i].startnode = start;
+        applyforces_thread_data_array[i].endnode = end;
+        applyforces_thread_data_array[i].threadnum = i;
+    
+        thread_queue.queue_task(&applyforcesdowork, &applyforces_thread_data_array[i]);
+    }
+
+}
+
 
 void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 {
@@ -1368,17 +1375,13 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 		if (!node[i].polymer)
 			continue;
 
-		if (!node[i].harbinger)     
-        {	// move if not harbinger
-            node[i].applyforces();  
-        }
-		else 
+		if (node[i].harbinger)
 		{   // is a harbinger, check pressure---do we depolymerise it?
-			//if (node[i].pressure > MAX_POLYMERISATION_PRESSURE)
-			//{
-			//	node[i].depolymerize();
-			//	continue;
-			//}
+			if (node[i].pressure > MAX_POLYMERISATION_PRESSURE)
+			{
+				node[i].depolymerize();
+				continue;
+			}
 
 			// special case: move harbinger if it is repelled by another harbinger, or if flag set
 			if (ALLOW_HARBINGERS_TO_MOVE || node[i].move_harbinger_this_time)
@@ -1387,12 +1390,22 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 				node[i].move_harbinger_this_time = false;
 			}
 		}
+		else
+        {	// move if not harbinger
+			torque_rotate.rotate(node[i]);	 // rotate
+			if (i >= lowestnodetoupdate) 
+			{
+				node[i] -= nuc_disp;	 // move wrt nucleator frame of ref
+				node[i].applyforces();	         // move according to forces
+			}
+        }
+
 	}
 
     return NULL;
 }
 
-int actin::linkforces()
+void actin::linkforces()
 {
 
     // remove the links for ones that were broken last time
@@ -1416,7 +1429,7 @@ int actin::linkforces()
     if (((highestnodecount-lowestnodetoupdate) % NUM_THREAD_DATA_CHUNKS) != 0)
         numthreadnodes += 1;
 
-    if (USE_THREADS && USETHREAD_LINKFORCES)
+    if (currentlyusingthreads && USETHREAD_LINKFORCES)
     {
 	    for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; i++)
 	    {
@@ -1451,7 +1464,7 @@ int actin::linkforces()
 	    linkforcesdowork(&linkforces_thread_data_array[0]);//, NULL);
     }
 
-    return 0;
+    return;
 }
 
 // LinkForces
@@ -1542,7 +1555,7 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
     return NULL;
 }
 
-int actin::setnodecols(void)
+void actin::setnodecols(void)
 {
 
 	double maxcol,mincol;
@@ -1627,7 +1640,7 @@ int actin::setnodecols(void)
 		}
 	}
 */
-	return 0;
+	return;
 }
 
 void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool writefile)

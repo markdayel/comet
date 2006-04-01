@@ -83,7 +83,7 @@ public:
 	actin(void);
 	~actin(void);
 	int saveinfo(void);
-	int iterate(void);
+	void iterate(void);
 	int addlinks(const int& linknode1,const int& linknode2);
 	int savevrml(int filenum);
 	
@@ -93,7 +93,7 @@ public:
 
     
 
-    int lowestnodetoupdate;
+    static int lowestnodetoupdate;
 	int highestnodecount;
 	int lastsorthighestnode;
 
@@ -106,6 +106,9 @@ public:
 	rotationmatrix actin_rotation, camera_rotation, camera_rotation2,
 			reverse_camera_rotation;
 
+	static rotationmatrix torque_rotate;
+	static vect nuc_disp;
+
 	//int num_rotate, num_displace;
 
 	void crosslinknewnodes(const int &numnewnodes); 
@@ -114,11 +117,13 @@ public:
 	vector <int> crosslinknodesdelay;
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
-	int collisiondetection(void);
+	void collisiondetection(void);
 	void nucleator_node_interactions(void);
 	void move_and_rotate(void);
 
-	int applyforces(void);	
+	void applyforces(void);
+	void addapplyforcesthreads(const int &lowestnodenum, const int &highestnodenum);
+
 
 	ofstream::pos_type bitmap_start;
 
@@ -128,12 +133,14 @@ public:
 	void savebmp(const int &filenum, projection proj, processfgbg fgbg, bool writefile);
 
 	nucleator* p_nuc;
-	int linkforces();
+	void linkforces();
 	Colour newnodescolour;
 	static int iteration_num;
 	int symbreakiter;
 	int linksformed;
 	int linksbroken;
+
+	bool currentlyusingthreads;
 
 	char temp_BMP_filename_x[255],
 		 temp_BMP_filename_y[255],
@@ -146,7 +153,7 @@ public:
 
 	int attemptedpolrate, polrate;
 	
-	int setnodecols(void);
+	void setnodecols(void);
 
 	vector <double> speckle_array;
 	int speckle_array_size;
@@ -170,8 +177,8 @@ public:
     //static vector <int> nodes_on_same_gridpoint_size;
 
 	//static Nodes1d nodes_within_nucleator;	
-	static int findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
-    static int findnearbynodes_collision(const nodes& ournode, const int& threadnum);
+	static size_t findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
+    static size_t findnearbynodes_collision(const nodes& ournode, const int& threadnum);
 
 	void findnearbynodes_collision_setup(const int& adjgridpoints);
 
@@ -217,15 +224,17 @@ public:
 		return (int)((double) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
 	}
 
+	inline double unpixels(const int & pix) const
+	{  // convert pixel distance into simulation distance
+		return ((double) pix / (double) BMP_HEIGHT) * (double) VIEW_HEIGHT;
+	}
+
 	inline double dbl_pixels(const double & coord) const
 	{  // convert simulation distance into pixel distance
 		return ((double) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
 	}
 	
-	inline double unpixels(const int & pix) const
-	{  // convert pixel distance into simulation distance
-		return ((double) pix / (double) BMP_HEIGHT) * (double) VIEW_HEIGHT;
-	}
+
 
 	//void removenodefromgrid(nodes* remnode)
 	//{

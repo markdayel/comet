@@ -54,8 +54,8 @@ double links::getlinkforces(const double & dist)
 
     if (USE_BREAKAGE_STRAIN)
     {	
-		double strain = dist / orig_dist;
-	    if (strain > LINK_BREAKAGE_STRAIN)
+		//double strain = dist / orig_dist;
+	    if (dist > LINK_BREAKAGE_STRAIN * orig_dist)
 		{
 			broken = true;
 			force = 0;  
@@ -73,6 +73,8 @@ double links::getlinkforces(const double & dist)
 
 	return force;
 }
+
+
 
 //double links::getlinkforces(const double & dist)
 //{  // return force (nominally in pN)
