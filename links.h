@@ -19,7 +19,7 @@ class links
 {
 public:
 	links(void);
-	links(nodes* linknodep, double dist);
+	links(nodes& linknodep, const double &dist);
 	 ~links(void);
 	//int savedata(ofstream *outputstream);
 	//int loaddata(ifstream *inputstream);

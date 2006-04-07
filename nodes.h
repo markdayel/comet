@@ -102,8 +102,8 @@ public:
 	int save_data(ofstream &ofstr);
 	int load_data(ifstream &ifstr);
 
-	int addlink(nodes* linkto, const double& dist);
-	int removelink(nodes* link);
+	int addlink(nodes& linkto, const double& dist);
+	void removelink(const nodes* linkednode);
 
 	void updategrid(void);
 	void removefromgrid(void);

@@ -88,10 +88,10 @@ public:
 	int savevrml(int filenum);
 	
 	ofstream opruninfo;
-	ofstream opvelocityinfo;
+	ofstream opvelocityinfo, opinfo;
 	ofstream outbmpfile_x,outbmpfile_y,outbmpfile_z;
 
-    
+   
 
     static int lowestnodetoupdate;
 	int highestnodecount;

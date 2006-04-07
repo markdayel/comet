@@ -31,7 +31,7 @@ links::~links(void)
 {
 }
 
-links::links(nodes* linknodep, double dist)
+links::links(nodes& linknodep, const double& dist)
 {
 	orig_distsqr = dist*dist;
 	orig_dist = dist;
@@ -40,7 +40,7 @@ links::links(nodes* linknodep, double dist)
 	broken = false;
 //	breakcount = 0;
 //	breaklastiter = 0;
-	linkednodeptr = linknodep;
+	linkednodeptr = &linknodep;
 }
 
 double links::getlinkforces(const double & dist)

@@ -47,11 +47,22 @@ actin::actin(void)
 	        cout << "Unable to open file " << "velocities.txt" << " for output";
 	        return;
 	    }
+
+		//opinfo.open("info.txt", ios::out | ios::trunc);
+	 //   if (!opinfo) 
+	 //   {
+	 //       cout << "Unable to open file " << "velocities.txt" << " for output";
+	 //       return;
+	 //   }
+
     }
     else
     {
 	    opvelocityinfo.open("/dev/null", ios::out | ios::trunc);
+		//opinfo.open("/dev/null", ios::out | ios::trunc);
     }
+
+
 
 	opvelocityinfo << "time,x,y,z,vel" << endl;
 
@@ -269,6 +280,7 @@ actin::~actin(void)
 {
 	opruninfo.close();
 	opvelocityinfo.close();
+	//opinfo.close();
 	outbmpfile_x.close();
 	outbmpfile_y.close();
 	outbmpfile_z.close();
@@ -346,12 +358,16 @@ void actin::crosslinknewnodes(const int &numnewnodes)
 			if ( distsqr < XLINK_NODE_RANGE*XLINK_NODE_RANGE)
 			{
 				linkformto.push_back(linkform( (*nearnode)->nodenum , distsqr ));
+				opinfo << sqrt(distsqr) << " ";
 				//(*(linkformto.end()-1)).nodenum = (*nearnode)->nodenum;
 				//(*(linkformto.end()-1)).distsqr = distsqr;
 
 				//addlinks(i,(*nearnode)->nodenum,distsqr);  // add link if within the node link range
 			}
 		}
+
+		if (linkformto.size() > 0)
+			opinfo << endl;
 
 		// put them in order:
 		if (XLINK_NEAREST)  // crosslink in order of distance?
@@ -360,7 +376,7 @@ void actin::crosslinknewnodes(const int &numnewnodes)
 			random_shuffle(linkformto.begin(),linkformto.end());
 
 		// and crosslink:
-		for (vector <linkform>::iterator linkto=linkformto.begin(); linkto<linkformto.end() ; linkto++ )
+		for (vector <linkform>::iterator linkto=linkformto.begin(); linkto<linkformto.end() ; ++linkto )
 		{
 			//if (i%100==0)
 			//{
@@ -371,9 +387,9 @@ void actin::crosslinknewnodes(const int &numnewnodes)
 			{	//
 				// /todo: check this - disabled max links on the linked-to node for now
 				//
-				//if (node[(*linkto).nodenum].listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
+				//if (node[linkto->nodenum].listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
 				{
-					addlinks(i,(*linkto).nodenum);
+					addlinks(i,linkto->nodenum);
 				}
 			}
 			else
@@ -599,7 +615,7 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 	// crosslink a new node
 	// returns 1 if link added, 0 if not
 
-	double pxlink;
+	
 
 	if (linknode1==linknode2) return 0; // can't link to self
 
@@ -608,6 +624,20 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 		return 0;
 
 	double dist = calcdist(node[linknode1],node[linknode2]);
+
+	// make sure the link doesn't go *through* the nucleator
+
+	nodes midpoint;
+	
+	midpoint.x = (node[linknode1].x + node[linknode2].x) / 2;
+	midpoint.y = (node[linknode1].y + node[linknode2].y) / 2;
+	midpoint.z = (node[linknode1].z + node[linknode2].z) / 2;
+
+	midpoint.setunitvec();
+
+	if (midpoint.dist_from_surface < (- 0.05 * RADIUS) )
+		return 0;
+
 
 	// crosslink poisson distribution (max probability at XLINK_NODE_RANGE/5)
 
@@ -637,12 +667,15 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 	// was using this (gaussian with max at XLINK_NODE_RANGE/2) for a bit:
 	//pxlink = exp( -40*(dist-(XLINK_NODE_RANGE/2))*(dist-(XLINK_NODE_RANGE/2)))/(dist*dist*XLINK_NODE_RANGE*XLINK_NODE_RANGE);
 	
-	pxlink = 1;
+	double pxlink = 1;
 
-	if ( P_XLINK*pxlink * RAND_MAX > rand()  )
+	//pxlink = P_XLINK * exp(-4*dist/XLINK_NODE_RANGE);
+	//double pxlink = P_XLINK * (1 - dist/XLINK_NODE_RANGE);
+
+	if ( pxlink * RAND_MAX > rand()  )
 	{
-		node[linknode1].addlink(&node[linknode2],dist); 
-		node[linknode2].addlink(&node[linknode1],dist);
+		node[linknode1].addlink(node[linknode2],dist); 
+		node[linknode2].addlink(node[linknode1],dist);
         
 		//cout << "linked " << node[linknode1].nodenum << " to " << node[linknode2].nodenum  << endl;
 	
@@ -1148,18 +1181,20 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 				    dist = sqrt(distsqr); 
                     recip_dist = 1/dist;
 
+					rep_force_mag = 13 * NODE_REPULSIVE_MAG * (exp ((-7.0*dist/NODE_REPULSIVE_RANGE)) - exp (-7.0));
+
 					//rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recip_dist - 1);
 
-					if (dist > NODE_REPULSIVE_BUCKLE_RANGE)	  // outside buckle range
-							rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recip_dist - 1) ;
+					//if (dist > NODE_REPULSIVE_BUCKLE_RANGE)	  // outside buckle range
+					//		rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recip_dist - 1) ;
 
-					else if (dist > NODE_REPULSIVE_BUCKLE_TO)						
-							rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE / 
-							NODE_REPULSIVE_BUCKLE_RANGE - 1) ;
-					else 
-						rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE / 
-							(dist + ((NODE_REPULSIVE_BUCKLE_RANGE - NODE_REPULSIVE_BUCKLE_TO) * 
-							(dist/NODE_REPULSIVE_BUCKLE_TO))) - 1) ;
+					//else if (dist > NODE_REPULSIVE_BUCKLE_TO)						
+					//		rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE / 
+					//		NODE_REPULSIVE_BUCKLE_RANGE - 1) ;
+					//else 
+					//	rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE / 
+					//		(dist + ((NODE_REPULSIVE_BUCKLE_RANGE - NODE_REPULSIVE_BUCKLE_TO) * 
+					//		(dist/NODE_REPULSIVE_BUCKLE_TO))) - 1) ;
 
 
 					// if harbinger, ramp up the repulsive forces gradually (linearly with itter no):

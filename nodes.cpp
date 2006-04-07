@@ -90,7 +90,7 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 	listoflinks.reserve(MAX_LINKS_PER_NEW_NODE*2);
 
 	colour.setcol(0);
-	creation_iter_num = ptheactin->iteration_num;
+	//creation_iter_num = ptheactin->iteration_num;	 // NB we can't go this, ptr not initialised
 	nodelinksbroken =0;
 	harbinger = true;
 //	dontupdate = false;
@@ -407,7 +407,7 @@ void nodes::setgridcoords(void)
 	return;
 } 
 
-int nodes::addlink(nodes* linkto, const double& dist)
+int nodes::addlink(nodes& linkto, const double& dist)
 {
 
 	//if (listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
@@ -420,20 +420,20 @@ int nodes::addlink(nodes* linkto, const double& dist)
 	//return false;
 }
 
-int nodes::removelink(nodes* link)
+void nodes::removelink(const nodes* linkednode)
 {
 	//  check node-nucleator repulsion
 
 	//int templinksbroken = ptheactin->linksbroken;
 
 	if (listoflinks.size()==0)
-		return 0;
+		return;
 
 	for (vector<links>::iterator i  = listoflinks.begin();
 		                         i != listoflinks.end() ;
-								  ++i )
+							   ++i )
 	{	 
-		if (i->linkednodeptr==link)
+		if (i->linkednodeptr==linkednode)
 		{
 			listoflinks.erase(i);
 			ptheactin->linksbroken++;
@@ -450,7 +450,6 @@ nodelinksbroken++;
 //	cout << "Tried to remove but link not in list " << link->nodenum << " " <<endl; 
 //}
 	
-return 0;
 }
 
 int nodes::savelinks(ofstream * outputstream)

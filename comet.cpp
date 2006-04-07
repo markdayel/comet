@@ -109,7 +109,7 @@ double XLINK_NODE_RANGE =  1.0;		// Limit crosslink to within this range
 double LINK_BREAKAGE_FORCE =  2;	 // breakage force per link
 bool USE_BREAKAGE_STRAIN = false;
 double LINK_BREAKAGE_STRAIN = 1.15;
-double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
+//double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NEW_NODE = 100;
 
 double NUCLEATOR_INERTIA = 10;
@@ -601,8 +601,8 @@ int main(int argc, char* argv[])
 		else if (tag == "LINK_BREAKAGE_STRAIN") 
 			{ss >> LINK_BREAKAGE_STRAIN;} 
 
-		else if (tag == "P_LINK_BREAK_IF_OVER") 
-			{ss >> P_LINK_BREAK_IF_OVER;} 
+		//else if (tag == "P_LINK_BREAK_IF_OVER") 
+		//	{ss >> P_LINK_BREAK_IF_OVER;} 
 		
 		else if (tag == "LINK_FORCE") 
 			{ss >> LINK_FORCE;}	
@@ -827,11 +827,7 @@ int main(int argc, char* argv[])
 	GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
 	Node_Grid_Dim = GRIDSIZE;
 
-	NODE_XLINK_GRIDSEARCH = (int) ceil(((double) XLINK_NODE_RANGE )/GRIDRES) + 2; 
-	// leave +2 because of 
-	// truncation to save time
-	// in findnearbynodes assumes grid res is > 1/2 of range
-	// and the xlink isn't called very often at all so doesn't need to be fast
+	NODE_XLINK_GRIDSEARCH = (int) floor(( XLINK_NODE_RANGE )/GRIDRES) + 1; 
 
 #ifdef PROXIMITY_VISCOSITY 
 	
@@ -1082,6 +1078,13 @@ int main(int argc, char* argv[])
 
 	lastitertime = starttime = (unsigned) time(NULL);
 
+	char infofilename[255];
+	sprintf ( infofilename , "%sinfo%05i.txt",TEMPDIR, 0 );
+	theactin.opinfo.open(infofilename, ios::out | ios::trunc);
+	if (!theactin.opinfo) 
+	{ cout << "Unable to open file " << infofilename << " for output";}
+
+
 	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++)
 	{
 
@@ -1099,7 +1102,7 @@ int main(int argc, char* argv[])
                 theactin.reservemorenodes(10000);
 			
 			if (theactin.polrate >0)
-				polrate = (double) theactin.attemptedpolrate / (double) theactin.polrate;// / (double) (i % InterRecordIterations);
+				polrate = (double) theactin.polrate/ (double) theactin.attemptedpolrate;// / (double) (i % InterRecordIterations);
 
 			if (!QUIET)
 			{
@@ -1200,7 +1203,7 @@ int main(int argc, char* argv[])
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
 		{
 		if (theactin.polrate >0)
-			polrate = (double) theactin.attemptedpolrate / (double) theactin.polrate;//nexttocrosslink;//polrate;// / (double) (i % InterRecordIterations);
+			polrate = (double) theactin.polrate/ (double) theactin.attemptedpolrate;//nexttocrosslink;//polrate;// / (double) (i % InterRecordIterations);
 
 #ifdef NON_RANDOM
 
@@ -1217,6 +1220,12 @@ srand( rand_num_seed );
 			last_center = center;
 
 			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
+
+			theactin.opinfo.close();
+			sprintf ( infofilename , "%sinfo%05i.txt",TEMPDIR, filenum );
+			theactin.opinfo.open(infofilename, ios::out | ios::trunc);
+			if (!theactin.opinfo) 
+			{ cout << "Unable to open file " << infofilename << " for output"; }
 
 			theactin.opvelocityinfo 
 				<< (i*DELTA_T) << "," 
