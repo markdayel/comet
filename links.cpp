@@ -15,6 +15,8 @@ removed without prior written permission from the author.
 #include "stdafx.h"
 #include "links.h"
 
+#define LINK_POWER_SCALE 1.5
+
 links::links(void)
 {
 	orig_distsqr = 0.0;
@@ -36,7 +38,8 @@ links::links(nodes& linknodep, const double& dist)
 	orig_distsqr = dist*dist;
 	orig_dist = dist;
 //	last_dist = dist;
-	orig_dist_recip = 1/dist;
+	orig_dist_recip = 1/orig_dist;
+	orig_dist_recip_pow = pow(orig_dist_recip,LINK_POWER_SCALE);
 	broken = false;
 //	breakcount = 0;
 //	breaklastiter = 0;
@@ -48,13 +51,14 @@ double links::getlinkforces(const double & dist)
 
     // calculate forces:
 
-    double force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
+    double force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;//_pow;
 
     // decide if link broken:
 
     if (USE_BREAKAGE_STRAIN)
     {	
-		//double strain = dist / orig_dist;
+		// since strainlimit = distlimit / orig_dist,
+		// then distlimit = strainlimit * orig_dist
 	    if (dist > LINK_BREAKAGE_STRAIN * orig_dist)
 		{
 			broken = true;
@@ -154,6 +158,10 @@ int links::load_data(ifstream &istr)
 	 >> orig_dist  
 //	 >> last_dist 
 	 >> linkednodenumber;
+
+	orig_dist_recip = 1/orig_dist;
+	orig_dist_recip_pow = pow(orig_dist_recip,LINK_POWER_SCALE);
+
     return 0;
 }
 
