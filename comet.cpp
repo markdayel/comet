@@ -111,6 +111,7 @@ bool USE_BREAKAGE_STRAIN = false;
 double LINK_BREAKAGE_STRAIN = 1.15;
 //double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NEW_NODE = 100;
+unsigned int MAX_LINK_ATTEMPTS = 20;
 
 double NUCLEATOR_INERTIA = 10;
 
@@ -163,6 +164,8 @@ int TOTAL_ITERATIONS ;
 int NODE_REPULSIVE_GRIDSEARCH ;
 int NODE_XLINK_GRIDSEARCH ;
 int NODE_REPULSIVE_RANGE_GRIDSEARCH;
+
+double LINK_POWER_SCALE = 0;
 
 int RADIAL_SEGMENTS = 12;
 int NODES_TO_UPDATE = 5000;  //only update the NODES_TO_UPDATE newest nodes
@@ -237,8 +240,8 @@ rotationmatrix actin::torque_rotate;
 vect actin::nuc_disp;
 int actin::lowestnodetoupdate;
 
-vector<int>::iterator actin::offset_begin;
-vector<int>::iterator actin::offset_end;
+vector<int>::iterator actin::nearby_collision_gridpoint_offset_begin;
+vector<int>::iterator actin::nearby_collision_gridpoint_offset_end;
 
 //Nodes1d actin::nodes_within_nucleator;
 
@@ -255,6 +258,9 @@ bool REWRITESYMBREAK = false;
 bool POST_PROCESS = false;
 
 int InterRecordIterations = 0;
+
+bool DISTANCE_TO_UPDATE_reached = false;
+bool finished_writing_sym_bitmaps = false;
 
 int load_data(actin &theactin, int iteration);
 int save_data(actin &theactin, int iteration);
@@ -337,7 +343,10 @@ int main(int argc, char* argv[])
 			strcmp( hostname, "uracil.cgl.ucsf.edu")== 0 )
 		{
 			nicelevel = 19;
-		} else if (strcmp( hostname, "r2d2") == 0)
+		} else if (strcmp( hostname, "guanine.ucsg.edu") == 0)
+		{
+			nicelevel = 0;
+		}else if (strcmp( hostname, "r2d2") == 0)
 		{
 			nicelevel = 19;
 		} else if (strcmp( hostname, "montecarlo.math.ucdavis.edu") == 0)
@@ -346,7 +355,7 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			nicelevel = 0;
+			nicelevel = 19;
 		}
 
 		nice(nicelevel);
@@ -599,9 +608,12 @@ int main(int argc, char* argv[])
 			{ss >> LINK_BREAKAGE_FORCE;}
 
 		else if (tag == "LINK_BREAKAGE_STRAIN") 
-			{ss >> LINK_BREAKAGE_STRAIN;} 
+			{ss >> LINK_BREAKAGE_STRAIN;}
 
-		//else if (tag == "P_LINK_BREAK_IF_OVER") 
+		else if (tag == "LINK_POWER_SCALE") 
+			{ss >> LINK_POWER_SCALE;}
+
+		//else if (tag == "P_LINK_BREAK_IF_OVER")	  
 		//	{ss >> P_LINK_BREAK_IF_OVER;} 
 		
 		else if (tag == "LINK_FORCE") 
@@ -644,7 +656,7 @@ int main(int argc, char* argv[])
 			{ss >> VISC_DIST;}
 
 		else if (tag == "NON_VISC_WEIGHTING") 
-			{ss >> NON_VISC_WEIGHTING;}
+			{ss >> NON_VISC_WEIGHTING;}		 
 
 		else if (tag == "MAX_VISC_WEIGHTING") 
 			{ss >> MAX_VISC_WEIGHTING;}
@@ -665,10 +677,13 @@ int main(int argc, char* argv[])
 			{ss >> CAPSULE_HALF_LINEAR;} 
 		
 		else if (tag == "MAX_LINKS_PER_NEW_NODE") 
-			{ss >> MAX_LINKS_PER_NEW_NODE;} 
+			{ss >> MAX_LINKS_PER_NEW_NODE;}
+
+        else if (tag == "MAX_LINK_ATTEMPTS") 
+			{ss >> MAX_LINK_ATTEMPTS;}
 		
 		else if (tag == "NODE_REPULSIVE_MAG") 
-			{ss >> NODE_REPULSIVE_MAG;} 
+			{ss >> NODE_REPULSIVE_MAG;}
 		
 		else if (tag == "NODE_REPULSIVE_RANGE") 
 			{ss >> NODE_REPULSIVE_RANGE;}
@@ -941,7 +956,7 @@ int main(int argc, char* argv[])
 
 	double x_angle, y_angle, z_angle, tot_rot;
 
-	bool DISTANCE_TO_UPDATE_reached = false;
+	
 
 	vect last_center, center, delta_center;
 
@@ -1249,8 +1264,8 @@ srand( rand_num_seed );
 				cout << "|S " << setw(3) <<  (int)filenum  
 					<< "/" << NUMBER_RECORDINGS;
 
-				if ((!WRITE_BMPS_PRE_SYMBREAK) && 
-					((strlen(last_symbreak_bmp_filename)!=0) || (!theactin.brokensymmetry)))
+				if ( !WRITE_BMPS_PRE_SYMBREAK && 
+					 !finished_writing_sym_bitmaps)
 					cout << "*";
 				
 				cout << endl;
@@ -1452,6 +1467,8 @@ srand( rand_num_seed );
 						*last_symbreak_bmp_filename = 0 ;
 
 						ip_last_symbreak_bmp_file.close();
+
+                        finished_writing_sym_bitmaps = true;
 					}
 				}
 
@@ -1463,6 +1480,8 @@ srand( rand_num_seed );
 
 			lastlinksformed = theactin.linksformed;
 			lastlinksbroken = theactin.linksbroken;
+
+            theactin.setdontupdates(); // todo: make sure this works
 
 			//theactin.num_rotate = 0;
 			//theactin.num_displace = 0;
@@ -1545,8 +1564,16 @@ int load_data(actin &theactin, int iteration)
     }
     
     int saved_iteration;
-    ifstrm >> saved_iteration;
+
+    ifstrm  >> saved_iteration
+            >> theactin.brokensymmetry
+            >> finished_writing_sym_bitmaps
+            >> DISTANCE_TO_UPDATE_reached
+            >> NODES_TO_UPDATE;
+
     theactin.load_data(ifstrm);
+
+    theactin.setdontupdates();
     
     ifstrm.close();
 
@@ -1560,6 +1587,18 @@ int load_data(actin &theactin, int iteration)
 	cout << "error in saved file, saved iteration." << endl;
 	return 1;
     }
+
+    // try to load sym break stuff if present
+
+    theactin.load_sym_break_axes();
+
+    if (theactin.p_nuc->segs.load_scalefactors())
+    {
+        // if we're able to load the scale factors
+        // turn off the auto-scaling
+        theactin.BMP_intensity_scaling = false;
+    }
+
     return iteration;
 }
 
@@ -1577,7 +1616,11 @@ int save_data(actin &theactin, int iteration)
     
     // write out a header  and save iteration
     ofstrm << "comet:" << endl
-	   << iteration << endl;
+	   << iteration << " " 
+       << theactin.brokensymmetry << " "
+       << finished_writing_sym_bitmaps << " "
+       << DISTANCE_TO_UPDATE_reached << " "
+       << NODES_TO_UPDATE << endl;
     
 	//ofstrm << setprecision(SAVE_DATA_PRECISION);
 
@@ -1672,13 +1715,13 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 	{
 
 		int filenum;
-		theactin.load_sym_break_axes();
-	    
-		if(nuc_object.segs.load_scalefactors() ){
-		// if we're able to load the scale factors
-		// turn off the auto-scaling
-		theactin.BMP_intensity_scaling = false;
-		}
+		//theactin.load_sym_break_axes();
+	 //   
+		//if(nuc_object.segs.load_scalefactors() ){
+		//// if we're able to load the scale factors
+		//// turn off the auto-scaling
+		//theactin.BMP_intensity_scaling = false;
+		//}
 	    
 		// vtk
 		CometVtkVis vtkvis(&theactin);
@@ -1705,7 +1748,7 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 		
 		load_data(theactin, *iteration);
 		
-		theactin.load_sym_break_axes();   // overwrite rotation matrixes
+		//theactin.load_sym_break_axes();   // overwrite rotation matrixes
 
 		if (POST_BMP || POST_REPORTS)
 		{		  

@@ -375,33 +375,38 @@ void actin::crosslinknewnodes(const int &numnewnodes)
 		else				// or in random order
 			random_shuffle(linkformto.begin(),linkformto.end());
 
+        unsigned int linkattempts = 0, successfullinks = 0;
+
 		// and crosslink:
 		for (vector <linkform>::iterator linkto=linkformto.begin(); linkto<linkformto.end() ; ++linkto )
 		{
+            if (linkattempts++ > MAX_LINK_ATTEMPTS || successfullinks == MAX_LINKS_PER_NEW_NODE)
+                break;             //node[i].listoflinks.size() == MAX_LINKS_PER_NEW_NODE)
+
+            if (addlinks(node[i],node[linkto->nodenum]))
+                successfullinks++;
+        }
+
 			//if (i%100==0)
 			//{
 			//	cout << (*linkto).distsqr << " " << node[i].listoflinks.size() 
 			//		<< " " << node[(*linkto).nodenum].listoflinks.size() << endl;
 			//}
-			if (node[i].listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
-			{	//
+			//if (node[i].listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
+			//{	//
 				// /todo: check this - disabled max links on the linked-to node for now
 				//
 				//if (node[linkto->nodenum].listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
-				{
-					addlinks(i,linkto->nodenum);
-				}
-			}
-			else
-				break;
-		}
-
+				//{
+				//addlinks(node[i],node[linkto->nodenum]);
+				//}
 		
 
 		if (!ALLOW_HARBINGERS_TO_MOVE)
-		{
+		{   // this was a harbinger---if they are not moving then force vectors 
+            // will have built up so zero them 
 			node[i].setunitvec();
-			node[i].clearforces();  // zero the forces which will have built up
+			node[i].clearforces();  
 		}
 
         if (STICK_TO_NUCLEATOR)
@@ -603,41 +608,122 @@ void actin::iterate()  // this is the main iteration loop call
 	
 	applyforces();              // move the nodes and update the grid
 
-	squash(COVERSLIPGAP);	 // this doesn't work
+	//squash(COVERSLIPGAP);	 // this doesn't work
 
 	iteration_num++;
 
 	return;
 }
 
-int actin::addlinks(const int& linknode1,const int& linknode2)
+//int actin::addlinks(const int& linknode1,const int& linknode2)
+//{
+//	// crosslink a new node
+//	// returns 1 if link added, 0 if not
+//
+//	
+//
+//	if (linknode1==linknode2) return 0; // can't link to self
+//
+//	if ((!node[linknode1].polymer) ||  // make sure polymer
+//		(!node[linknode2].polymer))  
+//		return 0;
+//
+//	double dist = calcdist(node[linknode1],node[linknode2]);
+//
+//	// make sure the link doesn't go *through* the nucleator
+//
+//	if ((node[linknode2]-node[linknode1]).dot(node[linknode1].unit_vec_posn)<0)
+//	   return 0;
+//
+//	//nodes midpoint;
+//	//
+//	//midpoint.x = (node[linknode1].x + node[linknode2].x) / 2;
+//	//midpoint.y = (node[linknode1].y + node[linknode2].y) / 2;
+//	//midpoint.z = (node[linknode1].z + node[linknode2].z) / 2;
+//
+//	//midpoint.setunitvec();
+//
+//	//if (midpoint.dist_from_surface < 0) // - 0.05 * RADIUS) )
+//	//	return 0;
+//
+//
+//	// crosslink poisson distribution (max probability at XLINK_NODE_RANGE/5)
+//
+//	//pxlink = ((double)2.7*dist/(XLINK_NODE_RANGE/(double)5))
+//	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5));
+//
+//	// divide by dist*dist to compensate for increase numbers of nodes at larger distances
+//
+//
+//
+//	//pxlink = ((( (double) 2.7 / (XLINK_NODE_RANGE/(double)5) )
+//	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5) ) ));
+//
+//	// normal distrib with center around 1/2 of XLINK_NODE_RANGE
+//	// and scale magnitude by 1/(XLINK_NODE_RANGE^2) to compensate for increased
+//	// number of nodes at this distance shell
+//
+//	//if ((node[linknode1].z <0) || (node[linknode2].z <0))
+// 	//	return 0;
+//
+//	// was using this one before 28 march:
+//	// (poissonian with max at XLINK_NODE_RANGE/5):
+//	//pxlink = ((( (double) 2.7 / (XLINK_NODE_RANGE/(double)5) )
+//	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5) ) )/dist);
+//
+//
+//	// was using this (gaussian with max at XLINK_NODE_RANGE/2) for a bit:
+//	//pxlink = exp( -40*(dist-(XLINK_NODE_RANGE/2))*(dist-(XLINK_NODE_RANGE/2)))/(dist*dist*XLINK_NODE_RANGE*XLINK_NODE_RANGE);
+//	
+//	double pxlink = 1;
+//
+//	//pxlink = P_XLINK * exp(-4*dist/XLINK_NODE_RANGE);
+//	//double pxlink = P_XLINK * (1 - dist/XLINK_NODE_RANGE);
+//
+//	if ( pxlink * RAND_MAX > rand()  )
+//	{
+//		node[linknode1].addlink(node[linknode2],dist); 
+//		node[linknode2].addlink(node[linknode1],dist);
+//        
+//		//cout << "linked " << node[linknode1].nodenum << " to " << node[linknode2].nodenum  << endl;
+//	
+//		return 1;
+//	}
+//
+//	return 0;
+//}
+
+bool actin::addlinks(nodes& linknode1,nodes& linknode2) const
 {
 	// crosslink a new node
 	// returns 1 if link added, 0 if not
 
-	
+	if (&linknode1==&linknode2) return false; // can't link to self
 
-	if (linknode1==linknode2) return 0; // can't link to self
-
-	if ((!node[linknode1].polymer) ||  // make sure polymer
-		(!node[linknode2].polymer))  
-		return 0;
-
-	double dist = calcdist(node[linknode1],node[linknode2]);
+	if ((!linknode1.polymer) ||  // make sure both are polymers
+		(!linknode2.polymer))  
+		return false;
 
 	// make sure the link doesn't go *through* the nucleator
+	// i.e. that dot product of normal and link is not < 0.1
+    // actually not 0 else gets rid of *all* the surface links
 
-	nodes midpoint;
+	if (linknode1.unit_vec_posn.dot( linknode2 - linknode1 ) < - 0.1)
+	   return false;
+
+	//nodes midpoint;
+	//
+	//midpoint.x = (node[linknode1].x + node[linknode2].x) / 2;
+	//midpoint.y = (node[linknode1].y + node[linknode2].y) / 2;
+	//midpoint.z = (node[linknode1].z + node[linknode2].z) / 2;
+
+	//midpoint.setunitvec();
+
+	//if (midpoint.dist_from_surface < 0) // - 0.05 * RADIUS) )
+	//	return 0;
+
+
 	
-	midpoint.x = (node[linknode1].x + node[linknode2].x) / 2;
-	midpoint.y = (node[linknode1].y + node[linknode2].y) / 2;
-	midpoint.z = (node[linknode1].z + node[linknode2].z) / 2;
-
-	midpoint.setunitvec();
-
-	if (midpoint.dist_from_surface < (- 0.05 * RADIUS) )
-		return 0;
-
 
 	// crosslink poisson distribution (max probability at XLINK_NODE_RANGE/5)
 
@@ -667,22 +753,26 @@ int actin::addlinks(const int& linknode1,const int& linknode2)
 	// was using this (gaussian with max at XLINK_NODE_RANGE/2) for a bit:
 	//pxlink = exp( -40*(dist-(XLINK_NODE_RANGE/2))*(dist-(XLINK_NODE_RANGE/2)))/(dist*dist*XLINK_NODE_RANGE*XLINK_NODE_RANGE);
 	
-	double pxlink = 1;
+	//double pxlink = 1;
 
-	//pxlink = P_XLINK * exp(-4*dist/XLINK_NODE_RANGE);
-	//double pxlink = P_XLINK * (1 - dist/XLINK_NODE_RANGE);
+	double dist = calcdist(linknode1,linknode2);
+
+	//double pxlink = P_XLINK * exp(-4*dist/XLINK_NODE_RANGE);
+	double pxlink = P_XLINK * (1 - dist / XLINK_NODE_RANGE);
+                                       
+    //double pxlink = P_XLINK;
 
 	if ( pxlink * RAND_MAX > rand()  )
 	{
-		node[linknode1].addlink(node[linknode2],dist); 
-		node[linknode2].addlink(node[linknode1],dist);
+		linknode1.addlink(linknode2,dist); 
+		linknode2.addlink(linknode1,dist);
         
 		//cout << "linked " << node[linknode1].nodenum << " to " << node[linknode2].nodenum  << endl;
 	
-		return 1;
+		return true;
 	}
 
-	return 0;
+	return false;
 }
 
 void actin::nucleator_node_interactions()
@@ -739,47 +829,47 @@ void actin::nucleator_node_interactions()
 	}
 
 }
-
-void actin::move_and_rotate()
-{
-
-	// do rotation
-
-	// rotate with torque:
-	//if (IMPOSED_NUC_ROT)
-	//{
-	//	vect attachement(0,1,0);
-	//	vect force(0,0,IMPOSED_NUC_ROT_SPEED * DELTA_T);
-	//	p_nuc->move_nuc(attachement,force);
-	//	attachement = -attachement;
-	//	force = -force;
-	//	p_nuc->move_nuc(attachement,force);
-	//}
-
-
-	if (IMPOSED_NUC_ROT || ROTATION)
-	{
-
-		// rotate the actin:
-		for (int i=0; i<highestnodecount; ++i)
-		{
-			if (!node[i].harbinger) //  && node[i].move_harbinger_this_time)
-				torque_rotate.rotate(node[i]);
-		}
-
-	}
-
-
-// do displacment
-
-	for (int i = 0; i<highestnodecount; i++)
-	{
-		if (!node[i].harbinger || node[i].move_harbinger_this_time)
-			node[i]-=p_nuc->deltanucposn;
-	}
-
-	return;
-}
+//
+//void actin::move_and_rotate()
+//{
+//
+//	// do rotation
+//
+//	// rotate with torque:
+//	//if (IMPOSED_NUC_ROT)
+//	//{
+//	//	vect attachement(0,1,0);
+//	//	vect force(0,0,IMPOSED_NUC_ROT_SPEED * DELTA_T);
+//	//	p_nuc->move_nuc(attachement,force);
+//	//	attachement = -attachement;
+//	//	force = -force;
+//	//	p_nuc->move_nuc(attachement,force);
+//	//}
+//
+//
+//	if (IMPOSED_NUC_ROT || ROTATION)
+//	{
+//
+//		// rotate the actin:
+//		for (int i=0; i<highestnodecount; ++i)
+//		{
+//			if (!node[i].harbinger) //  && node[i].move_harbinger_this_time)
+//				torque_rotate.rotate(node[i]);
+//		}
+//
+//	}
+//
+//
+//// do displacment
+//
+//	for (int i = 0; i<highestnodecount; i++)
+//	{
+//		if (!node[i].harbinger || node[i].move_harbinger_this_time)
+//			node[i]-=p_nuc->deltanucposn;
+//	}
+//
+//	return;
+//}
 
 
 void actin::collisiondetection(void)
@@ -1007,8 +1097,8 @@ void actin::findnearbynodes_collision_setup(const int& adjgridpoints)
         }
     }
 
-	offset_begin = nearby_collision_gridpoint_offsets.begin();
-	offset_end   = nearby_collision_gridpoint_offsets.end();
+	nearby_collision_gridpoint_offset_begin = nearby_collision_gridpoint_offsets.begin();
+	nearby_collision_gridpoint_offset_end   = nearby_collision_gridpoint_offsets.end();
 
 }
 
@@ -1056,8 +1146,8 @@ size_t actin::findnearbynodes_collision(const nodes& ournode, const int& threadn
 	
 	// nodes on adjacent gridpoints
 
-	for(vector<int>::iterator offset  = offset_begin; 
-	                          offset != offset_end;
+	for(vector<int>::iterator offset  = nearby_collision_gridpoint_offset_begin; 
+	                          offset != nearby_collision_gridpoint_offset_end;
 	                        ++offset) 
     {
 	    startnodeptr = nodeptr = *(ourgridptr+(*offset));
@@ -1085,7 +1175,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
     vect nodeposvec;
     double distsqr,dist;
-    double recip_dist;
+    //double recip_dist;
 	double rep_force_mag;
     vect rep_force_vect;
     vect disp;
@@ -1179,7 +1269,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 			    {
 				    // calc dist between nodes
 				    dist = sqrt(distsqr); 
-                    recip_dist = 1/dist;
+//                    recip_dist = 1/dist;
 
 					rep_force_mag = 13 * NODE_REPULSIVE_MAG * (exp ((-7.0*dist/NODE_REPULSIVE_RANGE)) - exp (-7.0));
 
@@ -1308,7 +1398,7 @@ void actin::applyforces(void)  // this just applys previously calculated forces 
 	actin_rotation.rotatematrix( x_angle, y_angle, z_angle);
 
 	// rotate the nucleator displacement vector
-	p_nuc->nucleator_rotation.rotate(p_nuc->deltanucposn);
+	//p_nuc->nucleator_rotation.rotate(p_nuc->deltanucposn);
 
 	// update the nucleator position with the rotated vector
 	p_nuc->position+=p_nuc->deltanucposn;
@@ -1406,7 +1496,7 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
     const thread_data* const dat = (thread_data*) arg;
 
 	for (int i=dat->startnode; i<dat->endnode; ++i)
-    {
+	{
 		if (!node[i].polymer)
 			continue;
 
@@ -1426,16 +1516,15 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 			}
 		}
 		else
-        {	// move if not harbinger
+		{	// move if not harbinger
 			torque_rotate.rotate(node[i]);	 // rotate
-			if (i >= lowestnodetoupdate) 
-			{
-				node[i] -= nuc_disp;	 // move wrt nucleator frame of ref
+			node[i] -= nuc_disp;	 // move wrt nucleator frame of ref
+			if (i>lowestnodetoupdate)
 				node[i].applyforces();	         // move according to forces
-			}
-        }
-
+		}
 	}
+
+	
 
     return NULL;
 }
@@ -2307,20 +2396,43 @@ void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl
 }
 
 
-int actin::squash(double thickness)
-{
+void actin::squash(const double & thickness)
+{   // todo: check and fix this
+
+
 	// squash with 'coverslip'
 
 	for (int i=0; i<highestnodecount; i++)
 	{
-		if (node[i].x >  thickness/2)
-			node[i].x =  thickness/2;
+        vect rotpos = node[i] - p_nuc->position;
 
-		if (node[i].x < -thickness/2)
-			node[i].x = -thickness/2;
+        p_nuc->nucleator_rotation.rotate(rotpos);
+
+        if ( (rotpos.x <= thickness/2) && (rotpos.x >= -thickness/2))
+            continue;  // not outside coverslips
+
+
+		if (rotpos.x > thickness/2)
+        {   // above
+			rotpos.x =  thickness/2;
+        }
+
+		if (rotpos.x < -thickness/2)
+        {   // below
+			rotpos.x = -thickness/2;
+        }
+
+        actin_rotation.rotate(rotpos); // rotate back
+
+        rotpos += p_nuc->position; 
+
+        node[i].x = rotpos.x;
+        node[i].y = rotpos.y;
+        node[i].z = rotpos.z;
+
 	}
 
-	return 0;
+	return;
 }
 
 
@@ -2394,8 +2506,6 @@ void actin::sortnodesbygridpoint(void)
 
 void actin::compressfilesdowork(const int & filenum)
 {
-
-	
 
 #ifndef _WIN32
 
@@ -2645,14 +2755,14 @@ int actin::load_data(ifstream &ifstr)
 }
 
 void actin::setdontupdates(void)
-{
-    if (highestnodecount > NODES_TO_UPDATE)
-	{
-        lowestnodetoupdate = highestnodecount - NODES_TO_UPDATE;
-	} else
-	{
-		lowestnodetoupdate = 0;
-	}
+{    // this doesn't work
+ //   if (highestnodecount > NODES_TO_UPDATE)
+	//{
+ //       lowestnodetoupdate = highestnodecount - NODES_TO_UPDATE;
+	//} else
+	//{
+	//	lowestnodetoupdate = 0;
+	//}
 }
 
 void actin::set_sym_break_axes(void)

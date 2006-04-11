@@ -1213,9 +1213,9 @@ void CometVtkVis::addLinks()
 	if(OptsShadeLinks) {
 	  vect displacement = nodeposvec - *(link_i->linkednodeptr);
 	  double distance = displacement.length();      
-	  double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
-	  double y = strain / LINK_BREAKAGE_STRAIN;
-	  //double y = fabs( link_i->getlinkforces( distance) ) / LINK_BREAKAGE_FORCE;
+	  //double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
+	  //double y = strain / LINK_BREAKAGE_STRAIN;
+	  double y = fabs( link_i->getlinkforces( distance) ) / LINK_BREAKAGE_FORCE;
 	  //y = (5+log(y))/5;	 // log transform	    
 	  //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
 	  y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    

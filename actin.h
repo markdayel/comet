@@ -84,7 +84,8 @@ public:
 	~actin(void);
 	int saveinfo(void);
 	void iterate(void);
-	int addlinks(const int& linknode1,const int& linknode2);
+	//int addlinks(const int& linknode1,const int& linknode2);
+	bool addlinks(nodes& linknode1, nodes& linknode2) const;
 	int savevrml(int filenum);
 	
 	ofstream opruninfo;
@@ -119,7 +120,7 @@ public:
 	
 	void collisiondetection(void);
 	void nucleator_node_interactions(void);
-	void move_and_rotate(void);
+	//void move_and_rotate(void);
 
 	void applyforces(void);
 	void addapplyforcesthreads(const int &lowestnodenum, const int &highestnodenum);
@@ -170,8 +171,8 @@ public:
 	static Nodes2d recti_near_nodes;
 	static Nodes2d nodes_on_same_gridpoint;
 	static vector <int> nearby_collision_gridpoint_offsets;
-	static vector <int>::iterator offset_begin;
-	static vector <int>::iterator offset_end;
+	static vector <int>::iterator nearby_collision_gridpoint_offset_begin;
+	static vector <int>::iterator nearby_collision_gridpoint_offset_end;
 
     //static vector <int> recti_near_nodes_size;
     //static vector <int> nodes_on_same_gridpoint_size;
@@ -205,7 +206,7 @@ public:
 	//static void *compressfilesthread(void* threadarg);
 	void compressfilesdowork(const int & filenum);   
 
-	int squash(double thickness);
+	void squash(const double & thickness);
 	void sortnodesbygridpoint(void);
 	int nexttocrosslink;
 	int find_center(vect &center);

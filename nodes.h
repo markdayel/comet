@@ -41,6 +41,7 @@ public:
     int nodenum;
 
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
+	//vect nearest_surface_point;
 
 	vect link_force_vec;  
 	
@@ -192,6 +193,7 @@ public:
 		{
             dist_from_surface = this->length();	 // not really dist_from_surface yet, need to subtract radius
             unit_vec_posn = *this * (1/dist_from_surface);  // set unit vector position
+			//nearest_surface_point = unit_vec_posn
 			dist_from_surface -= RADIUS;
 
 		}
@@ -203,7 +205,7 @@ public:
 				dist_from_surface = calcdist(x,y);   // not really dist_from_surface yet, need to subtract radius
 				unit_vec_posn = vect(x/dist_from_surface, y/dist_from_surface, 0);
 				dist_from_surface -= RADIUS;
-
+				//nearest_surface_point = unit_vec_posn + vect(0,0,z);
 				onseg = true;
 
 			}
@@ -221,6 +223,7 @@ public:
 
                     unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
 
+					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
 
 					dist_from_surface -= RADIUS;
 
@@ -233,6 +236,8 @@ public:
                     dist_from_surface = offsetvec.length();	 // not really dist_from_surface yet, need to subtract radius
 
                     unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
+
+					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
 
 					dist_from_surface -= RADIUS;
 

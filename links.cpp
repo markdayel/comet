@@ -15,15 +15,12 @@ removed without prior written permission from the author.
 #include "stdafx.h"
 #include "links.h"
 
-#define LINK_POWER_SCALE 1.5
+//#define LINK_POWER_SCALE 1.5
 
 links::links(void)
 {
 	orig_distsqr = 0.0;
 	orig_dist = 0.0;
-//	last_dist = 0.0;
-//	breakcount = 0;
-//	breaklastiter = 0;
 	broken = true;
 	linkednodeptr = 0;
 	linkednodenumber = -1;
@@ -33,17 +30,14 @@ links::~links(void)
 {
 }
 
-links::links(nodes& linknodep, const double& dist)
+links::links(nodes& linknode, const double& dist)
 {
 	orig_distsqr = dist*dist;
 	orig_dist = dist;
-//	last_dist = dist;
 	orig_dist_recip = 1/orig_dist;
-	orig_dist_recip_pow = pow(orig_dist_recip,LINK_POWER_SCALE);
+	strengthscalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
 	broken = false;
-//	breakcount = 0;
-//	breaklastiter = 0;
-	linkednodeptr = &linknodep;
+	linkednodeptr = &linknode;
 }
 
 double links::getlinkforces(const double & dist)
@@ -51,7 +45,7 @@ double links::getlinkforces(const double & dist)
 
     // calculate forces:
 
-    double force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;//_pow;
+    double force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip * strengthscalefactor;
 
     // decide if link broken:
 
@@ -67,7 +61,7 @@ double links::getlinkforces(const double & dist)
     }
     else
     { // just using force
-		if (-force > LINK_BREAKAGE_FORCE)
+		if (-force > LINK_BREAKAGE_FORCE * strengthscalefactor)
 		{   
 			broken = true;
             force = 0;
@@ -79,95 +73,28 @@ double links::getlinkforces(const double & dist)
 }
 
 
-
-//double links::getlinkforces(const double & dist)
-//{  // return force (nominally in pN)
-//
-//    // calculate forces:
-//
-//    double force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip;
-//
-//    // decide if link broken:
-//
-//    if (USE_BREAKAGE_STRAIN)
-//    {	
-//		double strain = dist / orig_dist;
-//	    if (strain > LINK_BREAKAGE_STRAIN)
-//		{
-//			//breakcount++;
-//
-//			if ( breakcount * P_LINK_BREAK_IF_OVER * DELTA_T * RAND_MAX > rand() )
-//			{
-//				broken = true;
-//				force = 0;  
-//			}
-//
-//		}
-//		else
-//		{
-//			breakcount = 0;
-//		}
-//    }
-//    else
-//    { // just using force
-//		if (-force > LINK_BREAKAGE_FORCE)
-//		{   
-//			double stress_over_breakage = -force / LINK_BREAKAGE_FORCE;
-//			breakcount++;
-//
-//			if ( (breakcount*P_LINK_BREAK_IF_OVER*DELTA_T*stress_over_breakage) * RAND_MAX > 
-//					rand() )
-//			//if ((++breakcount>MAX_LINK_BREAKCOUNT) && breaklastiter)
-//			{
-//				broken = true;
-//                force = 0;
-//			}
-//
-//		}
-//		else
-//		{
-//			breakcount = 0;
-//		}
-//    }
-//
-//	return force;
-//}
-//
 int links::save_data(ofstream &ostr) 
 {
     ostr << broken << " " 
-//	 << breakcount << " " 
-//	 << breaklastiter << " " 
-	 << orig_dist << " "
-//	 << last_dist << " "
-	 << linkednodeptr->nodenum;
-
-    //if(linkednodeptr != NULL)
-    //	ostr << linkednodeptr->nodenum;
-    //  else
-    //ostr << -1;
+		 << orig_dist << " "
+		 << linkednodeptr->nodenum;
+	
     return 0;
 }
 
 int links::load_data(ifstream &istr) 
 {
-    //char ch;
     istr >> broken 
-//	 >> breakcount  
-//	 >> breaklastiter  
-	 >> orig_dist  
-//	 >> last_dist 
-	 >> linkednodenumber;
+		 >> orig_dist  
+		 >> linkednodenumber;
 
 	orig_dist_recip = 1/orig_dist;
-	orig_dist_recip_pow = pow(orig_dist_recip,LINK_POWER_SCALE);
+	strengthscalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
 
     return 0;
 }
 
 void links::reset_link(void)
 {
-//    breakcount = 0;
-//    breaklastiter = false;
     broken = false;
 }

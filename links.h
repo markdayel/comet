@@ -30,7 +30,7 @@ public:
 	double orig_distsqr;
 	double orig_dist;
 	double orig_dist_recip;
-	double orig_dist_recip_pow;
+	double strengthscalefactor;
 
 	//double last_dist;
 	//double last_but_one_dist;

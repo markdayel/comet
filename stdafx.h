@@ -35,8 +35,8 @@ removed without prior written permission from the author.
 
 #ifdef _WIN32
 
-	#pragma warning(disable: 4511) // unable to generate copy constructor
-	#pragma warning(disable: 4512)
+	//#pragma warning(disable: 4511) // unable to generate copy constructor
+	//#pragma warning(disable: 4512)
 
 	#pragma warning(disable: 4127)  // constant conditional expression
 
@@ -54,7 +54,7 @@ removed without prior written permission from the author.
 #define COMET_PARAMS_FILE "cometparams.ini"
 
 // whether to use windows commands (/ or \ etc)
-// this is not strictly a _WIN32 thing, since we may be using cygwin
+// this is not necessarily a _WIN32 switch, since we may be using cygwin
 #ifdef _WIN32
 	#define USEWINDOWSCOMMANDS
 #endif
@@ -310,6 +310,8 @@ extern string BMP_OUTPUT_FILETYPE;
 
 extern bool QUIET;
 
+extern double LINK_POWER_SCALE;
+
 extern bool X_BMP;										 
 extern bool Y_BMP;
 extern bool Z_BMP;
@@ -355,6 +357,7 @@ extern double NODE_REPULSIVE_BUCKLE_MAG;
 extern double NODE_REPULSIVE_BUCKLE_TO;
 extern int InterRecordIterations;
 extern unsigned int MAX_LINKS_PER_NEW_NODE;
+extern unsigned int MAX_LINK_ATTEMPTS;
 
 extern int RADIAL_SEGMENTS;
 extern int XLINK_NEAREST;
