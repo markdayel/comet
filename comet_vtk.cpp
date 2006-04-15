@@ -1259,7 +1259,7 @@ double CometVtkVis::getMeanNodeLinkForce(const int id)
     vect displacement;
     vect nodeposvec = p_actin->node[id];
     for(vector<links>::iterator i=p_actin->node[id].listoflinks.begin(); 
-	i<p_actin->node[id].listoflinks.end(); i++ ) {	 
+	i!=p_actin->node[id].listoflinks.end(); i++ ) {	 
 	displacement = nodeposvec - *(i->linkednodeptr);
 	distance = displacement.length();      
 	strain = distance / i->orig_dist;

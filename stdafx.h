@@ -21,17 +21,30 @@ removed without prior written permission from the author.
 //#define LINK_VISCOSITY 1
 #define PROXIMITY_VISCOSITY 1
 
+// this doesn't seem to affect speed at all
 //#define NODE_GRID_USE_ARRAYS 1
+
+// NODEGRIDTYPE should be 'list' or 'vector'
+// vector seems quite a bit faster
+//#define NODEGRIDTYPELIST 1
+
+#ifdef NODEGRIDTYPELIST
+    #define NODEGRIDTYPE list
+#else
+    #define NODEGRIDTYPE vector
+#endif
 
 //#define NOKBHIT 1
 #define VTK_USE_ANSI_STDLIB
 
 #ifdef NODE_GRID_USE_ARRAYS
-	#define NODEGRID(i,j,k)  *(nodegrid + ((((Node_Grid_Dim*Node_Grid_Dim*(i)) + (Node_Grid_Dim*(j)) + (k)))))
+	#define NODEGRID(i,j,k)  (*(nodegrid + ((((Node_Grid_Dim*Node_Grid_Dim*(i)) + (Node_Grid_Dim*(j)) + (k))))))
 #else
 	#define NODEGRID(i,j,k)	 nodegrid[(i)][(j)][(k)]
 #endif
 
+const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per node
+                                              // OK if goes over
 
 #ifdef _WIN32
 
@@ -122,7 +135,8 @@ removed without prior written permission from the author.
 #include <time.h>
 #include <sys/types.h>
 #include <sys/timeb.h>
-#include <vector> 
+#include <vector>
+#include <list>
 
 //#define _NUMA 1
 
@@ -180,9 +194,7 @@ extern bool DRAW_CAGE;
 //extern pthread_attr_t thread_attr;
 //extern vector<pthread_t>  threads;
 
-extern vector<struct thread_data>  collision_thread_data_array;
-extern vector<struct thread_data>  linkforces_thread_data_array;
-extern vector<struct thread_data>  applyforces_thread_data_array;
+
 
 //extern vector<sem_t> collision_thread_go;
 //extern vector<sem_t> collision_data_done;
@@ -208,14 +220,6 @@ extern vector<struct thread_data>  applyforces_thread_data_array;
 
 //extern vector<pthread_mutex_t> collisiondetectiongolock_mutex;
 //extern vector<pthread_mutex_t> collisiondetectiondonelock_mutex;
-
-struct thread_data
-{
-int startnode;
-int endnode;
-int threadnum;
-};
-
 
 
 // math related:
@@ -422,19 +426,38 @@ typedef vector<nodes*> Nodes1d;
 typedef vector<Nodes1d> Nodes2d;
 typedef vector<Nodes2d> Nodes3d;
 
+typedef NODEGRIDTYPE<nodes*> NG1d;
+typedef vector<NG1d> NG2d;
+typedef vector<NG2d> NG3d;
+typedef vector<NG3d> NG4d;
+
 typedef vector<signed char> Bool1d;
 typedef vector<Bool1d> Bool2d;
 
 typedef vector<double> Dbl1d;
 typedef vector<Dbl1d> Dbl2d;
 
+struct thread_data
+{
+vector <nodes>::iterator startnode;
+vector <nodes>::iterator endnode;
+int threadnum;
+};
+
+extern vector<struct thread_data>  collision_thread_data_array;
+extern vector<struct thread_data>  linkforces_thread_data_array;
+extern vector<struct thread_data>  applyforces_thread_data_array;
+
+
 #ifdef NODE_GRID_USE_ARRAYS
-	extern nodes** __restrict nodegrid;
+	extern NG1d* nodegrid;
+    // extern nodes** __restrict nodegrid;
 #else
-	extern Nodes3d nodegrid;
+	//extern Nodes3d nodegrid;
+    extern NG4d nodegrid;
 #endif
 
-extern int Node_Grid_Dim;
+extern unsigned int Node_Grid_Dim;
 
 #include "links.h"
 #include "actin.h"

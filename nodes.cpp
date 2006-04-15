@@ -28,11 +28,11 @@ creation_iter_num(0)
 //, ptheactin(NULL)
 //: local_NODE_FORCE_TO_DIST(DELTA_T * FORCE_SCALE_FACT)
 {
-	nextnode = this;  // initialise to point to self
-	prevnode = this;
+//	nextnode = this;  // initialise to point to self
+//	prevnode = this;
 	
 	x = y = z = 0.0;
-	//gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
+	gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
 	
     link_force_vec.zero();
 	rep_force_vec.zero();
@@ -44,9 +44,11 @@ creation_iter_num(0)
 
     nucleator_link_force.zero();
 
+    listoflinks.reserve(MAX_EXPECTED_LINKS);
+
 	//threadnum = 0;
 
-	listoflinks.reserve(MAX_LINKS_PER_NEW_NODE*2);
+	//listoflinks.reserve(MAX_LINKS_PER_NEW_NODE*2);
 
     //insidenucleator = false;
 	//polymer = false;
@@ -72,8 +74,8 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 //: local_NODE_FORCE_TO_DIST(DELTA_T * FORCE_SCALE_FACT)
 {
 	gridx = gridy = gridz = -1;	
-    nextnode = this;  // initialise to point to self
-	prevnode = this;
+//    nextnode = this;  // initialise to point to self
+//	prevnode = this;
 
 	link_force_vec.zero();
 	rep_force_vec.zero();
@@ -87,7 +89,7 @@ nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
 
 	threadnum = 0;
 
-	listoflinks.reserve(MAX_LINKS_PER_NEW_NODE*2);
+	listoflinks.reserve(MAX_EXPECTED_LINKS);
 
 	colour.setcol(0);
 	//creation_iter_num = ptheactin->iteration_num;	 // NB we can't go this, ptr not initialised
@@ -124,7 +126,7 @@ bool nodes::depolymerize(void)
 	polymer = false;
 
 	// remove all back links
-	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
+	for (vector <links>::iterator i=listoflinks.begin(); i!=listoflinks.end() ; ++i )
 	{	 
 		i->linkednodeptr->removelink(this);
 	}
@@ -147,8 +149,8 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 
 	polymer = true ;
 
-	nextnode = this;  // initialise to point to self
-	prevnode = this;
+//	nextnode = this;  // initialise to point to self
+//	prevnode = this;
 
 	setgridcoords(); // set grid by x,y,z
 	addtogrid();     // add node to the grid
@@ -196,10 +198,10 @@ int nodes::save_data(ofstream &ostr)
     
     // now the links
     ostr << (unsigned int) listoflinks.size() << ")";
-    for(vector<links>::iterator l=listoflinks.begin(); l<listoflinks.end(); ++l)
+    for(vector<links>::iterator l=listoflinks.begin(); l!=listoflinks.end(); ++l)
     {
-	l->save_data(ostr);
-	ostr << " ";
+	    l->save_data(ostr);
+	    ostr << " ";
     }
     
     // done
@@ -254,14 +256,16 @@ int nodes::load_data(ifstream &istrm)
     }							
   
     listoflinks.clear(); // note doesn't free memory
-    listoflinks.resize(linklistsize);
+    //listoflinks.resize(linklistsize);
 
-    for(int i=0; i<linklistsize; ++i)
+    for(int i=0; i != linklistsize; ++i)
     {	 
 	// construct the links and add to vector
-	links link;
-	link.load_data(istrm);
-	listoflinks[i] = link;
+	//links link;
+	//link.load_data(istrm);
+        //listoflinks.push_back(links());
+        //listoflinks.back().load_data(istrm);
+        listoflinks.push_back(links(istrm));
 	//istrm >> ch;
     }
     // note we don't set pointer or build the grid here
@@ -269,7 +273,10 @@ int nodes::load_data(ifstream &istrm)
     // stored by the actin.  The actin knows that.
 
     setunitvec();
-	updategrid();
+
+    // only add to grid if not doing the post-process:
+    if (!REWRITESYMBREAK && !POST_PROCESS)
+	    updategrid();
 
     return 0;
 }
@@ -349,53 +356,99 @@ void nodes::updategrid(void)
 void nodes::removefromgrid(void)
 {
 	// are we on the grid?
-	if (gridx==-1) return;  // return if now
+	if (gridx==-1) return;  // return if not
 
-	// are we the only grid node?
-		if ((nextnode==this) &&
-			(NODEGRID(gridx,gridy,gridz) == this))
-		{	// if so, just delete the grid reference
-			NODEGRID(gridx,gridy,gridz) = 0;
+    for (NODEGRIDTYPE <nodes*>::iterator i  = NODEGRID(gridx,gridy,gridz).begin();
+		                          i != NODEGRID(gridx,gridy,gridz).end() ;
+							    ++i )
+	{	 
+		if (this==*i)
+		{
+			NODEGRID(gridx,gridy,gridz).erase(i);
+			break;
 		}
-		else
-		{	// other nodes on grid
-			if (NODEGRID(gridx,gridy,gridz) == this)
-			{  // if we're the grid reference set ref to next node
-				NODEGRID(gridx,gridy,gridz) = nextnode;
-			}
+	}
 
-            nextnode->prevnode = prevnode;  //  remove self from circular list
-			prevnode->nextnode = nextnode;
-
-		}
-
-		gridx=gridy=gridz=-1;
+	gridx=gridy=gridz=-1;
 
 	return;
 }
 
 void nodes::addtogrid(void)
 {
+    NODEGRID(gridx,gridy,gridz).push_back(this);
+
 	// are we already on the grid?
 	//if (gridx!=-1) return 0;
 
 	// is the new grid node empty?
-	if ((NODEGRID(gridx,gridy,gridz) == 0))
-	{	// if so, just add self to the grid reference
-		NODEGRID(gridx,gridy,gridz) = this;
-		nextnode = prevnode = this;  // and loop to self
-	}
-	else
-	{	// otherwise sew into loop
-		nextnode = NODEGRID(gridx,gridy,gridz);  // our next is the grid
-		prevnode = nextnode->prevnode;  //our new previous is the new next's old previous
+	//if ((NODEGRID(gridx,gridy,gridz) == 0))
+	//{	// if so, just add self to the grid reference
+	//	NODEGRID(gridx,gridy,gridz) = this;
+	//	nextnode = prevnode = this;  // and loop to self
+	//}
+	//else
+	//{	// otherwise sew into loop
+	//	nextnode = NODEGRID(gridx,gridy,gridz);  // our next is the grid
+	//	prevnode = nextnode->prevnode;  //our new previous is the new next's old previous
 
-		nextnode->prevnode = this;  // and we are theirs
-		prevnode->nextnode = this;
-	}
+	//	nextnode->prevnode = this;  // and we are theirs
+	//	prevnode->nextnode = this;
+	//}
 
 	return;
 }
+//
+//void nodes::removefromgrid(void)
+//{
+//	// are we on the grid?
+//	if (gridx==-1) return;  // return if now
+//
+//	// are we the only grid node?
+//		if ((nextnode==this) &&
+//			(NODEGRID(gridx,gridy,gridz) == this))
+//		{	// if so, just delete the grid reference
+//			NODEGRID(gridx,gridy,gridz) = 0;
+//		}
+//		else
+//		{	// other nodes on grid
+//			if (NODEGRID(gridx,gridy,gridz) == this)
+//			{  // if we're the grid reference set ref to next node
+//				NODEGRID(gridx,gridy,gridz) = nextnode;
+//			}
+//
+//            nextnode->prevnode = prevnode;  //  remove self from circular list
+//			prevnode->nextnode = nextnode;
+//
+//		}
+//
+//		gridx=gridy=gridz=-1;
+//
+//	return;
+//}
+//
+//void nodes::addtogrid(void)
+//{
+//	// are we already on the grid?
+//	//if (gridx!=-1) return 0;
+//
+//	// is the new grid node empty?
+//	if ((NODEGRID(gridx,gridy,gridz) == 0))
+//	{	// if so, just add self to the grid reference
+//		NODEGRID(gridx,gridy,gridz) = this;
+//		nextnode = prevnode = this;  // and loop to self
+//	}
+//	else
+//	{	// otherwise sew into loop
+//		nextnode = NODEGRID(gridx,gridy,gridz);  // our next is the grid
+//		prevnode = nextnode->prevnode;  //our new previous is the new next's old previous
+//
+//		nextnode->prevnode = this;  // and we are theirs
+//		prevnode->nextnode = this;
+//	}
+//
+//	return;
+//}
 
 void nodes::setgridcoords(void)
 {  
@@ -410,14 +463,11 @@ void nodes::setgridcoords(void)
 int nodes::addlink(nodes& linkto, const double& dist)
 {
 
-	//if (listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
-	//{
-		listoflinks.push_back(links(linkto,dist));
-		(ptheactin->linksformed)++;
-		return true;
-	//}
+	listoflinks.push_back(links(linkto,dist));
+	(ptheactin->linksformed)++;    // NB this is not thread safe! (not big deal if it messes up, 
+                                   // since it's only for diagnostics
+	return true;
 
-	//return false;
 }
 
 void nodes::removelink(const nodes* linkednode)
@@ -429,8 +479,10 @@ void nodes::removelink(const nodes* linkednode)
 	if (listoflinks.size()==0)
 		return;
 
-	for (vector<links>::iterator i  = listoflinks.begin();
-		                         i != listoflinks.end() ;
+    // find the link to erase
+
+	for (vector <links>::iterator i  = listoflinks.begin();
+		                        i != listoflinks.end() ;
 							   ++i )
 	{	 
 		if (i->linkednodeptr==linkednode)
@@ -459,7 +511,7 @@ int nodes::savelinks(ofstream * outputstream)
 
 	*outputstream << nodenum << " " << (unsigned int) listoflinks.size();
 
-	for (vector <links>::iterator i=listoflinks.begin(); i<listoflinks.end() ; i++ )
+	for (vector <links>::iterator i=listoflinks.begin(); i!=listoflinks.end() ; ++i )
 	{	 
 		*outputstream << " " << i->linkednodeptr->nodenum;
 	}

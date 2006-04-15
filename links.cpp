@@ -35,9 +35,15 @@ links::links(nodes& linknode, const double& dist)
 	orig_distsqr = dist*dist;
 	orig_dist = dist;
 	orig_dist_recip = 1/orig_dist;
+    orig_distsqr = dist*dist;
 	strengthscalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
 	broken = false;
 	linkednodeptr = &linknode;
+}
+
+links::links(ifstream &istr)
+{
+    load_data(istr);
 }
 
 double links::getlinkforces(const double & dist)
@@ -90,6 +96,10 @@ int links::load_data(ifstream &istr)
 
 	orig_dist_recip = 1/orig_dist;
 	strengthscalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
+    orig_distsqr = orig_dist*orig_dist;
+
+    // note cannot set the node pointer yet
+    // linkednodeptr = &linknode;
 
     return 0;
 }

@@ -35,8 +35,8 @@ public:
 	bool move_harbinger_this_time;
 
 	actin* ptheactin;
-	nodes* nextnode;
-	nodes* prevnode;
+	//nodes* nextnode;
+	//nodes* prevnode;
 
     int nodenum;
 

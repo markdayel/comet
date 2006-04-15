@@ -28,6 +28,8 @@ removed without prior written permission from the author.
 // #include "nucleator.h"
 // #include "string.h"
 
+
+
 double GRIDBOUNDS =  50.0;	  // size of grid in um (i.e. bead can move half of this from origin)
 double GRIDRES    =   0.8;	  // low res grid range
 
@@ -50,7 +52,7 @@ int VTK_WIDTH  = 800;
 int VTK_HEIGHT = 600;
 int VTK_AA_FACTOR = 1;
 double VTK_LINK_COLOUR_GAMMA = 1.8;
-bool VTK_MOVE_WITH_BEAD = false;
+bool VTK_MOVE_WITH_BEAD = true;
 
 double INIT_R_GAIN = 20;
 double INIT_G_GAIN = 20;
@@ -220,14 +222,14 @@ vector<struct thread_data>  applyforces_thread_data_array;
 // these variables need to be static/global for sharing across threads:
 
 
-
 #ifdef NODE_GRID_USE_ARRAYS
-	nodes** __restrict nodegrid;
+	NG1d* nodegrid;
 #else
-	Nodes3d nodegrid;
+	//Nodes3d nodegrid;
+    NG4d nodegrid;
 #endif
 
-int Node_Grid_Dim;
+unsigned int Node_Grid_Dim;
 
 vector <nodes>	actin::node;
 vector <bool>   actin::donenode;	
@@ -410,8 +412,7 @@ int main(int argc, char* argv[])
 	// data for threads (managed outside queue
 	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
 	linkforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
-	applyforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
-
+	applyforces_thread_data_array.resize(4 * NUM_THREAD_DATA_CHUNKS);
 
 	// make directories
 
@@ -1506,7 +1507,11 @@ srand( rand_num_seed );
 	theactin.opruninfo << endl << "Time : " 
 		<< ((endtime-starttime) / 3600) << "h " 
 		<< ((endtime-starttime) / 60) % 60 << "m " 
-		<< ((endtime-starttime) % 60) << "s " << endl;;	
+		<< ((endtime-starttime) % 60) << "s " << endl;
+    
+    // allow imagemagick to catch up before calling actin destructor and 
+    // deleting the temp bitmap files
+    system("sleep 5");
 	
 	exit(EXIT_SUCCESS);
 }

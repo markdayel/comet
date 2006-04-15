@@ -123,7 +123,7 @@ public:
 	//void move_and_rotate(void);
 
 	void applyforces(void);
-	void addapplyforcesthreads(const int &lowestnodenum, const int &highestnodenum);
+	void addapplyforcesthreads(const int threadnumoffset, const int &lowestnodenum, const int &highestnodenum);
 
 
 	ofstream::pos_type bitmap_start;
@@ -179,7 +179,7 @@ public:
 
 	//static Nodes1d nodes_within_nucleator;	
 	static size_t findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
-    static size_t findnearbynodes_collision(const nodes& ournode, const int& threadnum);
+    //static size_t findnearbynodes_collision(const nodes& ournode, const int& threadnum);
 
 	void findnearbynodes_collision_setup(const int& adjgridpoints);
 
