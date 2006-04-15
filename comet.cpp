@@ -89,14 +89,14 @@ bool Z_BMP = true;
 //bool FORCES_ON_SIDE = true;
 
 bool NO_IMAGE_TEXT = false;
-int BMP_COMPRESSION = 75;
+int BMP_COMPRESSION = 95;
 string BMP_OUTPUT_FILETYPE = "png";
 
 //int REPORT_AVERAGE_ITTERATIONS = 50;
 
 int RECORDED_TIMESTEPS=200;			// number of recorded timesteps(data files)
 
-int RESTORE_FROM_ITERATION = 0; // =0 don't load a checkpoint 
+int RESTORE_FROM_FRAME = 0; // =0 don't load a checkpoint 
 int RECORDING_INTERVAL = 0;
 int NUMBER_RECORDINGS = 0;
 
@@ -125,6 +125,9 @@ double NUC_LINK_BREAKAGE_FORCE = 2;
 
 double IMPOSED_NUC_ROT_SPEED = 1;
 bool   IMPOSED_NUC_ROT = false;
+
+double TEST_SQUASH_SPEED = 1;
+bool TEST_SQUASH = false;
 
 bool WRITE_BMPS_PRE_SYMBREAK = false;
 
@@ -223,7 +226,7 @@ vector<struct thread_data>  applyforces_thread_data_array;
 
 
 #ifdef NODE_GRID_USE_ARRAYS
-	NG1d* nodegrid;
+	NG1d* __restrict nodegrid;
 #else
 	//Nodes3d nodegrid;
     NG4d nodegrid;
@@ -316,6 +319,9 @@ int main(int argc, char* argv[])
 
 		if (strcmp(argv[2], "q") == 0 || strcmp(argv[2], "Q") == 0)
 			QUIET = true;
+
+
+
 	} 
 		
 	if (argc > 3) 
@@ -464,6 +470,7 @@ int main(int argc, char* argv[])
 	system(command1);
 #endif
 
+    bool ABORT = false;
 			
     int RAND_SEED = -1; 
 
@@ -572,8 +579,8 @@ int main(int argc, char* argv[])
 		else if (tag == "RECORDING_INTERVAL") 
 			{ss >> RECORDING_INTERVAL;} 
 
-		else if (tag == "RESTORE_FROM_ITERATION") 
-			{ss >> RESTORE_FROM_ITERATION;} 
+		else if (tag == "RESTORE_FROM_FRAME") 
+			{ss >> RESTORE_FROM_FRAME;} 
 
 		else if (tag == "NUCLEATOR_FORCES") 
 			{ss >> NUCLEATOR_FORCES;} 
@@ -667,7 +674,13 @@ int main(int argc, char* argv[])
 
 		else if (tag == "IMPOSED_NUC_ROT") 
 			{ss >> buff2; if(buff2=="true") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false;}
-		
+
+        else if (tag == "TEST_SQUASH") 
+			{ss >> buff2; if(buff2=="true") TEST_SQUASH = true; else TEST_SQUASH = false;}
+
+        else if (tag == "TEST_SQUASH_SPEED")  
+			{ss >> TEST_SQUASH_SPEED;}
+
 		else if (tag == "WRITE_BMPS_PRE_SYMBREAK") 
 			{ss >> buff2; if(buff2=="true") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false;}
 
@@ -974,21 +987,21 @@ int main(int argc, char* argv[])
 	// initialse from a checkpoint if requested
 	int starting_iter = 1;
 
-	if (RESTORE_FROM_ITERATION != 0)
+	if (RESTORE_FROM_FRAME != 0)
 	{
 		cout << "Loading data...";
 		cout.flush();
 
-	    load_data(theactin, RESTORE_FROM_ITERATION);
+        cout << "Restoring from frame "
+			 << RESTORE_FROM_FRAME << endl;
 
-	    cout << "restored from iteration "
-			 << RESTORE_FROM_ITERATION << endl;
+	    load_data(theactin, RESTORE_FROM_FRAME * InterRecordIterations);
 
         // srand( (unsigned) 200 );
 	    // cout << "reseeded: " << rand() << endl;
 
-	    starting_iter = RESTORE_FROM_ITERATION; 
-		//	starting_iter = RESTORE_FROM_ITERATION + 1; // don't overwrite
+	    starting_iter = RESTORE_FROM_FRAME * InterRecordIterations; 
+		//	starting_iter = RESTORE_FROM_FRAME + 1; // don't overwrite
 
         if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
             theactin.reservemorenodes(10000);
@@ -1143,6 +1156,7 @@ int main(int argc, char* argv[])
 							if (( ch=='y' ) || ( ch=='Y'))
 							{
 								cout << "y - Run aborted" << endl;
+                                ABORT = true;
 								cout.flush();
 								break;
 							}
@@ -1511,7 +1525,8 @@ srand( rand_num_seed );
     
     // allow imagemagick to catch up before calling actin destructor and 
     // deleting the temp bitmap files
-    system("sleep 5");
+    if (!ABORT)
+        system("sleep 5");
 	
 	exit(EXIT_SUCCESS);
 }

@@ -22,7 +22,7 @@ removed without prior written permission from the author.
 #define PROXIMITY_VISCOSITY 1
 
 // this doesn't seem to affect speed at all
-//#define NODE_GRID_USE_ARRAYS 1
+#define NODE_GRID_USE_ARRAYS 1
 
 // NODEGRIDTYPE should be 'list' or 'vector'
 // vector seems quite a bit faster
@@ -326,7 +326,7 @@ extern double NON_VISC_WEIGHTING;
 
 extern double GAUSSFWHM;
 extern double SPECKLE_FACTOR;
-extern bool SPECKLE;
+extern bool   SPECKLE;
 extern double INIT_R_GAIN;
 extern double INIT_G_GAIN;
 extern double INIT_B_GAIN;
@@ -338,6 +338,9 @@ extern double COVERSLIPGAP;
 
 extern double IMPOSED_NUC_ROT_SPEED;
 extern bool   IMPOSED_NUC_ROT;
+
+extern double TEST_SQUASH_SPEED;
+extern bool   TEST_SQUASH;
 
 extern bool WRITE_BMPS_PRE_SYMBREAK;
 
@@ -450,7 +453,7 @@ extern vector<struct thread_data>  applyforces_thread_data_array;
 
 
 #ifdef NODE_GRID_USE_ARRAYS
-	extern NG1d* nodegrid;
+	extern NG1d* __restrict nodegrid;
     // extern nodes** __restrict nodegrid;
 #else
 	//extern Nodes3d nodegrid;

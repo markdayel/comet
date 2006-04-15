@@ -175,7 +175,7 @@ CometVtkVis::~CometVtkVis()
 void CometVtkVis::buildVTK(int framenumber)
 {
     char filename[255];
-    sprintf(filename , "%s%s_%05i.png", VTKDIR, file_prefix.c_str(), framenumber);
+    sprintf(filename , "%s%s_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, BMP_OUTPUT_FILETYPE.c_str());
   
     renderer = vtkRenderer::New();
     render_win = vtkRenderWindow::New();
@@ -246,8 +246,8 @@ void CometVtkVis::buildVTK(int framenumber)
 		{
 			char command1[255];
 			sprintf(command1, 
- "%s -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
-				IMAGEMAGICKMOGRIFY, 100/(double)VTK_AA_FACTOR,  
+ "%s -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
+				IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,  
 			    framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
 			//cout << command1 << endl;
 			system(command1);
