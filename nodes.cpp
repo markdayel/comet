@@ -14,6 +14,7 @@ removed without prior written permission from the author.
 
 #include "stdafx.h"
 #include "nodes.h"
+#include "actin.h"
 
 nodes::nodes(void) :
 onseg(false),
@@ -21,47 +22,32 @@ polymer(false),
 harbinger(true),
 stucktonucleator(false),
 move_harbinger_this_time(false),
+links_broken(0),
 threadnum(0),
 gridx(-1),gridy(-1),gridz(-1),
-nodelinksbroken(0),
-creation_iter_num(0)
-//, ptheactin(NULL)
-//: local_NODE_FORCE_TO_DIST(DELTA_T * FORCE_SCALE_FACT)
+nodegridptr(NULL)
 {
-//	nextnode = this;  // initialise to point to self
-//	prevnode = this;
-	
+
+    threadnum = 0;
+    testnode = false;
+    creation_iter_num = 0;
+
 	x = y = z = 0.0;
-	gridx = gridy = gridz = -1;  //note this is meaningless unless polymer==true
-	
     link_force_vec.zero();
 	rep_force_vec.zero();
-    //viscous_force_vec.zero();
+
 	nuc_repulsion_displacement_vec.zero();
-    //viscous_force_recip_dist_sum = 0;
 
 	unit_vec_posn.zero();
 
     nucleator_link_force.zero();
 
+    posnoflastgridupdate.zero();
+
     listoflinks.reserve(MAX_EXPECTED_LINKS);
 
-	//threadnum = 0;
-
-	//listoflinks.reserve(MAX_LINKS_PER_NEW_NODE*2);
-
-    //insidenucleator = false;
-	//polymer = false;
 	colour.setcol(0);
-	//creation_iter_num = 0;
-	//nodelinksbroken = 0;
-	//harbinger = true;
-//	dontupdate = false;
-
-	//move_harbinger_this_time = false;
-
-    //stucktonucleator = false;
-    
+ 
 	nucleator_stuck_position.zero();
 
 	clearforces();
@@ -69,44 +55,39 @@ creation_iter_num(0)
 
 }
 
-nodes::nodes(const double& set_x, const double& set_y,const double& set_z)
-//: ptheactin(pactin)
-//: local_NODE_FORCE_TO_DIST(DELTA_T * FORCE_SCALE_FACT)
+nodes::nodes(const double& set_x, const double& set_y,const double& set_z):
+onseg(false),
+harbinger(true),
+stucktonucleator(false),
+move_harbinger_this_time(false),
+links_broken(0)
 {
-	gridx = gridy = gridz = -1;	
-//    nextnode = this;  // initialise to point to self
-//	prevnode = this;
+    threadnum = 0;
+    testnode = false;
+    creation_iter_num = 0;
 
 	link_force_vec.zero();
 	rep_force_vec.zero();
-    //viscous_force_vec.zero();
-	nuc_repulsion_displacement_vec.zero();
-    //viscous_force_recip_dist_sum = 0;
+
+    nuc_repulsion_displacement_vec.zero();
 
     nucleator_link_force.zero();
 
 	clearstats();
 
-	threadnum = 0;
-
 	listoflinks.reserve(MAX_EXPECTED_LINKS);
 
 	colour.setcol(0);
-	//creation_iter_num = ptheactin->iteration_num;	 // NB we can't go this, ptr not initialised
-	nodelinksbroken =0;
-	harbinger = true;
-//	dontupdate = false;
-//    insidenucleator = false;
+    
+    nucleator_stuck_position.zero();
+    clearforces();
+
+    nodegridptr = NULL;
+    gridx = gridy = gridz = -1;
+    creation_iter_num = 0;
+    polymer = false;
 
 	polymerize(set_x,  set_y,  set_z);
-
-    stucktonucleator = false;
-    nucleator_stuck_position.zero();
-
-	clearforces();
-
-	move_harbinger_this_time = false;
-
 }											    
 
 nodes::~nodes(void)
@@ -115,12 +96,9 @@ nodes::~nodes(void)
 
 
 
-
-
 bool nodes::depolymerize(void) 
 {	
 	removefromgrid();
-	//ptheactin->removenodefromgrid(this);
 	
 	x = y = z = 0.0;
 	polymer = false;
@@ -144,18 +122,13 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 	x = set_x;
 	y = set_y;
 	z = set_z;
-	
-	//lastpos=*this; 
 
 	polymer = true ;
 
-//	nextnode = this;  // initialise to point to self
-//	prevnode = this;
-
 	setgridcoords(); // set grid by x,y,z
 	addtogrid();     // add node to the grid
-	//ptheactin->addnodetogrid(this);     // add node to the grid
-	unit_vec_posn=this->unitvec();
+
+    unit_vec_posn = this->unitvec();
 
 	colour=ptheactin->newnodescolour;
 
@@ -164,8 +137,6 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 	harbinger = true;
 
     setunitvec();
-
-	//colour.setcol(x);
 
 	return true;
 }
@@ -177,6 +148,7 @@ int nodes::save_data(ofstream &ostr)
 	 << x << " " << y << " " << z << " " 
 	 << harbinger << " " 
 	 << polymer << " " 
+     << testnode << " "
 	 << colour.r << " " << colour.g << " " << colour.b << " "
 	 << delta.x << " "
 	 << delta.y << " "
@@ -215,10 +187,11 @@ int nodes::load_data(ifstream &istrm)
     // read in from the stream to our private data
     char ch;    
     istrm >> nodenum 
-	  >> x  >> y  >> z 
+	  >> x >> y >> z 
 	  >> harbinger  
-	  >> polymer 
-	  >> colour.r  >> colour.g  >> colour.b 
+	  >> polymer
+      >> testnode
+	  >> colour.r >> colour.g >> colour.b 
 	  >> delta.x 
       >> delta.y 
       >> delta.z 
@@ -253,29 +226,28 @@ int nodes::load_data(ifstream &istrm)
 	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
 	     << endl;
 	return 1;
-    }							
-  
-    listoflinks.clear(); // note doesn't free memory
-    //listoflinks.resize(linklistsize);
+    }
+
+    // use resize(0) if we can, to save reallocating memory
+#ifdef NODEGRIDTYPELIST
+    listoflinks.clear();
+#else
+    listoflinks.resize(0);
+#endif
 
     for(int i=0; i != linklistsize; ++i)
     {	 
-	// construct the links and add to vector
-	//links link;
-	//link.load_data(istrm);
-        //listoflinks.push_back(links());
-        //listoflinks.back().load_data(istrm);
         listoflinks.push_back(links(istrm));
-	//istrm >> ch;
     }
+
     // note we don't set pointer or build the grid here
     // because we need to be sure this is the node
     // stored by the actin.  The actin knows that.
 
     setunitvec();
 
-    // only add to grid if not doing the post-process:
-    if (!REWRITESYMBREAK && !POST_PROCESS)
+    // only add to grid if doing normal run or a post-process that needs links:
+    if (POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
 	    updategrid();
 
     return 0;
@@ -284,7 +256,12 @@ int nodes::load_data(ifstream &istrm)
 
 void nodes::updategrid(void)
 {
-	int gridtmpx, gridtmpy, gridtmpz;
+    // check if node has moved far enough since last update to warrent another update
+    if ((fabs(posnoflastgridupdate.x - x) < gridscanjitter) &&
+        (fabs(posnoflastgridupdate.y - y) < gridscanjitter) &&
+        (fabs(posnoflastgridupdate.z - z) < gridscanjitter))
+        return;  // no, then just skip the update
+
 	int oldgridx = gridx;			// store old grid pos'n
 	int oldgridy = gridy;
 	int oldgridz = gridz;
@@ -292,35 +269,31 @@ void nodes::updategrid(void)
 	setgridcoords();				// set gridx,y,z by x,y,z position
 	//setunitvec();	
 
-	if	((gridx != oldgridx) ||		// has the node moved gridpoints?
-		 (gridy != oldgridy) || 
-		 (gridz != oldgridz))
-	{
-		// node moved, check not out of grid bounds
-		if ((gridx > GRIDSIZE) ||
-			(gridy > GRIDSIZE) ||
-			(gridz > GRIDSIZE) ||
-			(gridx < 0) ||
-			(gridy < 0) ||
-			(gridz < 0)) 
-		{  
-			cout << "Node out of grid bounds, deleted:" << x << " " << y << " " << z << endl;
+	if	((gridx == oldgridx) &&		// has the node moved gridpoints?
+		 (gridy == oldgridy) && 
+		 (gridz == oldgridz))
+         return;  // no, then skip the update
 
-			gridx = oldgridx;
-			gridy = oldgridy;
-			gridz = oldgridz;
+	// node moved, check not out of grid bounds
+	if ((gridx > GRIDSIZE) ||
+		(gridy > GRIDSIZE) ||
+		(gridz > GRIDSIZE) ||
+		(gridx < 0) ||
+		(gridy < 0) ||
+		(gridz < 0)) 
+	{  
+		cout << "Node out of grid bounds, deleted:" << x << " " << y << " " << z << endl;
 
-			depolymerize();
+		gridx = oldgridx;
+		gridy = oldgridy;
+		gridz = oldgridz;
 
-			return;
-		}
-	}
+		depolymerize();
 
-	else
-	{  // not moved - return
 		return;
 	}
 
+ 	int gridtmpx, gridtmpy, gridtmpz;
 
 	// move the node in the grid array
 
@@ -334,7 +307,6 @@ void nodes::updategrid(void)
 		gridtmpz = gridz; gridz = oldgridz;
 
 		removefromgrid();
-		//ptheactin->removenodefromgrid(this);
 
 		gridx = gridtmpx;  // restore new grid co-ords
 		gridy = gridtmpy;
@@ -347,7 +319,6 @@ void nodes::updategrid(void)
 	if (polymer)
 	{
 		addtogrid();
-		//ptheactin->addnodetogrid(this);
 	}
 			
 	return;
@@ -356,99 +327,63 @@ void nodes::updategrid(void)
 void nodes::removefromgrid(void)
 {
 	// are we on the grid?
-	if (gridx==-1) return;  // return if not
+	if (nodegridptr==NULL) return;  // return if not on grid
 
-    for (NODEGRIDTYPE <nodes*>::iterator i  = NODEGRID(gridx,gridy,gridz).begin();
-		                          i != NODEGRID(gridx,gridy,gridz).end() ;
-							    ++i )
+    // find the node
+    for (NODEGRIDTYPE <nodes*>::iterator i_node  = nodegridptr->begin();
+		                                 i_node != nodegridptr->end() ;
+							           ++i_node )
 	{	 
-		if (this==*i)
+		if (this == *i_node)
 		{
-			NODEGRID(gridx,gridy,gridz).erase(i);
+            // remove node
+			nodegridptr->erase(i_node);
 			break;
 		}
 	}
 
-	gridx=gridy=gridz=-1;
+	gridx = gridy = gridz = -1; // undo grid co-ords
+    
+    posnoflastgridupdate.zero();
+
+    // erase these elsewhere
+
+    //if(nodegridptr->size() == 0)  // check if emptied gridpoint
+    //{   // if so, remove gridpoint from the list
+    //    for (vector <vector <nodes*>*>::iterator i_gp  = ptheactin->gridpointsbythread.begin();
+		  //                                      i_gp != ptheactin->gridpointsbythread.end() ;
+				//			                ++i_gp )
+	   // {	 
+		  //  if (nodegridptr == *i_gp)
+		  //  {
+    //            // renove node
+			 //   ptheactin->gridpointsbythread.erase(i_gp);
+			 //   break;
+		  //  }
+	   // }  
+    //}
+
+    nodegridptr = NULL;
 
 	return;
 }
 
-void nodes::addtogrid(void)
+void nodes::addtogrid()
 {
-    NODEGRID(gridx,gridy,gridz).push_back(this);
+    nodegridptr = &NODEGRID(gridx,gridy,gridz);
 
-	// are we already on the grid?
-	//if (gridx!=-1) return 0;
+    //if(nodegridptr->size() == 0)  // check new gridpoint if so add this gridpoint to list
+    //{
+    //    ptheactin->gridpointsbythread[ptheactin->currentsmallestgridthread].push_back(nodegridptr);
+    //    ptheactin->currentsmallestgridthread = (ptheactin->currentsmallestgridthread + 1) % NUM_THREAD_DATA_CHUNKS;
+    //}
 
-	// is the new grid node empty?
-	//if ((NODEGRID(gridx,gridy,gridz) == 0))
-	//{	// if so, just add self to the grid reference
-	//	NODEGRID(gridx,gridy,gridz) = this;
-	//	nextnode = prevnode = this;  // and loop to self
-	//}
-	//else
-	//{	// otherwise sew into loop
-	//	nextnode = NODEGRID(gridx,gridy,gridz);  // our next is the grid
-	//	prevnode = nextnode->prevnode;  //our new previous is the new next's old previous
+    nodegridptr->push_back(this); // add to nodegrid
 
-	//	nextnode->prevnode = this;  // and we are theirs
-	//	prevnode->nextnode = this;
-	//}
+    posnoflastgridupdate = *this;
 
 	return;
 }
-//
-//void nodes::removefromgrid(void)
-//{
-//	// are we on the grid?
-//	if (gridx==-1) return;  // return if now
-//
-//	// are we the only grid node?
-//		if ((nextnode==this) &&
-//			(NODEGRID(gridx,gridy,gridz) == this))
-//		{	// if so, just delete the grid reference
-//			NODEGRID(gridx,gridy,gridz) = 0;
-//		}
-//		else
-//		{	// other nodes on grid
-//			if (NODEGRID(gridx,gridy,gridz) == this)
-//			{  // if we're the grid reference set ref to next node
-//				NODEGRID(gridx,gridy,gridz) = nextnode;
-//			}
-//
-//            nextnode->prevnode = prevnode;  //  remove self from circular list
-//			prevnode->nextnode = nextnode;
-//
-//		}
-//
-//		gridx=gridy=gridz=-1;
-//
-//	return;
-//}
-//
-//void nodes::addtogrid(void)
-//{
-//	// are we already on the grid?
-//	//if (gridx!=-1) return 0;
-//
-//	// is the new grid node empty?
-//	if ((NODEGRID(gridx,gridy,gridz) == 0))
-//	{	// if so, just add self to the grid reference
-//		NODEGRID(gridx,gridy,gridz) = this;
-//		nextnode = prevnode = this;  // and loop to self
-//	}
-//	else
-//	{	// otherwise sew into loop
-//		nextnode = NODEGRID(gridx,gridy,gridz);  // our next is the grid
-//		prevnode = nextnode->prevnode;  //our new previous is the new next's old previous
-//
-//		nextnode->prevnode = this;  // and we are theirs
-//		prevnode->nextnode = this;
-//	}
-//
-//	return;
-//}
 
 void nodes::setgridcoords(void)
 {  
@@ -460,48 +395,37 @@ void nodes::setgridcoords(void)
 	return;
 } 
 
-int nodes::addlink(nodes& linkto, const double& dist)
+void nodes::addlink(nodes& linkto, const double& dist)
 {
 
 	listoflinks.push_back(links(linkto,dist));
-	(ptheactin->linksformed)++;    // NB this is not thread safe! (not big deal if it messes up, 
-                                   // since it's only for diagnostics
-	return true;
+	ptheactin->linksformed++;
 
+	return;
 }
+
 
 void nodes::removelink(const nodes* linkednode)
 {
-	//  check node-nucleator repulsion
-
-	//int templinksbroken = ptheactin->linksbroken;
-
 	if (listoflinks.size()==0)
 		return;
 
     // find the link to erase
 
 	for (vector <links>::iterator i  = listoflinks.begin();
-		                        i != listoflinks.end() ;
-							   ++i )
+		                          i != listoflinks.end() ;
+							    ++i )
 	{	 
-		if (i->linkednodeptr==linkednode)
+		if (i->linkednodeptr == linkednode)
 		{
 			listoflinks.erase(i);
+            
+            links_broken++;
 			ptheactin->linksbroken++;
+
 			break;
-			//continue;
 		}
 	}
-
-nodelinksbroken++;
-
-//if (templinksbroken == ptheactin->linksbroken)
-//{
-//	// didn't remove the link for some reason
-//	cout << "Tried to remove but link not in list " << link->nodenum << " " <<endl; 
-//}
-	
 }
 
 int nodes::savelinks(ofstream * outputstream)

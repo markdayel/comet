@@ -110,9 +110,9 @@ using namespace std; // REVISIT only iostream probably temporary -- remove later
 // whatever is requested will be added to the visualisation, it's up to the user to set 
 // sensible and compatible options.
 
-CometVtkVis::CometVtkVis(actin * theactin)
+CometVtkVis::CometVtkVis()//actin * theactin)
 {
-    p_actin = theactin;
+    //ptheactin = theactin;
 
     voxel_scale = 4.0;
     p_scale = 100;
@@ -142,7 +142,7 @@ CometVtkVis::CometVtkVis(actin * theactin)
     setOptions();
 
 	// this is *.99 so that links on the surface don't look like they go inside the sphere
-	radius_pixels = p_actin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
+	radius_pixels = ptheactin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
     
     if(renderwin_npx == 0 || renderwin_npy == 0) {
 	if(OptsInteractive) {
@@ -181,14 +181,14 @@ void CometVtkVis::buildVTK(int framenumber)
     render_win = vtkRenderWindow::New();
     renderer->SetBackground(0, 0, 0);		
 
-	render_win->LineSmoothingOn();
-	render_win->PointSmoothingOn();
+	//render_win->LineSmoothingOn();
+	//render_win->PointSmoothingOn();
 	//render_win->PolygonSmoothingOn();
 
-	//if(!OptsInteractive)	 // increase quality for non-interactive
-	//{
-	//	render_win->SetAAFrames(5);
-	//}
+	if(!OptsInteractive)	 // increase quality for non-interactive
+	{
+		render_win->SetAAFrames(5);
+	}
 
 	//render_win->SetStereoRender(2);
 
@@ -271,7 +271,7 @@ void CometVtkVis::addAxes()
     vtkAxes *axes = vtkAxes::New();
     VTK_FLOAT_PRECISION origin[3] = {0.0, 0.0, 0.0};
     axes->SetOrigin( origin );
-    axes->SetScaleFactor(1.3*p_actin->dbl_pixels(RADIUS)/voxel_scale);
+    axes->SetScaleFactor(1.3*ptheactin->dbl_pixels(RADIUS)/voxel_scale);
     
     vtkTubeFilter *axes_tubes = vtkTubeFilter::New();
     axes_tubes->SetInput( axes->GetOutput() );
@@ -399,7 +399,7 @@ void CometVtkVis::addGuassianNodeVolume(bool do_iso)
 
 void CometVtkVis::addNucleator()
 {
-    if(p_actin->p_nuc->geometry == nucleator::sphere){
+    if(ptheactin->p_nuc->geometry == nucleator::sphere){
 	addSphericalNucleator();
     } else {
 	addCapsuleNucleator();
@@ -436,7 +436,7 @@ void CometVtkVis::addCapsuleNucleator()
     // -- Actors
     // rotate the nucleator sections
     double nrotation[3];
-    p_actin->p_nuc->nucleator_rotation.getangles(nrotation[0], 
+    ptheactin->inverse_actin_rotation.getangles(nrotation[0], 
 						 nrotation[1], 
 						 nrotation[2]);
     nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
@@ -515,31 +515,31 @@ void CometVtkVis::addSphericalNucleator()
     // temp: reset center:
 	if (!VTK_MOVE_WITH_BEAD)
 	{
-		nx = -p_actin->p_nuc->position.x; 
-		ny = -p_actin->p_nuc->position.y; 
-		nz = -p_actin->p_nuc->position.z; 
+		nx = -ptheactin->p_nuc->position.x; 
+		ny = -ptheactin->p_nuc->position.y; 
+		nz = -ptheactin->p_nuc->position.z; 
 	}
 	else
 	{
 		nx = ny = nz = 0.0;
 
 	}
-    p_actin->p_nuc->nucleator_rotation.rotate(nx, ny, nz);
+    ptheactin->inverse_actin_rotation.rotate(nx, ny, nz);
     vtk_cam_rot.rotate(nx, ny, nz); 
 
     // stops bead 
     double keep_within_border;
-    if( p_actin->p_nuc->geometry == nucleator::sphere )
+    if( ptheactin->p_nuc->geometry == nucleator::sphere )
 	keep_within_border = 2*RADIUS;
     else
 	keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
 
-    int beadminx = int(p_actin->pixels(-keep_within_border - nx)/voxel_scale) + ni/2 + 1;
-    int beadminy = int(p_actin->pixels(-keep_within_border - ny)/voxel_scale) + nj/2 + 1; 
-    int beadminz = int(p_actin->pixels(-keep_within_border - nz)/voxel_scale) + nk/2 + 1; 
-    int beadmaxx = int(p_actin->pixels( keep_within_border - nx)/voxel_scale) + ni/2 + 1; 
-    int beadmaxy = int(p_actin->pixels( keep_within_border - ny)/voxel_scale) + nj/2 + 1; 
-    int beadmaxz = int(p_actin->pixels( keep_within_border - nz)/voxel_scale) + nk/2 + 1; 
+    int beadminx = int(ptheactin->pixels(-keep_within_border - nx)/voxel_scale) + ni/2 + 1;
+    int beadminy = int(ptheactin->pixels(-keep_within_border - ny)/voxel_scale) + nj/2 + 1; 
+    int beadminz = int(ptheactin->pixels(-keep_within_border - nz)/voxel_scale) + nk/2 + 1; 
+    int beadmaxx = int(ptheactin->pixels( keep_within_border - nx)/voxel_scale) + ni/2 + 1; 
+    int beadmaxy = int(ptheactin->pixels( keep_within_border - ny)/voxel_scale) + nj/2 + 1; 
+    int beadmaxz = int(ptheactin->pixels( keep_within_border - nz)/voxel_scale) + nk/2 + 1; 
     
     int movex = 0;
     int movey = 0;
@@ -559,9 +559,9 @@ void CometVtkVis::addSphericalNucleator()
     if(beadmaxz > nk)
 	movez = -(beadmaxz - nk);
     
-    nx = p_actin->dbl_pixels(-nx)/voxel_scale; 
-    ny = p_actin->dbl_pixels(-ny)/voxel_scale; 
-    nz = p_actin->dbl_pixels(-nz)/voxel_scale;
+    nx = ptheactin->dbl_pixels(-nx)/voxel_scale; 
+    ny = ptheactin->dbl_pixels(-ny)/voxel_scale; 
+    nz = ptheactin->dbl_pixels(-nz)/voxel_scale;
     
     // displace to bring nucleator back in bounds
     nx += movex;
@@ -606,11 +606,11 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     double meanx, meany, meanz;
   
     // temp: reset center:
-    meanx = -p_actin->p_nuc->position.x; 
-    meany = -p_actin->p_nuc->position.y; 
-    meanz = -p_actin->p_nuc->position.z; 
+    meanx = -ptheactin->p_nuc->position.x; 
+    meany = -ptheactin->p_nuc->position.y; 
+    meanz = -ptheactin->p_nuc->position.z; 
   
-    p_actin->p_nuc->nucleator_rotation.rotate(meanx, meany, meanz);
+    ptheactin->inverse_actin_rotation.rotate(meanx, meany, meanz);
     vtk_cam_rot.rotate(meanx, meany, meanz); 
   
     // move to static
@@ -618,7 +618,7 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     double gaussmax = (double) GAUSSFWHM * 3/2.0;  
     // full extent of gaussian radius -  fwhm is 2/3 this
   
-    const int splat_sz = (int)(p_actin->dbl_pixels(gaussmax) / voxel_scale); // as in actin 
+    const int splat_sz = (int)(ptheactin->dbl_pixels(gaussmax) / voxel_scale); // as in actin 
     cout << "  gaussian splat extent: "<< splat_sz << endl;
   
     vector< vector< vector<double > > >  splat;
@@ -649,17 +649,17 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
   
     // stops bead moving out of visualisation
     double keep_within_border;
-    if( p_actin->p_nuc->geometry == nucleator::sphere )
+    if( ptheactin->p_nuc->geometry == nucleator::sphere )
 	keep_within_border = 2*RADIUS;
     else
 	keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
     
-    int beadminx = int(p_actin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
-    int beadminy = int(p_actin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadminz = int(p_actin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
-    int beadmaxx = int(p_actin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
-    int beadmaxy = int(p_actin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadmaxz = int(p_actin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+    int beadminx = int(ptheactin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
+    int beadminy = int(ptheactin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
+    int beadminz = int(ptheactin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+    int beadmaxx = int(ptheactin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
+    int beadmaxy = int(ptheactin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
+    int beadmaxz = int(ptheactin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
   
     int movex = 0;
     int movey = 0;
@@ -686,20 +686,20 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     double vx_imax = 0;
     double vx_isum = 0;
     int n_isums = 0;
-    for(int n=0; n<p_actin->highestnodecount; n++) {
-	if (!p_actin->node[n].polymer)
+    for(int n=0; n<ptheactin->highestnodecount; n++) {
+	if (!ptheactin->node[n].polymer)
 	    continue;
       
-	node_pos = p_actin->node[n]; // copy x,y,z coords from node[n]
+	node_pos = ptheactin->node[n]; // copy x,y,z coords from node[n]
     
-	p_actin->p_nuc->nucleator_rotation.rotate(node_pos); 
+	ptheactin->inverse_actin_rotation.rotate(node_pos); 
 	vtk_cam_rot.rotate(node_pos); // bring rip to y-axis
     
 	// node centre in local voxel coords (nuc at centre) 
 	// REVISIT: check why we need to add one here
-	x = int(p_actin->pixels(node_pos.x - meanx)/voxel_scale) + ni/2 + 1; 
-	y = int(p_actin->pixels(node_pos.y - meany)/voxel_scale) + nj/2 + 1;
-	z = int(p_actin->pixels(node_pos.z - meanz)/voxel_scale) + nk/2 + 1;
+	x = int(ptheactin->pixels(node_pos.x - meanx)/voxel_scale) + ni/2 + 1; 
+	y = int(ptheactin->pixels(node_pos.y - meany)/voxel_scale) + nj/2 + 1;
+	z = int(ptheactin->pixels(node_pos.z - meanz)/voxel_scale) + nk/2 + 1;
     
 	// displace nucleator to bring back in bounds
 	x += movex;
@@ -750,7 +750,7 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     cout << "  max gausian intensity: "  << vx_imax << endl;
     cout << "  mean gausian intensity: " << vx_isum/n_isums << endl;
   
-    // if(p_actin->BMP_intensity_scaling){
+    // if(ptheactin->BMP_intensity_scaling){
     if(OptsNormaliseFrames){
     
 	cout << "  normalising Frame, vx_max: " << vx_imax << endl;
@@ -928,12 +928,12 @@ void CometVtkVis::addGaussianSplatterToNodes()
     vtkFloatArray *scalars = vtkFloatArray::New();
     
     // Gaussian splatter accumulate mode...
-    for(int i=0; i<p_actin->highestnodecount; i++)
+    for(int i=0; i<ptheactin->highestnodecount; i++)
     {
 	pts->InsertPoint(i,
-			 p_actin->node[i].x - p_actin->p_nuc->position.x,
-			 p_actin->node[i].y - p_actin->p_nuc->position.y,
-			 p_actin->node[i].z - p_actin->p_nuc->position.z);
+			 ptheactin->node[i].x - ptheactin->p_nuc->position.x,
+			 ptheactin->node[i].y - ptheactin->p_nuc->position.y,
+			 ptheactin->node[i].z - ptheactin->p_nuc->position.z);
 	scalars->InsertValue(i, 100);
     }
     // put point and scalar data onto the grid
@@ -975,7 +975,7 @@ void CometVtkVis::addNodes()
     
     // create sphere geometry
     vtkSphereSource *sphere = vtkSphereSource::New();
-    sphere->SetRadius( 0.05*p_actin->dbl_pixels(RADIUS)/voxel_scale ); // scale with the nucleator
+    sphere->SetRadius( 0.05*ptheactin->dbl_pixels(RADIUS)/voxel_scale ); // scale with the nucleator
     sphere->SetThetaResolution(10); // low res is fine
     sphere->SetPhiResolution(10);
     
@@ -986,26 +986,26 @@ void CometVtkVis::addNodes()
 
     // temp: reset center:
     double meanx, meany, meanz;
-    meanx = -p_actin->p_nuc->position.x; 
-    meany = -p_actin->p_nuc->position.y; 
-    meanz = -p_actin->p_nuc->position.z; 
+    meanx = -ptheactin->p_nuc->position.x; 
+    meany = -ptheactin->p_nuc->position.y; 
+    meanz = -ptheactin->p_nuc->position.z; 
     
-    p_actin->p_nuc->nucleator_rotation.rotate(meanx, meany, meanz);
+    ptheactin->inverse_actin_rotation.rotate(meanx, meany, meanz);
     vtk_cam_rot.rotate(meanx, meany, meanz); 
 
     // stops bead 
     double keep_within_border;
-    if( p_actin->p_nuc->geometry == nucleator::sphere )
+    if( ptheactin->p_nuc->geometry == nucleator::sphere )
 	keep_within_border = 2*RADIUS;
     else
 	keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
 
-    int beadminx = int(p_actin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
-    int beadminy = int(p_actin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadminz = int(p_actin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
-    int beadmaxx = int(p_actin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
-    int beadmaxy = int(p_actin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadmaxz = int(p_actin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+    int beadminx = int(ptheactin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
+    int beadminy = int(ptheactin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
+    int beadminz = int(ptheactin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+    int beadmaxx = int(ptheactin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
+    int beadmaxy = int(ptheactin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
+    int beadmaxz = int(ptheactin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
     
     int movex = 0;
     int movey = 0;
@@ -1027,18 +1027,18 @@ void CometVtkVis::addNodes()
 
     // loop over the nodes
     double ncx, ncy, ncz;
-    for(int i=0; i<p_actin->highestnodecount; i++)
+    for(int i=0; i<ptheactin->highestnodecount; i++)
     {
-	ncx = p_actin->node[i].x;
-	ncy = p_actin->node[i].y;
-	ncz = p_actin->node[i].z;
+	ncx = ptheactin->node[i].x;
+	ncy = ptheactin->node[i].y;
+	ncz = ptheactin->node[i].z;
 
-	p_actin->p_nuc->nucleator_rotation.rotate(ncx, ncy, ncz); 
+	ptheactin->inverse_actin_rotation.rotate(ncx, ncy, ncz); 
 	vtk_cam_rot.rotate(ncx, ncy, ncz); // bring rip to y-axis
 	
-	ncx = p_actin->dbl_pixels(ncx - meanx)/voxel_scale; 
-	ncy = p_actin->dbl_pixels(ncy - meany)/voxel_scale;
-	ncz = p_actin->dbl_pixels(ncz - meanz)/voxel_scale;
+	ncx = ptheactin->dbl_pixels(ncx - meanx)/voxel_scale; 
+	ncy = ptheactin->dbl_pixels(ncy - meany)/voxel_scale;
+	ncz = ptheactin->dbl_pixels(ncz - meanz)/voxel_scale;
 	
 	// displace to bring node back in bounds
 	ncx += movex;
@@ -1050,11 +1050,11 @@ void CometVtkVis::addNodes()
 	node_actor->SetMapper(map);
 	node_actor->SetPosition(ncx, ncy, ncz);
 	
-	if( p_actin->node[i].polymer ) { 
+	if( ptheactin->node[i].polymer ) { 
 	    node_actor->GetProperty()->SetColor(1.0, 0, 0);     // plot polymerised red
-	} else if( p_actin->node[i].harbinger ){
+	} else if( ptheactin->node[i].harbinger ){
 	    node_actor->GetProperty()->SetColor(0.5, 0.5, 0.0); // plot harbinger purple
-	} else if( !p_actin->node[i].listoflinks.empty() ){
+	} else if( !ptheactin->node[i].listoflinks.empty() ){
 	    node_actor->GetProperty()->SetColor(0.5, 0.5, 0.5); // plot empty grey
 	} else {
 	    node_actor->GetProperty()->SetColor(0, 1, 0);       // otherwise green
@@ -1074,27 +1074,27 @@ void CometVtkVis::addLinks()
   double meanx = 0.0, meany=0.0, meanz=0.0;
   
   if(!VTK_MOVE_WITH_BEAD) {
-    meanx = -p_actin->p_nuc->position.x; 
-    meany = -p_actin->p_nuc->position.y; 
-    meanz = -p_actin->p_nuc->position.z;
+    meanx = -ptheactin->p_nuc->position.x; 
+    meany = -ptheactin->p_nuc->position.y; 
+    meanz = -ptheactin->p_nuc->position.z;
   }
   
-  p_actin->p_nuc->nucleator_rotation.rotate(meanx, meany, meanz);
+  ptheactin->inverse_actin_rotation.rotate(meanx, meany, meanz);
   vtk_cam_rot.rotate(meanx, meany, meanz); 
   
   // stops bead 
   double keep_within_border;
-  if( p_actin->p_nuc->geometry == nucleator::sphere )
+  if( ptheactin->p_nuc->geometry == nucleator::sphere )
     keep_within_border = 2*RADIUS;
   else
     keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
   
-  int beadminx = int(p_actin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
-  int beadminy = int(p_actin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-  int beadminz = int(p_actin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
-  int beadmaxx = int(p_actin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
-  int beadmaxy = int(p_actin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-  int beadmaxz = int(p_actin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+  int beadminx = int(ptheactin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
+  int beadminy = int(ptheactin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
+  int beadminz = int(ptheactin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+  int beadmaxx = int(ptheactin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
+  int beadmaxy = int(ptheactin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
+  int beadmaxz = int(ptheactin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
   
   int movex = 0;
   int movey = 0;
@@ -1148,21 +1148,23 @@ void CometVtkVis::addLinks()
   // made up of lines
   vtkPolyData *linedata = vtkPolyData::New();
   vtkPoints *linepts = vtkPoints::New();
+
+  double force;
   
-  for(int i=0; i<p_actin->highestnodecount; i++) {      
-    nodeposvec = p_actin->node[i];
+  for(int i=0; i<ptheactin->highestnodecount; i++) {      
+    nodeposvec = ptheactin->node[i];
     
-    n_pt[0] = p_actin->node[i].x;
-    n_pt[1] = p_actin->node[i].y;
-    n_pt[2] = p_actin->node[i].z;		
+    n_pt[0] = ptheactin->node[i].x;
+    n_pt[1] = ptheactin->node[i].y;
+    n_pt[2] = ptheactin->node[i].z;		
     
     // -- Move to fcn
-    p_actin->p_nuc->nucleator_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); 
+    ptheactin->inverse_actin_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); 
     vtk_cam_rot.rotate(n_pt[0], n_pt[1], n_pt[2]); // bring rip to y-axis
     
-    n_pt[0] = p_actin->dbl_pixels(n_pt[0] - meanx)/voxel_scale; 
-    n_pt[1] = p_actin->dbl_pixels(n_pt[1] - meany)/voxel_scale;
-    n_pt[2] = p_actin->dbl_pixels(n_pt[2] - meanz)/voxel_scale;
+    n_pt[0] = ptheactin->dbl_pixels(n_pt[0] - meanx)/voxel_scale; 
+    n_pt[1] = ptheactin->dbl_pixels(n_pt[1] - meany)/voxel_scale;
+    n_pt[2] = ptheactin->dbl_pixels(n_pt[2] - meanz)/voxel_scale;
     
     // displace to bring node back in bounds
     n_pt[0] += movex;
@@ -1170,17 +1172,17 @@ void CometVtkVis::addLinks()
     n_pt[2] += movez;
     // -- ^^ Move to fcn
     
-    if(!p_actin->node[i].listoflinks.empty()) {
-      // nodes thisnode = p_actin->node[i];
+    if(!ptheactin->node[i].listoflinks.empty()) {
+      // nodes thisnode = ptheactin->node[i];
       
       // loop over linked nodes
       // check this out if we use this function
-      for(vector<links>::iterator link_i=p_actin->node[i].listoflinks.begin(); 
-	  link_i != p_actin->node[i].listoflinks.end();
+      for(vector<links>::iterator link_i=ptheactin->node[i].listoflinks.begin(); 
+	  link_i != ptheactin->node[i].listoflinks.end();
 	  ++link_i) {
 	
 	// assume links to nodes 'less' than us have already been added
-	// cout << i << "==" << p_actin->node[i].nodenum << endl;
+	// cout << i << "==" << ptheactin->node[i].nodenum << endl;
 	if( (*link_i).linkednodenumber < i)
 	  continue;
 	
@@ -1190,12 +1192,12 @@ void CometVtkVis::addLinks()
 	l_pt[2] = (*link_i).linkednodeptr->z;
 	
 	// -- Move to fcn
-	p_actin->p_nuc->nucleator_rotation.rotate(l_pt[0], l_pt[1], l_pt[2]); 
+	ptheactin->inverse_actin_rotation.rotate(l_pt[0], l_pt[1], l_pt[2]); 
 	vtk_cam_rot.rotate(l_pt[0], l_pt[1], l_pt[2]); // bring rip to y-axis
 	
-	l_pt[0] = p_actin->dbl_pixels(l_pt[0] - meanx)/voxel_scale; 
-	l_pt[1] = p_actin->dbl_pixels(l_pt[1] - meany)/voxel_scale;
-	l_pt[2] = p_actin->dbl_pixels(l_pt[2] - meanz)/voxel_scale;
+	l_pt[0] = ptheactin->dbl_pixels(l_pt[0] - meanx)/voxel_scale; 
+	l_pt[1] = ptheactin->dbl_pixels(l_pt[1] - meany)/voxel_scale;
+	l_pt[2] = ptheactin->dbl_pixels(l_pt[2] - meanz)/voxel_scale;
 	
 	// displace to bring node back in bounds
 	l_pt[0] += movex;
@@ -1210,18 +1212,20 @@ void CometVtkVis::addLinks()
 	
 	Colour col;	  
 	// Set scalar for the line
-	if(OptsShadeLinks) {
+    if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
+    {    
 	  vect displacement = nodeposvec - *(link_i->linkednodeptr);
 	  double distance = displacement.length();      
 	  //double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
 	  //double y = strain / LINK_BREAKAGE_STRAIN;
-	  double y = fabs( link_i->getlinkforces( distance) ) / LINK_BREAKAGE_FORCE;
+      link_i->getlinkforces(distance, force);
+	  double y = fabs(force) / LINK_BREAKAGE_FORCE;
 	  //y = (5+log(y))/5;	 // log transform	    
 	  //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
 	  y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
-	  y = y*0.9+0.1; // prevent zeros  because colorscheme makes them black
+	  y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
 	  col.setcol(y);
-	  
+  
 	  cellscalars->InsertValue(cell_id, y);
 	} else {
 	  cellscalars->InsertValue(cell_id, 1.0);
@@ -1257,9 +1261,9 @@ double CometVtkVis::getMeanNodeLinkForce(const int id)
     int n_links = 0;
     double distance;
     vect displacement;
-    vect nodeposvec = p_actin->node[id];
-    for(vector<links>::iterator i=p_actin->node[id].listoflinks.begin(); 
-	i!=p_actin->node[id].listoflinks.end(); i++ ) {	 
+    vect nodeposvec = ptheactin->node[id];
+    for(vector<links>::iterator i=ptheactin->node[id].listoflinks.begin(); 
+	i!=ptheactin->node[id].listoflinks.end(); i++ ) {	 
 	displacement = nodeposvec - *(i->linkednodeptr);
 	distance = displacement.length();      
 	strain = distance / i->orig_dist;
@@ -1319,22 +1323,22 @@ void CometVtkVis::setProjection()
 {
     if(OptsRenderProjection==X){
 		// x
-		vtk_cam_rot = p_actin->camera_rotation;
+		vtk_cam_rot = ptheactin->camera_rotation;
 		renderer->GetActiveCamera()->SetPosition(-radius_pixels*7, 0, 0);
 		renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
     } else if(OptsRenderProjection==Y){
 	// y
-		vtk_cam_rot = p_actin->camera_rotation;
+		vtk_cam_rot = ptheactin->camera_rotation;
 		renderer->GetActiveCamera()->SetPosition(0, radius_pixels*7, 0);
 		renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
     } else if(OptsRenderProjection==Z){
 	// z
-		vtk_cam_rot = p_actin->camera_rotation;
+		vtk_cam_rot = ptheactin->camera_rotation;
 		renderer->GetActiveCamera()->SetPosition(0, 0, -radius_pixels*7);
 		renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
     } else if(OptsRenderProjection==RIP){
 
-		vtk_cam_rot = p_actin->camera_rotation2;	  // note using different rotation matrix!
+		vtk_cam_rot = ptheactin->camera_rotation2;	  // note using different rotation matrix!
 	// rip
 	//cout << "  projection: rip" << endl;
 	renderer->GetActiveCamera()->SetPosition(radius_pixels*4, 0, -radius_pixels*7);

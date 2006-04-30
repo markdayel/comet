@@ -30,52 +30,20 @@ links::~links(void)
 {
 }
 
-links::links(nodes& linknode, const double& dist)
+links::links(nodes& linknode, const double& linkdist)
 {
-	orig_distsqr = dist*dist;
-	orig_dist = dist;
-	orig_dist_recip = 1/orig_dist;
-    orig_distsqr = dist*dist;
-	strengthscalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
-	broken = false;
 	linkednodeptr = &linknode;
+    orig_dist = linkdist;
+    broken = false;
+
+    orig_distsqr = orig_dist*orig_dist;
+	orig_dist_recip = 1/orig_dist;
+	linkforcescalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
 }
 
 links::links(ifstream &istr)
 {
     load_data(istr);
-}
-
-double links::getlinkforces(const double & dist)
-{  // return force (nominally in pN)
-
-    // calculate forces:
-
-    double force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip * strengthscalefactor;
-
-    // decide if link broken:
-
-    if (USE_BREAKAGE_STRAIN)
-    {	
-		// since strainlimit = distlimit / orig_dist,
-		// then distlimit = strainlimit * orig_dist
-	    if (dist > LINK_BREAKAGE_STRAIN * orig_dist)
-		{
-			broken = true;
-			force = 0;  
-		}
-    }
-    else
-    { // just using force
-		if (-force > LINK_BREAKAGE_FORCE * strengthscalefactor)
-		{   
-			broken = true;
-            force = 0;
-		}
-
-    }
-
-	return force;
 }
 
 
@@ -95,8 +63,9 @@ int links::load_data(ifstream &istr)
 		 >> linkednodenumber;
 
 	orig_dist_recip = 1/orig_dist;
-	strengthscalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
+	linkforcescalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
     orig_distsqr = orig_dist*orig_dist;
+    broken = false;   // todo: are we catching broken links for removal before/after load?
 
     // note cannot set the node pointer yet
     // linkednodeptr = &linknode;
@@ -104,7 +73,3 @@ int links::load_data(ifstream &istr)
     return 0;
 }
 
-void links::reset_link(void)
-{
-    broken = false;
-}

@@ -35,7 +35,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 {
 
 	p_nuc = pnuc;
-	p_actin = pactin;
+	ptheactin = pactin;
 	
 	num_dist_segs = 20;		// normal bins radial distance
 	dist_step = RADIUS * 0.1;
@@ -88,7 +88,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	   links_broken.resize(3);
   surfacestuckforce.resize(3);
 
-	for (int axis = 0; axis < 3; ++axis)
+	for (int axis = 0; axis != 3; ++axis)
 	{
 		       numnodes[axis].resize(num_segs);			
 		     rep_radial[axis].resize(num_segs);
@@ -98,7 +98,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		   links_broken[axis].resize(num_segs);
 	  surfacestuckforce[axis].resize(num_segs);
 
-        for(int i = 0; i<num_segs; ++i)
+        for(int i = 0; i != num_segs; ++i)
 		{
 			       numnodes[axis][i].resize(num_dist_segs);
 			     rep_radial[axis][i].resize(num_dist_segs);
@@ -111,13 +111,13 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		}
 	}
 
-
 	radial_numnodes.resize(num_radial_bins);				
 	radial_rep_radial.resize(num_radial_bins);	
 	radial_rep_transverse.resize(num_radial_bins);	
 	radial_link_radial.resize(num_radial_bins);	
 	radial_link_transverse.resize(num_radial_bins);	
 	radial_links_broken.resize(num_radial_bins);	
+
 
 	// allocate surfaceimpacts vector
 
@@ -234,7 +234,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 		if  ((p_nuc->geometry == nucleator::capsule) && (axis != 2))
 		{
 			
-			for(int i = 0; i< num_straight_segs; ++i)
+			for(int i = 0; i != num_straight_segs; ++i)
 			{
 
 				dist = (0.5 + (double) i) * straight_seg_len;
@@ -252,7 +252,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 				lineunitvecy[axis][i+num_cap_segs] = 0;
 			}
 
-			for(int i = 0; i< num_straight_segs; ++i)
+			for(int i = 0; i != num_straight_segs; ++i)
 			{
 
 				dist = (0.5 + (double) i) * straight_seg_len;
@@ -277,12 +277,9 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 // during the impacts)
 // but use lengths for now:
 
-
 	straight_seg_area = straight_seg_len;// CAPSULE_HALF_LINEAR * 2 * 2 * PI * RADIUS /  (2 * num_straight_segs) ;
 
 	curved_seg_area   = cap_seg_len;// (3 * PI * RADIUS * RADIUS * RADIUS / 4) /	(2 * num_cap_segs);
-
-	
 
     numnodes_scalefactor = 0.1;
 	rep_radial_scalefactor = 0.1;
@@ -291,7 +288,6 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	link_transverse_scalefactor = 0.1;
 	links_broken_scalefactor = 0.1;
     surfaceimpacts_scalefactor = 0.1;
-
 }
 
 void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const
@@ -320,11 +316,12 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 {	// get the segment num for the capsule
 	// segments are numbered clockwise
 	// starting at upper cap on left most edge
+
 	
 	if (fabs(y) < CAPSULE_HALF_LINEAR)
 	{	// on cylinder
 
-		if (x>0)	// RHS
+		if (x > 0)	// RHS
 		{
 			return num_cap_segs + (int) ((CAPSULE_HALF_LINEAR - y) / straight_seg_len);
 		}
@@ -339,17 +336,12 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 		if (y > 0)
 		{
 			// top cap
-			//int tmp =
-			return  (int)((double)num_cap_segs * (1+ (atan2(-(y - CAPSULE_HALF_LINEAR), x) / PI)) );
-			//return tmp;
-		}
-		else	//  (y < CAPSULE_HALF_LINEAR)
+			return (int)((double)num_cap_segs * (1+ (atan2( -(y - CAPSULE_HALF_LINEAR),  x) / PI)) );
+ 		}
+        else
 		{	// bottom cap
-			//int tmp=
 			return num_straight_segs + num_cap_segs
-				+  (int)((double)num_cap_segs * (1+ (atan2( (y + CAPSULE_HALF_LINEAR),-x) / PI)) );
-			//return tmp;
-		
+				+  (int)((double)num_cap_segs * (1+ (atan2(  (y + CAPSULE_HALF_LINEAR), -x) / PI)) );
 		}
 	}
 
@@ -362,7 +354,7 @@ void segments::getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdi
 
 	rot_pos = node;
 
-	//p_actin->camera_rotation.rotate(rot_pos); 
+	//ptheactin->camera_rotation.rotate(rot_pos); 
 	
 	if (p_nuc->geometry == nucleator::sphere)
 	{	// sphere
@@ -425,7 +417,7 @@ void segments::addnode(const nodes& node)
 	int xdist, ydist, zdist;
 	int dist;
 	double xfactor,yfactor,zfactor;
-	double radius;
+	//double radius;
 
 	nodes           rot_pos = node;
 	vect           rot_unit = node.unit_vec_posn;
@@ -433,10 +425,19 @@ void segments::addnode(const nodes& node)
 	
 	vect xfacvec, yfacvec, zfacvec;
 
-	p_actin->camera_rotation.rotate(rot_pos); 
-	p_actin->camera_rotation.rotate(rot_unit); 
-	p_actin->camera_rotation.rotate(rot_nuc_link_force);
+	ptheactin->camera_rotation.rotate(rot_pos); 
+	ptheactin->camera_rotation.rotate(rot_unit); 
+	ptheactin->camera_rotation.rotate(rot_nuc_link_force);
 
+    // there is an annoying rounding error problem for 
+    // capsule when fabs(rot_pos.z) == CAPSULE_HALF_LINEAR
+    // [caused by the atan2() functions in getsegmentnum()]
+    // cludge:
+
+    if (fabs(rot_pos.z) - CAPSULE_HALF_LINEAR < 0.000001)
+    {
+        rot_pos.z += 0.000001;
+    }
 
 	getsegmentnum(rot_pos, xseg, yseg, zseg);
 	getsegmentdist(rot_pos, xdist, ydist, zdist);
@@ -478,11 +479,7 @@ void segments::addnode(const nodes& node)
 	yfactor = yfacvec.length();
 	zfactor = zfacvec.length();
 
-	radius = node.dist_from_surface;
-
-	if (radius < 0)
-        radius = SQRT_ACCURACY_LOSS;
-
+	//radius = node.dist_from_surface;
 
 	surfaceimpacts[0][xseg] += xfactor * node.nucleator_impacts; 
 	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts; 
@@ -536,7 +533,7 @@ void segments::addnode(const nodes& node)
 
     }
 
-	dist = (int) (radius / radialdist);
+	dist = (int) (node.dist_from_surface / radialdist);
 
 	if ((dist < num_radial_bins) && (dist >= 0))
     {
@@ -545,8 +542,7 @@ void segments::addnode(const nodes& node)
 	    radial_rep_transverse[dist] += node.repforce_transverse; 
 	    radial_link_radial[dist] += node.linkforce_radial;
 	    radial_link_transverse[dist] += node.linkforce_transverse;
-	    radial_links_broken[dist] += node.links_broken;
-        
+	    radial_links_broken[dist] += node.links_broken;    
     }
 
 }
@@ -608,8 +604,8 @@ void segments::drawoutline(ostream& drawcmd, const int& axis) const
     int radius;
     int segment;
 
-	radius  = p_actin->pixels(RADIUS); 
-	segment = p_actin->pixels(CAPSULE_HALF_LINEAR);
+	radius  = ptheactin->pixels(RADIUS); 
+	segment = ptheactin->pixels(CAPSULE_HALF_LINEAR);
 	
 	// draw outline
 
@@ -703,19 +699,19 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 		}
 
 		// don't plot zero length lines
-		if ( (p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
-			 (p_actin->pixels(starty) == p_actin->pixels(starty + liney)) )
+		if ( (ptheactin->pixels(startx) == ptheactin->pixels(startx + linex)) &&
+			 (ptheactin->pixels(starty) == ptheactin->pixels(starty + liney)) )
 		{   // do nothing
 		}
 		else
 		{
 
 		drawcmd << " line "
-				<< centerx + p_actin->pixels(startx) << "," 
-				<< centery + p_actin->pixels(starty) << " "
+				<< centerx + ptheactin->pixels(startx) << "," 
+				<< centery + ptheactin->pixels(starty) << " "
 
-				<< centerx + p_actin->pixels(startx + linex) << ","
-				<< centery + p_actin->pixels(starty + liney);
+				<< centerx + ptheactin->pixels(startx + linex) << ","
+				<< centery + ptheactin->pixels(starty + liney);
 				
 				numlinesplotted++;
 
@@ -734,27 +730,27 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 
 			linelen = calcdist(linex,liney);
 
-			// truncate if too long
-			if (linelen > 2 * RADIUS)
+			// truncate if too long (this can be longer than 0.9 RADIUS, if want)
+			if (linelen > 0.9 * RADIUS)
 			{
-				linex *= 2 * RADIUS / linelen;
-				liney *= 2 * RADIUS / linelen;			
+				linex *= 0.9 * RADIUS / linelen;
+				liney *= 0.9 * RADIUS / linelen;			
 			}
 
 			// don't plot zero length lines
-			if ( (p_actin->pixels(startx) == p_actin->pixels(startx + linex)) &&
-				 (p_actin->pixels(starty) == p_actin->pixels(starty + liney)) )
+			if ( (ptheactin->pixels(startx) == ptheactin->pixels(startx + linex)) &&
+				 (ptheactin->pixels(starty) == ptheactin->pixels(starty + liney)) )
 			{	// do nothing
 			}
 			else
 			{
 
 			drawcmd << " line "
-					<< centerx + p_actin->pixels(startx) << "," 
-					<< centery + p_actin->pixels(starty) << " "
+					<< centerx + ptheactin->pixels(startx) << "," 
+					<< centery + ptheactin->pixels(starty) << " "
 
-					<< centerx + p_actin->pixels(startx + linex) << ","
-					<< centery + p_actin->pixels(starty + liney);
+					<< centerx + ptheactin->pixels(startx + linex) << ","
+					<< centery + ptheactin->pixels(starty + liney);
 					
 					numlinesplotted++;
 
@@ -770,11 +766,11 @@ void segments::addallnodes()
 {
     clearbins();
 
-	for (int i=0; i<p_actin->highestnodecount; i++)
+	for (int i=0; i<ptheactin->highestnodecount; i++)
 	{
-		if ((p_actin->node[i].polymer))  // is point valid?
+		if ((ptheactin->node[i].polymer))  // is point valid?
 		{
-			addnode(p_actin->node[i]);
+			addnode(ptheactin->node[i]);
 		}
 	}
 
@@ -949,7 +945,7 @@ void segments::savereport(const int& filenum) const
 
                 // rotate *after* determining radius
 
-                //p_actin->camera_rotation.rotate(x,y,z);
+                //ptheactin->camera_rotation.rotate(x,y,z);
 
 // Axis,segment,distseg,x,y,z,Radius,numnodes,area,capsuleside,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
 
@@ -1165,21 +1161,21 @@ void segments::getsegmentposition(double& x, double& y, double& z, const int & s
 //			{
 //				if (axis == 0)
 //				{
-//					dummynode.y = p_actin->unpixels(pix_x - offsetx);
-//					dummynode.z = p_actin->unpixels(pix_y - offsety);
+//					dummynode.y = ptheactin->unpixels(pix_x - offsetx);
+//					dummynode.z = ptheactin->unpixels(pix_y - offsety);
 //				}
 //				else if (axis == 1)
 //				{
-//					dummynode.x = p_actin->unpixels(pix_x - offsetx);
-//					dummynode.z = p_actin->unpixels(pix_y - offsety);
+//					dummynode.x = ptheactin->unpixels(pix_x - offsetx);
+//					dummynode.z = ptheactin->unpixels(pix_y - offsety);
 //				}
 //				else
 //				{
-//					dummynode.x = p_actin->unpixels(pix_x - offsetx);
-//					dummynode.y = p_actin->unpixels(pix_y - offsety);
+//					dummynode.x = ptheactin->unpixels(pix_x - offsetx);
+//					dummynode.y = ptheactin->unpixels(pix_y - offsety);
 //				}
 //				
-//				//p_actin->reverse_camera_rotation.rotate(dummynode); 
+//				//ptheactin->reverse_camera_rotation.rotate(dummynode); 
 //		
 //				dummynode.setunitvec();
 //
@@ -1241,21 +1237,21 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 		{
 			if (axis == 0)
 			{
-				dummynode.y = p_actin->unpixels(pix_x - offsetx);
-				dummynode.z = p_actin->unpixels(pix_y - offsety);
+				dummynode.y = ptheactin->unpixels(pix_x - offsetx);
+				dummynode.z = ptheactin->unpixels(pix_y - offsety);
 			}
 			else if (axis == 1)
 			{
-				dummynode.x = p_actin->unpixels(pix_x - offsetx);
-				dummynode.z = p_actin->unpixels(pix_y - offsety);
+				dummynode.x = ptheactin->unpixels(pix_x - offsetx);
+				dummynode.z = ptheactin->unpixels(pix_y - offsety);
 			}
 			else
 			{
-				dummynode.x = p_actin->unpixels(pix_x - offsetx);
-				dummynode.y = p_actin->unpixels(pix_y - offsety);
+				dummynode.x = ptheactin->unpixels(pix_x - offsetx);
+				dummynode.y = ptheactin->unpixels(pix_y - offsety);
 			}
 			
-			//p_actin->reverse_camera_rotation.rotate(dummynode); 
+			//ptheactin->reverse_camera_rotation.rotate(dummynode); 
 	
 			dummynode.setunitvec();
 
@@ -1366,16 +1362,16 @@ void segments::save_scalefactors(void)
                 << rep_transverse_scalefactor << " "
                 << link_radial_scalefactor << " "
                 << link_transverse_scalefactor << " "
-                << links_broken_scalefactor << " "
-                << p_actin->imageRmax[0] << " "
-                << p_actin->imageGmax[0] << " "
-                << p_actin->imageBmax[0] << " "
-                << p_actin->imageRmax[1] << " "
-                << p_actin->imageGmax[1] << " "
-                << p_actin->imageBmax[1] << " "
-                << p_actin->imageRmax[2] << " "
-                << p_actin->imageGmax[2] << " "
-                << p_actin->imageBmax[2] << endl;
+                << links_broken_scalefactor << endl
+                << ptheactin->imageRmax[0] << " "
+                << ptheactin->imageGmax[0] << " "
+                << ptheactin->imageBmax[0] << endl
+                << ptheactin->imageRmax[1] << " "
+                << ptheactin->imageGmax[1] << " "
+                << ptheactin->imageBmax[1] << endl
+                << ptheactin->imageRmax[2] << " "
+                << ptheactin->imageGmax[2] << " "
+                << ptheactin->imageBmax[2] << endl;
 
 	opscalefact.close();
 
@@ -1400,15 +1396,15 @@ bool segments::load_scalefactors(void)
                     >> link_radial_scalefactor 
                     >> link_transverse_scalefactor 
                     >> links_broken_scalefactor
-                    >> p_actin->imageRmax[0]
-                    >> p_actin->imageGmax[0]
-                    >> p_actin->imageBmax[0]
-                    >> p_actin->imageRmax[1]
-                    >> p_actin->imageGmax[1]
-                    >> p_actin->imageBmax[1]
-                    >> p_actin->imageRmax[2]
-                    >> p_actin->imageGmax[2]
-                    >> p_actin->imageBmax[2];
+                    >> ptheactin->imageRmax[0]
+                    >> ptheactin->imageGmax[0]
+                    >> ptheactin->imageBmax[0]
+                    >> ptheactin->imageRmax[1]
+                    >> ptheactin->imageGmax[1]
+                    >> ptheactin->imageBmax[1]
+                    >> ptheactin->imageRmax[2]
+                    >> ptheactin->imageGmax[2]
+                    >> ptheactin->imageBmax[2];
 
 		ipscalefact.close();
         return true;

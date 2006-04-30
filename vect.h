@@ -132,6 +132,16 @@ class vect
 	    
 	    return *this;
 	}
+
+    inline vect& operator/=(const double &scale)
+	{   
+        double tmpscale = 1/scale;
+	    x *= tmpscale;
+	    y *= tmpscale;
+	    z *= tmpscale;
+	    
+	    return *this;
+	}
     
     //inline double dot(vect &a, vect &b)
     //{

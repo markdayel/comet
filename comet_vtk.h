@@ -23,7 +23,7 @@
 
 class CometVtkVis {
  private:
-  actin* p_actin;
+  //actin* ptheactin;
   enum OptProjectionType {X, Y, Z, RIP, NONE};
   double voxel_scale; // const
   double p_scale;
@@ -58,7 +58,7 @@ class CometVtkVis {
   OptProjectionType getProjectionOpt(const std::string &value);
   
  public:
-  CometVtkVis(actin * theactin);
+  CometVtkVis();//actin * theactin);
   ~CometVtkVis();
   
   void buildVTK(int framenumber);

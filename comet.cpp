@@ -30,6 +30,7 @@ removed without prior written permission from the author.
 
 
 
+
 double GRIDBOUNDS =  50.0;	  // size of grid in um (i.e. bead can move half of this from origin)
 double GRIDRES    =   0.8;	  // low res grid range
 
@@ -83,6 +84,8 @@ bool X_BMP = true;
 bool Y_BMP = true;
 bool Z_BMP = true;
 
+double gridscanjitter = 0.01;
+
 //int SAVE_DATA_PRECISION	= 4;
 
 
@@ -118,7 +121,7 @@ unsigned int MAX_LINK_ATTEMPTS = 20;
 double NUCLEATOR_INERTIA = 10;
 
 double NUC_LINK_FORCE = 0.25;
-double NUC_LINK_BREAKAGE_FORCE = 2;
+double NUC_LINK_BREAKAGE_DIST = 2;
 
 //double LINK_TAUT_FORCE =  5;
 //double LINK_TAUT_RATIO =  1.1;
@@ -126,8 +129,10 @@ double NUC_LINK_BREAKAGE_FORCE = 2;
 double IMPOSED_NUC_ROT_SPEED = 1;
 bool   IMPOSED_NUC_ROT = false;
 
-double TEST_SQUASH_SPEED = 1;
-bool TEST_SQUASH = false;
+bool   TEST_SQUASH = false;
+double TEST_FORCE_INITIAL_MAG = 0;
+double TEST_FORCE_INCREMENT = 10;
+double TEST_DIST_EQUIL = 0.0001;
 
 bool WRITE_BMPS_PRE_SYMBREAK = false;
 
@@ -234,12 +239,16 @@ vector<struct thread_data>  applyforces_thread_data_array;
 
 unsigned int Node_Grid_Dim;
 
+actin *ptheactin;
+
 vector <nodes>	actin::node;
 vector <bool>   actin::donenode;	
 Nodes2d actin::nodes_by_thread;
 Nodes2d actin::recti_near_nodes;
 Nodes2d actin::nodes_on_same_gridpoint;
+vector<vector<NODEGRIDTYPE<nodes*>*> > actin::gridpointsbythread;
 vector <int> actin::nearby_collision_gridpoint_offsets;
+
 
 rotationmatrix actin::torque_rotate;
 vect actin::nuc_disp;
@@ -277,19 +286,69 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 bool POST_PROCESS4CPU = false;
 
 #ifndef NOKBHIT
-#ifndef _WIN32
-	#include "kbhit.h"
-	#define kbhit keyb.kbhit
-    #define getch keyb.getch
-#else
-	#include <conio.h>
+    #ifndef _WIN32
+	    #include "kbhit.h"
+	    #define kbhit keyb.kbhit
+        #define getch keyb.getch
+    #else
+	    #include <conio.h>
+    #endif
 #endif
-#endif
+
+
 
 // main 
 
 int main(int argc, char* argv[])
 {
+ //   unsigned int rand_seed = (unsigned int)( time(NULL) * getpid());
+	//srand(rand_seed);
+
+ //   cout << "Rotationtest" << endl;
+
+ //   rotationmatrix test, test1, test2;
+ //   vect v1,v2,v3;
+
+ //   v1.x = (double)rand() * RECIP_RAND_MAX;
+ //   v1.y = (double)rand() * RECIP_RAND_MAX;
+ //   v1.z = (double)rand() * RECIP_RAND_MAX;
+
+
+ //   test.settoidentity();
+
+ //   test.xx = (double)rand() * RECIP_RAND_MAX;
+ //   test.xy = (double)rand() * RECIP_RAND_MAX;
+ //   test.xz = (double)rand() * RECIP_RAND_MAX;
+ //   test.yx = (double)rand() * RECIP_RAND_MAX;
+ //   test.yy = (double)rand() * RECIP_RAND_MAX;
+ //   test.yz = (double)rand() * RECIP_RAND_MAX;
+ //   test.zx = (double)rand() * RECIP_RAND_MAX;
+ //   test.zy = (double)rand() * RECIP_RAND_MAX;
+ //   test.zz = (double)rand() * RECIP_RAND_MAX;
+
+ //   cout << "Start:" << endl << test << endl;
+
+ //   test1 = test.inverse();
+
+ //   cout << "Inverse:" << endl << test1 << endl;
+
+ //   v3 = v2 = v1;
+ //   test.rotate(v2);
+ //   test.rotate(v3);
+ //   test.inverse().rotate(v3);
+
+ //   test.rotatematrix(test1);
+
+ //   cout << "After inverse:" << endl << test << endl;
+
+ //   cout << "Point: " << v1 << endl;
+ //   cout << "rotated: " << v2 << endl;
+ //   cout << "rotated back: " << v3 << endl;
+
+ //   exit(0);
+
+
+
 	cout << endl; 
 
     if(argc < 2 || argc > 4) 
@@ -319,8 +378,6 @@ int main(int argc, char* argv[])
 
 		if (strcmp(argv[2], "q") == 0 || strcmp(argv[2], "Q") == 0)
 			QUIET = true;
-
-
 
 	} 
 		
@@ -487,8 +544,6 @@ int main(int argc, char* argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	//double MAX_DISP = 1;
-
 	string buffer;
 	string unrecognisedlines;
 
@@ -609,8 +664,8 @@ int main(int argc, char* argv[])
 		else if (tag == "NUC_LINK_FORCE") 
 			{ss >> NUC_LINK_FORCE;}
 
-		else if (tag == "NUC_LINK_BREAKAGE_FORCE") 
-			{ss >> NUC_LINK_BREAKAGE_FORCE;}
+		else if (tag == "NUC_LINK_BREAKAGE_DIST") 
+			{ss >> NUC_LINK_BREAKAGE_DIST;}
 
 		else if (tag == "LINK_BREAKAGE_FORCE") 
 			{ss >> LINK_BREAKAGE_FORCE;}
@@ -621,9 +676,6 @@ int main(int argc, char* argv[])
 		else if (tag == "LINK_POWER_SCALE") 
 			{ss >> LINK_POWER_SCALE;}
 
-		//else if (tag == "P_LINK_BREAK_IF_OVER")	  
-		//	{ss >> P_LINK_BREAK_IF_OVER;} 
-		
 		else if (tag == "LINK_FORCE") 
 			{ss >> LINK_FORCE;}	
 
@@ -678,8 +730,14 @@ int main(int argc, char* argv[])
         else if (tag == "TEST_SQUASH") 
 			{ss >> buff2; if(buff2=="true") TEST_SQUASH = true; else TEST_SQUASH = false;}
 
-        else if (tag == "TEST_SQUASH_SPEED")  
-			{ss >> TEST_SQUASH_SPEED;}
+        else if (tag == "TEST_FORCE_INITIAL_MAG")  
+			{ss >> TEST_FORCE_INITIAL_MAG;}
+
+        else if (tag == "TEST_FORCE_INCREMENT")  
+			{ss >> TEST_FORCE_INCREMENT;}
+
+        else if (tag == "TEST_DIST_EQUIL")  
+			{ss >> TEST_DIST_EQUIL;}
 
 		else if (tag == "WRITE_BMPS_PRE_SYMBREAK") 
 			{ss >> buff2; if(buff2=="true") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false;}
@@ -710,12 +768,6 @@ int main(int argc, char* argv[])
 
 		else if (tag == "NODE_REPULSIVE_BUCKLE_TO") 
 			{ss >> NODE_REPULSIVE_BUCKLE_TO;}
-
-		//else if (tag == "LINK_TAUT_FORCE") 
-		//	{ss >> LINK_TAUT_FORCE;} 
-		//
-		//else if (tag == "LINK_TAUT_RATIO") 
-		//	{ss >> LINK_TAUT_RATIO;}
 		
 		else if (tag == "ASYMMETRIC_NUCLEATION") 
 			{ss >> ASYMMETRIC_NUCLEATION;} 
@@ -835,6 +887,12 @@ int main(int argc, char* argv[])
 
 	// calculate commonly used constants from parameters:
 
+    if (NUCSHAPE == nucleator::capsule)
+    {
+        // capsule goes all over the place, so make sure we're doing all 3 bitmaps
+        X_BMP = Y_BMP = Z_BMP = true;
+    }
+
 	double grid_scan_range;
 
 #ifdef PROXIMITY_VISCOSITY 
@@ -852,16 +910,19 @@ int main(int argc, char* argv[])
 
 #endif
 
-	GRIDRES = 1.01 * grid_scan_range;	// make the grid res a bit bigger so that only scan one GP in either dirn
-	GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
+	GRIDRES = 1.05 * grid_scan_range;	// make the grid res a bit bigger so that only scan one GP in either dirn
+	
+    gridscanjitter = GRIDRES - grid_scan_range; // how far a node can move before we update its grid posn
+
+    GRIDSIZE = (int) ( 2 * GRIDBOUNDS / GRIDRES );
 	Node_Grid_Dim = GRIDSIZE;
 
-	NODE_XLINK_GRIDSEARCH = (int) floor(( XLINK_NODE_RANGE )/GRIDRES) + 1; 
+	NODE_XLINK_GRIDSEARCH = (int) floor( XLINK_NODE_RANGE / GRIDRES ) + 1; 
 
 #ifdef PROXIMITY_VISCOSITY 
 	
 	// if using proximity-based viscosity, we might need to increase the collision-detection scan dist
-	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) floor(( grid_scan_range ) / GRIDRES) + 1;
+	NODE_REPULSIVE_RANGE_GRIDSEARCH = (int) floor( grid_scan_range  / GRIDRES ) + 1;
 
 #else
 
@@ -892,8 +953,6 @@ int main(int argc, char* argv[])
 		INIT_G_GAIN *= (1/SPECKLE_FACTOR);
 		INIT_B_GAIN *= (1/SPECKLE_FACTOR);
 	}
-
-
 	
 	vector<int> postprocess_iterations;
 	postprocess_iterations.resize(0);
@@ -913,8 +972,6 @@ int main(int argc, char* argv[])
 	}
 
 
-
-
 #ifdef NO_IMAGEMAGICK
 	cerr << "Warning: compiled with ImageMagick support turned off" << endl << endl;
 #else 
@@ -922,14 +979,87 @@ int main(int argc, char* argv[])
 		cerr << "Warning: image text turned off" << endl << endl;
 #endif
 
+    if (RESTORE_FROM_FRAME == 0 && !REWRITESYMBREAK && !POST_PROCESS)
+    {  // new run, clear directories
+
+#ifndef NOKBHIT
+		if (!QUIET)
+		{        
+			cout << "Clear directories and start run(y/n)?";
+		    
+			cout.flush();
+			int ch;
+			do 
+			{
+				ch = getch();
+			} 
+			while (( ch!='y' ) && ( ch!='Y') && ( ch!='n') && ( ch!='N'));
+
+			if (( ch=='n' ) || ( ch=='N'))
+			{
+				cout << "n - Run aborted" << endl;
+				cout.flush();
+				system("stty sane");
+				exit(1);
+			}
+			else
+			{
+				cout << endl;
+			}	
+
+		}
+#endif  
+        // only if starting a new calculation from scratch, clear the directories
+        cout << "Deleting old save files...";
+		cout.flush();
+
+#ifndef USEWINDOWSCOMMANDS
+
+		sprintf(command1, "rm -f %s*_0*.%s 2>/dev/null", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
+		system(command1);
+		sprintf(command1, "rm -f %s*.wrz 2>/dev/null", VRMLDIR );
+		system(command1);
+		sprintf(command1, "rm -f %s*.gz 2>/dev/null", REPORTDIR );
+		system(command1);
+		sprintf(command1, "rm -f %s*.gz 2>/dev/null", DATADIR );
+		system(command1);
+		sprintf(command1, "rm -f %s*.wrl %s*.txt 2>/dev/null", TEMPDIR, TEMPDIR );
+		system(command1);
+        sprintf(command1, "rm -f %s 2>/dev/null", SYM_BREAK_FILE );
+		system(command1);
+		sprintf(command1, "rm -f %s*.* 2>/dev/null", VTKDIR );
+		system(command1);        
+#else
+		sprintf(command1, "del /q %s*_0*.%s", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
+		system(command1);
+		sprintf(command1, "del /q %s*.wrz", VRMLDIR );
+		system(command1);
+		sprintf(command1, "del /q %s*.gz", REPORTDIR );
+		system(command1);
+		sprintf(command1, "del /q %s*.gz", DATADIR );
+		system(command1);
+		sprintf(command1, "del /q %s*.wrl %s*.txt", TEMPDIR, TEMPDIR );
+		system(command1);
+        sprintf(command1, "del /q %s", SYM_BREAK_FILE );
+		system(command1);
+		sprintf(command1, "del /q %s*.*", VTKDIR );
+		system(command1);
+#endif
+
+        cout << "done." << endl;
+    }
+
 
 	// create main objects
-	// create as static otherwise exit() doesn't call their destructors (!)
+	// create as static otherwise exit() doesn't call their destructors (?!)
 
 	//static consts CONST;
 
 	static actin theactin;
-	static nucleator nuc_object(NUCSHAPE, &theactin); 
+
+    ptheactin = &theactin;  // ugly global pointer for access from nodes,nucleator and segments
+
+    static nucleator nuc_object(NUCSHAPE);//, &theactin);
 
 	if (REWRITESYMBREAK)
 	{
@@ -970,8 +1100,6 @@ int main(int argc, char* argv[])
 
 	double x_angle, y_angle, z_angle, tot_rot;
 
-	
-
 	vect last_center, center, delta_center;
 
 	// Breakout if we are post processing
@@ -987,75 +1115,52 @@ int main(int argc, char* argv[])
 	// initialse from a checkpoint if requested
 	int starting_iter = 1;
 
+    vector <double> distmoved(NUMBER_RECORDINGS+1,0);  // keep track of the distance moved and num nodes
+    vector <int> numnodes(NUMBER_RECORDINGS+1,0);      // for the NODES_TO_UPDATE
+
 	if (RESTORE_FROM_FRAME != 0)
 	{
 		cout << "Loading data...";
 		cout.flush();
 
-        cout << "Restoring from frame "
-			 << RESTORE_FROM_FRAME << endl;
+        starting_iter = RESTORE_FROM_FRAME * InterRecordIterations;
 
-	    load_data(theactin, RESTORE_FROM_FRAME * InterRecordIterations);
+	    load_data(theactin, starting_iter);
+
+        cout << "Restored from frame "
+			 << RESTORE_FROM_FRAME << " (iteration " << starting_iter << ")" << endl;
 
         // srand( (unsigned) 200 );
 	    // cout << "reseeded: " << rand() << endl;
-
-	    starting_iter = RESTORE_FROM_FRAME * InterRecordIterations; 
+ 
 		//	starting_iter = RESTORE_FROM_FRAME + 1; // don't overwrite
 
         if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
             theactin.reservemorenodes(10000);
+
+        // restore the NODESUPDATE list
+
+        ifstream ipnodesupdate(NODESUPDATEFILE);
+			
+        if (!ipnodesupdate) 
+	        { cout << "Unable to open file " << NODESUPDATEFILE << " for input"; }
+        else
+        {
+            for (int fn = 1; fn != NUMBER_RECORDINGS+1; ++fn)
+            {
+                ipnodesupdate 
+		            >> distmoved[fn]
+		            >> numnodes[fn];
+            }
+            ipnodesupdate.close();
+        }
+
+        if (TEST_SQUASH)
+        {
+            theactin.testforces_setup();
+        }
 	}
-	else
-	{
-#ifndef USEWINDOWSCOMMANDS
 
-		cout << "Deleting old save files...";
-		cout.flush();
-		// only if starting a new calculation from scratch, clear the directories
-		sprintf(command1, "rm -f %s*_0*.%s 2>/dev/null", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
-		//cout << command1 << endl;
-		system(command1);
-		sprintf(command1, "rm -f %s*.wrz 2>/dev/null", VRMLDIR );
-		system(command1);
-		sprintf(command1, "rm -f %s*.gz 2>/dev/null", REPORTDIR );
-		system(command1);
-		sprintf(command1, "rm -f %s*.gz 2>/dev/null", DATADIR );
-		system(command1);
-		sprintf(command1, "rm -f %s*.wrl %s*.txt 2>/dev/null", TEMPDIR, TEMPDIR );
-		system(command1);
-        sprintf(command1, "rm -f %s 2>/dev/null", SYM_BREAK_FILE );
-		system(command1);
-		sprintf(command1, "rm -f %s*.* 2>/dev/null", VTKDIR );
-		system(command1);        
-
-		cout << "done." << endl;
-#else
-
-		cout << "Deleting old save files...";
-		cout.flush();
-		// only if starting a new calculation from scratch, clear the directories
-
-		sprintf(command1, "del /q %s*_0*.%s", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
-		system(command1);
-		sprintf(command1, "del /q %s*.wrz", VRMLDIR );
-		system(command1);
-		sprintf(command1, "del /q %s*.gz", REPORTDIR );
-		system(command1);
-		sprintf(command1, "del /q %s*.gz", DATADIR );
-		system(command1);
-		sprintf(command1, "del /q %s*.wrl %s*.txt", TEMPDIR, TEMPDIR );
-		system(command1);
-        sprintf(command1, "del /q %s", SYM_BREAK_FILE );
-		system(command1);
-		sprintf(command1, "del /q %s*.*", VTKDIR );
-		system(command1);
-
-		cout << "done." << endl;
-
-#endif
-
-	}
 
 	unsigned int rand_num_seed;
 
@@ -1068,19 +1173,14 @@ int main(int argc, char* argv[])
 	} 
 	else
 	{			  
-//#ifndef _WIN32
 		rand_num_seed = (unsigned int)( time(NULL) * getpid());
 		theactin.opruninfo << "Time and PID based random number seed (" << rand_num_seed << ") used" << endl;
 		cerr << "Time and PID based random number seed (" << rand_num_seed << ") used" << endl;
-//#else
-//		rand_num_seed = (unsigned int)( time(NULL) );
-//		theactin.opruninfo << "Time based random number seed (" << rand_num_seed << ") used" << endl;
-//		cerr << "Time based random number seed (" << rand_num_seed << ") used" << endl;
-//
-//#endif
     }
 
 	srand(rand_num_seed);
+
+
 
 	int filenum = 0;
 	double polrate = 0;
@@ -1167,6 +1267,13 @@ int main(int argc, char* argv[])
 						}
 	 					else
 						{
+                            endtime = (unsigned) time(NULL);
+
+                            cout << endl << "Time so far: " 
+		                        << ((endtime-starttime) / 3600) << "h " 
+		                        << ((endtime-starttime) / 60) % 60 << "m " 
+		                        << ((endtime-starttime) % 60) << "s " << endl;
+
 							cout << endl << endl << "Directory:";
 							cout.flush();
 
@@ -1190,7 +1297,6 @@ int main(int argc, char* argv[])
 						}
 					}
 				}
-
 #endif
 			}
 			
@@ -1198,37 +1304,31 @@ int main(int argc, char* argv[])
 
 			lasttime = nowtime;
 			theactin.find_center(center);
-			distfromorigin = center.length();
-            nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
+
+            if (!TEST_SQUASH)
+			    distfromorigin = center.length();
+            else
+                distfromorigin = theactin.testsurfaceposn;
+            theactin.inverse_actin_rotation.getangles(x_angle,y_angle,z_angle);
             tot_rot = fabs(x_angle) + fabs(y_angle) + fabs(z_angle);
 		
-			if ((!DISTANCE_TO_UPDATE_reached) && (DISTANCE_TO_UPDATE > 0.01) 
-				&& (distfromorigin > (DISTANCE_TO_UPDATE*RADIUS)))
-			{
-				DISTANCE_TO_UPDATE_reached = true;
-				NODES_TO_UPDATE = theactin.highestnodecount;
-				cout << endl << "DISTANCE_TO_UPDATE distance reached at " << distfromorigin
-					<< " updating only newest " << NODES_TO_UPDATE << " nodes" << endl;
-			}
+
 
 			if (!QUIET)
-			{
-				cout << "I" << setw(7) << i 
-				<< "|N" << setw(6) << theactin.highestnodecount
-				<< "|P" << setw(4) << setprecision(2) << polrate
-				<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
-				<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
-				<< "|d" << setw(6) << setprecision(3) << distfromorigin
-				<< "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot
-				//<< "|NR" << setw(5) <<  theactin.num_rotate	
-				<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime) << "\r";
+			{   // once per second screen output
+				cout<< "I"   << setw(7) << i 
+				    << "|N"  << setw(6) << theactin.highestnodecount
+				    << "|P"  << setw(4) << setprecision(2) << polrate
+				    << "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
+				    << "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
+				    << "|d"  << setw(6) << setprecision(3) << distfromorigin
+				    << "|R"  << setw(6) << setprecision(1) << (180/PI) * tot_rot
+				    << "|T"  << setw(3) << ((unsigned) time(NULL) - lastitertime) << "\r";
 				cout.flush();
-			}
-			
+			}			
 		}
 
 		theactin.iterate();
-		//theactin.newnodescolour.setcol((double)i/(double)TOTAL_ITERATIONS);
 		
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
 		{
@@ -1242,19 +1342,30 @@ srand( rand_num_seed );
 #endif
 
 			theactin.find_center(center);
-			distfromorigin = center.length();
-            nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
+            distmoved[filenum] = center.length();
+            numnodes[filenum] = theactin.highestnodecount;
+
+			if (!TEST_SQUASH)
+			    distfromorigin = distmoved[filenum];
+            else
+                distfromorigin = theactin.testsurfaceposn;
+
+            theactin.inverse_actin_rotation.getangles(x_angle,y_angle,z_angle);
             tot_rot = fabs(x_angle) + fabs(y_angle) + fabs(z_angle);
 			
 			delta_center = center - last_center;  
 			last_center = center;
 
-			nuc_object.nucleator_rotation.getangles(x_angle,y_angle,z_angle);
+			theactin.inverse_actin_rotation.getangles(x_angle,y_angle,z_angle);
+
+            //cout << "test nodes: "<< theactin.testnodes.size() << endl;
 
 			theactin.opinfo.close();
-			sprintf ( infofilename , "%sinfo%05i.txt",TEMPDIR, filenum );
+			
+            sprintf ( infofilename , "%sinfo%05i.txt",TEMPDIR, filenum );
 			theactin.opinfo.open(infofilename, ios::out | ios::trunc);
-			if (!theactin.opinfo) 
+			
+            if (!theactin.opinfo) 
 			{ cout << "Unable to open file " << infofilename << " for output"; }
 
 			theactin.opvelocityinfo 
@@ -1264,64 +1375,46 @@ srand( rand_num_seed );
 				<< center.z << "," 
 				<< delta_center.length() << endl;
 
+            // once per save screen and log output
+
 			if (!QUIET)
 			{
-				cout << "I" << setw(7) << i 
-				<< "|N"<< setw(6) << theactin.highestnodecount
-				<< "|P" << setw(4) << setprecision(2) << polrate
-				<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
-				<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
-				<< "|d" << setw(6) << setprecision(3) << distfromorigin
-				<< "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot
-				//<< "|NR" << setw(5) <<  theactin.num_rotate	
-				<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime);
-
-				cout << "|S " << setw(3) <<  (int)filenum  
-					<< "/" << NUMBER_RECORDINGS;
-
-				if ( !WRITE_BMPS_PRE_SYMBREAK && 
-					 !finished_writing_sym_bitmaps)
-					cout << "*";
-				
-				cout << endl;
-				cout.flush();
+				cout << "I" << setw(7) << i;
 			}
 			else
 			{
-				cout << "PID: " << getpid()
-					<< "|N" << setw(6)<< theactin.highestnodecount
-					<< "|P" << setw(4) << setprecision(2) << polrate
-					<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
-					<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
-					<< "|d" << setw(6) << setprecision(3) << distfromorigin
-					<< "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot	
-					<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime)
-					<< "|S " << setw(3) <<  (int)filenum  
-					<< "/" << NUMBER_RECORDINGS;
-
-				if ((!WRITE_BMPS_PRE_SYMBREAK) && 
-					((strlen(last_symbreak_bmp_filename)!=0) || (!theactin.brokensymmetry)))
-					cout << "*";
-				
-				cout << endl;
-				cout.flush();
- 
+				cout << "PID: " << getpid();    // write out pid if quiet so we know which proc to kill
 			}
 
-			theactin.opruninfo << "I" << setw(7) << i 
-			<< "|N"<< setw(6)<< theactin.highestnodecount
-			<< "|P" << setw(4) << setprecision(2) << polrate
-			<< "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
-			<< "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
-            << "|d" << setw(6) << setprecision(3) << distfromorigin
-            << "|R" << setw(6) << setprecision(1) << (180/PI) * tot_rot
-			//<< "|NR" << setw(5) <<  theactin.num_rotate	
-			<< "|T" <<  setw(3) <<((unsigned) time(NULL) - lastitertime);
-			//<< "|H" <<  setw(6) << theactin.harbinger;
-			theactin.opruninfo << "|S" << setw(3) <<  (int)filenum  
-				<< "/" << NUMBER_RECORDINGS << endl ;
+            theactin.opruninfo 
+                    << "|N"  << setw(6) << theactin.highestnodecount
+				    << "|P"  << setw(4) << setprecision(2) << polrate
+				    << "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
+				    << "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
+				    << "|d"  << setw(6) << setprecision(3) << distfromorigin
+				    << "|R"  << setw(6) << setprecision(1) << (180/PI) * tot_rot	
+				    << "|T"  << setw(3) << ((unsigned) time(NULL) - lastitertime)
+				    << "|S " << setw(3) << (int)filenum  
+				    << "/"   << NUMBER_RECORDINGS;
 
-            // we don't use vrml anymore, so don't bother with it for now
+            cout    << "|N"  << setw(6) << theactin.highestnodecount
+				    << "|P"  << setw(4) << setprecision(2) << polrate
+				    << "|L+" << setw(4) << (theactin.linksformed-lastlinksformed)/2 
+				    << "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
+				    << "|d"  << setw(6) << setprecision(3) << distfromorigin
+				    << "|R"  << setw(6) << setprecision(1) << (180/PI) * tot_rot	
+				    << "|T"  << setw(3) << ((unsigned) time(NULL) - lastitertime)
+				    << "|S " << setw(3) << (int)filenum  
+				    << "/"   << NUMBER_RECORDINGS;
+
+			if ( !WRITE_BMPS_PRE_SYMBREAK && 
+				 !finished_writing_sym_bitmaps)
+				cout << "*";
+
+            cout << endl;
+			cout.flush();
+
+			// we don't use vrml anymore, so don't bother with it for now
 			// theactin.savevrml(filenum);
 
 			if (WRITE_BMPS_PRE_SYMBREAK)
@@ -1429,21 +1522,49 @@ srand( rand_num_seed );
 				sprintf(command1, "%s sym 1>/dev/null 2>/dev/null &", argv[0]);
 				system(command1);
 
-				// kludge to move the last save
-				// so we can re-load to the point we left off
-				//
-				//	sprintf(command1 , "gzip -q -f -9 data*.txt 2>/dev/null" );
-				//	system(command1);
-
-				//	sprintf(command1 , "mv *data*.gz %s", DATADIR);
-				//	system(command1);
-
-				//	rewrite_symbreak_bitmaps(nuc_object, theactin);
-				//	load_data(theactin, i);
 			}  
 
 			save_data(theactin, i);
+
+            // save the nodes per dist file for the nodesupdate
+			ofstream opnodesupdate(NODESUPDATEFILE, ios::out | ios::trunc);
 			
+            if (!opnodesupdate) 
+			    { cout << "Unable to open file " << NODESUPDATEFILE << " for output"; }
+            else
+            {
+                for (int fn = 1; fn != NUMBER_RECORDINGS+1; ++fn)
+                {
+                    opnodesupdate 
+				    << distmoved[fn] << " " 
+				    << numnodes[fn] << endl;
+                }
+                opnodesupdate.close();
+            }
+			
+            if ( (DISTANCE_TO_UPDATE > 0.01) &&
+				 (distmoved[filenum] > DISTANCE_TO_UPDATE*RADIUS) )
+			{
+
+                NODES_TO_UPDATE = theactin.highestnodecount;
+
+                for (int fn = filenum; fn != 0; --fn)
+                {
+                    if ((distmoved[fn] < (distmoved[filenum] - DISTANCE_TO_UPDATE*RADIUS)) &&
+                        (numnodes[fn] != 0))
+                    {
+                        NODES_TO_UPDATE = theactin.highestnodecount - numnodes[fn];
+                        break;
+                    }
+                }
+
+                if (!DISTANCE_TO_UPDATE_reached)
+                {
+				    DISTANCE_TO_UPDATE_reached = true;
+				    cout << endl << "NODES_TO_UPDATE set to " << NODES_TO_UPDATE << endl;
+                }
+			}
+
 			if (theactin.brokensymmetry)
 			{	// only save bitmaps if symmetry broken, 
 				// 'cause we'll write the others later
@@ -1471,8 +1592,9 @@ srand( rand_num_seed );
 				cout << "\r";
 				cout.flush();
 
-				if (strlen(last_symbreak_bmp_filename)!=0)
+				if (*last_symbreak_bmp_filename != 0)
 				{
+                    //check if last file exists yet
 					ifstream ip_last_symbreak_bmp_file( last_symbreak_bmp_filename );
 
 					if (ip_last_symbreak_bmp_file)
@@ -1489,17 +1611,14 @@ srand( rand_num_seed );
 
 			}
 
-			theactin.clear_node_stats();  // clear the stats data in the nodes
+			theactin.clear_node_stats();  // clear the cumulative stats data in the nodes
 
 			theactin.compressfilesdowork(filenum);
 
 			lastlinksformed = theactin.linksformed;
 			lastlinksbroken = theactin.linksbroken;
 
-            theactin.setdontupdates(); // todo: make sure this works
-
-			//theactin.num_rotate = 0;
-			//theactin.num_displace = 0;
+            theactin.setdontupdates();
 
 			theactin.opruninfo.flush();
 
@@ -1513,16 +1632,17 @@ srand( rand_num_seed );
 
 	endtime = (unsigned) time(NULL);
 
-	cout << endl << "Time : " 
+    theactin.opruninfo 
+        << endl << "Time : " 
 		<< ((endtime-starttime) / 3600) << "h " 
 		<< ((endtime-starttime) / 60) % 60 << "m " 
 		<< ((endtime-starttime) % 60) << "s " << endl;
-
-	theactin.opruninfo << endl << "Time : " 
+        
+    cout<< endl << "Time : " 
 		<< ((endtime-starttime) / 3600) << "h " 
 		<< ((endtime-starttime) / 60) % 60 << "m " 
 		<< ((endtime-starttime) % 60) << "s " << endl;
-    
+ 
     // allow imagemagick to catch up before calling actin destructor and 
     // deleting the temp bitmap files
     if (!ABORT)
@@ -1571,6 +1691,9 @@ int load_data(actin &theactin, int iteration)
 
     if(!ifstrm) {
 	cout << "Unable to open file " << tmpdatafile << " / " << filename << " for input" << endl;
+    #ifdef _WIN32
+    cout << "Note that on windows, you must manually unzip any gzipped data files" << endl;
+    #endif
 	return 1;
     }
 
@@ -1610,7 +1733,10 @@ int load_data(actin &theactin, int iteration)
 
     // try to load sym break stuff if present
 
-    theactin.load_sym_break_axes();
+    if (theactin.load_sym_break_axes())
+        theactin.brokensymmetry = true;  // set this true if able to load sym break file
+                                         // since may be restoring to a pre sym break time
+                                         // and we would still want same direction etc.
 
     if (theactin.p_nuc->segs.load_scalefactors())
     {
@@ -1618,6 +1744,8 @@ int load_data(actin &theactin, int iteration)
         // turn off the auto-scaling
         theactin.BMP_intensity_scaling = false;
     }
+
+
 
     return iteration;
 }
@@ -1735,16 +1863,9 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 	{
 
 		int filenum;
-		//theactin.load_sym_break_axes();
-	 //   
-		//if(nuc_object.segs.load_scalefactors() ){
-		//// if we're able to load the scale factors
-		//// turn off the auto-scaling
-		//theactin.BMP_intensity_scaling = false;
-		//}
 	    
 		// vtk
-		CometVtkVis vtkvis(&theactin);
+		CometVtkVis vtkvis;//&theactin);
 	    
 		cout << "Post processing " 
 		 << postprocess_iterations.size()
@@ -1768,8 +1889,6 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 		
 		load_data(theactin, *iteration);
 		
-		//theactin.load_sym_break_axes();   // overwrite rotation matrixes
-
 		if (POST_BMP || POST_REPORTS)
 		{		  
 			nuc_object.segs.addallnodes();  // put node data into segment bins
@@ -1787,7 +1906,8 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 
 		if (POST_BMP)
 		{	
-			// one has to be run in foreground, else will catch up with Imagemagick
+			// one has to be run in foreground, else will catch up 
+            // with Imagemagick and overwrite temp files in use
 
 			actin::processfgbg xfg,yfg,zfg;
 
@@ -1834,10 +1954,6 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 			,TEMPDIR,TEMPDIR, REPORTDIR);
 		system(command1);
 	}
-
-
-	if (POST_BMP)
-		system("sleep 5");	 // give time for convert to work on bitmap before calling actin destructor
 
 }
 

@@ -45,17 +45,24 @@ struct int_vect
 	int x,y,z;
 };
 
+class testnodeinfo
+{
+public:
+    testnodeinfo(){};
+    ~testnodeinfo(){};
+    testnodeinfo(nodes *const & n, const vect& p):nodeptr(n),origunitvec(p){}  //nodes *
+
+    nodes* nodeptr;
+    vect origunitvec;
+};
+
 class linkform
 {
 public:
 	linkform(){};
-	linkform(int nn, double dsqr)
-	{
-		nodenum = nn;
-		distsqr = dsqr;
-	}
+    linkform(const int& nn, const double& dsqr):nodenum(nn),distsqr(dsqr){}
 
-	static int CompareDistance ( linkform elem1, linkform elem2 )
+	static int CompareDistance (const linkform &elem1, const linkform &elem2)
 	{
 		return (elem1.distsqr < elem2.distsqr);
 	}
@@ -174,6 +181,11 @@ public:
 	static vector <int>::iterator nearby_collision_gridpoint_offset_begin;
 	static vector <int>::iterator nearby_collision_gridpoint_offset_end;
 
+    //static vector <vector <vector <nodes*>*>> gridpointsbythread;
+    
+    static vector<vector<NODEGRIDTYPE<nodes*>*> > gridpointsbythread;
+    
+
     //static vector <int> recti_near_nodes_size;
     //static vector <int> nodes_on_same_gridpoint_size;
 
@@ -204,21 +216,39 @@ public:
 	vector <linkform> linkformto;
 	static void *linkforcesthread(void* threadarg);
 	//static void *compressfilesthread(void* threadarg);
-	void compressfilesdowork(const int & filenum);   
+	void compressfilesdowork(const int & filenum);
+
+    vector <testnodeinfo> testnodes;
+    double testsurfaceposn, lasttestsurfaceposn;
+    double testsurfacerotation;
+    double testforcemag;
+    vect testdirection;     // defines the direction of the test surface
+    double testangle;       // defines the arc
+
+    void testforces_setup();
+    void testforces_addforces();
+    void testforces_select_nodes(const double& testdist);
+    void testforces_saveiter();
 
 	void squash(const double & thickness);
 	void sortnodesbygridpoint(void);
+    void sortgridpointsbythread(void);
 	int nexttocrosslink;
 	int find_center(vect &center);
+
+    int currentsmallestgridthread;
 
 	void clear_nodegrid();
 	int save_data(ofstream &ofstrm);
 	int load_data(ifstream &ifstrm);
+    void rebuildnodepointers();
 	void setdontupdates(void);
 	void set_sym_break_axes(void);
 	bool load_sym_break_axes(void);
 	void save_sym_break_axes(void);
 	void clear_node_stats(void);
+
+    rotationmatrix inverse_actin_rotation;
 
 	inline int pixels(const double & coord) const
 	{  // convert simulation distance into pixel distance

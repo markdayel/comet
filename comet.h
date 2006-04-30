@@ -15,5 +15,7 @@ removed without prior written permission from the author.
 #ifndef comet_H
 #define comet_H
 
+class testnodeinfo;
+
 
 #endif

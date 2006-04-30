@@ -31,12 +31,12 @@ public:
 		capsule = 1};
 	nucleator(void);
 	~nucleator(void);
-	nucleator(shape set_geometry, actin *ptheactin);
+	nucleator(shape set_geometry);//, actin *ptheactin);
 	shape geometry;
 
 	double surf_area;
 	double movability;
-	actin *ptheactin;
+	//actin *ptheactin;
 
 	segments segs;
 
@@ -44,7 +44,7 @@ public:
 	vect torque, centerofmass;
 	vect momentofinertia;
 
-	rotationmatrix nucleator_rotation;
+	//rotationmatrix nucleator_rotation;
 
 	Colour colour;
 

@@ -33,8 +33,9 @@ public:
     bool harbinger;
 	bool stucktonucleator;
 	bool move_harbinger_this_time;
+    bool testnode;
 
-	actin* ptheactin;
+	//actin* ptheactin;
 	//nodes* nextnode;
 	//nodes* prevnode;
 
@@ -75,10 +76,12 @@ public:
 	int threadnum;    
 
 	int gridx, gridy, gridz;
+
+    NODEGRIDTYPE<nodes*>* nodegridptr;
 	//vect delta;
 
 	
-	int	nodelinksbroken;
+	//int	nodelinksbroken;
 	
 	Colour colour;
 	
@@ -103,57 +106,61 @@ public:
 	int save_data(ofstream &ofstr);
 	int load_data(ifstream &ifstr);
 
-	int addlink(nodes& linkto, const double& dist);
+	void addlink(nodes& linkto, const double& dist);
 	void removelink(const nodes* linkednode);
 
 	void updategrid(void);
 	void removefromgrid(void);
-	void addtogrid(void);
+	void addtogrid();
 	void setgridcoords(void);
+
+    vect posnoflastgridupdate;
 
 	inline void applyforces() 
 	{	
 
-	if (VISCOSITY)
-	{
-		// simple average weighted by VISCOSITY_FACTOR
-		//
-		//delta = (delta + (viscosity_velocity_sum * VISCOSITY_FACTOR )) / 
-		//	                     ( 1 + VISCOSITY_FACTOR + mymax(VISCOSITY_EDGE_FACTOR, viscosity_velocity_unweight));
+	    if (VISCOSITY)
+	    {
+		    // simple average weighted by VISCOSITY_FACTOR
+		    //
+		    //delta = (delta + (viscosity_velocity_sum * VISCOSITY_FACTOR )) / 
+		    //	                     ( 1 + VISCOSITY_FACTOR + mymax(VISCOSITY_EDGE_FACTOR, viscosity_velocity_unweight));
 
-		delta = ( (link_force_vec + rep_force_vec ) * NODE_FORCE_TO_DIST * NON_VISC_WEIGHTING + 
-			    (viscosity_velocity_sum	* VISCOSITY_FACTOR )) / 
-			                     ( NON_VISC_WEIGHTING + VISCOSITY_FACTOR * mymax(VISCOSITY_EDGE_FACTOR, viscosity_velocity_unweight));
-	} else
-	{
-		delta = (link_force_vec + rep_force_vec)				
-                * NODE_FORCE_TO_DIST;
-	}
+		    delta = ( (link_force_vec + rep_force_vec ) * NODE_FORCE_TO_DIST * NON_VISC_WEIGHTING + 
+			        (viscosity_velocity_sum	* VISCOSITY_FACTOR )) / 
+			                         ( NON_VISC_WEIGHTING + VISCOSITY_FACTOR * mymax(VISCOSITY_EDGE_FACTOR, viscosity_velocity_unweight));
+        } else
+        {
+	        delta = (link_force_vec + rep_force_vec)				
+                    * NODE_FORCE_TO_DIST;
+        }
 
-	*this += delta;
+        *this += delta;
 
-    setunitvec();  // we've moved the node, so reset the unit vector
-	clearforces();   // and clear force sums we just used
+        setunitvec();  // we've moved the node, so reset the unit vector
+        clearforces();   // and clear force sums we just used
 
-	// note: remember to do this clearing too when switch clearing harbinger flag
-	//       in crosslinknewnodes()
-}
+        // note: remember to do this clearing too when switch clearing harbinger flag
+        //       in crosslinknewnodes()
+    }
 
 	inline void clearforces()
 	{
 		
-	if (VISCOSITY)
-	{
-		viscosity_velocity_unweight = 0.0;
-		viscosity_velocity_sum.zero();
+	    if (VISCOSITY)
+	    {
+		    viscosity_velocity_unweight = 0.0;
+		    viscosity_velocity_sum.zero();
+	    }
+
+	    rep_force_vec.zero();
+	    link_force_vec.zero();
+
+	    pressure = 0;
+
 	}
 
-	rep_force_vec.zero();
-	link_force_vec.zero();
 
-	pressure = 0;
-
-	}
 
 	inline void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag) const
 	{

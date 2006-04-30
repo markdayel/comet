@@ -23,9 +23,13 @@ class rotationmatrix
     double yx,yy,yz;
     double zx,zy,zz;
     
-    
+    void rotationmatrix::rotatematrix(const rotationmatrix& rotmatrix);
     void rotatematrix(double angle, axis a);
     void rotatematrix(const double &x_angle, const double &y_angle, const double &z_angle);
+    void rotatematrixrevorder(const double &x_angle, const double &y_angle, const double &z_angle);
+    rotationmatrix inverse();
+
+    rotationmatrix& operator*=(const rotationmatrix& rotmatrix);
     
     //void rotate(double &x, double &y, double &z);
     
@@ -65,6 +69,25 @@ class rotationmatrix
 	{
 		rotate(v.x,v.y,v.z);
 	    return;
+	}
+
+    inline rotationmatrix operator*(const double &scale) const
+	{
+	    rotationmatrix tmp;
+	    
+	    tmp.xx = xx * scale;
+	    tmp.xy = xy * scale;
+	    tmp.xz = xz * scale;
+
+        tmp.yx = yx * scale;
+	    tmp.yy = yy * scale;
+	    tmp.yz = yz * scale;
+
+        tmp.zx = zx * scale;
+	    tmp.zy = zy * scale;
+	    tmp.zz = zz * scale;
+	    
+	    return tmp;
 	}
     
     void getangles(double& x_angle, double& y_angle, double& z_angle);    

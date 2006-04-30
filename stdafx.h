@@ -17,12 +17,15 @@ removed without prior written permission from the author.
 
 // compile-time options:
 
-//#define LINK_VTK 1
+// whether link or proximity viscosity
 //#define LINK_VISCOSITY 1
 #define PROXIMITY_VISCOSITY 1
 
 // this doesn't seem to affect speed at all
 #define NODE_GRID_USE_ARRAYS 1
+
+//#define NOKBHIT 1
+#define VTK_USE_ANSI_STDLIB
 
 // NODEGRIDTYPE should be 'list' or 'vector'
 // vector seems quite a bit faster
@@ -34,9 +37,6 @@ removed without prior written permission from the author.
     #define NODEGRIDTYPE vector
 #endif
 
-//#define NOKBHIT 1
-#define VTK_USE_ANSI_STDLIB
-
 #ifdef NODE_GRID_USE_ARRAYS
 	#define NODEGRID(i,j,k)  (*(nodegrid + ((((Node_Grid_Dim*Node_Grid_Dim*(i)) + (Node_Grid_Dim*(j)) + (k))))))
 #else
@@ -44,9 +44,29 @@ removed without prior written permission from the author.
 #endif
 
 const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per node
-                                              // OK if goes over
+                                              // OK if goes over, just slows things
+
+#define SYM_BREAK_FILE "sym_break_axis.txt"
+#define SEG_SCALE_FILE "segscalefactors.txt"
+#define COMET_PARAMS_FILE "cometparams.ini"
+#define NODESUPDATEFILE "nodesupdate.txt"
+#define TESTNODESFILE "testnodes.txt"
 
 #ifdef _WIN32
+
+    #define LINK_VTK 1    // link with vtk if on windows
+
+    #define _CRT_SECURE_NO_DEPRECATE
+    #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
+
+    // whether to use windows commands (/ or \ etc)
+    // this is not *necessarily* a _WIN32 switch, since we may be using cygwin
+	
+    #define USEWINDOWSCOMMANDS
+
+	#include <process.h>
+	#define getpid _getpid
+	//#include <windows.h>
 
 	//#pragma warning(disable: 4511) // unable to generate copy constructor
 	//#pragma warning(disable: 4512)
@@ -58,18 +78,11 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 
 	//#pragma auto_inline( on )
 
-	#define _CRT_SECURE_NO_DEPRECATE
+#else
 
-#endif
+	#include <unistd.h>
+    #include <sys/mman.h>
 
-#define SYM_BREAK_FILE "sym_break_axis.txt"
-#define SEG_SCALE_FILE "segscalefactors.txt"
-#define COMET_PARAMS_FILE "cometparams.ini"
-
-// whether to use windows commands (/ or \ etc)
-// this is not necessarily a _WIN32 switch, since we may be using cygwin
-#ifdef _WIN32
-	#define USEWINDOWSCOMMANDS
 #endif
 
 #ifndef USEWINDOWSCOMMANDS
@@ -89,7 +102,6 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 	
 	#define VRMLDIR "vrml\\"
 	#define DATADIR "data\\"
-    //#define DATADIR2 "data\\"
 	#define REPORTDIR "reports\\"
 	#define BITMAPDIR "bitmaps\\"
 	#define TEMPDIR "temp\\"
@@ -101,28 +113,23 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 
 #endif
  
-// defines
-
 // #define FORCES_BOTH_WAYS 1
 // #define NO_CALC_STATS 1
-//#define NON_RANDOM 1 // keep nucleating from same places
+// #define NON_RANDOM 1 // keep nucleating from same places
 
 #ifndef mymax
-#define mymax(a,b)            (((a) > (b)) ? (a) : (b))
+#define mymax(a,b)  (((a) > (b)) ? (a) : (b))
 #endif
 
 #ifndef mymin
-#define mymin(a,b)            (((a) < (b)) ? (a) : (b))
+#define mymin(a,b)  (((a) < (b)) ? (a) : (b))
 #endif
-
-
-#define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
-#include <stdio.h>
 
 // includes
 
 // standard headers
 
+#include <stdio.h>
 #include <assert.h>
 #include <string>
 #include <fstream>
@@ -137,17 +144,10 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 #include <sys/timeb.h>
 #include <vector>
 #include <list>
+#include <float.h>
 
 //#define _NUMA 1
 
-#ifndef _WIN32
-	#include <unistd.h>
-    #include <sys/mman.h>
-#else
-	#include <process.h>
-	#define getpid _getpid
-	//#include <windows.h>
-#endif
 
 #ifdef _NUMA
     #include <numa.h>
@@ -191,37 +191,6 @@ extern bool SEGMENT_BINS;
 extern bool DRAW_CAGE;
 //-- 
 
-//extern pthread_attr_t thread_attr;
-//extern vector<pthread_t>  threads;
-
-
-
-//extern vector<sem_t> collision_thread_go;
-//extern vector<sem_t> collision_data_done;
-
-
-//extern vector<sem_t> linkforces_thread_go;
-//extern vector<sem_t> linkforces_data_done;
-
-
-//extern vector<sem_t> applyforces_thread_go;
-//extern vector<sem_t> applyforces_data_done;
-
-//extern vector<struct thread_data>  compressfiles_thread_data_array;
-//extern vector<sem_t> compressfiles_thread_go;
-//extern vector<sem_t> compressfiles_data_done;
-
-//extern pthread_mutex_t linkstoremove_mutex;
-
-//extern pthread_mutex_t filessavelock_mutex;
-//extern pthread_mutex_t filesdonelock_mutex;
-
-//extern pthread_mutex_t beadmovelock_mutex;
-
-//extern vector<pthread_mutex_t> collisiondetectiongolock_mutex;
-//extern vector<pthread_mutex_t> collisiondetectiondonelock_mutex;
-
-
 // math related:
 
 #if 0      // use fmath rather than math  _WIN32
@@ -253,12 +222,6 @@ extern bool DRAW_CAGE;
 
 #endif
 
-//typedef vector<nodes*> Node1d;
-//typedef vector<Node1d> Node2d;
-//typedef vector<Node2d> Node3d;
-
-//extern Node3d nodegrid;
-
 // global variables:
 
 extern int MAXNODES;
@@ -266,12 +229,9 @@ extern int MAXNODES;
 extern bool REWRITESYMBREAK;
 extern bool POST_PROCESS;
 
-//const bool GRASS_IS_GREEN = true;  // this is a kludge to get rid of compiler warnings
 
 extern double TOTAL_SIMULATION_TIME;  
 extern double DELTA_T;
-//extern double MAX_DISP_PERDT;
-//extern double MAX_DISP_PERDT_DIVSQRTTWO;
 extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
 
 extern bool STICK_TO_NUCLEATOR;
@@ -281,24 +241,23 @@ extern bool NUCLEATOR_FORCES;
 
 
 extern double NUC_LINK_FORCE;
-extern double NUC_LINK_BREAKAGE_FORCE;
+extern double NUC_LINK_BREAKAGE_DIST;
 
 extern double FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
 										// this is related to effective viscosity and effective size of node
 extern double FORCE_BAR_SCALE;  // scale force for bars in output
 
 extern double XLINK_NODE_RANGE;	// Limit crosslink to within this range
-//extern double NODE_INCOMPRESSIBLE_RADIUS;// repulsion is zero here
-//extern double NODE_REPULSIVE_MAG;   // max repulsion (at dist=0)
 
 extern double LINK_BREAKAGE_FORCE;  // breakage force per link
 extern double LINK_FORCE;
 extern bool USE_BREAKAGE_STRAIN;
 extern double LINK_BREAKAGE_STRAIN;
-//extern double P_LINK_BREAK_IF_OVER;  // probablility that force will break link if over the link breakage force
 extern double P_XLINK;
 extern double P_NUC;
 extern double MAX_POLYMERISATION_PRESSURE;
+
+extern bool POST_VTK;
 
 extern int BMP_WIDTH,BMP_HEIGHT;
 extern int VTK_WIDTH;
@@ -320,9 +279,10 @@ extern bool X_BMP;
 extern bool Y_BMP;
 extern bool Z_BMP;
 
+extern double gridscanjitter;
+
 extern double VISCOSITY_FACTOR;
 extern double NON_VISC_WEIGHTING;
-//extern double VISCOSITY_UNWEIGHTING_FACTOR;
 
 extern double GAUSSFWHM;
 extern double SPECKLE_FACTOR;
@@ -339,8 +299,11 @@ extern double COVERSLIPGAP;
 extern double IMPOSED_NUC_ROT_SPEED;
 extern bool   IMPOSED_NUC_ROT;
 
-extern double TEST_SQUASH_SPEED;
+
 extern bool   TEST_SQUASH;
+extern double TEST_FORCE_INITIAL_MAG;
+extern double TEST_FORCE_INCREMENT;
+extern double TEST_DIST_EQUIL;
 
 extern bool WRITE_BMPS_PRE_SYMBREAK;
 
@@ -349,10 +312,6 @@ extern double NUCLEATOR_INERTIA;
 extern double RADIUS;   // radius and segment are the true radius and segment of nucleator
 extern double CAPSULE_HALF_LINEAR;
 extern double RADIUS; // RADIUS and SEG_INCOMP are the enlarged radius and segments
-//extern double SEG_INCOMP; // to prevent putting nodes within the node NODE_INCOMPRESSIBLE_RADIUS of the nucleator
-//extern double NODEMASS;
-//extern double INERTIAL_DAMPING_HALFTIME;
-//extern double DAMPING_FACTOR;
 extern int CROSSLINKDELAY;
 extern int NODES_TO_UPDATE;
 extern double DISTANCE_TO_UPDATE;
@@ -371,12 +330,7 @@ extern int XLINK_NEAREST;
 
 extern double VIEW_HEIGHT;
 
-//extern double LINK_TAUT_FORCE;
-//extern double LINK_TAUT_RATIO;
-
 extern int ASYMMETRIC_NUCLEATION;
-
-//extern int REPORT_AVERAGE_ITTERATIONS;
 
 const int REPORT_NUM_VARIABLES = 8;
 
@@ -385,28 +339,17 @@ extern double MofI;
 
 extern bool FORCES_ON_SIDE;
 
-
-
-//const double GLOBAL_DAMPING = 
-
-//#define HIST_MIN 1.0
-//#define HIST_MAX 3.0
-//#define HIST_BINS 20
-
 extern int TOTAL_ITERATIONS;  // these variables are global and are calculated from others
 extern int NODE_REPULSIVE_GRIDSEARCH;
 extern int NODE_REPULSIVE_RANGE_GRIDSEARCH;
 extern int NODE_XLINK_GRIDSEARCH;
-//extern int GRIDSIZE;
 extern int GRIDSIZE;
 
 
-//extern const double RECIP_RAND_MAX;
 const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);
 const double PI = (double) 3.141592653589793238462643383279502884197; // Pi
 const double LN_TWO = (double) 0.69314718055995; // ln(2)
 
-//inline double sqrt(const double &d);
 inline double calcdist(const double & xdist, const double & ydist, const double & zdist);
 inline double calcdist(const double & xdist, const double & ydist); 
 
@@ -414,12 +357,9 @@ inline void endian_swap(unsigned short& x);
 inline void endian_swap(unsigned int& x);
 
 
-
 // own headers
 #include "comet.h"
 #include "nucleator.h"
-
-
 
 extern nucleator::shape NUCSHAPE;  //default to sphere
 
@@ -442,9 +382,9 @@ typedef vector<Dbl1d> Dbl2d;
 
 struct thread_data
 {
-vector <nodes>::iterator startnode;
-vector <nodes>::iterator endnode;
-int threadnum;
+    vector <nodes>::iterator startnode;
+    vector <nodes>::iterator endnode;
+    int threadnum;
 };
 
 extern vector<struct thread_data>  collision_thread_data_array;
@@ -466,68 +406,12 @@ extern unsigned int Node_Grid_Dim;
 #include "actin.h"
 #include "vect.h"
 
+extern actin *ptheactin;
+
 //#include "consts.h"
 
 //extern consts CONST;
 
-inline double calcdist(const vect & v1, const vect & v2);
-
-/*inline float sqrt(float x) {
-  float y;
-  _asm {
-    mov ecx, x
-    and ecx, 0x7f800000
-    fld x
-    mov eax, ecx
-    add ecx, 0x3f800000
-    or  ecx, 0x00800000
-    shr ecx, 1
-    mov y, eax
-    and ecx, 0x3f800000
-    fld y
-    fadd
-    fstp y
-    and [y], 0x007fffff
-    or  [y], ecx
-  }
-  return y;
-}  */
-
-
-/*inline double sqrt(double d)
-{
-	double x,y, deltax;
-	x = 1/d;
-	do
-	{
-		y = x*x;
-		deltax = x*(0.875 - ( (1.25*d) - (0.375*d*2) *y) *y);
-		x+= deltax;
-	} while (fabs(deltax) > (d/100));
-
-	return (1/x);
-}*/
-/*
-static inline double sqrt(double x)
-{
-	// "delta" is the acceptable error bound
-	double delta = x/100;
-	double y = (1+x)*.5,oldy;
-	do {
-		oldy = y;
-		y = (x/y+y)*.5;
-	}
-	while(fabs(y-oldy) > delta);
-	return y;
-}
-*/
-
-//inline double sqrt(const double &d)
-//{
-//	return sqrt(d);
-//}
-
-//inline double calcdist(double xdist, double ydist, double zdist);
 inline double calcdist(const double & xdist, const double & ydist, const double & zdist)
 {
 	double sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
@@ -541,7 +425,6 @@ inline double calcdist(const double & xdist, const double & ydist, const double 
 		return sqrt(sqr);
 }
 
-//inline double calcdist(double xdist, double ydist);
 inline double calcdist(const double & xdist, const double & ydist) 
 {
 	double sqr = (xdist*xdist + ydist*ydist);
@@ -568,44 +451,10 @@ inline void endian_swap(unsigned short& x)
 inline void endian_swap(unsigned int& x)
 {
     x = (x>>24) | 
-	((x<<8) & 0x00FF0000) |
-	((x>>8) & 0x0000FF00) |
-	(x<<24);
+	    ((x<<8) & 0x00FF0000) |
+	    ((x>>8) & 0x0000FF00) |
+	    (x<<24);
 }
-
-
-
-/*
-// __int64 for MSVC, "long long" for gcc
-inline void endian_swap(unsigned long long& x)
-{
-    x = (x>>56) | 
-	((x<<40) & 0x00FF000000000000) |
-	((x<<24) & 0x0000FF0000000000) |
-	((x<<8)  & 0x000000FF00000000) |
-	((x>>8)  & 0x00000000FF000000) |
-	((x>>24) & 0x0000000000FF0000) |
-	((x>>40) & 0x000000000000FF00) |
-        (x<<56);
-}*/
-
-
-
-
-
-
-// extern actin theactin;
-
-//extern nodes* nodegrid[GRIDSIZE+1][GRIDSIZE+1][GRIDSIZE+1];
-
-
-
-
-
-//extern inline double fastsqrt(float n);
-//extern float sse_sqrt(float n);
-//extern void build_sqrt_table();
-
 
 #endif
 

@@ -17,6 +17,7 @@ removed without prior written permission from the author.
 #include "rotationmatrix.h"
 #include <assert.h>
 
+
 actin::actin(void)
 {
 
@@ -62,7 +63,9 @@ actin::actin(void)
 		//opinfo.open("/dev/null", ios::out | ios::trunc);
     }
 
-
+//    testaverageposn.zero();
+//    lasttestaverageposn.zero();
+    
 
 	opvelocityinfo << "time,x,y,z,vel" << endl;
 
@@ -77,7 +80,7 @@ actin::actin(void)
 	for (int i=0; i<MAXNODES; i++)
 	{
 		node[i].nodenum=i;
-		node[i].ptheactin=this;
+		//node[i].ptheactin=this;
 	}
 
 	cout << "     GridExtent : " << GRIDBOUNDS << " uM" << endl;
@@ -86,61 +89,59 @@ actin::actin(void)
 
 	cout << "Zeroing Grid...";
 	cout.flush();
-
-	     
-#ifdef NODE_GRID_USE_ARRAYS
-
-	nodegrid = new NG1d[(Node_Grid_Dim+1)*(Node_Grid_Dim+1)*(Node_Grid_Dim+1)];
-
-	clear_nodegrid();
-
     
+    	     
+    #ifdef NODE_GRID_USE_ARRAYS
 
-#else
+	    nodegrid = new NG1d[(Node_Grid_Dim+1)*(Node_Grid_Dim+1)*(Node_Grid_Dim+1)];
 
-    
+	    clear_nodegrid();
 
-    //#define NODEGRID(i,j,k)	 nodegrid[(i)][(j)][(k)]
-	nodegrid.resize(GRIDSIZE+1);
-	for (int i=0; i!=(GRIDSIZE+1); i++)  // allocate nodegrid and set nodegrid pointers to null
-	{
-		nodegrid[i].resize(GRIDSIZE+1);
-		for (int j=0; j!=(GRIDSIZE+1); j++)
-		{
-			nodegrid[i][j].resize(GRIDSIZE+1);
-		}
-	}
+    #else
+
+        
+
+        //#define NODEGRID(i,j,k)	 nodegrid[(i)][(j)][(k)]
+	    nodegrid.resize(GRIDSIZE+1);
+	    for (int i=0; i!=(GRIDSIZE+1); i++)  // allocate nodegrid and set nodegrid pointers to null
+	    {
+		    nodegrid[i].resize(GRIDSIZE+1);
+		    for (int j=0; j!=(GRIDSIZE+1); j++)
+		    {
+			    nodegrid[i][j].resize(GRIDSIZE+1);
+		    }
+	    }
 
 
 
-#endif
+    #endif
 
-    //reserve vectors for area close to nucleator (only for vector type)
+        //reserve vectors for area close to nucleator (only for vector type)
 
-#ifndef NODEGRIDTYPELIST
+    #ifndef NODEGRIDTYPELIST
 
-    int i,j,k;
-    double x,y,z;
+        int i,j,k;
+        double x,y,z;
 
-    for (i=0; i!=(GRIDSIZE+1); i++)  
-	{
-        x = (i - (GRIDSIZE/2)) * GRIDRES;
-		for (j=0; j!=(GRIDSIZE+1); j++)
-		{
-            y = (j - (GRIDSIZE/2)) * GRIDRES;
-            for (k=0; k!=(GRIDSIZE+1); k++)
-            {
-                z = (k - (GRIDSIZE/2)) * GRIDRES;
-                if ((!REWRITESYMBREAK && !POST_PROCESS) &&
-                    ((fabs(x) < RADIUS * 8) ||
-                     (fabs(y) < RADIUS * 8) ||
-                     (fabs(z) < RADIUS * 8)))
-                    NODEGRID(i,j,k).reserve(64);
-            }
-		}
-	}
+        for (i=0; i!=(GRIDSIZE+1); i++)  
+	    {
+            x = (i - (GRIDSIZE/2)) * GRIDRES;
+		    for (j=0; j!=(GRIDSIZE+1); j++)
+		    {
+                y = (j - (GRIDSIZE/2)) * GRIDRES;
+                for (k=0; k!=(GRIDSIZE+1); k++)
+                {
+                    z = (k - (GRIDSIZE/2)) * GRIDRES;
+                    if ((!REWRITESYMBREAK && !POST_PROCESS) &&
+                        ((fabs(x) < RADIUS * 8) ||
+                         (fabs(y) < RADIUS * 8) ||
+                         (fabs(z) < RADIUS * 8)))
+                        NODEGRID(i,j,k).reserve(64);
+                }
+		    }
+	    }
 
-#endif
+    #endif
 
 	cout << "Done" << endl << endl;
 
@@ -178,13 +179,6 @@ actin::actin(void)
 			speckle_array[i] = y1;
 		else
 			speckle_array[i] = 0;
-		
-		//opruninfo << y1 << endl;
-
-		//if (rand() > SPECKLE_FACTOR * RAND_MAX)
-		//	speckle_array[i] = false;
-		//else
-		//	speckle_array[i] = true;
 	}
 
 
@@ -206,8 +200,8 @@ actin::actin(void)
 		recti_near_nodes[i].reserve(1024);
 		nodes_on_same_gridpoint[i].reserve(1024);
         nodes_by_thread[i].reserve(2 * MAXNODES / NUM_THREAD_DATA_CHUNKS);  // poss should / by NUM_THREAD_DATA_CHUNKS
-        linkremovefrom[i].reserve(100);
-        linkremoveto[i].reserve(100);
+        linkremovefrom[i].reserve(128);
+        linkremoveto[i].reserve(128);
 
         recti_near_nodes[i].resize(0);
         nodes_on_same_gridpoint[i].resize(0);
@@ -217,7 +211,7 @@ actin::actin(void)
 	}
 
 	//nodes_within_nucleator.reserve(10000);
-	linkformto.reserve(100);
+	linkformto.reserve(128);
 
 	cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
 
@@ -303,6 +297,26 @@ actin::actin(void)
     brokensymmetry = false;
 
     BMP_intensity_scaling = true;
+
+    actin_rotation.settoidentity();
+    inverse_actin_rotation.settoidentity();
+
+    gridpointsbythread.resize(NUM_THREAD_DATA_CHUNKS);
+
+    for(int i = 0; i != NUM_THREAD_DATA_CHUNKS; ++i)
+    {
+        gridpointsbythread[i].reserve(2048);
+    }
+    currentsmallestgridthread = 0;
+
+
+    testsurfaceposn = DBL_MAX;
+    testsurfacerotation = 0;
+    testangle = 0;
+    testforcemag = 0;
+     
+    testdirection = vect(0,0,1);
+    testangle = cos(30 * PI/360);
 } 
 
 actin::~actin(void)
@@ -338,7 +352,7 @@ actin::~actin(void)
 void actin::crosslinknewnodes(const int &numnewnodes)
 {	
 	if (numnewnodes == 0)
-		return;
+		return;  // :)
 	
 	vect nodeposvec;
 	double distsqr;
@@ -346,35 +360,40 @@ void actin::crosslinknewnodes(const int &numnewnodes)
 	vect disp;
 
 	// and link the new nodes...
-	for (int i=nexttocrosslink; i < (nexttocrosslink+numnewnodes); i++)
+	for (int i = nexttocrosslink; i != nexttocrosslink + numnewnodes; ++i)
 	{
 		attemptedpolrate++;
 
-		if (!node[i].harbinger || !node[i].polymer)
-			continue;  // look for surviving harbingers to crosslink
+		if (!node[i].harbinger ||
+            !node[i].polymer)
+			continue;   // look for surviving harbingers to crosslink
+                        // those that have been killed are no longer harbingers (check this?)
+                        // so will abort here (so attemptedpolrate will
+                        // be greater than polrate)
 
 		//cout << "linking node " << i << endl;
 		//cout << "created node at " << node[i].x << "," << node[i].y << "," << node[i].z << endl;
 
-		node[i].harbinger = false;  // now  our node exists
-
-		polrate++;
+		node[i].harbinger = false;  // now our node exists, it's no longer a harbinger
+		polrate++;     // node is created, so increase the actual pol rate monitoring variable
 
 		if (findnearbynodes(node[i],NODE_XLINK_GRIDSEARCH,0)==0) // find nodes close by
 			continue;	// skip if zero											
-							 
-		// of these nodes, calculate euclidian dist
 
-		nodeposvec = node[i];
+		// collect the nodes within link range (euclidian dist)
+        // ready for sorting
+
+        nodeposvec = node[i];
 
 		linkformto.resize(0);
 
-		// collect the nodes:
-
-		for (vector <nodes*>::iterator nearnode=recti_near_nodes[0].begin(); nearnode<recti_near_nodes[0].end() ; nearnode++ )
+		for (vector <nodes*>::iterator nearnode  = recti_near_nodes[0].begin();
+                                       nearnode != recti_near_nodes[0].end(); 
+                                     ++nearnode)
 		{
 
-			if ( ((*nearnode)->harbinger) || (!(*nearnode)->polymer) )
+			if ( ((*nearnode)->harbinger) ||
+                (!(*nearnode)->polymer) )
 				continue;  // only crosslink to real nodes
 
 			disp = (*(*nearnode)) - nodeposvec;
@@ -384,56 +403,43 @@ void actin::crosslinknewnodes(const int &numnewnodes)
 			if (distsqr < SQRT_ACCURACY_LOSS)
 				continue;
 
-			if ( distsqr < XLINK_NODE_RANGE*XLINK_NODE_RANGE)
+			if ( distsqr < XLINK_NODE_RANGE * XLINK_NODE_RANGE)
 			{
 				linkformto.push_back(linkform( (*nearnode)->nodenum , distsqr ));
-				opinfo << sqrt(distsqr) << " ";
-				//(*(linkformto.end()-1)).nodenum = (*nearnode)->nodenum;
-				//(*(linkformto.end()-1)).distsqr = distsqr;
-
-				//addlinks(i,(*nearnode)->nodenum,distsqr);  // add link if within the node link range
 			}
 		}
 
-		if (linkformto.size() > 0)
-			opinfo << endl;
 
 		// put them in order:
 		if (XLINK_NEAREST)  // crosslink in order of distance?
 			sort(linkformto.begin(), linkformto.end(), linkform::CompareDistance);
 		else				// or in random order
-			random_shuffle(linkformto.begin(),linkformto.end());
+			random_shuffle(linkformto.begin(), linkformto.end());
 
         unsigned int linkattempts = 0, successfullinks = 0;
 
 		// and crosslink:
-		for (vector <linkform>::iterator linkto=linkformto.begin(); linkto<linkformto.end() ; ++linkto )
+		for (vector <linkform>::iterator linkto  = linkformto.begin();
+                                         linkto != linkformto.end();
+                                       ++linkto)
 		{
-            if (linkattempts++ > MAX_LINK_ATTEMPTS || successfullinks == MAX_LINKS_PER_NEW_NODE)
-                break;             //node[i].listoflinks.size() == MAX_LINKS_PER_NEW_NODE)
+            if (( linkattempts++ == MAX_LINK_ATTEMPTS) || 
+                (successfullinks == MAX_LINKS_PER_NEW_NODE))
+                break; 
 
-            if (addlinks(node[i],node[linkto->nodenum]))
+            if ( addlinks(node[i], node[linkto->nodenum]) )
+            {   
                 successfullinks++;
+                opinfo << ( (node[i]-node[linkto->nodenum]).length() ) << " ";
+            }
         }
 
-			//if (i%100==0)
-			//{
-			//	cout << (*linkto).distsqr << " " << node[i].listoflinks.size() 
-			//		<< " " << node[(*linkto).nodenum].listoflinks.size() << endl;
-			//}
-			//if (node[i].listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
-			//{	//
-				// /todo: check this - disabled max links on the linked-to node for now
-				//
-				//if (node[linkto->nodenum].listoflinks.size()<MAX_LINKS_PER_NEW_NODE)
-				//{
-				//addlinks(node[i],node[linkto->nodenum]);
-				//}
-		
+        if (successfullinks > 0)
+			opinfo << endl;
 
 		if (!ALLOW_HARBINGERS_TO_MOVE)
-		{   // this was a harbinger---if they are not moving then force vectors 
-            // will have built up so zero them 
+		{   // this was a harbinger---if they were not having applyforces called
+            // then force vectors will have built up so zero them now
 			node[i].setunitvec();
 			node[i].clearforces();  
 		}
@@ -598,16 +604,37 @@ void actin::iterate()  // this is the main iteration loop call
 			currentlyusingthreads = false;
 	}
 	
-	int numnewnodes = p_nuc->addnodes();  // add new nodes
-	
-	// crosslink, but only after time to equilibrate position
-	// in mean time it is a 'harbinger'
-	// affected only by node collision repulsion and nucleator repulsion
+    if (!TEST_SQUASH)
+    {   // only add new nodes if not testing forces
+    	
+	    // crosslink, but only after time to equilibrate position
+	    // in mean time it is a 'harbinger'
+	    // affected only by node collision repulsion and nucleator repulsion
 
-	crosslinknodesdelay[iteration_num % CROSSLINKDELAY] = numnewnodes;
-	crosslinknewnodes(crosslinknodesdelay[(iteration_num + 1) % CROSSLINKDELAY]);
-	
-	//sortnodesbygridpoint();
+
+        // add new nodes and store number created in rolling array
+	    crosslinknodesdelay[iteration_num % CROSSLINKDELAY] = p_nuc->addnodes();
+
+        // crosslink nodes after they are CROSSLINKDELAY iterations old:
+	    crosslinknewnodes(crosslinknodesdelay[(iteration_num + 1) % CROSSLINKDELAY]);
+    }
+    else
+    {
+        testforces_select_nodes(testsurfaceposn);
+        // if testing forces apply the force here
+
+        testforces_addforces();
+
+        if (fabs(testsurfaceposn - lasttestsurfaceposn) < TEST_DIST_EQUIL)
+        {   // has come to equilibrium
+            // so save the point
+           testforces_saveiter();
+           testforcemag += TEST_FORCE_INCREMENT;
+        }
+
+        lasttestsurfaceposn = testsurfaceposn;  // store the old position
+    }
+
 
 	if ((lastsorthighestnode != highestnodecount) && ((iteration_num % 20) == 0))
 	{    // only do full sort periodically
@@ -622,105 +649,196 @@ void actin::iterate()  // this is the main iteration loop call
 		lastsorthighestnode	= highestnodecount;
 	}
 
-	// in multithreaded mode, these functions just start the threads:
+	// in multithreaded mode, these functions just start the threads
+    // else they do the work
+
 	collisiondetection();	    // calc node-to-node repulsion
 	linkforces();			    // and link forces
 
-
     if  (currentlyusingthreads && (USETHREAD_COLLISION || USETHREAD_LINKFORCES))
-    {
+    {   // must wait for threads to finish before updating node positions
         thread_queue.complete_queued_tasks();
     }
-
 
 	nucleator_node_interactions();	    // do forcable node ejection
 	
 	applyforces();              // move the nodes and update the grid
 
-	//squash(COVERSLIPGAP);	 // this doesn't work
+    if (COVERSLIPGAP > RADIUS)   // skip if less than RADIUS (it's set to 0 to disable) 
+	    squash(COVERSLIPGAP);	 
 
 	iteration_num++;
 
 	return;
 }
 
-//int actin::addlinks(const int& linknode1,const int& linknode2)
-//{
-//	// crosslink a new node
-//	// returns 1 if link added, 0 if not
-//
-//	
-//
-//	if (linknode1==linknode2) return 0; // can't link to self
-//
-//	if ((!node[linknode1].polymer) ||  // make sure polymer
-//		(!node[linknode2].polymer))  
-//		return 0;
-//
-//	double dist = calcdist(node[linknode1],node[linknode2]);
-//
-//	// make sure the link doesn't go *through* the nucleator
-//
-//	if ((node[linknode2]-node[linknode1]).dot(node[linknode1].unit_vec_posn)<0)
-//	   return 0;
-//
-//	//nodes midpoint;
-//	//
-//	//midpoint.x = (node[linknode1].x + node[linknode2].x) / 2;
-//	//midpoint.y = (node[linknode1].y + node[linknode2].y) / 2;
-//	//midpoint.z = (node[linknode1].z + node[linknode2].z) / 2;
-//
-//	//midpoint.setunitvec();
-//
-//	//if (midpoint.dist_from_surface < 0) // - 0.05 * RADIUS) )
-//	//	return 0;
-//
-//
-//	// crosslink poisson distribution (max probability at XLINK_NODE_RANGE/5)
-//
-//	//pxlink = ((double)2.7*dist/(XLINK_NODE_RANGE/(double)5))
-//	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5));
-//
-//	// divide by dist*dist to compensate for increase numbers of nodes at larger distances
-//
-//
-//
-//	//pxlink = ((( (double) 2.7 / (XLINK_NODE_RANGE/(double)5) )
-//	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5) ) ));
-//
-//	// normal distrib with center around 1/2 of XLINK_NODE_RANGE
-//	// and scale magnitude by 1/(XLINK_NODE_RANGE^2) to compensate for increased
-//	// number of nodes at this distance shell
-//
-//	//if ((node[linknode1].z <0) || (node[linknode2].z <0))
-// 	//	return 0;
-//
-//	// was using this one before 28 march:
-//	// (poissonian with max at XLINK_NODE_RANGE/5):
-//	//pxlink = ((( (double) 2.7 / (XLINK_NODE_RANGE/(double)5) )
-//	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5) ) )/dist);
-//
-//
-//	// was using this (gaussian with max at XLINK_NODE_RANGE/2) for a bit:
-//	//pxlink = exp( -40*(dist-(XLINK_NODE_RANGE/2))*(dist-(XLINK_NODE_RANGE/2)))/(dist*dist*XLINK_NODE_RANGE*XLINK_NODE_RANGE);
-//	
-//	double pxlink = 1;
-//
-//	//pxlink = P_XLINK * exp(-4*dist/XLINK_NODE_RANGE);
-//	//double pxlink = P_XLINK * (1 - dist/XLINK_NODE_RANGE);
-//
-//	if ( pxlink * RAND_MAX > rand()  )
-//	{
-//		node[linknode1].addlink(node[linknode2],dist); 
-//		node[linknode2].addlink(node[linknode1],dist);
-//        
-//		//cout << "linked " << node[linknode1].nodenum << " to " << node[linknode2].nodenum  << endl;
-//	
-//		return 1;
-//	}
-//
-//	return 0;
-//}
+void actin::testforces_setup()
+{
+    testforces_select_nodes(0);  // select *all* nodes within test section
+
+    // find the furthest out
+    testsurfaceposn = 0;
+    lasttestsurfaceposn = DBL_MAX;
+    nodes* p_furthestnode = NULL;
+
+    for(vector <testnodeinfo>::iterator	i_test  = testnodes.begin(); 
+							            i_test != testnodes.end();
+					                  ++i_test)
+    {   
+        i_test->nodeptr->testnode = false; // not really test nodes, so clear the previous setting
+
+        if (i_test->nodeptr->dist_from_surface > testsurfaceposn)
+        {
+            p_furthestnode = i_test->nodeptr;
+            testsurfaceposn = p_furthestnode->dist_from_surface;
+        }
+    }
+
+    // start with testsurfaceposn equal to the furthest out, 
+    // and only the furthest node in testnodes
+
+    testnodes.resize(0);
+    if (p_furthestnode) // if there are any nodes in the test region
+    {    
+        testnodes.push_back(testnodeinfo(p_furthestnode,(*p_furthestnode).unitvec()));
+        p_furthestnode->testnode = true;
+
+        cout << endl << "Starting surface at " << testsurfaceposn << endl;
+    }
+    else
+    {
+        cout << endl << "Warning: no nodes in test region" << endl;
+        exit(1);
+    }
+
+    ofstream optest(TESTNODESFILE, ios::out | ios::trunc); // wipe the nodes test file
+    optest << "Itteration Testnodes Force Position" << endl;
+    optest.close();
+
+    testforcemag = TEST_FORCE_INITIAL_MAG;
+
+    testdirection = vect(0,0,1);
+    testangle = cos(30 * PI/360);
+
+    // rotate so that direction is wrt camera viewpoint
+    reverse_camera_rotation.rotate(testdirection);
+
+}
+
+
+void actin::testforces_select_nodes(const double& testdist)
+{
+
+    const size_t oldnodes = testnodes.size(); 
+
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin() + highestnodecount;
+							      ++i_node)
+    {
+        if (i_node->testnode)
+            continue;   // skip those that are already in
+        
+        if (i_node->dist_from_surface < testdist)
+            continue;
+
+        if (i_node->unit_vec_posn.dot(testdirection) > testangle)
+        {   
+            testnodes.push_back(testnodeinfo(&*i_node,(*i_node).unitvec()));
+                                             // store the actual position of the node 
+                                             // so we can tell where on the surface to keep the node
+            i_node->testnode = true;  // flag the node so don't add twice and so bitmap plots different colour
+        }
+
+    }
+
+    if (testnodes.size() > oldnodes)  // do a save point if we have more nodes now
+        testforces_saveiter();
+
+}
+
+void actin::testforces_addforces()
+{
+
+    vect tomove;
+
+    //testsurfacetransform.settoidentity();
+    //testsurfacetransform.rotatematrix(reverse_camera_rotation);
+    //testsurfacetransform.rotatematrix(testsurfacerotation, rotationmatrix::axis::zaxis); // check this
+    //testsurfacetransform *= 
+
+    //const double testforce = DELTA_T * TEST_FORCE_INITIAL_MAG;
+
+    vect lever_arm;
+
+    vect forceontestsurface; //, torqueonsurface;
+
+    forceontestsurface.zero();
+    //torqueonsurface.zero();
+
+    for(vector <testnodeinfo>::iterator	i_test  = testnodes.begin(); 
+							            i_test != testnodes.end();
+					                  ++i_test)
+    {   
+        // find the displacement to move the node to bring it to 
+        // the testsurfaceposn distance
+
+        tomove = (i_test->origunitvec * (RADIUS + testsurfaceposn)) -  // original position of node projected onto test surface
+                *(i_test->nodeptr);  // the current node position
+        
+        forceontestsurface -= tomove;  // add movement to forceontestsurface (convert to force later)
+
+        //lever_arm = *(i_test->nodeptr) - (testdirection * (RADIUS + testsurfaceposn));
+
+        //torqueonsurface += lever_arm.cross(tomove);
+
+        // move the node to the surface
+         *(i_test->nodeptr) += tomove;
+
+        i_test->nodeptr->setunitvec();
+        i_test->nodeptr->updategrid();
+
+    }
+
+    forceontestsurface *= NODE_DIST_TO_FORCE;  // convert distance to force
+    forceontestsurface /= (double) testnodes.size();  // scale by # nodes on the surface,
+                                                      // since moving the surface moves this many nodes
+                                                      // so the inertia is proportional to node number
+
+    //move the test surface
+
+    testsurfaceposn += (forceontestsurface.dot(testdirection) - testforcemag) * NODE_FORCE_TO_DIST;
+     //testsurfacerotation += torqueonsurface / testsurfaceinertia;
+
+
+}
+
+void actin::testforces_saveiter()
+{
+    ofstream optest(TESTNODESFILE, ofstream::out | ofstream::app); // add to end
+
+    if (!optest) 
+        { cout << "Unable to open file " << TESTNODESFILE << " for output"; }
+    else
+    {
+        cout << endl << setw(6) << setprecision(5)
+            << iteration_num << " "
+            << testnodes.size() << " "
+            << testforcemag << " "
+            << testsurfaceposn << endl;
+
+        optest 
+            << iteration_num << " "
+            << testnodes.size() << " "
+            << testforcemag << " "
+            << testsurfaceposn << endl;
+
+        optest.close();
+    }
+
+    
+}
+
+
 
 bool actin::addlinks(nodes& linknode1, nodes& linknode2) const
 {
@@ -734,25 +852,11 @@ bool actin::addlinks(nodes& linknode1, nodes& linknode2) const
 		return false;
 
 	// make sure the link doesn't go *through* the nucleator
-	// i.e. that dot product of normal and link is not < 0.1
+	// i.e. that dot product of normal and link is not < - 0.1
     // actually not 0 else gets rid of *all* the surface links
 
 	if (linknode1.unit_vec_posn.dot( linknode2 - linknode1 ) < - 0.1)
 	   return false;
-
-	//nodes midpoint;
-	//
-	//midpoint.x = (node[linknode1].x + node[linknode2].x) / 2;
-	//midpoint.y = (node[linknode1].y + node[linknode2].y) / 2;
-	//midpoint.z = (node[linknode1].z + node[linknode2].z) / 2;
-
-	//midpoint.setunitvec();
-
-	//if (midpoint.dist_from_surface < 0) // - 0.05 * RADIUS) )
-	//	return 0;
-
-
-	
 
 	// crosslink poisson distribution (max probability at XLINK_NODE_RANGE/5)
 
@@ -812,44 +916,46 @@ void actin::nucleator_node_interactions()
 
     // now using insidenucleator flag set in setunitvec() of node
 
-    for (int n=lowestnodetoupdate; n<highestnodecount; ++n)
+    for(vector <nodes>::iterator	i_node  = node.begin()+lowestnodetoupdate; 
+									i_node != node.begin()+highestnodecount;
+							      ++i_node)
 	{
-        if (node[n].dist_from_surface < 0) // if node is inside nucleator           
+        if (i_node->dist_from_surface < 0) // if node is inside nucleator           
         {   
-            if (p_nuc->collision(node[n])) // (*i)->x,(*i)->y,(*i)->z)==0)  
-			    node[n].updategrid();  // ejected OK
+            if (p_nuc->collision(*i_node)) // (*i)->x,(*i)->y,(*i)->z)==0)  
+			    i_node->updategrid();  // ejected OK
 		    else
-			    node[n].depolymerize();  // not ejected OK, depolymerize
+			    i_node->depolymerize();  // not ejected OK, depolymerize
         }
 
 		// do node-nucleator links:
 
-        if (node[n].stucktonucleator)
+        if (i_node->stucktonucleator)
 		{
-            disp = node[n] - node[n].nucleator_stuck_position;
+            disp = *i_node - i_node->nucleator_stuck_position;
 	        dist = disp.length();
-    	    
-            force = NUC_LINK_FORCE * dist ;
-	        
-            if (force > NUC_LINK_BREAKAGE_FORCE)
+    	    	        
+            if (dist > NUC_LINK_BREAKAGE_DIST)
             {
                 //node[n].nucleator_link_force.zero();
-                node[n].stucktonucleator = false;   // no longer stuck
+                i_node->stucktonucleator = false;   // no longer stuck
             }
             else
             {
+                force = NUC_LINK_FORCE * dist;
+
                 forcevec = disp * (force/dist);  // '(disp/dist)' is just to get the unit vector
 
-                node[n].link_force_vec -= forcevec;			// add to move node
+                i_node->link_force_vec -= forcevec;			// add to move node
 				
                 // add to node segment stats (tension only since default dist is zero)
-		        node[n].adddirectionalmags(forcevec, node[n].linkforce_radial, node[n].linkforce_transverse);
+		        i_node->adddirectionalmags(forcevec, i_node->linkforce_radial, i_node->linkforce_transverse);
 
 				vect tomove = -forcevec * DELTA_T * FORCE_SCALE_FACT;  // convert force to distance
 
-				p_nuc->move_nuc(node[n],tomove);		// add to nucleator movement vector
+				p_nuc->move_nuc(*i_node,tomove);		// add to nucleator movement vector
 
-				node[n].nucleator_link_force += tomove;	// add to nuc link force stats
+				i_node->nucleator_link_force += tomove;	// add to nuc link force stats
 
             }
             
@@ -858,48 +964,6 @@ void actin::nucleator_node_interactions()
 	}
 
 }
-//
-//void actin::move_and_rotate()
-//{
-//
-//	// do rotation
-//
-//	// rotate with torque:
-//	//if (IMPOSED_NUC_ROT)
-//	//{
-//	//	vect attachement(0,1,0);
-//	//	vect force(0,0,IMPOSED_NUC_ROT_SPEED * DELTA_T);
-//	//	p_nuc->move_nuc(attachement,force);
-//	//	attachement = -attachement;
-//	//	force = -force;
-//	//	p_nuc->move_nuc(attachement,force);
-//	//}
-//
-//
-//	if (IMPOSED_NUC_ROT || ROTATION)
-//	{
-//
-//		// rotate the actin:
-//		for (int i=0; i<highestnodecount; ++i)
-//		{
-//			if (!node[i].harbinger) //  && node[i].move_harbinger_this_time)
-//				torque_rotate.rotate(node[i]);
-//		}
-//
-//	}
-//
-//
-//// do displacment
-//
-//	for (int i = 0; i<highestnodecount; i++)
-//	{
-//		if (!node[i].harbinger || node[i].move_harbinger_this_time)
-//			node[i]-=p_nuc->deltanucposn;
-//	}
-//
-//	return;
-//}
-
 
 void actin::collisiondetection(void)
 {
@@ -1278,45 +1342,38 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 	double viscfactor;
 #endif
 
-    nodes *p_thisnode, *p_nearnode, *p_sameGPnode;
+    nodes *p_i_node, *p_nearnode, *p_sameGPnode;
 
 
     int sameGPnodenum;
 
-    // loop over the nodes given to this thread
-    for(vector <nodes*>::iterator	i_thisnode  = nodes_by_thread[dat->threadnum].begin(); 
-									i_thisnode != nodes_by_thread[dat->threadnum].end();
-							      ++i_thisnode) 
+    // loop over all the nodes given to this thread
+    for(vector <nodes*>::iterator	i_node  = nodes_by_thread[dat->threadnum].begin(); 
+									i_node != nodes_by_thread[dat->threadnum].end();
+							      ++i_node) 
     {	
-        p_thisnode = *i_thisnode;
+        p_i_node = *i_node;
 
-        if(donenode[p_thisnode->nodenum])     
+        if(donenode[p_i_node->nodenum])     
 	        continue;  // skip nodes already done
 
-	    // find nodes on same gridpoint, and nodes within repulsive range
-        // skip if zero
+        //assert (p_i_node->nodegridptr);
 
-//#ifdef NODE_GRID_USE_ARRAYS
-//		// use pointer offsets if using arrays not vectors
-//		if (findnearbynodes_collision(**thisnode, dat->threadnum)==0)
-//	        continue;	// find nodes within range
-//#else
-//	    if (findnearbynodes(**thisnode,NODE_REPULSIVE_RANGE_GRIDSEARCH, dat->threadnum)==0)
-//	        continue;	// find nodes within range
-//#endif
+        if(!p_i_node->nodegridptr)
+            continue;  // skip if not on grid
 
-        const int minx = p_thisnode->gridx - NODE_REPULSIVE_RANGE_GRIDSEARCH;
-        const int miny = p_thisnode->gridy - NODE_REPULSIVE_RANGE_GRIDSEARCH;
-        const int minz = p_thisnode->gridz - NODE_REPULSIVE_RANGE_GRIDSEARCH;
+        const int minx = p_i_node->gridx - NODE_REPULSIVE_RANGE_GRIDSEARCH;
+        const int miny = p_i_node->gridy - NODE_REPULSIVE_RANGE_GRIDSEARCH;
+        const int minz = p_i_node->gridz - NODE_REPULSIVE_RANGE_GRIDSEARCH;
         
-        const int maxx = p_thisnode->gridx + NODE_REPULSIVE_RANGE_GRIDSEARCH + 1;
-        const int maxy = p_thisnode->gridy + NODE_REPULSIVE_RANGE_GRIDSEARCH + 1;
-        const int maxz = p_thisnode->gridz + NODE_REPULSIVE_RANGE_GRIDSEARCH + 1;
+        const int maxx = p_i_node->gridx + NODE_REPULSIVE_RANGE_GRIDSEARCH + 1;
+        const int maxy = p_i_node->gridy + NODE_REPULSIVE_RANGE_GRIDSEARCH + 1;
+        const int maxz = p_i_node->gridz + NODE_REPULSIVE_RANGE_GRIDSEARCH + 1;
 
-	    // loop over nodes on same gridpoint:
-	    for(NODEGRIDTYPE <nodes*>::iterator sameGPnode  = NODEGRID(p_thisnode->gridx,p_thisnode->gridy,p_thisnode->gridz).begin(); 
-									  sameGPnode != NODEGRID(p_thisnode->gridx,p_thisnode->gridy,p_thisnode->gridz).end();
-								    ++sameGPnode) 
+	    // loop over nodes on same gridpoint
+        for(NODEGRIDTYPE <nodes*>::iterator sameGPnode  = p_i_node->nodegridptr->begin(); 
+									        sameGPnode != p_i_node->nodegridptr->end();
+								          ++sameGPnode) 
         {
             p_sameGPnode = *sameGPnode;  
 
@@ -1331,88 +1388,44 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 			nodeposvec = *p_sameGPnode;	// get xyz of our node
 
             // loop over adjacent gridpoints
-
-	        for (x = minx; x != maxx; ++x) 
-	            for (y = miny; y != maxy; ++y) 
+	        for (x = minx; x != maxx; ++x)
+            {
+	            for (y = miny; y != maxy; ++y)
+                {
 	                for (z = minz; z != maxz; ++z) 
                     {
-                        const NODEGRIDTYPE <nodes*>::iterator lastgrid  = NODEGRID(x,y,z).end();
-			            for(  NODEGRIDTYPE <nodes*>::iterator nearnode  = NODEGRID(x,y,z).begin(); 
-										                nearnode != lastgrid;
-			                                          ++nearnode) 
+			            for(NODEGRIDTYPE <nodes*>::iterator nearnode  = NODEGRID(x,y,z).begin(); 
+									                        nearnode != NODEGRID(x,y,z).end();
+		                                                  ++nearnode) 
 			            {
-
                             p_nearnode = *nearnode;
 
 			                if ( p_sameGPnode == p_nearnode)
 				                continue;  // skip if self
-                			
-				            // can we save time by doing same for paired node?
-				            // no, because all the time is spent in findnearbynodes() and we would
-				            // have to call that for each one anyway. poop.
-
-				            //if (p_sameGPnode->threadnum == dat->threadnum)
-				            //{	// same thread, so we're doing the calc both ways
-				            //	if (p_sameGPnode->nodenum < p_nearnode->nodenum)
-				            //	{
-				            //		calc_both_ways = true;
-				            //	}
-				            //	else
-				            //	{	// only calc both ways when our nodenum is the lower of the pair 
-				            //		// (to stop duplication), else skip
-				            //		continue;
-				            //	}
-				            //}
-				            //else
-				            //{   // node not in same thread, so can only do one way
-				            //	calc_both_ways = false;
-				            //}
-
-
 
 			                disp = *p_nearnode - nodeposvec; 
 			                distsqr = disp.sqrlength();
                 			
-			                if (distsqr < 2*SQRT_ACCURACY_LOSS)
-		    		            continue;
+			                //if (distsqr < 2*SQRT_ACCURACY_LOSS)
+		    		        //    continue;
                			
 			                if (distsqr < local_NODE_REPULSIVE_RANGEsqared)
 			                {
-				                // calc dist between nodes
+
 				                dist = sqrt(distsqr); 
-            //                    recip_dist = 1/dist;
-
+  
 					            rep_force_mag = 13 * NODE_REPULSIVE_MAG * (exp ((-7.0*dist/NODE_REPULSIVE_RANGE)) - exp (-7.0));
-
-					            //rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recip_dist - 1);
-
-					            //if (dist > NODE_REPULSIVE_BUCKLE_RANGE)	  // outside buckle range
-					            //		rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recip_dist - 1) ;
-
-					            //else if (dist > NODE_REPULSIVE_BUCKLE_TO)						
-					            //		rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE / 
-					            //		NODE_REPULSIVE_BUCKLE_RANGE - 1) ;
-					            //else 
-					            //	rep_force_mag = NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE / 
-					            //		(dist + ((NODE_REPULSIVE_BUCKLE_RANGE - NODE_REPULSIVE_BUCKLE_TO) * 
-					            //		(dist/NODE_REPULSIVE_BUCKLE_TO))) - 1) ;
-
 
 					            // if harbinger, ramp up the repulsive forces gradually (linearly with itter no):
 
 					            if (p_sameGPnode->harbinger)
 					            {	// harbinger being repelled
-
 						            rep_force_mag *= (double) ( (iteration_num - p_sameGPnode->creation_iter_num) % CROSSLINKDELAY) / (double) CROSSLINKDELAY;
-						            //if (p_sameGPnode->nodenum % 100 == 0)
-						            //	cout << "F Node: " << setprecision(3) << p_sameGPnode->nodenum << " scale: " << (double) ( (iteration_num - p_sameGPnode->creation_iter_num) % CROSSLINKDELAY) / (double) CROSSLINKDELAY << endl;
 					            }
 
 					            if (p_nearnode->harbinger)
 					            {	// being repelled from harbinger
 						            rep_force_mag *= (double) ( (iteration_num - p_nearnode->creation_iter_num) % CROSSLINKDELAY) / (double) CROSSLINKDELAY;
-						            //if (p_nearnode->nodenum % 100 == 0)
-						            //	cout << "R Node: " << setprecision(3) << p_nearnode->nodenum << " scale: " << (double) ( (iteration_num - p_nearnode->creation_iter_num) % CROSSLINKDELAY) / (double) CROSSLINKDELAY << endl;
             					
 						            if (p_sameGPnode->harbinger)
 						            {	// two harbingers, so move them
@@ -1420,46 +1433,34 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 						            }
 					            }
 
-					            // convert to vector
+					            // convert force magnitude to vector
 
 					            rep_force_vect = disp * rep_force_mag;
 
-
+                                // add to the actual repulsion
 				                p_sameGPnode->rep_force_vec -= rep_force_vect ;
 
+                                // add to the statistics
 				                p_sameGPnode->adddirectionalmags(rep_force_vect, p_sameGPnode->repforce_radial,
 								                p_sameGPnode->repforce_transverse);
 
+                                p_sameGPnode->pressure += rep_force_mag;
+
             #ifdef PROXIMITY_VISCOSITY
+                                // do proximity-based viscosity
 					            if ((VISCOSITY) && (dist < VISC_DIST))
 					            {
-						            //vel_sum += node[n].delta;
-						            // simple average
-						            //p_sameGPnode->viscosity_velocity_sum += p_nearnode->delta;
-						            //p_sameGPnode->viscosity_velocity_unweight ++;
-
 						            viscfactor = mymin(MAX_VISC_WEIGHTING,1/dist);
 
 						            p_sameGPnode->viscosity_velocity_sum += p_nearnode->delta * viscfactor;
 						            p_sameGPnode->viscosity_velocity_unweight += viscfactor;
 					            }
             #endif 
-					            p_sameGPnode->pressure += rep_force_mag;
-                                
-					            //if (calc_both_ways) 
-                 //               { 
-                 //                     p_nearnode->rep_force_vec += rep_force_vect ;
-
-                 //                     p_nearnode->adddirectionalmags(-rep_force_vect, p_nearnode->repforce_radial,
-                 //                                         p_nearnode->repforce_transverse);
-
-                 //                     if ((p_sameGPnode->harbinger) && (p_nearnode->harbinger))
-                 //                             p_nearnode->move_harbinger_this_time = true;
-
-                 //               }
-			                    }
                             }
                         }
+                    }
+                }
+            }
 	    }
     }
 
@@ -1500,35 +1501,39 @@ void actin::applyforces(void)
 		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);
 	}
 
-	if (IMPOSED_NUC_ROT || ROTATION)
-	{
+    if (!TEST_SQUASH)
+    {   // don't move nucleator if testing forces
 
-	// rotate the nucleator:
-	p_nuc->nucleator_rotation.rotatematrix( -x_angle, -y_angle, -z_angle);
+	    if (IMPOSED_NUC_ROT || ROTATION)
+	    {
+            // rotate the actin reference frame:
+            actin_rotation.rotatematrix(torque_rotate);
+            inverse_actin_rotation = actin_rotation.inverse();
 
-	// rotate the actin reference frame:
-	actin_rotation.rotatematrix( x_angle, y_angle, z_angle);
+	        // update the nucleator position
+	        p_nuc->position += p_nuc->deltanucposn;
+            
+            // rotate the nucleator displacement vector
+	        inverse_actin_rotation.rotate(p_nuc->deltanucposn);
 
-	// rotate the nucleator displacement vector
-	p_nuc->nucleator_rotation.rotate(p_nuc->deltanucposn);
+	    }
 
-	// update the nucleator position with the rotated vector
-	p_nuc->position+=p_nuc->deltanucposn;
-	
-	}
+	    nuc_disp = p_nuc->deltanucposn; // store nucleator movement in static for threads
 
-	nuc_disp = p_nuc->deltanucposn;// store nucleator movement in static for threads
+    }
+    else
+    {
+        nuc_disp.zero();
+    }
 
 	// and zero
 	p_nuc->deltanucposn.zero();
 
-	// clear the torque vector
+	// clear the torque vector now that the torque rotation matrix is set
 	p_nuc->torque.zero();
-	
 	
 
 #ifndef SEED_INSIDE
-    
 
     if (currentlyusingthreads && USETHREAD_APPLYFORCES)	
     {
@@ -1578,9 +1583,11 @@ void actin::applyforces(void)
     // note: is this necessary?  only use grid for repulsion anyway
     // and we're not calculating that
 
-	for (int i=0; i<highestnodecount; i++)
+	for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin()+highestnodecount;
+							      ++i_node)
     {
-	    node[i].updategrid(); // move the point on the grid if need to
+	    i_node->updategrid(); // move the point on the grid if need to
     }
 
 #endif
@@ -1633,108 +1640,52 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 
     if (dat->threadnum < NUM_THREAD_DATA_CHUNKS)
     {
-        for(vector <nodes>::iterator thisnode  = dat->startnode;
-                                     thisnode != dat->endnode;
-                                   ++thisnode)
+        for(vector <nodes>::iterator i_node  = dat->startnode;
+                                     i_node != dat->endnode;
+                                   ++i_node)
 	    {
-		    if (!thisnode->polymer)
+		    if (!i_node->polymer)
 			    continue;                       
 
-		    if (thisnode->harbinger)
+		    if (i_node->harbinger)
 		    {   // is a harbinger, check pressure---do we depolymerise it?
-			    if (thisnode->pressure > MAX_POLYMERISATION_PRESSURE)
+			    if (i_node->pressure > MAX_POLYMERISATION_PRESSURE)
 			    {
-				    thisnode->depolymerize();
+				    i_node->depolymerize();
 				    continue;
 			    }
 
 			    // special case: move harbinger if it is repelled by another harbinger, or if flag set
-			    if (ALLOW_HARBINGERS_TO_MOVE || thisnode->move_harbinger_this_time)
+			    if (ALLOW_HARBINGERS_TO_MOVE || i_node->move_harbinger_this_time)
 			    {	
-				    thisnode->applyforces();
-				    thisnode->move_harbinger_this_time = false;
+				    i_node->applyforces();
+				    i_node->move_harbinger_this_time = false;
 			    }
+
+                i_node->rep_force_vec.zero();  // clear the repulsive forces every time
+                                                 // the possibility of move_harbinger_this_time
+                                                 // means that repulsive forces could otherwise build up
 		    }
 		    else
 		    {	// move if not harbinger
-			    torque_rotate.rotate(*thisnode);	 // rotate
-			    *thisnode -= nuc_disp;	 // move wrt nucleator frame of ref
-                thisnode->applyforces();
+			    torque_rotate.rotate(*i_node);	 // rotate
+			    *i_node -= nuc_disp;	 // move wrt nucleator frame of ref
+                i_node->applyforces();
 			    //if (i>=lowestnodetoupdate)
-				   // thisnode->applyforces();	         // move according to forces
+				   // i_node->applyforces();	         // move according to forces
 		    }
         }
     }
     else
     {   // just move/rotate
-        for(vector <nodes>::iterator thisnode  = dat->startnode;
-                                     thisnode != dat->endnode;
-                                   ++thisnode)
+        for(vector <nodes>::iterator i_node  = dat->startnode;
+                                     i_node != dat->endnode;
+                                   ++i_node)
 	    {
-		    torque_rotate.rotate(*thisnode);	 // rotate
-		    *thisnode -= nuc_disp;	             // move wrt nucleator frame of ref
+		    torque_rotate.rotate(*i_node);	 // rotate
+		    *i_node -= nuc_disp;	             // move wrt nucleator frame of ref
         }
     }
-
- //   for(vector <nodes>::iterator thisnode  = node.begin() + dat->startnode;
- //                                thisnode != node.begin() + dat->endnode;
- //                              ++thisnode)
-	//{
-	//	if (!thisnode->polymer)
-	//		continue;                       
-
-	//	if (thisnode->harbinger)
-	//	{   // is a harbinger, check pressure---do we depolymerise it?
-	//		if (thisnode->pressure > MAX_POLYMERISATION_PRESSURE)
-	//		{
-	//			thisnode->depolymerize();
-	//			continue;
-	//		}
-
-	//		// special case: move harbinger if it is repelled by another harbinger, or if flag set
-	//		if (ALLOW_HARBINGERS_TO_MOVE || thisnode->move_harbinger_this_time)
-	//		{	
-	//			thisnode->applyforces();
-	//			thisnode->move_harbinger_this_time = false;
-	//		}
-	//	}
-	//	else
-	//	{	// move if not harbinger
-	//		torque_rotate.rotate(*thisnode);	 // rotate
-	//		*thisnode -= nuc_disp;	 // move wrt nucleator frame of ref
-	//		if (i>=lowestnodetoupdate)
-	//			thisnode->applyforces();	         // move according to forces
-	//	}
- //   }
-
-	//for (int i=dat->startnode; i<dat->endnode; ++i)
-	//{
-	//	if (!node[i].polymer)
-	//		continue;                       
-
-	//	if (node[i].harbinger)
-	//	{   // is a harbinger, check pressure---do we depolymerise it?
-	//		if (node[i].pressure > MAX_POLYMERISATION_PRESSURE)
-	//		{
-	//			node[i].depolymerize();
-	//			continue;
-	//		}
-
-	//		// special case: move harbinger if it is repelled by another harbinger, or if flag set
-	//		if (ALLOW_HARBINGERS_TO_MOVE || node[i].move_harbinger_this_time)
-	//		{	
-	//			node[i].applyforces();
-	//			node[i].move_harbinger_this_time = false;
-	//		}
-	//	}
-	//	else
-	//	{	// move if not harbinger
-	//		torque_rotate.rotate(node[i]);	 // rotate
-	//		node[i] -= nuc_disp;	 // move wrt nucleator frame of ref
-	//		if (i>=lowestnodetoupdate)
-	//			node[i].applyforces();	         // move according to forces
-	//	}
- //   }
 
     return NULL;
 }
@@ -1745,7 +1696,7 @@ void actin::linkforces()
     // remove the links for ones that were broken last time
     for(int threadnum=0; threadnum<NUM_THREAD_DATA_CHUNKS; ++threadnum)
     {
-        for (unsigned int i=0; i<linkremovefrom[threadnum].size() ; ++i )
+        for (unsigned int i=0; i!=linkremovefrom[threadnum].size() ; ++i )
         {
             linkremovefrom[threadnum][i]->removelink(linkremoveto[threadnum][i]);  // remove the back link
 	        linkremoveto[threadnum][i]->removelink(linkremovefrom[threadnum][i]);  // and remove from the list
@@ -1808,8 +1759,7 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
     // cast arg
     const thread_data* const dat = (thread_data*) arg;
  
-    double dist;
-    double force;
+    double dist, force;
     vect nodeposvec, disp;
     vect forcevec;
 
@@ -1819,55 +1769,41 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 
 
     // go through all nodes
-    for(vector <nodes>::iterator thisnode  = dat->startnode;
-                                 thisnode != dat->endnode;
-                               ++thisnode)
+    for(vector <nodes>::iterator i_node  = dat->startnode;
+                                 i_node != dat->endnode;
+                               ++i_node)
     {   
         // make sure they have links and are polymers
-	    if ((thisnode->listoflinks.size() == 0) || (!thisnode->polymer))
+	    if ((i_node->listoflinks.size() == 0) || (!i_node->polymer))
 	        continue;
 
     	// store the node position for later calculation of link lengths
-	    nodeposvec = *thisnode;
+	    nodeposvec = *i_node;
    	
   		// go through links for each node
-		for (vector <links>::iterator thislink  = thisnode->listoflinks.begin();
-                                      thislink != thisnode->listoflinks.end();
-                                    ++thislink )
+		for (vector <links>::iterator i_link  = i_node->listoflinks.begin();
+                                      i_link != i_node->listoflinks.end();
+                                    ++i_link )
 		{	 
-			assert( !thislink->broken ); // if link not broken  (shouldn't be here if broken anyway)
+			assert( !i_link->broken ); // if link not broken  (shouldn't be here if broken anyway)
 
-			disp = nodeposvec - *(thislink->linkednodeptr);
+			disp = nodeposvec - *(i_link->linkednodeptr);
 			dist = disp.length();
     	    
-			force = thislink->getlinkforces(dist);
-    	    
-			if (thislink->broken) 
-			{
-				// broken link: store which ones to break:
-				linkremovefrom[dat->threadnum].push_back(&(*thisnode));
-				linkremoveto[dat->threadnum].push_back(thislink->linkednodeptr);
-				thisnode->links_broken++;
-			} 
-			else 
-			{
-				forcevec = disp * (force/dist);  
-
-				// we're scaling the force by vector disp
-				// to get the *direction*, so we need to
-				// divide by the length of disp (i.e. dist)
-				// to prevent the length amplifying the force
+            if (i_link->getlinkforces(dist,force)) // returns false if broken
+            {
+				forcevec = disp * (force/dist); // convert force to vector
         		
-				thisnode->link_force_vec += forcevec;
+				i_node->link_force_vec += forcevec;
         		
 				if (force < 0) // put tension into link forces
 				{
-					thisnode->adddirectionalmags(forcevec, thisnode->linkforce_radial, thisnode->linkforce_transverse);
+					i_node->adddirectionalmags(forcevec, i_node->linkforce_radial, i_node->linkforce_transverse);
 				} 
 				else 
 				{	   // but put compression into repulsive forces
-					thisnode->adddirectionalmags(forcevec, thisnode->repforce_radial , thisnode->repforce_transverse );
-					thisnode->pressure += force;
+					i_node->adddirectionalmags(forcevec, i_node->repforce_radial , i_node->repforce_transverse );
+					i_node->pressure += force;
 				}
 
 #ifdef LINK_VISCOSITY
@@ -1882,12 +1818,18 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 				}
 #endif 
 
-			}
+            }
+            else 
+			{
+				// broken link: store which ones to break:
+				linkremovefrom[dat->threadnum].push_back(&(*i_node));
+				linkremoveto[dat->threadnum].push_back(i_link->linkednodeptr);
+			} 
+
 		}
 		
 
     }
-
 
     return NULL;
 }
@@ -2039,14 +1981,15 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 	int xg,yg;
 
-	GaussMat.resize(2*xgmax);
-	GaussMat2.resize(2*xgmax);
+	GaussMat.resize(2*xgmax+1);
+	GaussMat2.resize(2*xgmax+1);
 
-	for(xg = -xgmax; xg<xgmax; xg++)
+	for(xg = -xgmax; xg != xgmax+1; xg++)
 	{
-		GaussMat[xg+xgmax].resize(2*ygmax);
-		GaussMat2[xg+xgmax].resize(2*ygmax);
-		for(yg = -ygmax; yg<ygmax; yg++)
+		GaussMat[xg+xgmax].resize(2*ygmax+1);
+		GaussMat2[xg+xgmax].resize(2*ygmax+1);
+
+		for(yg = -ygmax; yg != ygmax+1; yg++)
 		{
 			if ((xg*xg+yg*yg)>(xgmax*ygmax))
 				continue;  // don't do corners
@@ -2062,14 +2005,11 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	// clear the image array
 
 	for (x = 0; x<BMP_WIDTH; x++)
-		{
-			for (y = 0; y<BMP_HEIGHT; y++)
-			{
-				imageR[x][y]=0;
-				imageG[x][y]=0;
-				imageB[x][y]=0;
-			}
-		}
+	{
+        fill(imageR[x].begin(),imageR[x].end(),0.0);
+        fill(imageG[x].begin(),imageG[x].end(),0.0);
+        fill(imageB[x].begin(),imageB[x].end(),0.0);
+	}
 
 
 	// determine size
@@ -2079,17 +2019,19 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 	// find extents of network
 
-	for (int i=0; i<highestnodecount; i++)
-	{
-		if ((node[i].polymer) && (!node[i].listoflinks.empty()))
+	for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin()+highestnodecount;
+							      ++i_node)
+    {
+		if ((i_node->polymer) && (!i_node->listoflinks.empty()))
 		{
-			if (minx > node[i].x) minx = node[i].x;
-			if (miny > node[i].y) miny = node[i].y;
-			if (minz > node[i].z) minz = node[i].z;
+			if (minx > i_node->x) minx = i_node->x;
+			if (miny > i_node->y) miny = i_node->y;
+			if (minz > i_node->z) minz = i_node->z;
 
-			if (maxx < node[i].x) maxx = node[i].x;
-			if (maxy < node[i].y) maxy = node[i].y;
-			if (maxz < node[i].z) maxz = node[i].z;
+			if (maxx < i_node->x) maxx = i_node->x;
+			if (maxy < i_node->y) maxy = i_node->y;
+			if (maxz < i_node->z) maxz = i_node->z;
 
 		}
 	} 
@@ -2101,7 +2043,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	meany = p_nuc->position.y; 
 	meanz = p_nuc->position.z; 
 
-	p_nuc->nucleator_rotation.rotate(meanx,meany,meanz);
+	//inverse_actin_rotation.rotate(meanx,meany,meanz);
 	
 	meanx = -meanx;
 	meany = -meany;
@@ -2159,14 +2101,16 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	vect rot;
 	double mult;
 
-	for (int i=0; i<highestnodecount; i++)
-	{
-		if (!node[i].polymer)
+	for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin()+highestnodecount;
+							      ++i_node)
+    {
+		if (!i_node->polymer)
 			continue;
 
-		rot = node[i];
+		rot = *i_node;
 
-		p_nuc->nucleator_rotation.rotate(rot);
+		inverse_actin_rotation.rotate(rot);
 		camera_rotation.rotate(rot);
 		//camera_rotation2.rotate(rot);
 
@@ -2189,8 +2133,8 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		x += movex;  // displace to bring bead back in bounds
 		y += movey;
 
-		if ((x<0) || (x >= BMP_WIDTH  - (2*xgmax+1)) ||
-			(y<0) || (y >= BMP_HEIGHT - (2*ygmax+1)) )  // only plot if point in bounds
+		if ((x<0) || (x >= BMP_WIDTH  - (2*xgmax+2)) ||
+			(y<0) || (y >= BMP_HEIGHT - (2*ygmax+2)) )  // only plot if point in bounds
 		{
 			//cout << "point out of bounds " << x << "," << y << endl;
 		}
@@ -2199,32 +2143,34 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 			if (!SPECKLE)
 				mult = 1;
 			else
-				mult = speckle_array[i % speckle_array_size];
+                mult = speckle_array[i_node->creation_iter_num % speckle_array_size];
 
-			//if ((!SPECKLE) || ((SPECKLE) && (speckle_array[i % speckle_array_size])))
-			{
-				for(xg = -xgmax; xg<xgmax; ++xg)
-					for(yg = -ygmax; yg<ygmax; ++yg)
-					{
-						if ((xg*xg+yg*yg)>(xgmax*ygmax))
-							continue;  // don't do corners
-						
-						//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
-						//	node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
-						
-						imageG[x+xg+xgmax][y+yg+ygmax]+= 
-								1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
-						
-						if (SPECKLE)
-							imageR[x+xg+xgmax][y+yg+ygmax]+= mult *
-									1 * GaussMat2[xg+xgmax][yg+ygmax];  // amount of actin
+			for(xg = -xgmax; xg != xgmax+1; ++xg)
+            {
+				for(yg = -ygmax; yg != ygmax+1; ++yg)
+				{
+					if ((xg*xg+yg*yg)>(xgmax*ygmax))
+						continue;  // don't do corners
+					
+					//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
+					//	node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
+					
+					imageG[x+xg+xgmax][y+yg+ygmax]+= 
+							1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
+					
+					if (SPECKLE)
+						imageR[x+xg+xgmax][y+yg+ygmax]+= mult *
+								1 * GaussMat2[xg+xgmax][yg+ygmax];  // amount of actin
 
-					}
-			}
+                    if (i_node->testnode)
+                        imageB[x+xg+xgmax][y+yg+ygmax]+= 
+								1 * GaussMat2[xg+xgmax][yg+ygmax];
+
+				}
+            }
+			
 		}
 	}
-
-
 
 
     if (BMP_intensity_scaling)
@@ -2232,9 +2178,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 	    // normalize image
 
-	    for (x = 0; x<BMP_WIDTH; x++)
+	    for (x = 0; x != BMP_WIDTH; ++x)
 	    {
-		    for (y = 0; y<BMP_HEIGHT; y++)
+		    for (y = 0; y != BMP_HEIGHT; ++y)
 		    {
 			    if (imageR[x][y]>imageRmax[proj])
 					    imageRmax[proj]=imageR[x][y];
@@ -2245,9 +2191,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		    }
 	    }
 
-        for (x = 0; x<BMP_WIDTH; x++)
+        for (x = 0; x != BMP_WIDTH; ++x)
 	    {
-		    for (y = 0; y<BMP_HEIGHT; y++)
+		    for (y = 0; y != BMP_HEIGHT; ++y)
 		    {
 			    imageR[x][y] /= imageRmax[proj];
 			    imageG[x][y] /= imageGmax[proj];
@@ -2257,9 +2203,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     }
     else
     {
-        for (x = 0; x<BMP_WIDTH; x++)
+        for (x = 0; x != BMP_WIDTH; ++x)
 	    {
-		    for (y = 0; y<BMP_HEIGHT; y++)
+		    for (y = 0; y != BMP_HEIGHT; ++y)
 		    {
                 if (imageR[x][y] > imageRmax[proj])
                     imageR[x][y] = 1;
@@ -2279,6 +2225,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	    }
     }
 
+
     // bail out if only doing scaling:
 
     if (!writefile)
@@ -2291,7 +2238,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	int cagemovey = movey;
 
 	if ((CAGE_ON_SIDE) && (p_nuc->is_sphere()))
-	{
+	{   // move cage to side of image
 		cagedispx = cagedispy = cagedispz = 0.0;
 		cagemovex = p_nuc->segs.centerx - BMP_WIDTH/2 - xgmax;
 		cagemovey = p_nuc->segs.centery - BMP_HEIGHT/2 - ygmax + BMP_HEIGHT/4;
@@ -2300,13 +2247,14 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	if ((ROTATION) || (DRAW_CAGE))
 	{ // draw the nucleator points cage only if rotation is turned on
 
-	    for (vector <vect>::iterator point=p_nuc->cagepoints.begin(); 
-	        point<p_nuc->cagepoints.end() ; ++point )
+	    for (vector <vect>::iterator point  = p_nuc->cagepoints.begin(); 
+	                                 point != p_nuc->cagepoints.end(); 
+                                   ++point)
 	    {
 		    // rotate point	
 
 		    rot = *point;
-		    p_nuc->nucleator_rotation.rotate(rot);
+		    inverse_actin_rotation.rotate(rot);
 		    camera_rotation.rotate(rot); 
 		    //camera_rotation2.rotate(rot); 
 
@@ -2612,36 +2560,34 @@ void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl
 void actin::squash(const double & thickness)
 {   // todo: check and fix this
 
-
 	// squash with 'coverslip'
 
-	for (int i=0; i<highestnodecount; i++)
-	{
-        vect rotpos = node[i] - p_nuc->position;
+    vect rotpos;
+    const double halfthickness = thickness/2.0;
 
-        p_nuc->nucleator_rotation.rotate(rotpos);
+	for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin() + highestnodecount;
+							      ++i_node)
+    {
+        rotpos = *i_node;
+        rotpos += p_nuc->position;
 
-        if ( (rotpos.x <= thickness/2) && (rotpos.x >= -thickness/2))
-            continue;  // not outside coverslips
+        inverse_actin_rotation.rotate(rotpos); // rotate
 
+        if (rotpos.x >  halfthickness)  // above
+			rotpos.x =  halfthickness * 0.999; 
+        else 
+        if (rotpos.x < -halfthickness)  // below
+			rotpos.x = -halfthickness * 0.999;
+        else 
+            continue;                   // within coverslip, skip
+        
+        actin_rotation.rotate(rotpos);  // rotate back
+        rotpos -= p_nuc->position;
 
-		if (rotpos.x > thickness/2)
-        {   // above
-			rotpos.x =  thickness/2;
-        }
-
-		if (rotpos.x < -thickness/2)
-        {   // below
-			rotpos.x = -thickness/2;
-        }
-
-        actin_rotation.rotate(rotpos); // rotate back
-
-        rotpos += p_nuc->position; 
-
-        node[i].x = rotpos.x;
-        node[i].y = rotpos.y;
-        node[i].z = rotpos.z;
+        i_node->x = rotpos.x;
+        i_node->y = rotpos.y;
+        i_node->z = rotpos.z;
 
 	}
 
@@ -2651,6 +2597,7 @@ void actin::squash(const double & thickness)
 
 void actin::sortnodesbygridpoint(void)
 {
+    // todo: change this to gridpoints-by-thread
 
 //	nodes* nodeptr, *startnodeptr;
 
@@ -2658,7 +2605,7 @@ void actin::sortnodesbygridpoint(void)
 	int tn;
 	size_t minsize,threadsize;
 
-	for (i=lowestnodetoupdate; i<highestnodecount; ++i)
+	for (i=lowestnodetoupdate; i != highestnodecount; ++i)
 	{
 		donenode[i] = false;
 	}
@@ -2672,21 +2619,23 @@ void actin::sortnodesbygridpoint(void)
 
     threadnum = 0;
 
-	for (i=lowestnodetoupdate; i<highestnodecount; ++i)
+
+	for (i=lowestnodetoupdate; i != highestnodecount; ++i)
 	{	// collect the nodes in gridpoint order...
 
 		if ((donenode[i]) || (!node[i].polymer))
 			continue;
 
         nodes_by_thread[threadnum].insert(nodes_by_thread[threadnum].end(),
-                                      NODEGRID(node[i].gridx,node[i].gridy,node[i].gridz).begin(),
-                                      NODEGRID(node[i].gridx,node[i].gridy,node[i].gridz).end());
+                                      NODEGRID(node[i].gridx, node[i].gridy, node[i].gridz).begin(),
+                                      NODEGRID(node[i].gridx, node[i].gridy, node[i].gridz).end());
 
-        for(NODEGRIDTYPE <nodes*>::iterator thisnode  = NODEGRID(node[i].gridx,node[i].gridy,node[i].gridz).begin(); 
-									  thisnode != NODEGRID(node[i].gridx,node[i].gridy,node[i].gridz).end();
-							        ++thisnode)
+        for(NODEGRIDTYPE <nodes*>::iterator 
+                    i_node  = NODEGRID(node[i].gridx, node[i].gridy, node[i].gridz).begin(); 
+                    i_node != NODEGRID(node[i].gridx, node[i].gridy, node[i].gridz).end();
+                  ++i_node)
         {
-            donenode[(*thisnode)->nodenum] = true;
+            donenode[(*i_node)->nodenum] = true;
         }
 
         // just scatter randomly between thread queues
@@ -2697,7 +2646,7 @@ void actin::sortnodesbygridpoint(void)
 
         minsize = MAXNODES;
 
-        for (tn = 0; tn < NUM_THREAD_DATA_CHUNKS; ++tn)
+        for (tn = 0; tn != NUM_THREAD_DATA_CHUNKS; ++tn)
         {
             threadsize = nodes_by_thread[tn].size();
             if (threadsize < minsize)
@@ -2711,6 +2660,36 @@ void actin::sortnodesbygridpoint(void)
 
 	return;
 }
+
+
+
+void actin::sortgridpointsbythread(void)
+{
+    // todo: change this to gridpoints-by-thread
+
+    // find the total number of nodes in each thread 
+
+    vector <int> nodesinthread(NUM_THREAD_DATA_CHUNKS,0);
+
+    int averagelength = 0;
+
+    for (int i = 0; i != NUM_THREAD_DATA_CHUNKS; ++i)
+    {
+        for (vector<NODEGRIDTYPE<nodes*>*>::iterator 
+                                                i_gp  = gridpointsbythread[i].begin();
+		                                        i_gp != gridpointsbythread[i].end() ;
+							                  ++i_gp )
+        {
+            nodesinthread[i] += (int) (*i_gp)->size();
+        }
+
+        averagelength += nodesinthread[i];
+    }
+
+    averagelength /= NUM_THREAD_DATA_CHUNKS;
+
+}
+
 
 void actin::compressfilesdowork(const int & filenum)
 {
@@ -2801,6 +2780,8 @@ int actin::save_data(ofstream &ofstrm)
        << actin_rotation << " "
 	   << camera_rotation << " "
 	   << camera_rotation2 << endl;
+
+    
     
     // save nodes
     ofstrm << "nodes-links:" << endl;
@@ -2855,6 +2836,8 @@ int actin::load_data(ifstream &ifstr)
 	  >> camera_rotation  
 	  >> camera_rotation2;
 
+    inverse_actin_rotation = actin_rotation.inverse();
+
 
    // ifstr >> highestnodecount >> ch
 	  //>> nexttocrosslink  >> ch
@@ -2873,34 +2856,16 @@ int actin::load_data(ifstream &ifstr)
 	return 1;
     }
     // ** Remember the node vector is preallocated to MAXNODES
-    for(int i=0; i < highestnodecount; i++) 
-	{
-		node[i].load_data(ifstr);
-    }
-
-    // This is not neat, and we have a nasty reliance on the data being
-    // public all the way down to the nodes linklist link objects.
-    // When loading the link has been stored as an index, and we now
-    // convert that to a pointer.
-    // Method is 
-    //  Run through and rebuild the node ptrs for the linkednode indices
-    //  important this is done after the full node list has been built
-    //    - iterate over nodes
-    //    - then iterate over links in the node linklist
-    for(int i=0; i < highestnodecount; i++) 
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin()+highestnodecount;
+							      ++i_node)
     {
-	    for(vector<links>::iterator l=node[i].listoflinks.begin(); 
-	        l!=node[i].listoflinks.end(); ++l) 
-        {
-		    //int lnn = l->linkednodenumber;
-
-	        if(l->linkednodenumber>=0) // ensure the indx was explicitly set
-				l->linkednodeptr = &node[l->linkednodenumber];
-			else
-				cout << "Link node < 0" << endl;
-				
-	    }
+		i_node->load_data(ifstr);
     }
+
+    // only add to grid if doing normal run or a post-process that needs links:
+    if (POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
+	    rebuildnodepointers();
 
     // check node list
     /*
@@ -2935,7 +2900,7 @@ int actin::load_data(ifstream &ifstr)
     crosslinknodesdelay.resize(numcrosslinkdelay);
     // load each delay
     for(vector<int>::iterator i = crosslinknodesdelay.begin(); 
-	i < crosslinknodesdelay.end(); i++) {
+	i != crosslinknodesdelay.end(); ++i) {
 	ifstr >> (*i) ;
     }
 
@@ -2951,15 +2916,38 @@ int actin::load_data(ifstream &ifstr)
     return 0;
 }
 
+void actin::rebuildnodepointers()
+{
+    // This is not neat, and we have a nasty reliance on the data being
+    // public all the way down to the nodes linklist link objects.
+    // When loading the link has been stored as an index, and we now
+    // convert that to a pointer.
+    // Method is 
+    //  Run through and rebuild the node ptrs for the linkednode indices
+    //  important this is done after the full node list has been built
+    //    - iterate over nodes
+    //    - then iterate over links in the node linklist
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin()+highestnodecount;
+							      ++i_node)
+	{
+	    for(vector<links>::iterator i_link  = i_node->listoflinks.begin(); 
+	                                i_link != i_node->listoflinks.end();
+                                  ++i_link) 
+        {
+	        if(i_link->linkednodenumber>=0) // ensure the indx was explicitly set
+				i_link->linkednodeptr = &node[i_link->linkednodenumber];
+			else
+				cout << "Link node < 0" << endl;
+	    }
+    }
+}
+
 void actin::setdontupdates(void)
-{    // this doesn't work
+{ 
     if (highestnodecount > NODES_TO_UPDATE)
 	{
         lowestnodetoupdate = highestnodecount - NODES_TO_UPDATE;
-        //for (int i = 0: i != lowestnodetoupdate; ++i)
-        //{
-        //    node[i].clearforces();
-        //}
 	} else
 	{
 		lowestnodetoupdate = 0;
@@ -3021,7 +3009,7 @@ void actin::set_sym_break_axes(void)
 		tmp_rotation2.settoidentity();
 		tmp_rotation2.rotatematrix(0,0,theta);
 
-		for (int i=0; i<highestnodecount; ++i)
+		for (int i=0; i != highestnodecount; ++i)
 		{
 			if ((!node[i].polymer) || (node[i].harbinger))
 				continue;
@@ -3060,23 +3048,21 @@ void actin::set_sym_break_axes(void)
 	// camera_rotation2 does not have this
 
 	camera_rotation.settoidentity();
+
     camera_rotation.rotatematrix(-x_angle, rotationmatrix::xaxis);
 	camera_rotation.rotatematrix(maxchiangle, rotationmatrix::zaxis);
 	camera_rotation.rotatematrix(y_angle, rotationmatrix::yaxis);
 	camera_rotation.rotatematrix(x_angle, rotationmatrix::xaxis);
 
+
 	camera_rotation2.settoidentity();
+
 	camera_rotation2.rotatematrix(maxchiangle, rotationmatrix::zaxis);
 	camera_rotation2.rotatematrix(y_angle, rotationmatrix::yaxis);
 	camera_rotation2.rotatematrix(x_angle, rotationmatrix::xaxis);
 
-	reverse_camera_rotation.settoidentity();
-	//reverse_camera_rotation2.settoidentity();
 
-    reverse_camera_rotation.rotatematrix(x_angle, rotationmatrix::xaxis);
-	reverse_camera_rotation.rotatematrix(-maxchiangle, rotationmatrix::zaxis);
-	reverse_camera_rotation.rotatematrix(-y_angle, rotationmatrix::yaxis);
-	reverse_camera_rotation.rotatematrix(-x_angle, rotationmatrix::xaxis);
+    reverse_camera_rotation = camera_rotation.inverse();
 
 	cout << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << "," << y_angle*180/PI << "," << maxchiangle*180/PI << endl;
 
@@ -3091,10 +3077,9 @@ void actin::save_sym_break_axes(void)
 	if (!opsymbreak) 
 	{ cout << "Unable to open file 'sym_break_axis.txt' for output"; return;}
 
-	opsymbreak  << symbreakiter << " "
-				<< camera_rotation << " "
-				<< camera_rotation2 << " "
-				<< reverse_camera_rotation << endl;
+	opsymbreak  << symbreakiter << endl
+				<< camera_rotation << endl
+				<< camera_rotation2 << endl;
 
 	opsymbreak.close();
 
@@ -3115,10 +3100,12 @@ bool actin::load_sym_break_axes(void)
 	{
 		ipsymbreak  >> symbreakiter 
 					>> camera_rotation
-					>> camera_rotation2
-					>> reverse_camera_rotation;
+					>> camera_rotation2;
 
-		ipsymbreak.close();
+		ipsymbreak.close();  
+        
+        reverse_camera_rotation = camera_rotation.inverse();
+        
         return true;
 	}
 }
@@ -3158,14 +3145,57 @@ void actin::keep_mem_resident(void)
 
 void actin::reservemorenodes(const int extranodes)
 {
+    // have to do all this in case reallocating vectors causes it to move
+    // the pointers
+
     const int oldsize = (int) node.size();
 
-	node.resize(oldsize + extranodes);//,nodes(0,0,0, this));
+    // remove nodes from nodegrid
+    // todo: make this more efficient (maybe, but it's not called very often)
+
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin() + highestnodecount;
+							      ++i_node)
+    {
+        i_node->removefromgrid();
+    }
+
+
+    // convert the link pointers to link node numbers
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin() + highestnodecount;
+							      ++i_node)
+	{
+	    for(vector<links>::iterator i_link  = i_node->listoflinks.begin(); 
+	                                i_link != i_node->listoflinks.end();
+                                  ++i_link) 
+        {
+            i_link->linkednodenumber = i_link->linkednodeptr->nodenum;
+	    }
+    }
+
+
+    // resize the vectors
+	node.resize(oldsize + extranodes);
 	donenode.resize(oldsize + extranodes);
 
-	for (int i=oldsize; i<oldsize + extranodes; i++)
-	{
-		node[i].nodenum=i;
-		node[i].ptheactin=this;
-	}
+    // set the pointers within nodes
+    for(int i=0; i != highestnodecount; ++i)
+    {
+        node[i].nodenum = i;
+    }
+
+    // set the link pointers from the link numbers
+    rebuildnodepointers();
+
+    // re-add to the grid
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin()+highestnodecount;
+							      ++i_node)
+    {
+        i_node->addtogrid();
+    }
+
+    MAXNODES = (int) node.size();
+
 }

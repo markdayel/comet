@@ -18,7 +18,7 @@
 
 class CometVtkVis {
  public:
-  CometVtkVis(actin*) {};
+  CometVtkVis() {};
   ~CometVtkVis() {};
   
   void buildVTK(int);

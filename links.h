@@ -31,7 +31,7 @@ public:
 	double orig_distsqr;
 	double orig_dist;
 	double orig_dist_recip;
-	double strengthscalefactor;
+	double linkforcescalefactor;
 
 	//double last_dist;
 	//double last_but_one_dist;
@@ -42,9 +42,40 @@ public:
 	//double theta;
 	//double phi;
 
-	double getlinkforces(const double& dist);
+    inline bool getlinkforces(const double & dist, double &force)
+    {   /// calculate link forces
+        /// break link if above LINK_BREAKAGE_FORCE
+        /// returns false if link broken
+
+        // calculate forces:
+
+        force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip * linkforcescalefactor;
+
+        // decide if link broken:
+
+        if (USE_BREAKAGE_STRAIN)
+        {	
+		    // since strainlimit = distlimit / orig_dist,
+		    // then distlimit = strainlimit * orig_dist
+	        if (dist > LINK_BREAKAGE_STRAIN * orig_dist)
+		    {
+			    broken = true;
+			    return false;  
+		    }
+        }
+        else
+        { // just using force
+		    if (-force > LINK_BREAKAGE_FORCE)
+		    {   
+			    broken = true;
+                return false;
+		    }
+
+        }
+
+	    return true;
+    }
 	
-    void reset_link(void);
 };
 
 #endif
