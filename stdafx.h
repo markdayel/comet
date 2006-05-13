@@ -287,6 +287,13 @@ extern double NON_VISC_WEIGHTING;
 extern double GAUSSFWHM;
 extern double SPECKLE_FACTOR;
 extern bool   SPECKLE;
+
+extern bool SPECKLEGRID;
+extern double SPECKLEGRIDPERIOD;
+extern double SPECKLEGRIDTIMEWIDTH;
+extern double SPECKLEGRIDANGLEWIDTH;
+
+extern double BMP_INTENSITY_SCALE;
 extern double INIT_R_GAIN;
 extern double INIT_G_GAIN;
 extern double INIT_B_GAIN;

@@ -219,7 +219,7 @@ public:
 	void compressfilesdowork(const int & filenum);
 
     vector <testnodeinfo> testnodes;
-    double testsurfaceposn, lasttestsurfaceposn;
+    double testsurfaceposn, lasttestsurfaceposn, lasttestsurfacesavedposn;
     double testsurfacerotation;
     double testforcemag;
     vect testdirection;     // defines the direction of the test surface

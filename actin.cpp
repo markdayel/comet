@@ -287,7 +287,7 @@ actin::actin(void)
     imageGmax.resize(3);
     imageBmax.resize(3);
 
-    for (int proj = 0; proj < 3; ++proj)
+    for (int proj = 0; proj != 3; ++proj)
     {
 	    imageRmax[proj] = 1000/INIT_R_GAIN;
 	    imageGmax[proj] = 1000/INIT_G_GAIN;
@@ -310,7 +310,7 @@ actin::actin(void)
     currentsmallestgridthread = 0;
 
 
-    testsurfaceposn = DBL_MAX;
+    lasttestsurfacesavedposn = testsurfaceposn = DBL_MAX;
     testsurfacerotation = 0;
     testangle = 0;
     testforcemag = 0;
@@ -628,15 +628,18 @@ void actin::iterate()  // this is the main iteration loop call
         if (fabs(testsurfaceposn - lasttestsurfaceposn) < TEST_DIST_EQUIL)
         {   // has come to equilibrium
             // so save the point
-           testforces_saveiter();
-           testforcemag += TEST_FORCE_INCREMENT;
+
+            if (fabs(testsurfaceposn - lasttestsurfacesavedposn) > TEST_DIST_EQUIL)
+                testforces_saveiter();  // only save point if we've actually moved
+            
+            testforcemag += TEST_FORCE_INCREMENT;
         }
 
         lasttestsurfaceposn = testsurfaceposn;  // store the old position
     }
 
 
-	if ((lastsorthighestnode != highestnodecount) && ((iteration_num % 20) == 0))
+	if ((lastsorthighestnode != highestnodecount) && ((iteration_num % 10) == 0))
 	{    // only do full sort periodically
 		sortnodesbygridpoint(); // sort the nodes so they can be divided sanely between threads
 		lastsorthighestnode = highestnodecount;
@@ -717,8 +720,9 @@ void actin::testforces_setup()
 
     testforcemag = TEST_FORCE_INITIAL_MAG;
 
-    testdirection = vect(0,0,1);
-    testangle = cos(30 * PI/360);
+    testdirection = vect(0,0,-1);
+    double testangledeg = 30;
+    testangle = cos(testangledeg * PI/360);  // note not PI/180 since both directions
 
     // rotate so that direction is wrt camera viewpoint
     reverse_camera_rotation.rotate(testdirection);
@@ -800,20 +804,25 @@ void actin::testforces_addforces()
     }
 
     forceontestsurface *= NODE_DIST_TO_FORCE;  // convert distance to force
-    forceontestsurface /= (double) testnodes.size();  // scale by # nodes on the surface,
-                                                      // since moving the surface moves this many nodes
-                                                      // so the inertia is proportional to node number
+                                                      
 
     //move the test surface
 
-    testsurfaceposn += (forceontestsurface.dot(testdirection) - testforcemag) * NODE_FORCE_TO_DIST;
-     //testsurfacerotation += torqueonsurface / testsurfaceinertia;
+    testsurfaceposn += (forceontestsurface.dot(testdirection) - testforcemag) 
+                            * NODE_FORCE_TO_DIST / (double) testnodes.size();
+                                                      // scale by # nodes on the surface,
+                                                      // since moving the surface moves this many nodes
+                                                      // so the inertia is proportional to node number
+
+    //testsurfacerotation += torqueonsurface / testsurfaceinertia;
 
 
 }
 
 void actin::testforces_saveiter()
 {
+
+
     ofstream optest(TESTNODESFILE, ofstream::out | ofstream::app); // add to end
 
     if (!optest) 
@@ -835,6 +844,7 @@ void actin::testforces_saveiter()
         optest.close();
     }
 
+    lasttestsurfacesavedposn = testsurfaceposn;
     
 }
 
@@ -1930,6 +1940,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	ofstream *p_outbmpfile;
 	char *temp_BMP_filename;
 
+    rotationmatrix axisrotation;
+    axisrotation.settoidentity();
+
     if (proj == xaxis)
 	{
 		if (!X_BMP)
@@ -1945,6 +1958,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		sprintf ( projletter , "y");
 		p_outbmpfile = &outbmpfile_y;
 		temp_BMP_filename = temp_BMP_filename_y;
+        axisrotation.rotatematrix(PI/2,rotationmatrix::yaxis);
 	}
 	else
 	{	
@@ -1952,6 +1966,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 			return;
 		p_outbmpfile = &outbmpfile_z;
 		temp_BMP_filename = temp_BMP_filename_z;
+        axisrotation.rotatematrix(PI/2,rotationmatrix::zaxis);
 	}
 
 	if (!QUIET)
@@ -2032,7 +2047,6 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 			if (maxx < i_node->x) maxx = i_node->x;
 			if (maxy < i_node->y) maxy = i_node->y;
 			if (maxz < i_node->z) maxz = i_node->z;
-
 		}
 	} 
 
@@ -2064,26 +2078,26 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 	
 	if (proj == xaxis)  // choose projection
-		{
-			beadmaxx = pixels(   keep_within_border - meany) +  BMP_WIDTH/2;
-			beadmaxy = pixels(   keep_within_border - meanz) +  BMP_HEIGHT/2;
-			beadminx = pixels(-  keep_within_border - meany) +  BMP_WIDTH/2;
-			beadminy = pixels(-  keep_within_border - meanz) +  BMP_HEIGHT/2;
-		}
-		else if (proj == yaxis)
-		{
-			beadmaxx = pixels(   keep_within_border - meanx) +  BMP_WIDTH/2;
-			beadmaxy = pixels(   keep_within_border - meanz) +  BMP_HEIGHT/2;
-			beadminx = pixels(-  keep_within_border - meanx) +  BMP_WIDTH/2;
-			beadminy = pixels(-  keep_within_border - meanz) +  BMP_HEIGHT/2;
-		}
-		else 
-		{
-			beadmaxx = pixels(   keep_within_border - meanx) +  BMP_WIDTH/2;
-			beadmaxy = pixels(   keep_within_border - meany) +  BMP_HEIGHT/2;
-			beadminx = pixels(-  keep_within_border - meanz) +  BMP_WIDTH/2;
-			beadminy = pixels(-  keep_within_border - meany) +  BMP_HEIGHT/2;
-		}
+	{
+		beadmaxx = pixels(   keep_within_border - meany) +  BMP_WIDTH/2;
+		beadmaxy = pixels(   keep_within_border - meanz) +  BMP_HEIGHT/2;
+		beadminx = pixels(-  keep_within_border - meany) +  BMP_WIDTH/2;
+		beadminy = pixels(-  keep_within_border - meanz) +  BMP_HEIGHT/2;
+	}
+	else if (proj == yaxis)
+	{
+		beadmaxx = pixels(   keep_within_border - meanx) +  BMP_WIDTH/2;
+		beadmaxy = pixels(   keep_within_border - meanz) +  BMP_HEIGHT/2;
+		beadminx = pixels(-  keep_within_border - meanx) +  BMP_WIDTH/2;
+		beadminy = pixels(-  keep_within_border - meanz) +  BMP_HEIGHT/2;
+	}
+	else 
+	{
+		beadmaxx = pixels(   keep_within_border - meanx) +  BMP_WIDTH/2;
+		beadmaxy = pixels(   keep_within_border - meany) +  BMP_HEIGHT/2;
+		beadminx = pixels(-  keep_within_border - meanz) +  BMP_WIDTH/2;
+		beadminy = pixels(-  keep_within_border - meany) +  BMP_HEIGHT/2;
+	}
 
 	int movex=0;
 	int movey=0;
@@ -2099,7 +2113,11 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 
 	vect rot;
-	double mult;
+	double mult = 0;
+    vect origposn;
+
+    int SPECKLEGRIDPERIODiter = (int) (SPECKLEGRIDPERIOD / DELTA_T);
+    int SPECKLEGRIDTIMEWIDTHiter = (int) (SPECKLEGRIDTIMEWIDTH / DELTA_T);
 
 	for(vector <nodes>::iterator	i_node  = node.begin(); 
 									i_node != node.begin()+highestnodecount;
@@ -2116,7 +2134,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 		if (proj == xaxis)  // choose projection
 		{
-			x = pixels(rot.y - meany) +  BMP_WIDTH/2; 
+			x = pixels(rot.y - meany) +  BMP_WIDTH/2;                      
 			y = pixels(rot.z - meanz) + BMP_HEIGHT/2;
 		}
 		else if (proj == yaxis)
@@ -2140,10 +2158,39 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		}
 		else
 		{
-			if (!SPECKLE)
-				mult = 1;
-			else
-                mult = speckle_array[i_node->creation_iter_num % speckle_array_size];
+			if (SPECKLE)
+            {
+                if (SPECKLEGRID)
+                {
+                    // find position of node on original surface
+                    // and rotate into observation frame
+                    origposn = i_node->nucleator_stuck_position;
+                    //inverse_actin_rotation.rotate(origposn);
+                    camera_rotation.rotate(origposn);
+                    axisrotation.rotate(origposn);
+                    
+                    if (fabs(origposn.x) * 2 > RADIUS )  // if outside RADIUS/2 then black
+                        mult = 0;
+                    else
+                    {
+                        if (abs(i_node->creation_iter_num % SPECKLEGRIDPERIODiter) < SPECKLEGRIDTIMEWIDTHiter)
+                            mult = 1;  // if within time stripe, then white
+                        else
+                        {
+                            if ( ((int)(10 * 360 * (atan2(origposn.y,origposn.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
+                                  < (10 * 360 * 2 * PI * (SPECKLEGRIDANGLEWIDTH/360)))
+                                mult = 1;
+                            else
+                                mult = 0;
+                        }
+                    }
+
+                }
+                else
+                {
+                    mult = speckle_array[i_node->creation_iter_num % speckle_array_size];
+                }
+            }
 
 			for(xg = -xgmax; xg != xgmax+1; ++xg)
             {
@@ -2156,15 +2203,17 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 					//	node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
 					
 					imageG[x+xg+xgmax][y+yg+ygmax]+= 
-							1 * GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
+							    GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
 					
 					if (SPECKLE)
+                    {
 						imageR[x+xg+xgmax][y+yg+ygmax]+= mult *
-								1 * GaussMat2[xg+xgmax][yg+ygmax];  // amount of actin
+							    GaussMat2[xg+xgmax][yg+ygmax];  // GaussMat2 is narrower than GaussMat
+                    }
 
                     if (i_node->testnode)
                         imageB[x+xg+xgmax][y+yg+ygmax]+= 
-								1 * GaussMat2[xg+xgmax][yg+ygmax];
+								GaussMat2[xg+xgmax][yg+ygmax];
 
 				}
             }
@@ -2182,49 +2231,26 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	    {
 		    for (y = 0; y != BMP_HEIGHT; ++y)
 		    {
-			    if (imageR[x][y]>imageRmax[proj])
-					    imageRmax[proj]=imageR[x][y];
-			    if (imageG[x][y]>imageGmax[proj])
-					    imageGmax[proj]=imageG[x][y];
-			    if (imageB[x][y]>imageBmax[proj])
-					    imageBmax[proj]=imageB[x][y];
-		    }
-	    }
-
-        for (x = 0; x != BMP_WIDTH; ++x)
-	    {
-		    for (y = 0; y != BMP_HEIGHT; ++y)
-		    {
-			    imageR[x][y] /= imageRmax[proj];
-			    imageG[x][y] /= imageGmax[proj];
-			    imageB[x][y] /= imageBmax[proj];
+			    if (imageR[x][y]>imageRmax[proj]) imageRmax[proj]=imageR[x][y];
+			    if (imageG[x][y]>imageGmax[proj]) imageGmax[proj]=imageG[x][y];
+			    if (imageB[x][y]>imageBmax[proj]) imageBmax[proj]=imageB[x][y];
 		    }
 	    }
     }
-    else
+
+    const double Rscale = BMP_INTENSITY_SCALE / imageRmax[proj];
+    const double Gscale = BMP_INTENSITY_SCALE / imageGmax[proj];
+    const double Bscale = BMP_INTENSITY_SCALE / imageBmax[proj];
+
+    for (x = 0; x != BMP_WIDTH; ++x)
     {
-        for (x = 0; x != BMP_WIDTH; ++x)
+	    for (y = 0; y != BMP_HEIGHT; ++y)
 	    {
-		    for (y = 0; y != BMP_HEIGHT; ++y)
-		    {
-                if (imageR[x][y] > imageRmax[proj])
-                    imageR[x][y] = 1;
-                else
-                    imageR[x][y] /= imageRmax[proj];
-
-                if (imageG[x][y] > imageGmax[proj])
-                    imageG[x][y] = 1;
-                else
-                    imageG[x][y] /= imageGmax[proj];
-
-                if (imageB[x][y] > imageBmax[proj])
-                    imageB[x][y] = 1;
-                else
-                    imageB[x][y] /= imageBmax[proj];
-		    }
+		    imageR[x][y] = mymin(imageR[x][y] * Rscale, 1.0);
+		    imageG[x][y] = mymin(imageG[x][y] * Gscale, 1.0);
+		    imageB[x][y] = mymin(imageB[x][y] * Bscale, 1.0);
 	    }
     }
-
 
     // bail out if only doing scaling:
 
@@ -2244,7 +2270,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		cagemovey = p_nuc->segs.centery - BMP_HEIGHT/2 - ygmax + BMP_HEIGHT/4;
 	}
 
-	if ((ROTATION) || (DRAW_CAGE))
+	if (ROTATION || DRAW_CAGE)
 	{ // draw the nucleator points cage only if rotation is turned on
 
 	    for (vector <vect>::iterator point  = p_nuc->cagepoints.begin(); 
@@ -2720,9 +2746,9 @@ void actin::compressfilesdowork(const int & filenum)
 	char command2[255];
 
 	//sprintf(command1, "gzip -q -f -9 %s*report*.txt",TEMPDIR);
-	//sprintf(command2, "mv %s*report*.gz %s",TEMPDIR,REPORTDIR);
+	sprintf(command2, "move %s*report*.txt %s",TEMPDIR,REPORTDIR);
 	//system(command1);
-	//system(command2);
+	system(command2);
 
 	// save data file
 
@@ -2736,7 +2762,7 @@ void actin::compressfilesdowork(const int & filenum)
 	// wrl file
 
 	//sprintf(command1, "gzip -f -9 %snodes%05i.wrl",TEMPDIR);
-	//sprintf(command2, "mv %snodes%05i.wrl.gz %snodes%05i.wrz",TEMPDIR,VRMLDIR);
+	//sprintf(command2, "move %snodes%05i.wrl.gz %snodes%05i.wrz",TEMPDIR,VRMLDIR);
 	//system(command1);
 	//system(command2);
 

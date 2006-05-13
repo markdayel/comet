@@ -25,12 +25,6 @@ removed without prior written permission from the author.
   #include "comet_novtk.h"
 #endif
 
-// #include "nucleator.h"
-// #include "string.h"
-
-
-
-
 double GRIDBOUNDS =  50.0;	  // size of grid in um (i.e. bead can move half of this from origin)
 double GRIDRES    =   0.8;	  // low res grid range
 
@@ -55,6 +49,8 @@ int VTK_AA_FACTOR = 1;
 double VTK_LINK_COLOUR_GAMMA = 1.8;
 bool VTK_MOVE_WITH_BEAD = true;
 
+double BMP_INTENSITY_SCALE = 1.4;
+
 double INIT_R_GAIN = 20;
 double INIT_G_GAIN = 20;
 double INIT_B_GAIN = 20;
@@ -69,6 +65,11 @@ bool ALLOW_HARBINGERS_TO_MOVE = false;
 
 bool   SPECKLE = false;
 double SPECKLE_FACTOR = 1;
+bool SPECKLEGRID = false;
+double SPECKLEGRIDPERIOD = 1.0;
+double SPECKLEGRIDTIMEWIDTH = 0.1;
+double SPECKLEGRIDANGLEWIDTH = 10.0;
+
 
 bool ROTATION = true;
 //bool GRASS_IS_GREEN = true;
@@ -583,6 +584,9 @@ int main(int argc, char* argv[])
 		else if (tag == "BMP_HEIGHT")	  
 			{ss >> BMP_HEIGHT;}
 
+        else if (tag == "BMP_INTENSITY_SCALE")	  
+			{ss >> BMP_INTENSITY_SCALE;}
+
 		else if (tag == "VTK_WIDTH")	  
 			{ss >> VTK_WIDTH;}
 
@@ -794,8 +798,20 @@ int main(int argc, char* argv[])
 			{ss >> buff2;if(buff2=="true") SPECKLE = true;else SPECKLE = false;} 
 		
 		else if (tag == "SPECKLE_FACTOR") 
-			{ss >> SPECKLE_FACTOR;} 
-		
+			{ss >> SPECKLE_FACTOR;}
+
+        else if (tag == "SPECKLEGRID") 
+			{ss >> buff2;if(buff2=="true") SPECKLEGRID = true;else SPECKLEGRID = false;}
+
+    	else if (tag == "SPECKLEGRIDPERIOD") 
+		    {ss >> SPECKLEGRIDPERIOD;}
+
+    	else if (tag == "SPECKLEGRIDTIMEWIDTH") 
+		    {ss >> SPECKLEGRIDTIMEWIDTH;}
+
+        else if (tag == "SPECKLEGRIDANGLEWIDTH") 
+		    {ss >> SPECKLEGRIDANGLEWIDTH;}
+
 		else if (tag == "INIT_R_GAIN") 
 			{ss >> INIT_R_GAIN;} 
 		
@@ -937,7 +953,7 @@ int main(int argc, char* argv[])
 	NUMBER_RECORDINGS = int(TOTAL_ITERATIONS / RECORDING_INTERVAL);
 
 	NODE_FORCE_TO_DIST = DELTA_T * FORCE_SCALE_FACT;
-	NODE_DIST_TO_FORCE = 1.0/(DELTA_T * FORCE_SCALE_FACT);
+	NODE_DIST_TO_FORCE = 1.0 / NODE_FORCE_TO_DIST;
 
 
 	if (SPECKLE_FACTOR<0)
@@ -949,9 +965,9 @@ int main(int argc, char* argv[])
 
 	if (SPECKLE)
 	{	// is speckle is on, scale the gain
-		INIT_R_GAIN *= (1/SPECKLE_FACTOR);
-		INIT_G_GAIN *= (1/SPECKLE_FACTOR);
-		INIT_B_GAIN *= (1/SPECKLE_FACTOR);
+		INIT_R_GAIN *= 1.0 / SPECKLE_FACTOR;
+		INIT_G_GAIN *= 1.0 / SPECKLE_FACTOR;
+		INIT_B_GAIN *= 1.0 / SPECKLE_FACTOR;
 	}
 	
 	vector<int> postprocess_iterations;
@@ -1214,7 +1230,7 @@ int main(int argc, char* argv[])
 	{ cout << "Unable to open file " << infofilename << " for output";}
 
 
-	for(int i=starting_iter;i<=TOTAL_ITERATIONS;i++)
+	for(int i=starting_iter; i<=TOTAL_ITERATIONS; i++)
 	{
 
 		filenum = (int)(i/InterRecordIterations);
@@ -1610,6 +1626,13 @@ srand( rand_num_seed );
 				}
 
 			}
+
+            if (TEST_SQUASH && theactin.testsurfaceposn < 0)
+            {
+                cout << endl << endl << "Test position reached nucleator surface---finished." << endl;
+                ABORT = true;
+                break;
+            }
 
 			theactin.clear_node_stats();  // clear the cumulative stats data in the nodes
 
