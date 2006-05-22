@@ -61,9 +61,11 @@ public:
 	int addnodes(void);
 	int addnodessphere(void);
 	int addnodescapsule(void);
+    double polyfeedbackprob(const double& x, const double& y, const double& z) const;
+
 	//int definenucleatorgrid(void);
 	//int save(ofstream *outputstream) ;
-	int savevrml(ofstream *outputstream) ;
+	int savevrml(ofstream *outputstream);
 	//int saveradialsegments(ofstream *outputstream);
 	//int clearradialsegments();
 	int save_data(ofstream &ostr);

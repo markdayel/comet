@@ -125,38 +125,51 @@ int nucleator::addnodessphere(void)
 			r = RADIUS;  
 		}
 
-        //cout << "RECIP_RAND_MAX*RAND_MAX: " <<RAND_MAX*RECIP_RAND_MAX << " RAND_MAX:" <<RAND_MAX << endl;
-
 		x =  r * cos(theta) * NUCPOINT_SCALE;   // x and y of point
 		y =  r * sin(theta) * NUCPOINT_SCALE;
 
 		z *=  RADIUS * NUCPOINT_SCALE;          // z just scaled by radius
 
+
+        // modifier for asymmetric nucleation
+
 		if (ASYMMETRIC_NUCLEATION!=0)
 		{
-			if (ASYMMETRIC_NUCLEATION==1)  // no nucleation above z=0
-				if ((y<0) || (fabs(x+z)>0.5)) continue;
-			if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
-				if (z < (RADIUS) *( 2 * (rand() * RECIP_RAND_MAX) - 1))
+			if (ASYMMETRIC_NUCLEATION == 1)  // no nucleation above z=0
+				if ((y < 0) || (fabs(x+z) > 0.5)) continue;
+			if (ASYMMETRIC_NUCLEATION == 2)  // linear degredation to zero
+				if (z < RADIUS * ( 2 * rand() * RECIP_RAND_MAX - 1))
 					continue;
-			if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
-				if (z < (RADIUS) *( 4 * (rand() * RECIP_RAND_MAX) - 3))
+			if (ASYMMETRIC_NUCLEATION == 3)  // linear degredation
+				if (z < RADIUS * ( 4 * rand() * RECIP_RAND_MAX - 3))
 					continue;
-			if (ASYMMETRIC_NUCLEATION==4) 
+			if (ASYMMETRIC_NUCLEATION == 4) 
             { // fixed random location
-			static double fixed_x = x;
-			static double fixed_y = y;
-			static double fixed_z = z;
-			x = fixed_x;
-			y = fixed_y;
-			z = fixed_z;				
+			    static double fixed_x = x;
+			    static double fixed_y = y;
+			    static double fixed_z = z;
+			    x = fixed_x;
+			    y = fixed_y;
+			    z = fixed_z;				
 		    }
-			if (ASYMMETRIC_NUCLEATION==7)  // half caps one side
-				if ( ( (y>0) && (z>0) ) || 
-                     ( (y<0) && (z<0) ) || 
-                       (z<0) )
+			if (ASYMMETRIC_NUCLEATION == 7)  // half caps one side
+				if ( ( (y > 0) && (z > 0) ) || 
+                     ( (y < 0) && (z < 0) ) || 
+                       (z < 0) )
 					continue;
 		}
+
+        ptheactin->attemptedpolrate++;  // add this here, for an aborted node should appear as an attempt
+        
+        // modifier for +ve feedback in polymerisation
+
+        if (POLY_FEEDBACK)
+        {   // calculate probability of polymerization due to +ve feedback (based on nearby nodes)    
+            if ( polyfeedbackprob(x,y,z) * RAND_MAX < rand() )
+                continue;   // don't polymerise
+        }
+
+        ptheactin->attemptedpolrate--; // delete if we're actually making the node (since this will be dealt with in harbinger (crosslink) code
 
 		ptheactin->node[ptheactin->highestnodecount++].polymerize(x,y,z);
 		nodesadded++;
@@ -180,7 +193,7 @@ int nucleator::addnodescapsule(void)
 	if (( floatingnodestoadd - nodestoadd ) > ( rand() * RECIP_RAND_MAX ))
 		nodestoadd++;
 
-	for (int i=0; i< nodestoadd; i++)
+	for (int i=0; i != nodestoadd; i++)
 	{
 		//	Pick a random point on capsule:
 
@@ -189,8 +202,6 @@ int nucleator::addnodescapsule(void)
 		//           = 4.PI.r^2 / (4.PI.r^2 + 2.PI.r.h)
 		//           = r/(r+2h)
 
-
-		//onseg = (((2 * rad)/(2 * rad + 3 * segment)) < (((double) rand()) / (double)(RAND_MAX)));
 
 		z = ( 2 * (rand() * RECIP_RAND_MAX) ) - 1 ;  // random number -1 to 1
 		theta = (2 * PI * (rand() * RECIP_RAND_MAX));  // circle vector
@@ -253,13 +264,73 @@ int nucleator::addnodescapsule(void)
 
 		//}
 
-		
+        ptheactin->attemptedpolrate++;  // add this here, for an aborted node should appear as an attempt
+        
+        // modifier for +ve feedback in polymerisation
+
+        if (POLY_FEEDBACK)
+        {   // get probability of polymerization due to +ve feedback (based on nearby nodes)    
+            if ( polyfeedbackprob(x,y,z) * RAND_MAX < rand() )
+                continue;   // don't polymerise
+        }
+
+        ptheactin->attemptedpolrate--; // delete if we're actually making the node (since this will be dealt with in harbinger (crosslink) code
+
 		ptheactin->node[ptheactin->highestnodecount++].polymerize(x,y,z);
 		nodesadded++;
 
 	}
 	return nodesadded;
 }
+
+
+double nucleator::polyfeedbackprob(const double& x, const double& y, const double& z) const
+{  ///  calculate probability of polymerization due to +ve feedback (based on nearby nodes and distances)
+    
+    // find nodes within radius
+    // create a dummy temp node for the findnearbynodes call
+    // which needs to know the gridcoords for the node
+
+    nodes tempnode;
+
+    tempnode.x = x;
+    tempnode.y = y;
+    tempnode.z = z;
+
+    tempnode.setgridcoords();
+
+    int POL_XLINK_GRIDSEARCH = (int) floor( POLY_FEEDBACK_DIST / GRIDRES ) + 1;
+
+    ptheactin->findnearbynodes(tempnode,POL_XLINK_GRIDSEARCH,0);
+
+    // found nodes, now sum weights
+
+    double prob_weight_sum = 0.0;
+
+    for (vector <nodes*>::iterator nearnode  = ptheactin->recti_near_nodes[0].begin();
+                                   nearnode != ptheactin->recti_near_nodes[0].end(); 
+                                 ++nearnode)
+    {
+        if (  (!(*nearnode)->harbinger) &&
+              ( (*nearnode)->polymer) )  // only count real nodes
+        {  
+            // calculate distance
+            double dist = ((*(*nearnode)) - tempnode).length();
+
+            if (dist < POLY_FEEDBACK_DIST)
+            {   // if within the range
+                prob_weight_sum += 1 / dist;
+            }
+        }
+    }
+
+    if (prob_weight_sum < SQRT_ACCURACY_LOSS)
+        return POLY_FEEDBACK_MIN_PROB;  // no real nodes were within range
+
+    return mymax(POLY_FEEDBACK_MIN_PROB, 1 - (POLY_FEEDBACK_FACTOR / prob_weight_sum)); 
+
+}
+
 
 int nucleator::savevrml(ofstream *outputstream) 
 {
@@ -337,12 +408,16 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 			    r = calcdist(node.x,node.y);
 
+                // note the nucleator_stuck_position is used to produce the patterned speckle
+                // tracks and should represent the last nucleator collision position
+
+            	node.nucleator_stuck_position.x = node.x * (1/r);
+				node.nucleator_stuck_position.y = node.y * (1/r);
+				node.nucleator_stuck_position.z = node.z;// link to point *on* the nucleator surface
+
 				if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
 				{
 					node.stucktonucleator = true;
-					node.nucleator_stuck_position.x = node.x * (1/r);
-					node.nucleator_stuck_position.y = node.y * (1/r);
-					node.nucleator_stuck_position.z = node.z;// link to point *on* the nucleator surface
 				}
 
 			    scale = rad * (1/r);
@@ -365,17 +440,17 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 				r = calcdist(node.x,node.y,z2);
 
+            	node.nucleator_stuck_position.x = node.x * (1/r);
+				node.nucleator_stuck_position.y = node.y * (1/r);
+				
+				if (node.z<0)  // make into a sphere again
+					node.nucleator_stuck_position.z = z2 * (1/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
+				else
+					node.nucleator_stuck_position.z = z2 * (1/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
+
 				if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
 				{
 					node.stucktonucleator = true;
-					node.nucleator_stuck_position.x = node.x * (1/r);
-					node.nucleator_stuck_position.y = node.y * (1/r);
-					
-					if (node.z<0)  // make into a sphere again
-						node.nucleator_stuck_position.z = z2 * (1/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
-					else
-						node.nucleator_stuck_position.z = z2 * (1/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
-					
 				}
 
 			    scale = rad / r;
@@ -521,8 +596,8 @@ void nucleator::definecagepoints(void)
 
 	// sphere
 
-		for (double theta=-PI; theta<PI; theta+=2*PI/pointdensity)
-			for (double phi=-PI; phi<PI; phi+=2*PI/pointdensity)
+		for (double theta=-PI+2*PI/pointdensity; theta<PI-2*PI/pointdensity; theta+=2*PI/pointdensity)
+			for (double phi=-PI+2*PI/pointdensity; phi<PI-2*PI/pointdensity; phi+=2*PI/pointdensity)
 			{
 				
 				r = RADIUS * cos(phi);		// radius of circle
@@ -535,13 +610,16 @@ void nucleator::definecagepoints(void)
 			}
 
 
+        cagepoints.push_back(vect(0,0,RADIUS));
+        cagepoints.push_back(vect(0,0,-RADIUS));
+
 	}
 	else
 	{
 
 
-		for (double theta=-PI; theta<PI; theta+=2*PI/pointdensity)
-			for (double phi=-PI; phi<PI; phi+=2*PI/pointdensity)
+		for (double theta=-PI+2*PI/pointdensity; theta<PI-2*PI/pointdensity; theta+=2*PI/pointdensity)
+			for (double phi=-PI+2*PI/pointdensity; phi<PI-2*PI/pointdensity; phi+=2*PI/pointdensity)
 			{
 				
 				r = RADIUS * cos(phi);		// radius of circle
@@ -557,6 +635,10 @@ void nucleator::definecagepoints(void)
 
 				cagepoints.push_back(vect(xx,yy,zz));
 			}
+
+        cagepoints.push_back(vect(0,0,CAPSULE_HALF_LINEAR+RADIUS));
+        cagepoints.push_back(vect(0,0,-CAPSULE_HALF_LINEAR-RADIUS));
+
 
 		// cylinder
 			

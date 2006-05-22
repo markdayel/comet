@@ -64,6 +64,7 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 	
     #define USEWINDOWSCOMMANDS
 
+    #include <direct.h>      // windows name for dirent.h
 	#include <process.h>
 	#define getpid _getpid
 	//#include <windows.h>
@@ -80,39 +81,51 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 
 #else
 
+    #include <dirent.h>
 	#include <unistd.h>
     #include <sys/mman.h>
 
 #endif
 
-#ifndef USEWINDOWSCOMMANDS
-
-	//#include <unistd.h>
-	#define VRMLDIR "vrml/"
-	#define DATADIR "data/"
-	#define REPORTDIR "reports/"
-	#define BITMAPDIR "bitmaps/"
-	#define TEMPDIR "temp/"
-	#define VTKDIR "vtk/"
-
-	#define IMAGEMAGICKCONVERT "convert"
-	#define IMAGEMAGICKMOGRIFY "mogrify"
-
-#else
-	
-	#define VRMLDIR "vrml\\"
-	#define DATADIR "data\\"
-	#define REPORTDIR "reports\\"
-	#define BITMAPDIR "bitmaps\\"
-	#define TEMPDIR "temp\\"
-	#define TEMPDIR2 "temp/"
-	#define VTKDIR "vtk\\"
-
-	#define IMAGEMAGICKCONVERT "convert"
-	#define IMAGEMAGICKMOGRIFY "mogrify"
-
-#endif
+//#ifndef USEWINDOWSCOMMANDS
+//
+//	//#include <unistd.h>
+//	//#define VRMLDIR "vrml/"
+//	//#define DATADIR "data/"
+//	//#define REPORTDIR "reports/"
+//	//#define BITMAPDIR "bitmaps/"
+//	//#define TEMPDIR "temp/"
+//	//#define VTKDIR "vtk/"
+//
+//	#define IMAGEMAGICKCONVERT "convert"
+//	#define IMAGEMAGICKMOGRIFY "mogrify"
+//
+//#else
+//	
+//	//#define VRMLDIR "vrml\\"
+//	//#define DATADIR "data\\"
+//	//#define REPORTDIR "reports\\"
+//	//#define BITMAPDIR "bitmaps\\"
+//	//#define TEMPDIR "temp\\"
+//	//#define TEMPDIR2 "temp/"
+//	//#define VTKDIR "vtk\\"
+//
+//	#define IMAGEMAGICKCONVERT "convert"
+//	#define IMAGEMAGICKMOGRIFY "mogrify"
+//
+//#endif
  
+	extern char VRMLDIR[];
+	extern char DATADIR[];
+	extern char REPORTDIR[];
+	extern char BITMAPDIR[];
+	extern char TEMPDIR[];
+	//extern char TEMPDIR2[];
+	extern char VTKDIR[];
+
+    extern char IMAGEMAGICKCONVERT[];
+    extern char IMAGEMAGICKMOGRIFY[];
+
 // #define FORCES_BOTH_WAYS 1
 // #define NO_CALC_STATS 1
 // #define NON_RANDOM 1 // keep nucleating from same places
@@ -128,6 +141,7 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 // includes
 
 // standard headers
+
 
 #include <stdio.h>
 #include <assert.h>
@@ -263,6 +277,8 @@ extern int BMP_WIDTH,BMP_HEIGHT;
 extern int VTK_WIDTH;
 extern int VTK_HEIGHT;
 extern int VTK_AA_FACTOR;
+extern int BMP_AA_FACTOR;
+
 extern double VTK_LINK_COLOUR_GAMMA;
 extern bool VTK_MOVE_WITH_BEAD;
 extern double VTK_VIEWANGLE;
@@ -292,6 +308,11 @@ extern bool SPECKLEGRID;
 extern double SPECKLEGRIDPERIOD;
 extern double SPECKLEGRIDTIMEWIDTH;
 extern double SPECKLEGRIDANGLEWIDTH;
+
+extern bool POLY_FEEDBACK;
+extern double POLY_FEEDBACK_DIST;
+extern double POLY_FEEDBACK_MIN_PROB;
+extern double POLY_FEEDBACK_FACTOR;
 
 extern double BMP_INTENSITY_SCALE;
 extern double INIT_R_GAIN;

@@ -193,7 +193,7 @@ public:
 	static size_t findnearbynodes(const nodes& ournode, const int& adjgridpoints, const int& threadnum);
     //static size_t findnearbynodes_collision(const nodes& ournode, const int& threadnum);
 
-	void findnearbynodes_collision_setup(const int& adjgridpoints);
+	//void findnearbynodes_collision_setup(const int& adjgridpoints);
 
     // -- Threading, comment these out
 	// static void *collisiondetectionthread(void* threadarg);
@@ -218,7 +218,7 @@ public:
 	//static void *compressfilesthread(void* threadarg);
 	void compressfilesdowork(const int & filenum);
 
-    vector <testnodeinfo> testnodes;
+    vector <vector <testnodeinfo> > testnodes;
     double testsurfaceposn, lasttestsurfaceposn, lasttestsurfacesavedposn;
     double testsurfacerotation;
     double testforcemag;
@@ -226,8 +226,11 @@ public:
     double testangle;       // defines the arc
 
     void testforces_setup();
-    void testforces_addforces();
-    void testforces_select_nodes(const double& testdist);
+    void testforces_cutlinks();   
+    void testforces_remove_nontest_nodes();
+
+    void testforces_addforces(const int surface);
+    void testforces_select_nodes(const double& testdist, const int setsurface);
     void testforces_saveiter();
 
 	void squash(const double & thickness);

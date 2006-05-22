@@ -30,6 +30,7 @@ nodegridptr(NULL)
 
     threadnum = 0;
     testnode = false;
+    testsurface = 0;
     creation_iter_num = 0;
 
 	x = y = z = 0.0;
@@ -64,6 +65,7 @@ links_broken(0)
 {
     threadnum = 0;
     testnode = false;
+    testsurface = 0;
     creation_iter_num = 0;
 
 	link_force_vec.zero();
@@ -134,6 +136,8 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 
 	creation_iter_num = ptheactin->iteration_num;
 
+    nucleator_stuck_position = *this;
+
 	harbinger = true;
 
     setunitvec();
@@ -149,6 +153,7 @@ int nodes::save_data(ofstream &ostr)
 	 << harbinger << " " 
 	 << polymer << " " 
      << testnode << " "
+     << testsurface << " "
 	 << colour.r << " " << colour.g << " " << colour.b << " "
 	 << delta.x << " "
 	 << delta.y << " "
@@ -191,6 +196,7 @@ int nodes::load_data(ifstream &istrm)
 	  >> harbinger  
 	  >> polymer
       >> testnode
+      >> testsurface
 	  >> colour.r >> colour.g >> colour.b 
 	  >> delta.x 
       >> delta.y 

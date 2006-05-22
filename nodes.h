@@ -34,6 +34,7 @@ public:
 	bool stucktonucleator;
 	bool move_harbinger_this_time;
     bool testnode;
+    int  testsurface;  // surface number that node is attached to
 
 	//actin* ptheactin;
 	//nodes* nextnode;

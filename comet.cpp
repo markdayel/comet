@@ -43,6 +43,8 @@ bool NUCLEATOR_FORCES = true;
 int BMP_WIDTH  = 800;
 int BMP_HEIGHT = 600;
 
+int BMP_AA_FACTOR = 1;
+
 int VTK_WIDTH  = 800;
 int VTK_HEIGHT = 600;
 int VTK_AA_FACTOR = 1;
@@ -69,6 +71,10 @@ bool SPECKLEGRID = false;
 double SPECKLEGRIDPERIOD = 1.0;
 double SPECKLEGRIDTIMEWIDTH = 0.1;
 double SPECKLEGRIDANGLEWIDTH = 10.0;
+bool POLY_FEEDBACK = false;
+double POLY_FEEDBACK_DIST = 1.0;
+double POLY_FEEDBACK_MIN_PROB = 0.05;
+double POLY_FEEDBACK_FACTOR = 4;
 
 
 bool ROTATION = true;
@@ -175,6 +181,17 @@ int TOTAL_ITERATIONS ;
 int NODE_REPULSIVE_GRIDSEARCH ;
 int NODE_XLINK_GRIDSEARCH ;
 int NODE_REPULSIVE_RANGE_GRIDSEARCH;
+
+char VRMLDIR[2048];
+char DATADIR[2048];
+char REPORTDIR[2048];
+char BITMAPDIR[2048];
+char TEMPDIR[2048];
+//char TEMPDIR2;
+char VTKDIR[2048];
+
+char IMAGEMAGICKCONVERT[255];
+char IMAGEMAGICKMOGRIFY[255];
 
 double LINK_POWER_SCALE = 0;
 
@@ -348,6 +365,8 @@ int main(int argc, char* argv[])
 
  //   exit(0);
 
+    sprintf(IMAGEMAGICKCONVERT,"convert");
+    sprintf(IMAGEMAGICKMOGRIFY,"mogrify");
 
 
 	cout << endl; 
@@ -395,6 +414,8 @@ int main(int argc, char* argv[])
 		// and this would drop it further
 		// so process would halt on single cpu machine
 
+
+
 #ifndef _WIN32
 
 		int nicelevel = 0;
@@ -418,11 +439,16 @@ int main(int argc, char* argv[])
 		} else if (strcmp( hostname, "montecarlo.math.ucdavis.edu") == 0)
 		{
 			nicelevel = 19;
-		}
+		} else if (strcmp( hostname, "ec1") == 0)
+        {
+            nicelevel = 19;
+            sprintf(IMAGEMAGICKCONVERT,"ssh ec1 convert");
+            sprintf(IMAGEMAGICKMOGRIFY,"ssh ec1 mogrify");
+        }
 		else
 		{
 			nicelevel = 19;
-		}
+        }
 
 		nice(nicelevel);
 		
@@ -497,6 +523,34 @@ int main(int argc, char* argv[])
     keyboard keyb;
 #endif
 #endif
+
+    
+    char path[2048];
+    getcwd(path, 2048);
+    
+#ifndef USEWINDOWSCOMMANDS
+
+	sprintf(VRMLDIR,"%s/vrml/", path);
+    sprintf(DATADIR,"%s/data/", path);
+    sprintf(REPORTDIR,"%s/reports/", path);
+    sprintf(BITMAPDIR,"%s/bitmaps/", path);
+    sprintf(TEMPDIR,"%s/temp/", path);
+    sprintf(VTKDIR,"%s/vtk/", path);
+
+
+#else
+	
+	sprintf(VRMLDIR,"%s\\vrml\\", path);
+    sprintf(DATADIR,"%s\\data\\", path);
+    sprintf(REPORTDIR,"%s\\reports\\", path);
+    sprintf(BITMAPDIR,"%s\\bitmaps\\", path);
+    sprintf(TEMPDIR,"%s\\temp\\", path);
+    sprintf(VTKDIR,"%s\\vtk\\", path);
+
+#endif
+
+    
+
 
 #ifndef USEWINDOWSCOMMANDS
 	
@@ -598,6 +652,9 @@ int main(int argc, char* argv[])
 
 		else if (tag == "VTK_AA_FACTOR")	  
 			{ss >> VTK_AA_FACTOR;}
+
+        else if (tag == "BMP_AA_FACTOR")	  
+			{ss >> BMP_AA_FACTOR;}
 
 		else if (tag == "VTK_LINK_COLOUR_GAMMA")	  
 			{ss >> VTK_LINK_COLOUR_GAMMA;}
@@ -707,7 +764,19 @@ int main(int argc, char* argv[])
 		else if (tag == "P_NUC") 
 			{ss >> P_NUC;}
 
-		else if (tag == "VISCOSITY") 
+		else if (tag == "POLY_FEEDBACK") 
+			{ss >> buff2; if(buff2=="true") POLY_FEEDBACK = true; else POLY_FEEDBACK = false;} 
+		
+		else if (tag == "POLY_FEEDBACK_DIST") 
+			{ss >> POLY_FEEDBACK_DIST;}
+
+        else if (tag == "POLY_FEEDBACK_MIN_PROB") 
+			{ss >> POLY_FEEDBACK_MIN_PROB;}
+
+        else if (tag == "POLY_FEEDBACK_FACTOR") 
+			{ss >> POLY_FEEDBACK_FACTOR;}
+
+		else if (tag == "VISCOSITY")    
 			{ss >> buff2; if(buff2=="true") VISCOSITY = true; else VISCOSITY = false;} 
 		
 		else if (tag == "VISCOSITY_FACTOR") 
@@ -955,6 +1024,8 @@ int main(int argc, char* argv[])
 	NODE_FORCE_TO_DIST = DELTA_T * FORCE_SCALE_FACT;
 	NODE_DIST_TO_FORCE = 1.0 / NODE_FORCE_TO_DIST;
 
+    BMP_WIDTH *= BMP_AA_FACTOR;
+    BMP_HEIGHT *= BMP_AA_FACTOR;
 
 	if (SPECKLE_FACTOR<0)
 	{
@@ -1246,8 +1317,10 @@ int main(int argc, char* argv[])
             if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
                 theactin.reservemorenodes(10000);
 			
-			if (theactin.polrate >0)
+			if (theactin.attemptedpolrate >0)
 				polrate = (double) theactin.polrate/ (double) theactin.attemptedpolrate;// / (double) (i % InterRecordIterations);
+            else
+                polrate = 0;
 
 			if (!QUIET)
 			{
@@ -1348,8 +1421,10 @@ int main(int argc, char* argv[])
 		
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
 		{
-		if (theactin.polrate >0)
-			polrate = (double) theactin.polrate/ (double) theactin.attemptedpolrate;//nexttocrosslink;//polrate;// / (double) (i % InterRecordIterations);
+            if (theactin.attemptedpolrate >0)
+				    polrate = (double) theactin.polrate/ (double) theactin.attemptedpolrate;// / (double) (i % InterRecordIterations);
+                else
+                    polrate = 0;
 
 #ifdef NON_RANDOM
 
@@ -1470,7 +1545,7 @@ srand( rand_num_seed );
 
 			}
 
-			if ((!theactin.brokensymmetry) && (distfromorigin > RADIUS))
+			if ((!TEST_SQUASH) && (!theactin.brokensymmetry) && (distfromorigin > RADIUS))
 			{	// symmetry broke: set directions, scale factors etc.
 				
 				theactin.brokensymmetry = true;

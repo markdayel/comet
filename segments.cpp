@@ -293,12 +293,25 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const
 {  // set the segment number for each axis, dependent on node position
 
+    double dblxseg, dblyseg, dblzseg;
+
+    getsegmentnum(node, dblxseg, dblyseg, dblzseg);
+
+	xseg = (int) dblxseg;
+	yseg = (int) dblyseg;
+	zseg = (int) dblzseg;
+
+}
+
+void segments::getsegmentnum(const vect& node, double& xseg, double& yseg, double& zseg) const
+{  // set the segment number for each axis, dependent on node position
+
 	if (p_nuc->geometry == nucleator::sphere)
 	{	// sphere
 
-		xseg = (int)((double)num_cap_segs * (1+ (atan2(-node.z,node.y) / PI)) );
-		yseg = (int)((double)num_cap_segs * (1+ (atan2(-node.z,node.x) / PI)) );
-		zseg = (int)((double)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI)) );
+		xseg = (double) num_cap_segs * (1+ (atan2(-node.z,node.y) / PI));
+		yseg = (double) num_cap_segs * (1+ (atan2(-node.z,node.x) / PI));
+		zseg = (double) num_cap_segs * (1+ (atan2(-node.y,node.x) / PI));
 		
 		return;
 	}
@@ -307,13 +320,13 @@ void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) 
 	
 		xseg = getcapsuleseg(node.y,node.z);
 		yseg = getcapsuleseg(node.x,node.z);
-		zseg = (int)((double)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI)) );
+		zseg = (double)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI));
 	}
 
 }
 
-int segments::getcapsuleseg(const double & x, const double & y) const
-{	// get the segment num for the capsule
+double segments::getcapsuleseg(const double & x, const double & y) const
+{	// get the segment num for the capsule (fractional)
 	// segments are numbered clockwise
 	// starting at upper cap on left most edge
 
@@ -323,12 +336,12 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 
 		if (x > 0)	// RHS
 		{
-			return num_cap_segs + (int) ((CAPSULE_HALF_LINEAR - y) / straight_seg_len);
+			return (double) num_cap_segs + ((CAPSULE_HALF_LINEAR - y) / straight_seg_len);
 		}
 		else		// LHS
 		{
-			return 2 * num_cap_segs + num_straight_segs 
-						        + (int) ((y + CAPSULE_HALF_LINEAR) / straight_seg_len);
+			return 2 * (double) num_cap_segs + (double)num_straight_segs 
+						        + ((y + CAPSULE_HALF_LINEAR) / straight_seg_len);
 		}
 	} 
 	else
@@ -336,12 +349,12 @@ int segments::getcapsuleseg(const double & x, const double & y) const
 		if (y > 0)
 		{
 			// top cap
-			return (int)((double)num_cap_segs * (1+ (atan2( -(y - CAPSULE_HALF_LINEAR),  x) / PI)) );
+			return ((double)num_cap_segs * (1+ (atan2( -(y - CAPSULE_HALF_LINEAR),  x) / PI)) );
  		}
         else
 		{	// bottom cap
 			return num_straight_segs + num_cap_segs
-				+  (int)((double)num_cap_segs * (1+ (atan2(  (y + CAPSULE_HALF_LINEAR), -x) / PI)) );
+				+  ((double)num_cap_segs * (1+ (atan2(  (y + CAPSULE_HALF_LINEAR), -x) / PI)) );
 		}
 	}
 

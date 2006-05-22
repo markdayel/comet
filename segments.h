@@ -50,9 +50,10 @@ public:
 	//void addsurfaceimpact(nodes& node, const double& mag);
 
 	void getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const;
+    void getsegmentnum(const vect& node, double& xseg, double& yseg, double& zseg) const;
 	void getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const;
 
-	int  getcapsuleseg(const double & x, const double & y) const;
+	double getcapsuleseg(const double & x, const double & y) const;
 	void getsegmentposition(double& x, double& y, double& z, const int & seg,
 								  const int & dist, const int & axis) const;
 
