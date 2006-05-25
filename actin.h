@@ -74,12 +74,7 @@ public:
 class actin
 {
 public:
-	enum projection 
-	{
-		xaxis = 0,
-		yaxis = 1,
-		zaxis = 2
-	};
+	
 	enum processfgbg 
 	{
 		runfg = 0,
@@ -222,16 +217,20 @@ public:
     double testsurfaceposn, lasttestsurfaceposn, lasttestsurfacesavedposn;
     double testsurfacerotation;
     double testforcemag;
+    bool test_equilibrating;
     vect testdirection;     // defines the direction of the test surface
     double testangle;       // defines the arc
 
     void testforces_setup();
+    void testforces_set_initial_surfaces();
     void testforces_cutlinks();   
     void testforces_remove_nontest_nodes();
 
-    void testforces_addforces(const int surface);
-    void testforces_select_nodes(const double& testdist, const int setsurface);
+    void testforces_addforces(const int &surface);
+    void testforces_select_nodes(const double& testdist, const int &setsurface);
     void testforces_saveiter();
+
+    double sum_delta_movements();
 
 	void squash(const double & thickness);
 	void sortnodesbygridpoint(void);

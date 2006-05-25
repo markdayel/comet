@@ -303,6 +303,25 @@ void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) 
 
 }
 
+double segments::getsegmentnum(const vect& node, projection &axis)
+{
+    double dblxseg, dblyseg, dblzseg;
+
+    getsegmentnum(node, dblxseg, dblyseg, dblzseg);
+
+    if (axis == xaxis)
+    {
+        return dblxseg;
+    }
+    else if (axis == yaxis)
+    {
+        return dblyseg;
+    }
+
+    return dblzseg;
+
+}
+
 void segments::getsegmentnum(const vect& node, double& xseg, double& yseg, double& zseg) const
 {  // set the segment number for each axis, dependent on node position
 

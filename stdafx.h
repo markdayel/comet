@@ -174,6 +174,13 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 
 using namespace std;
 
+enum projection 
+{
+	xaxis = 0,
+	yaxis = 1,
+	zaxis = 2
+};
+
 // pthreads stuff:
 
 #include "pthread.h"
@@ -307,7 +314,7 @@ extern bool   SPECKLE;
 extern bool SPECKLEGRID;
 extern double SPECKLEGRIDPERIOD;
 extern double SPECKLEGRIDTIMEWIDTH;
-extern double SPECKLEGRIDANGLEWIDTH;
+extern double SPECKLEGRIDSTRIPEWIDTH;
 
 extern bool POLY_FEEDBACK;
 extern double POLY_FEEDBACK_DIST;
@@ -388,6 +395,8 @@ inline void endian_swap(unsigned int& x);
 // own headers
 #include "comet.h"
 #include "nucleator.h"
+
+
 
 extern nucleator::shape NUCSHAPE;  //default to sphere
 

@@ -15,6 +15,8 @@ removed without prior written permission from the author.
 #ifndef segments_H 
 #define segments_H
 
+
+
 //#include "stdafx.h"
 //#include "nucleator.h"
 
@@ -31,6 +33,8 @@ typedef vector<Int4d> Int5d;
 class nodes;
 class nucleator;
 class actin;
+
+#include "stdafx.h"
 
 class segments
 {
@@ -51,6 +55,8 @@ public:
 
 	void getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const;
     void getsegmentnum(const vect& node, double& xseg, double& yseg, double& zseg) const;
+    double getsegmentnum(const vect& node, projection &axis);
+
 	void getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const;
 
 	double getcapsuleseg(const double & x, const double & y) const;

@@ -31,12 +31,11 @@ public:
 		capsule = 1};
 	nucleator(void);
 	~nucleator(void);
-	nucleator(shape set_geometry);//, actin *ptheactin);
+	nucleator(shape set_geometry);
 	shape geometry;
 
 	double surf_area;
 	double movability;
-	//actin *ptheactin;
 
 	segments segs;
 
@@ -44,7 +43,6 @@ public:
 	vect torque, centerofmass;
 	vect momentofinertia;
 
-	//rotationmatrix nucleator_rotation;
 
 	Colour colour;
 
@@ -63,24 +61,13 @@ public:
 	int addnodescapsule(void);
     double polyfeedbackprob(const double& x, const double& y, const double& z) const;
 
-	//int definenucleatorgrid(void);
-	//int save(ofstream *outputstream) ;
 	int savevrml(ofstream *outputstream);
-	//int saveradialsegments(ofstream *outputstream);
-	//int clearradialsegments();
 	int save_data(ofstream &ostr);
 	int load_data(ifstream &istr);
-	//void set_rep_bins();
-	//int  get_rep_bin(double angle);
-	//int  get_zbin(const double x, const double y);
-	//int  get_angbin(const double x, const double y);
-	//double get_rep_angle(double x, double y);
 	//bool is_sphere();
 	//bool is_capsule();
 
-	//bool iswithinnucleator(const double& x, const double& y, const double& z);
-	bool collision(nodes &node);//(double &x, double &y, double &z);
-	//int n_force_segments();
+	bool collision(nodes &node);
 	void definecagepoints(void);
 };
 

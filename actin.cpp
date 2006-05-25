@@ -317,6 +317,8 @@ actin::actin(void)
      
     testdirection = vect(0,0,1);
     testangle = cos(30 * PI/360);
+
+    test_equilibrating = false;
 } 
 
 actin::~actin(void)
@@ -612,7 +614,6 @@ void actin::iterate()  // this is the main iteration loop call
 	    // in mean time it is a 'harbinger'
 	    // affected only by node collision repulsion and nucleator repulsion
 
-
         // add new nodes and store number created in rolling array
 	    crosslinknodesdelay[iteration_num % CROSSLINKDELAY] = p_nuc->addnodes();
 
@@ -621,28 +622,45 @@ void actin::iterate()  // this is the main iteration loop call
     }
     else
     {
-        testforces_select_nodes(testsurfaceposn,1);
-        // if testing forces apply the force here
+        if (!test_equilibrating)
+        {
 
-        testforces_addforces(1);
+            testforces_select_nodes(testsurfaceposn,1);
+            // if testing forces apply the force here
 
-        if ((((lasttestsurfaceposn - testsurfaceposn) < TEST_DIST_EQUIL) &&
-              (lasttestsurfaceposn - testsurfaceposn) > 0 ))
-        {   // has come to equilibrium
-            // so save the point
+            testforces_addforces(1);
 
-            if (fabs(testsurfaceposn - lasttestsurfacesavedposn) > TEST_DIST_EQUIL)
-                testforces_saveiter();  // only save point if we've actually moved
-            
-            testforcemag += TEST_FORCE_INCREMENT;
+            if ((((lasttestsurfaceposn - testsurfaceposn) < TEST_DIST_EQUIL) &&
+                  (lasttestsurfaceposn - testsurfaceposn) > 0 ))
+            {   // has come to equilibrium
+                // so save the point
+
+                if (fabs(testsurfaceposn - lasttestsurfacesavedposn) > TEST_DIST_EQUIL)
+                    testforces_saveiter();  // only save point if we've actually moved
+                
+                testforcemag += TEST_FORCE_INCREMENT;
+            }
+
+            lasttestsurfaceposn = testsurfaceposn;  // store the old position
         }
+        else
+        {
+            if (sum_delta_movements() < 0.0005)
+            {
+                cout << endl << "Equilibrium reached, starting test" << endl;
 
-        lasttestsurfaceposn = testsurfaceposn;  // store the old position
+                test_equilibrating = false;
+                testforcemag = TEST_FORCE_INITIAL_MAG;
+
+                testforces_set_initial_surfaces();
+            }
+
+        }
     }
 
 
 	if ((lastsorthighestnode != highestnodecount) && ((iteration_num % 10) == 0))
-	{    // only do full sort periodically
+	{    // only do full sort periodically, and if we have new nodes
 		sortnodesbygridpoint(); // sort the nodes so they can be divided sanely between threads
 		lastsorthighestnode = highestnodecount;
 	} else
@@ -696,11 +714,18 @@ void actin::testforces_setup()
         testnodes[i].reserve(1024);
     }
 
-    testforces_select_nodes(0,0);  // select *all* nodes within test section
+    testforces_select_nodes(0,0);  // select *all* nodes within test section, and put into 'surface 0'
     testforces_cutlinks(); // cut them out from main network
     testforces_remove_nontest_nodes(); // remove the non-test nodes
 
-    // find the furthest out
+    test_equilibrating = true;
+
+}
+
+void actin::testforces_set_initial_surfaces()
+{
+
+    // find the furthest node out
     testsurfaceposn = 0;
     lasttestsurfaceposn = DBL_MAX;
     nodes* p_furthestnode = NULL;
@@ -737,12 +762,10 @@ void actin::testforces_setup()
     optest << "Itteration Testnodes Force Position" << endl;
     optest.close();
 
-    testforcemag = TEST_FORCE_INITIAL_MAG;
-
 }
 
 
-void actin::testforces_select_nodes(const double& testdist, const int setsurface)
+void actin::testforces_select_nodes(const double& testdist, const int &setsurface)
 {
     const size_t oldnodes = testnodes[setsurface].size(); 
 
@@ -792,9 +815,12 @@ void actin::testforces_select_nodes(const double& testdist, const int setsurface
 void actin::testforces_cutlinks()
 {   /// cut the test region out of the main network
 
-    for(vector <nodes>::iterator	i_node  = node.begin(); 
-									i_node != node.begin() + highestnodecount;
-							      ++i_node)
+    // this is separate from testforces_remove_nontest_nodes() in case
+    // we want to cut the chunk out and see what happens to the rest of the network
+
+    for(vector <nodes>::iterator    i_node  = node.begin(); 
+								    i_node != node.begin() + highestnodecount;
+						          ++i_node)
     {
         for (vector <links>::reverse_iterator i_link  = i_node->listoflinks.rbegin();
                                       i_link != i_node->listoflinks.rend();
@@ -824,17 +850,10 @@ void actin::testforces_remove_nontest_nodes()
 }
 
 
-void actin::testforces_addforces(const int surface)
+void actin::testforces_addforces(const int &surface)
 {
 
     vect tomove;
-
-    //testsurfacetransform.settoidentity();
-    //testsurfacetransform.rotatematrix(reverse_camera_rotation);
-    //testsurfacetransform.rotatematrix(testsurfacerotation, rotationmatrix::axis::zaxis); // check this
-    //testsurfacetransform *= 
-
-    //const double testforce = DELTA_T * TEST_FORCE_INITIAL_MAG;
 
     vect lever_arm;
 
@@ -852,7 +871,7 @@ void actin::testforces_addforces(const int surface)
 
         tomove = (i_test->origunitvec * (RADIUS + testsurfaceposn)) -  // original position of node projected onto test surface
                 *(i_test->nodeptr);  // the current node position
-        
+
         forceontestsurface -= tomove;  // add movement to forceontestsurface (convert to force later)
 
         //lever_arm = *(i_test->nodeptr) - (testdirection * (RADIUS + testsurfaceposn));
@@ -914,6 +933,20 @@ void actin::testforces_saveiter()
     
 }
 
+double actin::sum_delta_movements()
+{
+    double delta_sum = 0.0;
+
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin() + highestnodecount;
+							      ++i_node)
+    {
+        if (i_node->polymer)
+            delta_sum += i_node->delta.length();
+    }
+
+    return delta_sum;
+}
 
 
 bool actin::addlinks(nodes& linknode1, nodes& linknode2) const
@@ -1995,8 +2028,11 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
                     }
                     else
                     {
-                        if ( ((int)(10 * 360 * (atan2(origposn.y,origposn.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
-                              < (10 * 360 * 2 * PI * (SPECKLEGRIDANGLEWIDTH/360)))
+                        //if ( ((int)(10 * 360 * (atan2(origposn.y,origposn.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
+                        //      < (10 * 360 * 2 * PI * (SPECKLEGRIDSTRIPEWIDTH/360)))
+                        double segnum = ptheactin->p_nuc->segs.getsegmentnum(origposn,proj); 
+
+                        if ( fabs(segnum - (double)((int)segnum)) < SPECKLEGRIDSTRIPEWIDTH )
                             mult = 1.0;  // if on spoke then white
                         else
                             mult = 0.0;  // else black

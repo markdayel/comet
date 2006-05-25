@@ -70,7 +70,7 @@ double SPECKLE_FACTOR = 1;
 bool SPECKLEGRID = false;
 double SPECKLEGRIDPERIOD = 1.0;
 double SPECKLEGRIDTIMEWIDTH = 0.1;
-double SPECKLEGRIDANGLEWIDTH = 10.0;
+double SPECKLEGRIDSTRIPEWIDTH = 10.0;
 bool POLY_FEEDBACK = false;
 double POLY_FEEDBACK_DIST = 1.0;
 double POLY_FEEDBACK_MIN_PROB = 0.05;
@@ -878,8 +878,8 @@ int main(int argc, char* argv[])
     	else if (tag == "SPECKLEGRIDTIMEWIDTH") 
 		    {ss >> SPECKLEGRIDTIMEWIDTH;}
 
-        else if (tag == "SPECKLEGRIDANGLEWIDTH") 
-		    {ss >> SPECKLEGRIDANGLEWIDTH;}
+        else if (tag == "SPECKLEGRIDSTRIPEWIDTH") 
+		    {ss >> SPECKLEGRIDSTRIPEWIDTH;}
 
 		else if (tag == "INIT_R_GAIN") 
 			{ss >> INIT_R_GAIN;} 
@@ -1515,9 +1515,9 @@ srand( rand_num_seed );
 					nuc_object.segs.addallnodes();  // put node data into segment bins
 					nuc_object.segs.set_scale_factors();
 
-					theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);
-					theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);
-					theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
+					theactin.savebmp(filenum, xaxis, actin::runbg, true);
+					theactin.savebmp(filenum, yaxis, actin::runbg, true);
+					theactin.savebmp(filenum, zaxis, actin::runfg, true);
 
 					cout << "\r";
 					cout.flush();
@@ -1534,9 +1534,9 @@ srand( rand_num_seed );
 					nuc_object.segs.set_scale_factors();
 
 					// calculate but don't write bitmaps to get scaling factors
-					theactin.savebmp(filenum, actin::xaxis, actin::runfg, false);
-					theactin.savebmp(filenum, actin::yaxis, actin::runfg, false);
-					theactin.savebmp(filenum, actin::zaxis, actin::runfg, false);
+					theactin.savebmp(filenum, xaxis, actin::runfg, false);
+					theactin.savebmp(filenum, yaxis, actin::runfg, false);
+					theactin.savebmp(filenum, zaxis, actin::runfg, false);
 
 					cout << "\r";
 					cout.flush();
@@ -1555,9 +1555,9 @@ srand( rand_num_seed );
 				theactin.save_sym_break_axes();
 
                 // calculate but don't write bitmaps to get scaling factors
-			    theactin.savebmp(filenum, actin::xaxis, actin::runfg, false);
-			    theactin.savebmp(filenum, actin::yaxis, actin::runfg, false);
-			    theactin.savebmp(filenum, actin::zaxis, actin::runfg, false);
+			    theactin.savebmp(filenum, xaxis, actin::runfg, false);
+			    theactin.savebmp(filenum, yaxis, actin::runfg, false);
+			    theactin.savebmp(filenum, zaxis, actin::runfg, false);
 
 				if (!QUIET)
 				{
@@ -1676,9 +1676,9 @@ srand( rand_num_seed );
                 nuc_object.segs.saveradialaxisreport(filenum, 1);
                 nuc_object.segs.saveradialaxisreport(filenum, 2);
 
-				theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);
-				theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);
-				theactin.savebmp(filenum, actin::zaxis, actin::runbg, true);
+				theactin.savebmp(filenum, xaxis, actin::runbg, true);
+				theactin.savebmp(filenum, yaxis, actin::runbg, true);
+				theactin.savebmp(filenum, zaxis, actin::runbg, true);
 
 				cout << "\r";
 				cout.flush();
@@ -2027,9 +2027,9 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 				}
 			}
 
-			theactin.savebmp(filenum, actin::xaxis, xfg, true); 
-			theactin.savebmp(filenum, actin::yaxis, yfg, true); 
-			theactin.savebmp(filenum, actin::zaxis, zfg, true);
+			theactin.savebmp(filenum, xaxis, xfg, true); 
+			theactin.savebmp(filenum, yaxis, yfg, true); 
+			theactin.savebmp(filenum, zaxis, zfg, true);
 
 			cout << endl;
 
@@ -2201,9 +2201,9 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 		// run them in foreground to slow things down
 		// so don't overload system with too many bg processes
 
-		theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
-		theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg
-		theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
+		theactin.savebmp(filenum, xaxis, actin::runbg, true);  // was bg
+		theactin.savebmp(filenum, yaxis, actin::runbg, true);	// was bg
+		theactin.savebmp(filenum, zaxis, actin::runfg, true);
 		
 		cout << "\r";
 		cout.flush();
