@@ -173,11 +173,11 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	double startx,starty, theta;
 	double dist;
 
-	for (int axis = 0; axis < 3; ++axis)
+	for (int axis = 0; axis != 3; ++axis)
 	{
 		// top cap
 
-		for(int i = 0; i< num_cap_segs; ++i)
+		for(int i = 0; i != num_cap_segs; ++i)
 		{
 			//       offset     segnum        angle of 1 seg
 			theta = (0.5 + (double) i) * (PI / (double) num_cap_segs);
@@ -202,7 +202,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 		// bottom cap
 
-		for(int i = num_cap_segs; i< (2 *num_cap_segs); ++i)
+		for(int i = num_cap_segs; i != (2 *num_cap_segs); ++i)
 		{
 			//       offset     segnum                      angle of 1 seg
 			theta = (0.5 + (double) i) * (PI / (double) num_cap_segs);
@@ -210,7 +210,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			startx = - cos (theta) * RADIUS;  // unit components
 			starty =   sin (theta) * RADIUS;
 
-			if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+			if ((p_nuc->geometry == nucleator::sphere) || (axis == zaxis))
 			{	// sphere or capsule z
 				linestartx[axis][i] = startx;  // line start
 				linestarty[axis][i] = starty;
@@ -231,7 +231,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 		// sides
 
-		if  ((p_nuc->geometry == nucleator::capsule) && (axis != 2))
+		if  ((p_nuc->geometry == nucleator::capsule) && (axis != zaxis))
 		{
 			
 			for(int i = 0; i != num_straight_segs; ++i)
@@ -303,7 +303,7 @@ void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) 
 
 }
 
-double segments::getsegmentnum(const vect& node, projection &axis)
+double segments::getsegmentnum(const vect& node, const projection &axis)
 {
     double dblxseg, dblyseg, dblzseg;
 
@@ -581,9 +581,9 @@ void segments::addnode(const nodes& node)
 
 void segments::clearbins(void)
 {
-	for (int axis = 0; axis < 3; ++axis)
+	for (int axis = 0; axis != 3; ++axis)
 	{
-		for(int seg = 0; seg<num_segs; ++seg)
+		for(int seg = 0; seg != num_segs; ++seg)
 		{
 			surfaceimpacts[axis][seg]=0;
 
@@ -616,9 +616,9 @@ void segments::clearbins(void)
 		radial_links_broken[dist] = 0;
 	}
 
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
 	{
-    	for(int dist = 0; dist<num_dist_segs; ++dist)
+    	for(int dist = 0; dist != num_dist_segs; ++dist)
 		{
             numnodes_SD[axis][dist] =
 		    rep_radial_SD[axis][dist] =
@@ -630,7 +630,7 @@ void segments::clearbins(void)
     }
 }
 
-void segments::drawoutline(ostream& drawcmd, const int& axis) const
+void segments::drawoutline(ostream& drawcmd, const projection & axis) const
 {
 
     int radius;
@@ -641,7 +641,7 @@ void segments::drawoutline(ostream& drawcmd, const int& axis) const
 	
 	// draw outline
 
-    if	((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+    if	((p_nuc->geometry == nucleator::sphere) || (axis == zaxis))
 	{	
 		// sphere
 
@@ -675,7 +675,7 @@ void segments::drawoutline(ostream& drawcmd, const int& axis) const
  
 }
 
-int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double scale) const
+int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, const double scale) const
 {
 
 	double linelen, linex, liney;
@@ -687,7 +687,7 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const int& axis, const double
 
 	int segstodraw = num_segs;
 
-	if ((p_nuc->geometry == nucleator::capsule) && (axis == 2))
+	if ((p_nuc->geometry == nucleator::capsule) && (axis == zaxis))
 	{	// capsule z axis, no linear section to plot
 		segstodraw = 2 * num_cap_segs;
 	}
@@ -821,7 +821,7 @@ void segments::calcSD(const Dbl3d& data, Dbl2d& SD)
 {
     Dbl2d mean;
     mean.resize(3);
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
     {
 	    mean[axis].resize(num_dist_segs);
         fill(mean[axis].begin(), mean[axis].end(), 0);
@@ -829,9 +829,9 @@ void segments::calcSD(const Dbl3d& data, Dbl2d& SD)
 
     // calc sums for means
 
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
 	{
-	    for(int seg = 0; seg<num_segs; ++seg)
+	    for(int seg = 0; seg != num_segs; ++seg)
 		{
 		    for(int dist = 0; dist<num_dist_segs; ++dist)
     		{
@@ -841,9 +841,9 @@ void segments::calcSD(const Dbl3d& data, Dbl2d& SD)
 	}
 
     // convert sums to means
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
 	{
-	    for(int dist = 0; dist<num_dist_segs; ++dist)
+	    for(int dist = 0; dist != num_dist_segs; ++dist)
         {
             mean[axis][dist] /= num_segs;
 	    }
@@ -851,9 +851,9 @@ void segments::calcSD(const Dbl3d& data, Dbl2d& SD)
     
     // sum the squares
 
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
 	{
-	    for(int seg = 0; seg<num_segs; ++seg)
+	    for(int seg = 0; seg != num_segs; ++seg)
 		{
 		    for(int dist = 0; dist<num_dist_segs; ++dist)
     		{
@@ -864,9 +864,9 @@ void segments::calcSD(const Dbl3d& data, Dbl2d& SD)
 
     // convert to means of squares
     
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
 	{
-        for(int dist = 0; dist<num_dist_segs; ++dist)
+        for(int dist = 0; dist != num_dist_segs; ++dist)
         {
             SD[axis][dist] /= num_segs;
 	    }
@@ -874,18 +874,18 @@ void segments::calcSD(const Dbl3d& data, Dbl2d& SD)
 
     // subtract square of mean
 
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
 	{
-        for(int dist = 0; dist<num_dist_segs; ++dist)
+        for(int dist = 0; dist != num_dist_segs; ++dist)
         {
             SD[axis][dist] -= mean[axis][dist] * mean[axis][dist];
 	    }
     }
 
     // and take squareroot
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
 	{
-        for(int dist = 0; dist<num_dist_segs; ++dist)
+        for(int dist = 0; dist != num_dist_segs; ++dist)
         {
             if (SD[axis][dist]>SQRT_ACCURACY_LOSS)
                 SD[axis][dist] = sqrt(SD[axis][dist]);
@@ -920,18 +920,18 @@ void segments::savereport(const int& filenum) const
 
 	for(int dist = 0; dist<num_dist_segs; ++dist)
 	{
-		for (int axis = 0; axis < 3; ++axis)
+		for (int axis = 0; axis != 3; ++axis)
 		{
-			for(int seg = 0; seg<num_segs; ++seg)
+			for(int seg = 0; seg != num_segs; ++seg)
 			{
-				if ((axis == 2) && (seg >= 2 * num_cap_segs))
+				if ((axis == zaxis) && (seg >= 2 * num_cap_segs))
 					continue;  // no linear segment on z axis
 
 				getsegmentposition(x, y, z, seg, dist, axis);
 
 				capsuleside = false;
 
-                if (axis == 0)
+                if (axis == xaxis)
                 {
                     if (p_nuc->geometry == nucleator::sphere)
 				    {	// sphere or capsule z
@@ -950,9 +950,9 @@ void segments::savereport(const int& filenum) const
 					    }
 				    }
                 }
-                else if (axis == 1)
+                else if (axis == yaxis)
                 {
-                    if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+                    if ((p_nuc->geometry == nucleator::sphere) || (axis == zaxis))
 				    {	// sphere or capsule z
 					    radius = calcdist(x,z) - RADIUS;
 				    }
@@ -1049,11 +1049,11 @@ void segments::saveradialaxisreport(const int& filenum, const int axis) const
 
     char projletter[] = "z";
 
-    if (axis == 0)
+    if (axis == xaxis)
 	{
 		sprintf ( projletter , "x");
 	}
-	else if (axis == 1)
+	else if (axis == yaxis)
 	{
 		sprintf ( projletter , "y");
 	}
@@ -1120,9 +1120,9 @@ void segments::saveSDreport(const int& filenum) const
 
 	opSDreport << "Axis,RadialSegDist,numnodesSD,RepForceRadialSD,RepForceTransSD,LinkForceRadialSD,LinkForceTransSD,LinksBrokenSD" << endl;
 
-    for (int axis = 0; axis < 3; ++axis)
+    for (int axis = 0; axis != 3; ++axis)
 	{
-	    for (int dist = 0; dist < num_radial_bins; ++dist)
+	    for (int dist = 0; dist != num_radial_bins; ++dist)
 	    {
 
 		    opSDreport << axis << ","
@@ -1143,13 +1143,13 @@ void segments::saveSDreport(const int& filenum) const
 void segments::getsegmentposition(double& x, double& y, double& z, const int & seg,
 								  const int & dist, const int & axis) const
 {
-	if (axis == 0)
+	if (axis == xaxis)
 	{
 		x = 0;
 		y = linestartx[axis][seg] - lineunitvecx[axis][seg] * dist * dist_step;
 		z = linestarty[axis][seg] - lineunitvecy[axis][seg] * dist * dist_step;
 	}
-	else if (axis == 1)
+	else if (axis == yaxis)
 	{
 		x = linestartx[axis][seg] - lineunitvecx[axis][seg] * dist * dist_step;
 		y = 0;
@@ -1243,7 +1243,7 @@ void segments::getsegmentposition(double& x, double& y, double& z, const int & s
 //}
 
 void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
-					   const Dbl3d & var, const double& scale, const int& axis)
+					   const Dbl3d & var, const double& scale, const projection &axis)
 {
 
 	const int offsetx = bins_bitmap_width / 2;			// center these pixels
@@ -1267,12 +1267,12 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 	for (pix_x = 0; pix_x < bins_bitmap_width; ++pix_x)
 		for (pix_y = 0; pix_y < bins_bitmap_height; ++pix_y)
 		{
-			if (axis == 0)
+			if (axis == xaxis)
 			{
 				dummynode.y = ptheactin->unpixels(pix_x - offsetx);
 				dummynode.z = ptheactin->unpixels(pix_y - offsety);
 			}
-			else if (axis == 1)
+			else if (axis == yaxis)
 			{
 				dummynode.x = ptheactin->unpixels(pix_x - offsetx);
 				dummynode.z = ptheactin->unpixels(pix_y - offsety);
@@ -1292,12 +1292,12 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 			getsegmentnum( dummynode, xseg,  yseg,  zseg);
 			getsegmentdist(dummynode, xdist, ydist, zdist);
 
-			if (axis == 0)
+			if (axis == xaxis)
 			{
 				seg = xseg;
 				dist = xdist;
 			}
-			else if (axis == 1)
+			else if (axis == yaxis)
 			{
 				seg = yseg;
 				dist = ydist;

@@ -1820,8 +1820,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 			return;
         
 		*projletter = 'x';
-		p_outbmpfile = &outbmpfile_x;
+		p_outbmpfile = &outbmpfile_x;    
 		temp_BMP_filename = temp_BMP_filename_x;
+        
 	}
 	else if (proj == yaxis)
 	{	
@@ -1831,7 +1832,8 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		*projletter = 'y';
 		p_outbmpfile = &outbmpfile_y;
 		temp_BMP_filename = temp_BMP_filename_y;
-        axisrotation.rotatematrix(PI/2,rotationmatrix::yaxis);
+        axisrotation.rotatematrix(PI/2, zaxis);  // x to y is by rotation around z
+          
 	}
 	else
 	{	
@@ -1839,7 +1841,8 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 			return;
 		p_outbmpfile = &outbmpfile_z;
 		temp_BMP_filename = temp_BMP_filename_z;
-        axisrotation.rotatematrix(PI/2,rotationmatrix::zaxis);
+        axisrotation.rotatematrix(PI/2, yaxis); // x to z is by rotation around y and z
+        axisrotation.rotatematrix(PI/2, zaxis);
 	}
 
     if (!QUIET)
@@ -1936,9 +1939,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     {
 		if ((node[i].polymer) && (!node[i].listoflinks.empty()))
 		{
-            meanx += rotatednodepositions[i].x;
-            meany += rotatednodepositions[i].y;
-            meanz += rotatednodepositions[i].z;
+            //meanx += rotatednodepositions[i].x;
+            //meany += rotatednodepositions[i].y;
+            //meanz += rotatednodepositions[i].z;
 
             count++;
 
@@ -1952,9 +1955,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		}
 	}
 
-    meanx /= (double) count + 100; // + 100 buffers the instability when # nodes is v. small
-    meany /= (double) count + 100;
-    meanz /= (double) count + 100;
+    //meanx /= (double) count + 100; // + 100 buffers the instability when # nodes is v. small
+    //meany /= (double) count + 100;
+    //meanz /= (double) count + 100;
 
     vect nucposn = - ptheactin->p_nuc->position;
     projection_rotation.rotate(nucposn); 
@@ -1996,7 +1999,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	double mult = 0;
     vect origposn;
 
-    int SPECKLEGRIDPERIODiter = (int) (SPECKLEGRIDPERIOD / DELTA_T);
+    int    SPECKLEGRIDPERIODiter = (int) (SPECKLEGRIDPERIOD    / DELTA_T);
     int SPECKLEGRIDTIMEWIDTHiter = (int) (SPECKLEGRIDTIMEWIDTH / DELTA_T);
 
     for(int i=0; i != highestnodecount; ++i)
@@ -2011,10 +2014,11 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
             if (SPECKLEGRID)
             {
                 // find position of node on original surface
-                // and rotate into observation frame, without the bead rotation of course
+                // and rotate into observation frame, (without the bead rotation of course)
+                // to define thickness for speckle slice
                 origposn = node[i].nucleator_stuck_position;
-                camera_rotation.rotate(origposn);
-                axisrotation.rotate(origposn);
+                camera_rotation.rotate(origposn);  
+                axisrotation.rotate(origposn);  
                 
                 if (fabs(origposn.x) * 2 > RADIUS )  // if outside RADIUS/2 then black
                 {
@@ -2030,9 +2034,10 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
                     {
                         //if ( ((int)(10 * 360 * (atan2(origposn.y,origposn.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
                         //      < (10 * 360 * 2 * PI * (SPECKLEGRIDSTRIPEWIDTH/360)))
-                        double segnum = ptheactin->p_nuc->segs.getsegmentnum(origposn,proj); 
 
-                        if ( fabs(segnum - (double)((int)segnum)) < SPECKLEGRIDSTRIPEWIDTH )
+                        double segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position,proj); 
+
+                        if ( fabs(segnum + 0.5 - (double)((int)segnum + 0.5)) < SPECKLEGRIDSTRIPEWIDTH )
                             mult = 1.0;  // if on spoke then white
                         else
                             mult = 0.0;  // else black
@@ -2040,7 +2045,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
                 }
 
             }
-            else
+            else                                                           
             {
                 mult = speckle_array[node[i].creation_iter_num % speckle_array_size];
             }
@@ -2961,8 +2966,8 @@ void actin::set_sym_break_axes(void)
 
 	    tmp_rotation.settoidentity();
 
-	    tmp_rotation.rotatematrix(y_angle , rotationmatrix::yaxis);
-	    tmp_rotation.rotatematrix(x_angle , rotationmatrix::xaxis);
+	    tmp_rotation.rotatematrix(y_angle , yaxis);
+	    tmp_rotation.rotatematrix(x_angle , xaxis);
 
     }
 
@@ -3022,17 +3027,17 @@ void actin::set_sym_break_axes(void)
 
 	camera_rotation.settoidentity();
 
-    camera_rotation.rotatematrix(-x_angle, rotationmatrix::xaxis);
-	camera_rotation.rotatematrix(maxchiangle, rotationmatrix::zaxis);
-	camera_rotation.rotatematrix(y_angle, rotationmatrix::yaxis);
-	camera_rotation.rotatematrix(x_angle, rotationmatrix::xaxis);
+    camera_rotation.rotatematrix(-x_angle, xaxis);
+	camera_rotation.rotatematrix(maxchiangle, zaxis);
+	camera_rotation.rotatematrix(y_angle, yaxis);
+	camera_rotation.rotatematrix(x_angle, xaxis);
 
 
 	camera_rotation2.settoidentity();
 
-	camera_rotation2.rotatematrix(maxchiangle, rotationmatrix::zaxis);
-	camera_rotation2.rotatematrix(y_angle, rotationmatrix::yaxis);
-	camera_rotation2.rotatematrix(x_angle, rotationmatrix::xaxis);
+	camera_rotation2.rotatematrix(maxchiangle, zaxis);
+	camera_rotation2.rotatematrix(y_angle, yaxis);
+	camera_rotation2.rotatematrix(x_angle, xaxis);
 
 
     reverse_camera_rotation = camera_rotation.inverse();

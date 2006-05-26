@@ -386,7 +386,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 			if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
 			{
 				node.stucktonucleator = true;
-				node.nucleator_stuck_position = node * (1/r); // link to point *on* the nucleator surface
+				node.nucleator_stuck_position = node * (RADIUS/r); // link to point *on* the nucleator surface
 			}
 
 			scale = rad / r;
@@ -402,7 +402,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 	    case (capsule):
 
 	    {
-		    if ((fabs(node.z)<CAPSULE_HALF_LINEAR))
+		    if ((fabs(node.z) < CAPSULE_HALF_LINEAR))
 		    { 
 			    // on the cylinder
 
@@ -411,8 +411,8 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
                 // note the nucleator_stuck_position is used to produce the patterned speckle
                 // tracks and should represent the last nucleator collision position
 
-            	node.nucleator_stuck_position.x = node.x * (1/r);
-				node.nucleator_stuck_position.y = node.y * (1/r);
+            	node.nucleator_stuck_position.x = node.x * (RADIUS/r);
+				node.nucleator_stuck_position.y = node.y * (RADIUS/r);
 				node.nucleator_stuck_position.z = node.z;// link to point *on* the nucleator surface
 
 				if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
@@ -440,13 +440,13 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 				r = calcdist(node.x,node.y,z2);
 
-            	node.nucleator_stuck_position.x = node.x * (1/r);
-				node.nucleator_stuck_position.y = node.y * (1/r);
+            	node.nucleator_stuck_position.x = node.x * (RADIUS/r);
+				node.nucleator_stuck_position.y = node.y * (RADIUS/r);
 				
 				if (node.z<0)  // make into a sphere again
-					node.nucleator_stuck_position.z = z2 * (1/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
+					node.nucleator_stuck_position.z = z2 * (RADIUS/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
 				else
-					node.nucleator_stuck_position.z = z2 * (1/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
+					node.nucleator_stuck_position.z = z2 * (RADIUS/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
 
 				if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
 				{

@@ -45,8 +45,8 @@ public:
 
 	void setupsegments(nucleator *pn, actin * pactin);
 
-	void drawoutline(ostream& out, const int& axis) const;
-	int drawsurfaceimpacts(ostream& out, const int& axis, const double scale) const;
+	void drawoutline(ostream& out, const projection &axis) const;
+	int drawsurfaceimpacts(ostream& out, const projection &axis, const double scale) const;
 
 	void addnode(const nodes& node);
 	void addallnodes();
@@ -55,7 +55,7 @@ public:
 
 	void getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const;
     void getsegmentnum(const vect& node, double& xseg, double& yseg, double& zseg) const;
-    double getsegmentnum(const vect& node, projection &axis);
+    double getsegmentnum(const vect& node, const projection &axis);
 
 	void getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const;
 
@@ -72,7 +72,7 @@ public:
     void saveradialaxisreport(const int& filenum, const int axis) const;
 
 	void write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
-					   const Dbl3d & var, const double& scale, const int& axis);
+					   const Dbl3d & var, const double& scale, const projection &axis);
 
 	void setbitmapcoords();
 

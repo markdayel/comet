@@ -7,13 +7,13 @@ class rotationmatrix
 {
     
  public:
-    enum axis {
-	xaxis,
-	yaxis,
-	zaxis };
+ //   enum axis {
+	//xaxis,
+	//yaxis,
+	//zaxis };
     
     rotationmatrix(void);
-    rotationmatrix(double angle, axis a);
+    rotationmatrix(const double &angle, const projection &a);
     
     ~rotationmatrix(void);
 
@@ -23,8 +23,8 @@ class rotationmatrix
     double yx,yy,yz;
     double zx,zy,zz;
     
-    void rotationmatrix::rotatematrix(const rotationmatrix& rotmatrix);
-    void rotatematrix(double angle, axis a);
+    void rotatematrix(const rotationmatrix& rotmatrix);
+    void rotatematrix(const double &angle, const projection &a);
     void rotatematrix(const double &x_angle, const double &y_angle, const double &z_angle);
     void rotatematrixrevorder(const double &x_angle, const double &y_angle, const double &z_angle);
     rotationmatrix inverse();

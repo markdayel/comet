@@ -16,7 +16,7 @@ void rotationmatrix::settoidentity(void)
     xy = xz = yx = yz = zx = zy = 0;
 }
 
-rotationmatrix::rotationmatrix(double angle, axis a)
+rotationmatrix::rotationmatrix(const double &angle, const projection &a)
 {
     switch (a)
     {
@@ -43,7 +43,7 @@ rotationmatrix::rotationmatrix(double angle, axis a)
     }
 }
 
-void rotationmatrix::rotatematrix(double angle, axis a)
+void rotationmatrix::rotatematrix(const double &angle, const projection &a)
 {
     // create a tmp rotation matrix for this axis
 
@@ -51,26 +51,26 @@ void rotationmatrix::rotatematrix(double angle, axis a)
    
     switch (a)
     {
-	case (xaxis):
-	{
-	    tmp.xx =  1;			tmp.xy =  0;			tmp.xz =  0;
-	    tmp.yx =  0;			tmp.yy =  cos(angle);	tmp.yz =  sin(angle);
-	    tmp.zx =  0;			tmp.zy = -sin(angle);	tmp.zz =  cos(angle);
-	    break;
-	}
-	case (yaxis):
-	{
-	    tmp.xx =  cos(angle);	tmp.xy =  0;			tmp.xz = -sin(angle);
-	    tmp.yx =  0;			tmp.yy =  1;			tmp.yz =  0;
-	    tmp.zx =  sin(angle);	tmp.zy =  0;			tmp.zz =  cos(angle);
-	    break;
-	}
-	default:
-	{
-	    tmp.xx =  cos(angle);	tmp.xy =  sin(angle);	tmp.xz =  0;
-	    tmp.yx = -sin(angle);	tmp.yy =  cos(angle);	tmp.yz =  0;
-	    tmp.zx =  0;			tmp.zy =  0;			tmp.zz =  1;
-	} 
+	    case (xaxis):
+	    {
+	        tmp.xx =  1;			tmp.xy =  0;			tmp.xz =  0;
+	        tmp.yx =  0;			tmp.yy =  cos(angle);	tmp.yz =  sin(angle);
+	        tmp.zx =  0;			tmp.zy = -sin(angle);	tmp.zz =  cos(angle);
+	        break;
+	    }
+	    case (yaxis):
+	    {
+	        tmp.xx =  cos(angle);	tmp.xy =  0;			tmp.xz = -sin(angle);
+	        tmp.yx =  0;			tmp.yy =  1;			tmp.yz =  0;
+	        tmp.zx =  sin(angle);	tmp.zy =  0;			tmp.zz =  cos(angle);
+	        break;
+	    }
+	    default:
+	    {
+	        tmp.xx =  cos(angle);	tmp.xy =  sin(angle);	tmp.xz =  0;
+	        tmp.yx = -sin(angle);	tmp.yy =  cos(angle);	tmp.yz =  0;
+	        tmp.zx =  0;			tmp.zy =  0;			tmp.zz =  1;
+	    } 
     }
     
     // rotate the matrix by tmp
