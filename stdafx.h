@@ -212,6 +212,8 @@ extern bool SEGMENT_BINS;
 extern bool DRAW_CAGE;
 //-- 
 
+extern bool NOBGIMAGEMAGICK;
+
 // math related:
 
 #if 0      // use fmath rather than math  _WIN32

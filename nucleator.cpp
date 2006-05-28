@@ -21,7 +21,7 @@ removed without prior written permission from the author.
 #ifdef SEED_INSIDE			
 double NUCPOINT_SCALE = 0.9;				 
 #else
-double NUCPOINT_SCALE = 1.001;
+double NUCPOINT_SCALE = 1.0001;
 #endif
 			
 nucleator::nucleator(void)
@@ -351,7 +351,7 @@ for (vector <vect>::iterator point=cagepoints.begin();
 	*outputstream << "] }" << endl;
 	*outputstream << "        color Color { color [ ";
 
-	for (int i=0; i<numpoints; i++)
+	for (int i=0; i != numpoints; i++)
 	{
 			if (i==0)
 				*outputstream	<< "1 1 1";
@@ -393,7 +393,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 		    node *= scale;
         	
-            node.nucleator_impacts += (rad-r);
+            node.nucleator_impacts += rad - r;
 
 
 		    break;
@@ -411,20 +411,20 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
                 // note the nucleator_stuck_position is used to produce the patterned speckle
                 // tracks and should represent the last nucleator collision position
 
-            	node.nucleator_stuck_position.x = node.x * (RADIUS/r);
-				node.nucleator_stuck_position.y = node.y * (RADIUS/r);
-				node.nucleator_stuck_position.z = node.z;// link to point *on* the nucleator surface
-
 				if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
 				{
 					node.stucktonucleator = true;
+
+                    node.nucleator_stuck_position.x = node.x * (RADIUS/r);  // link to point *on* the nucleator surface
+				    node.nucleator_stuck_position.y = node.y * (RADIUS/r);
+				    node.nucleator_stuck_position.z = node.z;  // cylinder, so not scale z
 				}
 
-			    scale = rad * (1/r);
+			    scale = rad / r;
 			    node.x *= scale;
 			    node.y *= scale;
     			
-                node.nucleator_impacts += (rad-r);
+                node.nucleator_impacts += rad - r;
 
 
 		    }
@@ -440,17 +440,17 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 				r = calcdist(node.x,node.y,z2);
 
-            	node.nucleator_stuck_position.x = node.x * (RADIUS/r);
-				node.nucleator_stuck_position.y = node.y * (RADIUS/r);
-				
-				if (node.z<0)  // make into a sphere again
-					node.nucleator_stuck_position.z = z2 * (RADIUS/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
-				else
-					node.nucleator_stuck_position.z = z2 * (RADIUS/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
-
 				if ((!node.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
 				{
 					node.stucktonucleator = true;
+
+                    node.nucleator_stuck_position.x = node.x * (RADIUS/r);
+				    node.nucleator_stuck_position.y = node.y * (RADIUS/r);
+
+                    if (node.z<0)  // make into a sphere again
+					    node.nucleator_stuck_position.z = z2 * (RADIUS/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
+				    else
+					    node.nucleator_stuck_position.z = z2 * (RADIUS/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
 				}
 
 			    scale = rad / r;
@@ -463,7 +463,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 			    else
 				    node.z = z2 + (CAPSULE_HALF_LINEAR);
     		
-			    node.nucleator_impacts += (rad-r);
+			    node.nucleator_impacts += rad - r;
 		    }
 
 		    break;
@@ -471,7 +471,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 
 	}
 
-    node_disp = node - oldpos;
+    node_disp = node - oldpos;  // now much we have moved
 
     if ((fabs(node_disp.x) > 0.2*RADIUS) ||
 	    (fabs(node_disp.y) > 0.2*RADIUS) ||
@@ -481,16 +481,16 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 		cout << "node " << node.nodenum << " nucleus ejection too great. radius:" << oldpos.length() <<  endl;
 	    cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
 	    cout << "new (x,y,z): " <<  node.x << ", " << node.y << ", " << node.z <<  endl;
-		cout << "#links: " << (int) node.listoflinks.size() << endl;
+		//cout << "#links: " << (int) node.listoflinks.size() << endl;
 	    return false;  // failed
     }
 
 
 #ifndef SEED_INSIDE
 
-    node -= node_disp * movability;  // move the node *back* scaled by movibility (since nucleator should move this much
+    node -= node_disp * movability;  // move the node *back* scaled by movibility (since nucleator should move this much)
 
-    move_nuc(oldpos,node_disp);
+    move_nuc(oldpos,node_disp);  // move the nucleator
 
 #endif
 
@@ -513,7 +513,7 @@ void nucleator::move_nuc(vect& origin_of_movement, vect& tomove)
     if (ROTATION)
     {
         vect lever_arm = origin_of_movement - centerofmass;
-        torque += lever_arm.cross(tomove);
+        torque += lever_arm.cross(tomove); // todo: is this right? or should it be scaled by movilility? (yes?)
     }
 
 }

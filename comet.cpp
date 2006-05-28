@@ -297,7 +297,7 @@ bool finished_writing_sym_bitmaps = false;
 int load_data(actin &theactin, int iteration);
 int save_data(actin &theactin, int iteration);
 string get_datafilename(const int iteration);
-void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations);
+void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations, const int& lastframedone);
 void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations, char* argv[]);
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
@@ -313,63 +313,15 @@ bool POST_PROCESS4CPU = false;
     #endif
 #endif
 
+bool NOBGIMAGEMAGICK = false;
 
 
 // main 
 
 int main(int argc, char* argv[])
 {
- //   unsigned int rand_seed = (unsigned int)( time(NULL) * getpid());
-	//srand(rand_seed);
 
- //   cout << "Rotationtest" << endl;
-
- //   rotationmatrix test, test1, test2;
- //   vect v1,v2,v3;
-
- //   v1.x = (double)rand() * RECIP_RAND_MAX;
- //   v1.y = (double)rand() * RECIP_RAND_MAX;
- //   v1.z = (double)rand() * RECIP_RAND_MAX;
-
-
- //   test.settoidentity();
-
- //   test.xx = (double)rand() * RECIP_RAND_MAX;
- //   test.xy = (double)rand() * RECIP_RAND_MAX;
- //   test.xz = (double)rand() * RECIP_RAND_MAX;
- //   test.yx = (double)rand() * RECIP_RAND_MAX;
- //   test.yy = (double)rand() * RECIP_RAND_MAX;
- //   test.yz = (double)rand() * RECIP_RAND_MAX;
- //   test.zx = (double)rand() * RECIP_RAND_MAX;
- //   test.zy = (double)rand() * RECIP_RAND_MAX;
- //   test.zz = (double)rand() * RECIP_RAND_MAX;
-
- //   cout << "Start:" << endl << test << endl;
-
- //   test1 = test.inverse();
-
- //   cout << "Inverse:" << endl << test1 << endl;
-
- //   v3 = v2 = v1;
- //   test.rotate(v2);
- //   test.rotate(v3);
- //   test.inverse().rotate(v3);
-
- //   test.rotatematrix(test1);
-
- //   cout << "After inverse:" << endl << test << endl;
-
- //   cout << "Point: " << v1 << endl;
- //   cout << "rotated: " << v2 << endl;
- //   cout << "rotated back: " << v3 << endl;
-
- //   exit(0);
-
-    sprintf(IMAGEMAGICKCONVERT,"convert");
-    sprintf(IMAGEMAGICKMOGRIFY,"mogrify");
-
-
-	cout << endl; 
+    cout << endl; 
 
     if(argc < 2 || argc > 4) 
 	{
@@ -406,15 +358,17 @@ int main(int argc, char* argv[])
 		if (strcmp(argv[3], "q") == 0 || strcmp(argv[3], "Q") == 0)
 			QUIET = true;
 	}
- 
+
+    bool NOBITMAPS = false;
+
+    sprintf(IMAGEMAGICKCONVERT,"convert");
+    sprintf(IMAGEMAGICKMOGRIFY,"mogrify");
 
 	if (!POST_PROCESS && !REWRITESYMBREAK)
 	{	// don't drop priority if re-writing bitmaps
 		// because calling thread already has low priority
 		// and this would drop it further
 		// so process would halt on single cpu machine
-
-
 
 #ifndef _WIN32
 
@@ -439,11 +393,21 @@ int main(int argc, char* argv[])
 		} else if (strcmp( hostname, "montecarlo.math.ucdavis.edu") == 0)
 		{
 			nicelevel = 19;
-		} else if (strcmp( hostname, "ec1") == 0)
+		} else if (
+            (strcmp( hostname, "compute-0-0.local") == 0) ||
+            (strcmp( hostname, "compute-0-1.local") == 0) ||
+            (strcmp( hostname, "compute-0-2.local") == 0) ||
+            (strcmp( hostname, "compute-0-3.local") == 0) ||
+            (strcmp( hostname, "compute-0-4.local") == 0) ||
+            (strcmp( hostname, "compute-0-5.local") == 0) ||
+            (strcmp( hostname, "compute-0-6.local") == 0) ||
+            (strcmp( hostname, "compute-0-7.local") == 0))
         {
             nicelevel = 19;
-            sprintf(IMAGEMAGICKCONVERT,"ssh ec1 convert");
-            sprintf(IMAGEMAGICKMOGRIFY,"ssh ec1 mogrify");
+            sprintf(IMAGEMAGICKCONVERT,"ssh ec3 convert");
+            sprintf(IMAGEMAGICKMOGRIFY,"ssh ec3 mogrify");
+            NOBGIMAGEMAGICK = true; // prevent extraneous '&' in ssh
+            NOBITMAPS = true;  // eh, this ssh call slows things down interminably
         }
 		else
 		{
@@ -978,6 +942,9 @@ int main(int argc, char* argv[])
         X_BMP = Y_BMP = Z_BMP = true;
     }
 
+    if (NOBITMAPS)
+       X_BMP = Y_BMP = Z_BMP = false;
+
 	double grid_scan_range;
 
 #ifdef PROXIMITY_VISCOSITY 
@@ -1041,13 +1008,44 @@ int main(int argc, char* argv[])
 		INIT_B_GAIN *= 1.0 / SPECKLE_FACTOR;
 	}
 	
-	vector<int> postprocess_iterations;
+
+    vector <double> distmoved(NUMBER_RECORDINGS+1,0.0);  // keep track of the distance moved and num nodes
+    vector <int> numnodes(NUMBER_RECORDINGS+1,0);      // for the NODES_TO_UPDATE
+    int lastframedone = 0;
+
+    if ((RESTORE_FROM_FRAME != 0) || (POST_PROCESS))
+    {   // if restoring or post-processing, 
+        // restore the NODESUPDATE list
+        // post-processing uses this to set lastframedone
+        // in case we're processing all the frames done
+
+        ifstream ipnodesupdate(NODESUPDATEFILE);
+
+        if (!ipnodesupdate) 
+            { cout << "Unable to open file " << NODESUPDATEFILE << " for input"; }
+        else
+        {
+            for (int fn = 1; fn != NUMBER_RECORDINGS+1; ++fn)
+            {
+                ipnodesupdate 
+	                >> distmoved[fn]
+	                >> numnodes[fn];
+
+                if (numnodes[fn]>0)
+                    lastframedone = fn;
+            }
+            ipnodesupdate.close();
+        }
+  
+    }
+
+    vector<int> postprocess_iterations;
 	postprocess_iterations.resize(0);
 
     if (POST_PROCESS)
     {
         cout << "Postprocessing iterations: ";
-	    get_postprocess_iterations(argv[2], postprocess_iterations);
+	    get_postprocess_iterations(argv[2], postprocess_iterations, lastframedone);
     }
         
     if (!REWRITESYMBREAK  && !POST_PROCESS)
@@ -1188,6 +1186,10 @@ int main(int argc, char* argv[])
 	double x_angle, y_angle, z_angle, tot_rot;
 
 	vect last_center, center, delta_center;
+        
+    
+
+
 
 	// Breakout if we are post processing
 	if( !postprocess_iterations.empty() )
@@ -1202,8 +1204,7 @@ int main(int argc, char* argv[])
 	// initialse from a checkpoint if requested
 	int starting_iter = 1;
 
-    vector <double> distmoved(NUMBER_RECORDINGS+1,0);  // keep track of the distance moved and num nodes
-    vector <int> numnodes(NUMBER_RECORDINGS+1,0);      // for the NODES_TO_UPDATE
+
 
 	if (RESTORE_FROM_FRAME != 0)
 	{
@@ -1225,22 +1226,7 @@ int main(int argc, char* argv[])
         if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
             theactin.reservemorenodes(10000);
 
-        // restore the NODESUPDATE list
 
-        ifstream ipnodesupdate(NODESUPDATEFILE);
-			
-        if (!ipnodesupdate) 
-	        { cout << "Unable to open file " << NODESUPDATEFILE << " for input"; }
-        else
-        {
-            for (int fn = 1; fn != NUMBER_RECORDINGS+1; ++fn)
-            {
-                ipnodesupdate 
-		            >> distmoved[fn]
-		            >> numnodes[fn];
-            }
-            ipnodesupdate.close();
-        }
 
         if (TEST_SQUASH)
         {
@@ -1376,11 +1362,11 @@ int main(int argc, char* argv[])
 							cout << endl;
 
 							if (X_BMP)
-								system("ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//x_proj_%05d.png -vcodec mpeg4 x_proj.mov");
+								system("~/bin/ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//x_proj_%05d.png -vcodec mpeg4 x_proj.mov");
 							if (Y_BMP)
-								system("ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//y_proj_%05d.png -vcodec mpeg4 y_proj.mov");
+								system("~/bin/ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//y_proj_%05d.png -vcodec mpeg4 y_proj.mov");
 							if (Z_BMP)
-								system("ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//z_proj_%05d.png -vcodec mpeg4 z_proj.mov");
+								system("~/bin/ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//z_proj_%05d.png -vcodec mpeg4 z_proj.mov");
 							
 							cout << endl;
 						}
@@ -1878,7 +1864,7 @@ int save_data(actin &theactin, int iteration)
     return 0;
 }
 
-void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations)
+void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations, const int& lastframedone)
 {
     // allow either:
     //  a single value        '12'
@@ -1926,6 +1912,14 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 	    cerr << "ERROR: too many values in range request (3 max):" << iterdesc << endl;
 	    exit(EXIT_FAILURE);
 	}
+
+    if (end == 0) // if user set last frame to 0, use the last one found from the nodesupdate file
+    {
+        start = InterRecordIterations;
+        step = InterRecordIterations;
+        end = lastframedone * InterRecordIterations;
+    }
+
 	postprocess_iterations.resize(0);
 	//postprocess_iterations.clear();
 	for(int i= start; i<=end; i+=step){

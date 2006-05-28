@@ -250,6 +250,8 @@ public:
 	void save_sym_break_axes(void);
 	void clear_node_stats(void);
 
+    void addbrownianforces();
+
     rotationmatrix inverse_actin_rotation;
 
 	inline int pixels(const double & coord) const

@@ -1929,7 +1929,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	minx = miny = minz = 0;
 	maxx = maxy = maxz = 0;
 
-    double meanx = 0.0, meany = 0.0, meanz = 0.0;
+    double meany = 0.0, meanz = 0.0;
 
     int count = 0;
 
@@ -1962,7 +1962,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     vect nucposn = - ptheactin->p_nuc->position;
     projection_rotation.rotate(nucposn); 
 
-    meanx = nucposn.x;
+    //meanx = nucposn.x;
     meany = nucposn.y;
     meanz = nucposn.z;
 
@@ -2142,7 +2142,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     if (!writefile)
         return;
 
-    double cagedispx = meanx;
+    //double cagedispx = meanx;
 	double cagedispy = meany;
 	double cagedispz = meanz;
 	int cagemovex = movex;
@@ -2150,13 +2150,13 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 	if ((CAGE_ON_SIDE) && (p_nuc->is_sphere()))
 	{   // move cage to side of image
-		cagedispx = cagedispy = cagedispz = 0.0;
+		cagedispy = cagedispz = 0.0;
 		cagemovex = p_nuc->segs.centerx -  BMP_WIDTH/2 - xgmax;
 		cagemovey = p_nuc->segs.centery - BMP_HEIGHT/2 - ygmax + BMP_HEIGHT/4;
 	}
 
     const int CAGE_POINT_EXTENT = 5;
-
+                                                       
 	if ((ROTATION || DRAW_CAGE) && !TEST_SQUASH)
 	{ // draw the nucleator points cage only if rotation is turned on
 
@@ -2304,12 +2304,19 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
     // drawing image text takes forever on alpha and OSX
     // so have option to bypass
+    // changed to get rid of quotes in imagemagick call
 
 
     if (NO_IMAGE_TEXT)
     {	
-		sprintf(command1,
-		"%s -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s %s%s_proj_%05i.%s", IMAGEMAGICKCONVERT, BMP_COMPRESSION, scalebarlength+5,drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR, 
+		//sprintf(command1,
+		//"%s -quality %i -fill white -draw \"rectangle 5 576 %i 573\" %s %s %s%s_proj_%05i.%s", 
+        //IMAGEMAGICKCONVERT, BMP_COMPRESSION, scalebarlength+5,drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR, 
+		//	 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
+
+        sprintf(command1,
+		"%s -quality %i %s %s%s_proj_%05i.%s", 
+        IMAGEMAGICKCONVERT, BMP_COMPRESSION, temp_BMP_filename, BITMAPDIR, 
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
     else 
@@ -2327,11 +2334,11 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 
     if (BMP_AA_FACTOR == 1)
-    {
-        if (fgbg == runbg)
-	        sprintf(command3, "%s &", command1);
+    {   
+        if ((fgbg == runbg) && (!NOBGIMAGEMAGICK))
+            sprintf(command3, "%s &", command1);
         else
-	        sprintf(command3, "%s", command1);
+            sprintf(command3, "%s", command1);
     }
     else
     {
@@ -2341,10 +2348,17 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
         // only command1 refers to the temp bmp, so we can always safely call the antialias resize command in the background
 
-        if (fgbg == runbg)
-	        sprintf(command3, "(%s ; %s ) &", command1, command2);
+        if (!NOBGIMAGEMAGICK)
+        {
+            if (fgbg == runbg)
+	            sprintf(command3, "(%s ; %s ) &", command1, command2);
+            else
+	            sprintf(command3, "%s ; %s &", command1, command2);
+        }
         else
-	        sprintf(command3, "%s ; %s &", command1, command2);
+        {
+            sprintf(command3, "%s ; %s", command1, command2);
+        }
 
 
     }
@@ -3176,4 +3190,20 @@ void actin::reservemorenodes(const int extranodes)
 
     MAXNODES = (int) node.size();
 
+}
+
+void actin::addbrownianforces()
+{
+    const double BROWNIANFORCESCALE = 0.01;
+
+    const double brownianscale = BROWNIANFORCESCALE * DELTA_T;
+
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin()+highestnodecount;
+							      ++i_node)
+    {
+        i_node->rep_force_vec.x += brownianscale * (double)rand() * RECIP_RAND_MAX;
+        i_node->rep_force_vec.y += brownianscale * (double)rand() * RECIP_RAND_MAX;
+        i_node->rep_force_vec.z += brownianscale * (double)rand() * RECIP_RAND_MAX;
+    }
 }
