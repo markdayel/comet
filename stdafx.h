@@ -383,6 +383,8 @@ extern int NODE_XLINK_GRIDSEARCH;
 extern int GRIDSIZE;
 
 
+
+
 const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);
 const double PI = (double) 3.141592653589793238462643383279502884197; // Pi
 const double LN_TWO = (double) 0.69314718055995; // ln(2)
@@ -440,6 +442,8 @@ extern vector<struct thread_data>  applyforces_thread_data_array;
 #endif
 
 extern unsigned int Node_Grid_Dim;
+
+extern bool VARY_P_XLINK;
 
 #include "links.h"
 #include "actin.h"

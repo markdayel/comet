@@ -114,9 +114,9 @@ double FORCE_SCALE_FACT = 0.001;	// convert forces (nom in pN) into node displac
 					        // this is related to effective viscosity and effective size of node
 double FORCE_BAR_SCALE   = 1;	// scale for relating force to image bar
 
+bool VARY_P_XLINK = false;
+
 double XLINK_NODE_RANGE =  1.0;		// Limit crosslink to within this range
-//double NODE_INCOMPRESSIBLE_RADIUS = 0.2;	// repulsion is zero here
-// double NODE_REPULSIVE_MAG = 1000;   // max repulsion (at dist=0)
 
 double LINK_BREAKAGE_FORCE =  2;	 // breakage force per link
 bool USE_BREAKAGE_STRAIN = false;
@@ -294,7 +294,7 @@ int InterRecordIterations = 0;
 bool DISTANCE_TO_UPDATE_reached = false;
 bool finished_writing_sym_bitmaps = false;
 
-int load_data(actin &theactin, int iteration);
+int load_data(actin &theactin, int iteration, const bool &loadscale);
 int save_data(actin &theactin, int iteration);
 string get_datafilename(const int iteration);
 void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations, const int& lastframedone);
@@ -684,9 +684,12 @@ int main(int argc, char* argv[])
 			{ss >> buff2; if(buff2=="true") DRAW_CAGE = true; else DRAW_CAGE = false;}
 
 		else if (tag == "P_XLINK") 
-			{ss >> P_XLINK;} 
+			{ss >> P_XLINK;}
 
-		else if (tag == "NUC_LINK_FORCE") 
+        else if (tag == "VARY_P_XLINK")
+			{ss >> buff2; if(buff2=="true") VARY_P_XLINK = true; else VARY_P_XLINK = false;}
+
+		else if (tag == "NUC_LINK_FORCE")    
 			{ss >> NUC_LINK_FORCE;}
 
 		else if (tag == "NUC_LINK_BREAKAGE_DIST") 
@@ -1213,7 +1216,7 @@ int main(int argc, char* argv[])
 
         starting_iter = RESTORE_FROM_FRAME * InterRecordIterations;
 
-	    load_data(theactin, starting_iter);
+	    load_data(theactin, starting_iter, true);
 
         cout << "Restored from frame "
 			 << RESTORE_FROM_FRAME << " (iteration " << starting_iter << ")" << endl;
@@ -1745,7 +1748,7 @@ string get_datafilename(const int iteration)
     
 }
 
-int load_data(actin &theactin, int iteration)
+int load_data(actin &theactin, int iteration, const bool &loadscale)
 {
 
     
@@ -1822,11 +1825,13 @@ int load_data(actin &theactin, int iteration)
                                          // since may be restoring to a pre sym break time
                                          // and we would still want same direction etc.
 
-    if (theactin.p_nuc->segs.load_scalefactors())
+    if (loadscale)
     {
         // if we're able to load the scale factors
         // turn off the auto-scaling
-        theactin.BMP_intensity_scaling = false;
+
+        if (theactin.p_nuc->segs.load_scalefactors())
+            theactin.BMP_intensity_scaling = false;
     }
 
 
@@ -1955,6 +1960,8 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 	{
 
 		int filenum;
+
+        theactin.BMP_intensity_scaling = true;
 	    
 		// vtk
 		CometVtkVis vtkvis;//&theactin);
@@ -1963,79 +1970,81 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 		 << postprocess_iterations.size()
 		 <<  " data sets." << endl;
 	    
-		int frame = (int) postprocess_iterations.size() - 1;
+        const int maxframes = (int) postprocess_iterations.size();
+		int frame = 0;
 
-		//for(vector<int>::reverse_iterator iteration = postprocess_iterations.rbegin(); 
-		//iteration != postprocess_iterations.rend(); ++iteration)
-		for(vector<int>::iterator iteration  = postprocess_iterations.begin(); 
-								  iteration != postprocess_iterations.end();
-								++iteration)
+		for(vector<int>::reverse_iterator iteration  = postprocess_iterations.rbegin(); 
+		                                  iteration != postprocess_iterations.rend();
+                                        ++iteration)
+		//for(vector<int>::iterator iteration  = postprocess_iterations.begin(); 
+		//						  iteration != postprocess_iterations.end();
+		//						++iteration)
 		{
 
-		filenum = (int)(*iteration/InterRecordIterations);
+		    filenum = (int)(*iteration/InterRecordIterations);
+            frame++;
 
-		cout << "Post processing iteration: " << *iteration << " file " << filenum 
-			 << " (" << (postprocess_iterations.size() - frame) << "/" 
-			 << postprocess_iterations.size() << ")"
-			 << endl; 
-		
-		load_data(theactin, *iteration);
-		
-		if (POST_BMP || POST_REPORTS)
-		{		  
-			nuc_object.segs.addallnodes();  // put node data into segment bins
-		}
+		    cout << "Post processing iteration: " << *iteration << " file " << filenum 
+			     << " (" << frame << "/" 
+			     << maxframes << ")"
+			     << endl; 
+    		
+		    load_data(theactin, *iteration, false);
+    		
+		    if (POST_BMP || POST_REPORTS)
+		    {		  
+			    nuc_object.segs.addallnodes();  // put node data into segment bins
+		    }
 
-		if (POST_REPORTS)
-		{
-			nuc_object.segs.savereport(filenum);
-			nuc_object.segs.saveSDreport(filenum);
-			nuc_object.segs.saveradialreport(filenum);       
-			nuc_object.segs.saveradialaxisreport(filenum, 0);
-			nuc_object.segs.saveradialaxisreport(filenum, 1);
-			nuc_object.segs.saveradialaxisreport(filenum, 2);
-		}
+		    if (POST_REPORTS)
+		    {
+			    nuc_object.segs.savereport(filenum);
+			    nuc_object.segs.saveSDreport(filenum);
+			    nuc_object.segs.saveradialreport(filenum);       
+			    nuc_object.segs.saveradialaxisreport(filenum, 0);
+			    nuc_object.segs.saveradialaxisreport(filenum, 1);
+			    nuc_object.segs.saveradialaxisreport(filenum, 2);
+		    }
 
-		if (POST_BMP)
-		{	
-			// one has to be run in foreground, else will catch up 
-            // with Imagemagick and overwrite temp files in use
+		    if (POST_BMP)
+		    {	
+			    // one has to be run in foreground, else will catch up 
+                // with Imagemagick and overwrite temp files in use
 
-			actin::processfgbg xfg,yfg,zfg;
+			    actin::processfgbg xfg,yfg,zfg;
 
-			xfg = yfg = zfg = actin::runbg;
+			    xfg = yfg = zfg = actin::runbg;
 
-			
-			if (Z_BMP)
-			{
-				zfg = actin::runfg;
-			}
-			else 
-			{
-				if (Y_BMP)
-				{
-					yfg = actin::runfg;
-				} else
-				{
-					xfg = actin::runfg;
-				}
-			}
+    			
+			    if (Z_BMP)
+			    {
+				    zfg = actin::runfg;
+			    }
+			    else 
+			    {
+				    if (Y_BMP)
+				    {
+					    yfg = actin::runfg;
+				    } else
+				    {
+					    xfg = actin::runfg;
+				    }
+			    }
 
-			theactin.savebmp(filenum, xaxis, xfg, true); 
-			theactin.savebmp(filenum, yaxis, yfg, true); 
-			theactin.savebmp(filenum, zaxis, zfg, true);
+			    theactin.savebmp(filenum, xaxis, xfg, true); 
+			    theactin.savebmp(filenum, yaxis, yfg, true); 
+			    theactin.savebmp(filenum, zaxis, zfg, true);
 
-			cout << endl;
+			    cout << endl;
 
-		}
+		    }
 
-		if (POST_VTK)
-		{
-			//cout << "- visualisation: " << filenum << endl;
-			vtkvis.buildVTK(filenum);
-		}
+		    if (POST_VTK)
+		    {
+			    //cout << "- visualisation: " << filenum << endl;
+			    vtkvis.buildVTK(filenum);
+		    }
 
-		frame--;
 		}
 	}
 
@@ -2177,7 +2186,7 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 			 << (theactin.symbreakiter/InterRecordIterations)-1 << ": ";
 		cout.flush();
 
-		load_data(theactin, i);
+		load_data(theactin, i, true);
 
 		theactin.load_sym_break_axes();   // overwrite rotation matrixes
 

@@ -1002,9 +1002,12 @@ bool actin::addlinks(nodes& linknode1, nodes& linknode2) const
 	//double pxlink = P_XLINK * exp(-4*dist/XLINK_NODE_RANGE);
 	
     // this line works:
-    //double pxlink = P_XLINK * (1 - dist / XLINK_NODE_RANGE);
-                                       
-    double pxlink = P_XLINK;
+    double pxlink;
+    
+    if (VARY_P_XLINK)
+        pxlink = P_XLINK * (1 - dist / XLINK_NODE_RANGE);
+    else
+        pxlink = P_XLINK;
 
 	if ( pxlink * RAND_MAX > rand() )
 	{
