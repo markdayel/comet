@@ -27,6 +27,7 @@ class nodes: public vect
 {
 public:
 
+    NODEGRIDTYPE<nodes*>* nodegridptr;
 	
 	bool onseg;
     bool polymer;
@@ -34,13 +35,21 @@ public:
 	bool stucktonucleator;
 	bool move_harbinger_this_time;
     bool testnode;
-    int  testsurface;  // surface number that node is attached to
+
+    int nodenum;
+    int creation_iter_num;
+    
+
+    short int testsurface;  // surface number that node is attached to
+
+    short int threadnum;    
+
+	short int gridx, gridy, gridz;
 
 	//actin* ptheactin;
 	//nodes* nextnode;
 	//nodes* prevnode;
 
-    int nodenum;
 
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
 	//vect nearest_surface_point;
@@ -53,15 +62,12 @@ public:
 	vect delta;
 	vect viscosity_velocity_sum;
 
-	double pressure;
-
-
-	vector <links> listoflinks;
-
     vect nucleator_link_force;	// force on nodes by the link to the nucleator 
 								// again merely for display purposes
 								// segmented in segments.cpp
 								// nucleator attachements are dealt with in actin::nucleator_node_interactions()
+
+    double pressure;
 
 	double linkforce_transverse, linkforce_radial,  // index is the threadnum
 			 repforce_transverse, repforce_radial,
@@ -73,30 +79,18 @@ public:
 								// not used in moving node, nucleator etc.
 								// that is done directly at the mo.
 
+	//Colour colour;
 
-	int threadnum;    
-
-	int gridx, gridy, gridz;
-
-    NODEGRIDTYPE<nodes*>* nodegridptr;
-	//vect delta;
-
-	
-	//int	nodelinksbroken;
-	
-	Colour colour;
-	
-	int creation_iter_num;
-	
-	//double theta;
-	//double phi;
-	int savelinks(ofstream * outstream);
 	
 	double dist_from_surface;
 
 	double viscosity_velocity_unweight;
 
+    vector <links> listoflinks;
 
+
+
+    int savelinks(ofstream * outstream);
     
 	nodes(void);
 	~nodes(void);

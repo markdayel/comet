@@ -18,6 +18,8 @@ removed without prior written permission from the author.
 
 //#include "consts.h"
 
+class tracknodeinfo;
+
 // vtk
 #ifdef LINK_VTK
   #include "comet_vtk.h"
@@ -28,7 +30,7 @@ removed without prior written permission from the author.
 double GRIDBOUNDS =  50.0;	  // size of grid in um (i.e. bead can move half of this from origin)
 double GRIDRES    =   0.8;	  // low res grid range
 
-int GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
+short int GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
 
 int MAXNODES = 50000;
 
@@ -62,6 +64,7 @@ double VTK_VIEWANGLE = 40;
 bool POST_BMP = true;
 bool POST_VTK = false;
 bool POST_REPORTS = false;
+bool BMP_TRACKS = false;
 
 bool ALLOW_HARBINGERS_TO_MOVE = false;
 
@@ -85,11 +88,19 @@ bool SEGMENT_BINS = true;
 
 bool CAGE_ON_SIDE = true;
 
+bool BMP_FIX_BEAD_MOVEMENT = false;
+bool BMP_FIX_BEAD_ROTATION = false;
+
 double MofI =  0.1;
 
 bool X_BMP = true;
 bool Y_BMP = true;
-bool Z_BMP = true;
+bool Z_BMP = true;                 
+
+double TRACK_MIN_RANGE = 0.0;  // frame numbers, can be floating point
+double TRACK_MAX_RANGE = 1.0;
+
+int TRACKFRAMESTEP = 5;
 
 double gridscanjitter = 0.01;
 
@@ -128,7 +139,7 @@ unsigned int MAX_LINK_ATTEMPTS = 20;
 double NUCLEATOR_INERTIA = 10;
 
 double NUC_LINK_FORCE = 0.25;
-double NUC_LINK_BREAKAGE_DIST = 2;
+double NUC_LINK_BREAKAGE_FORCE = 2;
 
 //double LINK_TAUT_FORCE =  5;
 //double LINK_TAUT_RATIO =  1.1;
@@ -288,6 +299,8 @@ Nodes2d actin::linkremoveto;
 
 bool REWRITESYMBREAK = false;
 bool POST_PROCESS = false;
+
+int POST_PROC_ORDER = +1;  // +1 = forward, -1 = reverse;
 
 int InterRecordIterations = 0;
 
@@ -635,8 +648,11 @@ int main(int argc, char* argv[])
 		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
 			{ss >> buff2; if (buff2=="true") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false;}
 
+        else if (tag == "POST_PROC_ORDER") 
+			{ss >> POST_PROC_ORDER;}
+
 		else if (tag == "POST_BMP") 
-			{ss >> buff2; if (buff2=="true") POST_BMP = true; else POST_BMP = false;}
+			{ss >> buff2; if (buff2=="true") POST_BMP = true; else POST_BMP = false;}   
 
 		else if (tag == "POST_VTK") 
 			{ss >> buff2; if (buff2=="true") POST_VTK = true; else POST_VTK = false;}
@@ -644,7 +660,19 @@ int main(int argc, char* argv[])
 		else if (tag == "POST_REPORTS") 
 			{ss >> buff2; if (buff2=="true") POST_REPORTS = true; else POST_REPORTS = false;}
 
-		else if (tag == "X_BMP") 
+        else if (tag == "BMP_TRACKS") 
+			{ss >> buff2; if (buff2=="true") BMP_TRACKS = true; else BMP_TRACKS = false;}
+
+        else if (tag == "TRACK_MIN_RANGE") 
+			{ss >> TRACK_MIN_RANGE;} 
+
+        else if (tag == "TRACK_MAX_RANGE") 
+			{ss >> TRACK_MAX_RANGE;}
+
+        else if (tag == "TRACKFRAMESTEP") 
+			{ss >> TRACKFRAMESTEP;}
+
+		else if (tag == "X_BMP")     
 			{ss >> buff2; if (buff2=="true") X_BMP = true; else X_BMP = false;}
 
 		else if (tag == "Y_BMP") 
@@ -655,6 +683,12 @@ int main(int argc, char* argv[])
 
 		else if (tag == "CAGE_ON_SIDE") 
 			{ss >> buff2; if (buff2=="true") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false;}
+
+        else if (tag == "BMP_FIX_BEAD_MOVEMENT") 
+			{ss >> buff2; if (buff2=="true") BMP_FIX_BEAD_MOVEMENT = true; else BMP_FIX_BEAD_MOVEMENT = false;}
+
+        else if (tag == "BMP_FIX_BEAD_ROTATION") 
+			{ss >> buff2; if (buff2=="true") BMP_FIX_BEAD_ROTATION = true; else BMP_FIX_BEAD_ROTATION = false;}
 
 		else if (tag == "RECORDING_INTERVAL") 
 			{ss >> RECORDING_INTERVAL;} 
@@ -692,8 +726,8 @@ int main(int argc, char* argv[])
 		else if (tag == "NUC_LINK_FORCE")    
 			{ss >> NUC_LINK_FORCE;}
 
-		else if (tag == "NUC_LINK_BREAKAGE_DIST") 
-			{ss >> NUC_LINK_BREAKAGE_DIST;}
+		else if (tag == "NUC_LINK_BREAKAGE_FORCE") 
+			{ss >> NUC_LINK_BREAKAGE_FORCE;}
 
 		else if (tag == "LINK_BREAKAGE_FORCE") 
 			{ss >> LINK_BREAKAGE_FORCE;}
@@ -994,7 +1028,7 @@ int main(int argc, char* argv[])
 	NODE_FORCE_TO_DIST = DELTA_T * FORCE_SCALE_FACT;
 	NODE_DIST_TO_FORCE = 1.0 / NODE_FORCE_TO_DIST;
 
-    BMP_WIDTH *= BMP_AA_FACTOR;
+    BMP_WIDTH  *= BMP_AA_FACTOR;
     BMP_HEIGHT *= BMP_AA_FACTOR;
 
 	if (SPECKLE_FACTOR<0)
@@ -1442,7 +1476,7 @@ srand( rand_num_seed );
 
 			theactin.opinfo.close();
 			
-            sprintf ( infofilename , "%sinfo%05i.txt",TEMPDIR, filenum );
+            sprintf ( infofilename , "%sinfo%05i.txt",REPORTDIR, filenum );
 			theactin.opinfo.open(infofilename, ios::out | ios::trunc);
 			
             if (!theactin.opinfo) 
@@ -1490,7 +1524,9 @@ srand( rand_num_seed );
 			if ( !WRITE_BMPS_PRE_SYMBREAK && 
 				 !finished_writing_sym_bitmaps)
 				cout << "*";
-
+            
+            theactin.opruninfo << endl;
+            theactin.opruninfo.flush();
             cout << endl;
 			cout.flush();
 
@@ -1918,10 +1954,14 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 	    exit(EXIT_FAILURE);
 	}
 
+    if (start == 0)
+        start = InterRecordIterations;
+
+    if (step == 0)
+        step = InterRecordIterations;
+
     if (end == 0) // if user set last frame to 0, use the last one found from the nodesupdate file
     {
-        start = InterRecordIterations;
-        step = InterRecordIterations;
         end = lastframedone * InterRecordIterations;
     }
 
@@ -1961,8 +2001,6 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 
 		int filenum;
 
-        theactin.BMP_intensity_scaling = true;
-	    
 		// vtk
 		CometVtkVis vtkvis;//&theactin);
 	    
@@ -1973,9 +2011,62 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
         const int maxframes = (int) postprocess_iterations.size();
 		int frame = 0;
 
-		for(vector<int>::reverse_iterator iteration  = postprocess_iterations.rbegin(); 
-		                                  iteration != postprocess_iterations.rend();
-                                        ++iteration)
+        theactin.node_tracks[xaxis].resize(0);
+        theactin.node_tracks[yaxis].resize(0);
+        theactin.node_tracks[zaxis].resize(0);
+
+        // load the *last* image to set bmp calib
+
+        int iter = *(postprocess_iterations.end()-1);
+
+        cout << "Loading frame " << (iter/InterRecordIterations) << " for scaling" << endl;
+
+        load_data(theactin, iter, false);
+
+        theactin.BMP_intensity_scaling = true;
+
+        theactin.savebmp(filenum, xaxis, actin::runfg, false); 
+		theactin.savebmp(filenum, yaxis, actin::runfg, false); 
+		theactin.savebmp(filenum, zaxis, actin::runfg, false);
+
+        cout << endl;
+
+        nuc_object.segs.addallnodes();                                  
+        nuc_object.segs.set_scale_factors();
+
+        if (BMP_TRACKS)
+        {
+            // load the first tracking frame
+            
+            iter = InterRecordIterations * (int)ceil(TRACK_MAX_RANGE);
+
+            cout << "Loading frame " << (int)ceil(TRACK_MAX_RANGE) << " for track node selection" << endl;
+
+            load_data(theactin, iter, false);
+
+            theactin.set_nodes_to_track(xaxis); // only track x-axis for now
+
+            theactin.savebmp(filenum, xaxis, actin::runfg, false);  // sets the initial offset position
+
+            POST_PROC_ORDER = 1;  // must go forwards for tracks
+        }
+
+
+        vector<int>::iterator start = postprocess_iterations.begin();
+        vector<int>::iterator end = postprocess_iterations.end();
+
+        if (POST_PROC_ORDER == -1)
+        {
+            start = postprocess_iterations.end();
+            end = postprocess_iterations.begin();
+        }
+
+        for(vector<int>::iterator iteration  = start; 
+		                          iteration != end;
+                                  iteration += POST_PROC_ORDER)
+		//for(vector<int>::reverse_iterator iteration  = postprocess_iterations.rbegin(); 
+		//                                  iteration != postprocess_iterations.rend();
+        //                                  iteration += order)
 		//for(vector<int>::iterator iteration  = postprocess_iterations.begin(); 
 		//						  iteration != postprocess_iterations.end();
 		//						++iteration)
@@ -2011,10 +2102,9 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 			    // one has to be run in foreground, else will catch up 
                 // with Imagemagick and overwrite temp files in use
 
-			    actin::processfgbg xfg,yfg,zfg;
+			    actin::processfgbg xfg, yfg, zfg;
 
 			    xfg = yfg = zfg = actin::runbg;
-
     			
 			    if (Z_BMP)
 			    {
@@ -2023,12 +2113,9 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 			    else 
 			    {
 				    if (Y_BMP)
-				    {
 					    yfg = actin::runfg;
-				    } else
-				    {
-					    xfg = actin::runfg;
-				    }
+                    else
+   					    xfg = actin::runfg;
 			    }
 
 			    theactin.savebmp(filenum, xaxis, xfg, true); 
@@ -2045,7 +2132,8 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 			    vtkvis.buildVTK(filenum);
 		    }
 
-		}
+    	}
+
 	}
 
 	if (POST_REPORTS)
@@ -2058,106 +2146,6 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 
 }
 
-// void postprocess(nucleator& nuc_object, actin &theactin, 
-// 		 vector<int> &postprocess_iterations)
-// {
-//     int filenum;
-//     theactin.load_sym_break_axes();
-//    
-//     cout << endl
-// 	 << "-- Post processing" << endl;
-//    
-//     if (nuc_object.segs.load_scalefactors())
-//     {
-// 	// if we're able to load the scale factors
-// 	// turn off the auto-scaling
-// 	theactin.BMP_intensity_scaling = false;
-//     }
-//     int i=1;
-//     for(vector<int>::reverse_iterator iteration = postprocess_iterations.rbegin();
-// 	iteration != postprocess_iterations.rend(); ++iteration, ++i)
-//     {
-// 	filenum = (int)(*iteration/InterRecordIterations);
-//	
-// 	cout << " iter " << i << "/" << postprocess_iterations.size() // Mark, change back if you prefer 
-// 	     << " (frame " << filenum 
-// 	     << "): " ;
-//	
-// 	load_data(theactin, *iteration);
-//	
-// 	theactin.load_sym_break_axes();   // overwrite rotation matcp rixes	
-// 	nuc_object.segs.addallnodes();  // put node data into segment bins
-//	
-//         nuc_object.segs.savereport(filenum);
-//         nuc_object.segs.saveSDreport(filenum);
-// 	nuc_object.segs.saveradialreport(filenum);
-//         nuc_object.segs.saveradialaxisreport(filenum, 0);
-//         nuc_object.segs.saveradialaxisreport(filenum, 1);
-//         nuc_object.segs.saveradialaxisreport(filenum, 2);
-//	
-// 	// run them in foreground to slow things down
-// 	// so don't overload system with too many bg processes
-//	
-// 	theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
-// 	theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg
-// 	theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
-//        
-// 	cout << "\r";
-// 	cout.flush();
-//     }
-//     cout << endl << "-- done." << endl; 
-// }
-
-// r90 postprocess, Mark D remove if you are happy with minor changes above 
-//
-// void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations)
-// {
-//
-// 	int filenum;
-//     theactin.load_sym_break_axes();
-//
-// 	if (nuc_object.segs.load_scalefactors())
-//     {
-//         // if we're able to load the scale factors
-//         // turn off the auto-scaling
-//         theactin.BMP_intensity_scaling = false;
-//     }
-//
-//     for(vector<int>::iterator iteration = postprocess_iterations.end()-1; 
-// 		iteration >= postprocess_iterations.begin(); ++iteration)
-// 	{
-// 		filenum = (int)(*iteration/InterRecordIterations);
-//
-// 		//cout << "Post processing iteration " << *iteration << ": ";
-// 		cout << "Post processing frame " << filenum << "/" 
-// 			 << ((*postprocess_iterations.end())/InterRecordIterations) << ": ";
-//
-// 		load_data(theactin, *iteration);
-//
-// 		theactin.load_sym_break_axes();   // overwrite rotation matcp rixes
-//
-// 		// cout << theactin.camera_rotation;
-//				
-// 		nuc_object.segs.addallnodes();  // put node data into segment bins
-//
-//         nuc_object.segs.savereport(filenum);
-//         nuc_object.segs.saveSDreport(filenum);
-// 		nuc_object.segs.saveradialreport(filenum);
-//         nuc_object.segs.saveradialaxisreport(filenum, 0);
-//         nuc_object.segs.saveradialaxisreport(filenum, 1);
-//         nuc_object.segs.saveradialaxisreport(filenum, 2);
-//
-// 		// run them in foreground to slow things down
-// 		// so don't overload system with too many bg processes
-//
-// 		theactin.savebmp(filenum, actin::xaxis, actin::runbg, true);  // was bg
-// 		theactin.savebmp(filenum, actin::yaxis, actin::runbg, true);	// was bg
-// 		theactin.savebmp(filenum, actin::zaxis, actin::runfg, true);
-//      	
-// 		cout << "\r";
-// 		cout.flush();
-//     }
-// }
 
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 {

@@ -1257,8 +1257,8 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 	int pix_x,pix_y;
 
-
 	nodes dummynode;
+    Colour colour;
 
 	double value;
 
@@ -1316,11 +1316,13 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 			if (value < 0.00001)	// skip if zero
 				continue;
 
-			dummynode.colour.setcol(value);
+            
 
-			imageR[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.r;
-			imageG[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.g;
-			imageB[pix_x + centerx - offsetx][pix_y + centery - offsety] = dummynode.colour.b;
+			colour.setcol(value);
+
+			imageR[pix_x + centerx - offsetx][pix_y + centery - offsety] = colour.r;
+			imageG[pix_x + centerx - offsetx][pix_y + centery - offsety] = colour.g;
+			imageB[pix_x + centerx - offsetx][pix_y + centery - offsety] = colour.b;
 
 		}
 
@@ -1335,13 +1337,13 @@ const int keyyorig = centery - (keyheight / 2);
 
 	for (pix_y = 0; pix_y < keyheight; ++pix_y)
 	{
-		dummynode.colour.setcol(1 - (double)pix_y / (double)keyheight);
+		colour.setcol(1 - (double)pix_y / (double)keyheight);
 
 		for (pix_x = 0; pix_x < keywidth; ++pix_x)
 		{
-			imageR[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.r;
-			imageG[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.g;
-			imageB[pix_x + keyxorig][pix_y + keyyorig] = dummynode.colour.b;
+			imageR[pix_x + keyxorig][pix_y + keyyorig] = colour.r;
+			imageG[pix_x + keyxorig][pix_y + keyyorig] = colour.g;
+			imageB[pix_x + keyxorig][pix_y + keyyorig] = colour.b;
 		}
 	}
 

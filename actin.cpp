@@ -319,6 +319,13 @@ actin::actin(void)
     testangle = cos(30 * PI/360);
 
     test_equilibrating = false;
+
+    node_tracks.resize(3);
+
+    node_tracks[xaxis].reserve(10240);
+    node_tracks[yaxis].reserve(10240);
+    node_tracks[zaxis].reserve(10240);
+
 } 
 
 actin::~actin(void)
@@ -334,7 +341,7 @@ actin::~actin(void)
 	delete [] nodegrid;
 #endif
 
-	// delete the temp bitmap file
+	// delete the temp bitmap files
 
 	char command1[255];
 
@@ -578,9 +585,9 @@ int actin::savevrml(int filenum)
 	for (int i=0; i<highestnodecount; i++)
 	{
 			if (i==0)
-				opvrml	<< node[i].colour.r << " " << node[i].colour.g << " " << node[i].colour.b;
+				opvrml	<< 1 << " " << 1 << " " << 1;   // RGB
 			else
-				opvrml	<< "," << node[i].colour.r << " " << node[i].colour.g << " " << node[i].colour.b;
+				opvrml	<< "," << 1 << " " << 1 << " " << 1;   // RGB
 	}
 
 
@@ -765,7 +772,7 @@ void actin::testforces_set_initial_surfaces()
 }
 
 
-void actin::testforces_select_nodes(const double& testdist, const int &setsurface)
+void actin::testforces_select_nodes(const double& testdist, const short int &setsurface)
 {
     const size_t oldnodes = testnodes[setsurface].size(); 
 
@@ -1001,7 +1008,6 @@ bool actin::addlinks(nodes& linknode1, nodes& linknode2) const
 
 	//double pxlink = P_XLINK * exp(-4*dist/XLINK_NODE_RANGE);
 	
-    // this line works:
     double pxlink;
     
     if (VARY_P_XLINK)
@@ -1048,15 +1054,16 @@ void actin::nucleator_node_interactions()
 		{
             disp = *i_node - i_node->nucleator_stuck_position;
 	        dist = disp.length();
+
+            force = NUC_LINK_FORCE * dist;
     	    	        
-            if (dist > NUC_LINK_BREAKAGE_DIST)
+            if (force > NUC_LINK_BREAKAGE_FORCE)
             {
                 //node[n].nucleator_link_force.zero();
                 i_node->stucktonucleator = false;   // no longer stuck
             }
             else
             {
-                force = NUC_LINK_FORCE * dist;
 
                 forcevec = disp * (force/dist);  // '(disp/dist)' is just to get the unit vector
 
@@ -1718,95 +1725,87 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
     return NULL;
 }
 
-void actin::setnodecols(void)
+//bool comparenodenum(tracknodeinfo & value, int & nodenum)
+//{
+//    return (value.nodenum == nodenum);
+//}
+
+void actin::set_axisrotation(const projection &  proj, rotationmatrix & axisrotation)
 {
+    axisrotation.settoidentity();
 
-	double maxcol,mincol;
-	maxcol = 0;
-	mincol = 0;	
-
-	double val;
-
-	maxcol = (double) 0.001;
-
-	for (int i=0; i<highestnodecount; i++)
+    if (proj == xaxis)
 	{
-		if (node[i].link_force_vec.x>0.0001)
-			val = sqrt(node[i].linkforce_transverse);
-		else
-			val = 0;
-	
-		if ((node[i].polymer) && (!node[i].listoflinks.empty()) && (val > maxcol))
-		{
-			//maxcol = node[i].nodelinksbroken;
-			maxcol = val;
-		}
+        return;
+    } else
+    if (proj == yaxis)
+	{	
+
+        axisrotation.rotatematrix(PI/2, zaxis);  // x to y is by rotation around z
 	}
-
-	for (int i=0; i<highestnodecount; i++)
-	{
-		if (node[i].link_force_vec.x>0.0001)
-			val = sqrt(node[i].linkforce_transverse);
-		else
-			val = 0;
-		//node[i].colour.setcol((double)node[i].creation_iter_num/(double)TOTAL_ITERATIONS);
-		//node[i].colour.setcol(((double)node[i].nodelinksbroken-mincol)/(maxcol-mincol));
-		if ((node[i].polymer)&& (!node[i].listoflinks.empty()) && val > 0.001)
-			{
-				node[i].colour.setcol((val-mincol)/(maxcol-mincol));
-			}
-		else
-		{
-			node[i].colour.setcol(0);
-		}
+	else
+	{	
+        axisrotation.rotatematrix(PI/2, yaxis); // x to z is by rotation around y and z
+        axisrotation.rotatematrix(PI/2, zaxis);
 	}
-
-
-	//for (int i=0; i<highestnodecount; i++)
-	//{
-	//node[i].colour.setcol((double)node[i].creation_iter_num/(double)iteration_num);
-	//}
-/*
-	double maxcol,mincol;
-	maxcol = 1;
-	mincol = 0;	
-	double val;
-
-	for (int i=0; i<highestnodecount; i++)
-	{
-		val = (double)node[i].nodelinksbroken;
-		if ((node[i].polymer) && (val > maxcol))
-		{
-			maxcol = val;
-		}
-	} 
-
-	for (int i=0; i<highestnodecount; i++)
-	{
-	node[i].colour.setcol((double)node[i].nodelinksbroken/maxcol);
-	}
-
-	for (int i=0; i<highestnodecount;i++)
-	{
-		//i = (int) ((double) highestnodecount * ( (double) rand()) / (double)RAND_MAX);
-		if (i%300==0)
-		{
-		node[i].colour.setcol((double)i/(double)highestnodecount);
-		for (vector <links>::iterator l=node[i].listoflinks.begin(); l<node[i].listoflinks.end() ; l++ )
-			{	 
-				l->linkednodeptr->colour.setcol((double)i/(double)highestnodecount);
-			}
-		}
-		else
-		{
-		node[i].colour.r = node[i].colour.g = node[i].colour.b = (double)0.4;
-		}
-	}
-*/
-	return;
 }
 
-void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool writefile)
+
+
+void actin::set_nodes_to_track(const projection & proj)
+{
+    nodes_to_track.resize(0);
+
+    rotationmatrix axisrotation;
+    set_axisrotation(proj, axisrotation);
+
+    rotationmatrix projection_rotation;
+    projection_rotation.settoidentity();
+
+    // projection_rotation gets us from the bead 
+    // frame-of-ref to the bitmap projection frame-of-ref
+    projection_rotation.rotatematrix(axisrotation);           // rotates for the projection axis 
+    projection_rotation.rotatematrix(camera_rotation2);       // rotates for the symmetry breaking direction
+                                                              // using camera_rotation2 so we can tell the furthest node back
+                                                              // from the sym break direction
+    
+    if (!BMP_FIX_BEAD_ROTATION)
+        projection_rotation.rotatematrix(inverse_actin_rotation); // compensates for bead rotation
+
+    cout << "Selecting nodes from frame " << TRACK_MIN_RANGE << " to " << TRACK_MAX_RANGE << endl;
+
+    vect tempposn;
+
+    stationary_node_number = 0;    // node to lock the bitmap to (opposite the sym break direction)
+    double furthest_node_posn = 0;
+
+    for(int i=0; i != highestnodecount; ++i)
+    {
+        tempposn = node[i];
+        projection_rotation.rotate(tempposn);
+
+        if (fabs(tempposn.x) * 4 < RADIUS)  // if within RADIUS/2
+        {
+            if ((node[i].creation_iter_num > TRACK_MIN_RANGE * InterRecordIterations) && 
+                (node[i].creation_iter_num < TRACK_MAX_RANGE * InterRecordIterations))  // is within range?
+            {
+                nodes_to_track.push_back(i);
+                if (furthest_node_posn < tempposn.z)
+                {
+                    furthest_node_posn = tempposn.z;
+                    stationary_node_number = i;
+                 }
+            }
+        }
+
+    }
+
+    cout << "Tracking " << (int) nodes_to_track.size() << " nodes" << endl;
+    cout << "Node #" << stationary_node_number << " chosen to be stationary" << endl;
+
+}
+
+void actin::savebmp(const int &filenum, const projection & proj, const processfgbg& fgbg, bool writefile)
 { 
 	// choose projection letter for filename etc.
 
@@ -1815,7 +1814,8 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	char *temp_BMP_filename;
 
     rotationmatrix axisrotation;
-    axisrotation.settoidentity();
+    
+    set_axisrotation(proj, axisrotation);
 
     if (proj == xaxis)
 	{
@@ -1825,7 +1825,6 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		*projletter = 'x';
 		p_outbmpfile = &outbmpfile_x;    
 		temp_BMP_filename = temp_BMP_filename_x;
-        
 	}
 	else if (proj == yaxis)
 	{	
@@ -1834,9 +1833,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
 		*projletter = 'y';
 		p_outbmpfile = &outbmpfile_y;
-		temp_BMP_filename = temp_BMP_filename_y;
-        axisrotation.rotatematrix(PI/2, zaxis);  // x to y is by rotation around z
-          
+		temp_BMP_filename = temp_BMP_filename_y;     
 	}
 	else
 	{	
@@ -1844,8 +1841,6 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 			return;
 		p_outbmpfile = &outbmpfile_z;
 		temp_BMP_filename = temp_BMP_filename_z;
-        axisrotation.rotatematrix(PI/2, yaxis); // x to z is by rotation around y and z
-        axisrotation.rotatematrix(PI/2, zaxis);
 	}
 
     if (!QUIET)
@@ -1861,8 +1856,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     // frame-of-ref to the bitmap projection frame-of-ref
     projection_rotation.rotatematrix(axisrotation);           // rotates for the projection axis 
     projection_rotation.rotatematrix(camera_rotation);        // rotates for the symmetry breaking direction
-    projection_rotation.rotatematrix(inverse_actin_rotation); // compensates for bead rotation
     
+    if (!BMP_FIX_BEAD_ROTATION)
+        projection_rotation.rotatematrix(inverse_actin_rotation); // compensates for bead rotation
     
 
     // create vector with rotated node positions
@@ -1932,9 +1928,9 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	minx = miny = minz = 0;
 	maxx = maxy = maxz = 0;
 
-    double meany = 0.0, meanz = 0.0;
+    double meanx = 0.0, meany = 0.0, meanz = 0.0;
 
-    int count = 0;
+    int countnodes = 0;
 
 	// find extents of network and mean position
 
@@ -1946,7 +1942,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
             //meany += rotatednodepositions[i].y;
             //meanz += rotatednodepositions[i].z;
 
-            count++;
+            countnodes++;
 
 			if (minx > rotatednodepositions[i].x) minx = rotatednodepositions[i].x;
 			if (miny > rotatednodepositions[i].y) miny = rotatednodepositions[i].y;
@@ -1965,9 +1961,12 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     vect nucposn = - ptheactin->p_nuc->position;
     projection_rotation.rotate(nucposn); 
 
-    //meanx = nucposn.x;
-    meany = nucposn.y;
-    meanz = nucposn.z;
+    if (!BMP_FIX_BEAD_MOVEMENT)
+    {
+        meanx = nucposn.x;
+        meany = nucposn.y;
+        meanz = nucposn.z;
+    }
 
     // determine offset (if any) needed to keep bead in picture
 
@@ -1996,6 +1995,20 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	if (beadminy < 0)
 		movey =- beadminy;
 
+
+    if ((stationary_node_number != 0) && (stationary_node_number < highestnodecount))
+    {   
+        // note this is set up initially with the first bitmap call after selecting nodes in comet.cpp
+        stationary_node_xoffset =- pixels(rotatednodepositions[stationary_node_number].y);                      
+		stationary_node_yoffset =- pixels(rotatednodepositions[stationary_node_number].z);
+    }
+
+    if (stationary_node_number != 0)
+    {   // if we're locking the bitmap position to this node, add the displacement into movex, movey
+        movex += stationary_node_xoffset;
+        movey += stationary_node_yoffset;
+    }
+
     // add the node gaussians to the double picture
 
 	vect rot;
@@ -2004,6 +2017,8 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
     int    SPECKLEGRIDPERIODiter = (int) (SPECKLEGRIDPERIOD    / DELTA_T);
     int SPECKLEGRIDTIMEWIDTHiter = (int) (SPECKLEGRIDTIMEWIDTH / DELTA_T);
+
+    vect tmp_nodepos;
 
     for(int i=0; i != highestnodecount; ++i)
     {
@@ -2103,9 +2118,17 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
                 }
 			}
         }
-		
-	
+
+        // add the tracks data:
+
+        if (POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
+            ( find(nodes_to_track.begin(), nodes_to_track.end(), i) != nodes_to_track.end() ))  // is node in the track list?
+        {
+            node_tracks[proj].push_back(tracknodeinfo(i, x, y, filenum));
+        }
+
 	}
+
 
 
 
@@ -2158,7 +2181,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 		cagemovey = p_nuc->segs.centery - BMP_HEIGHT/2 - ygmax + BMP_HEIGHT/4;
 	}
 
-    const int CAGE_POINT_EXTENT = 5;
+    const int CAGE_POINT_EXTENT = 4;
                                                        
 	if ((ROTATION || DRAW_CAGE) && !TEST_SQUASH)
 	{ // draw the nucleator points cage only if rotation is turned on
@@ -2271,7 +2294,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	}
 	// add the imagemagick overlays
 	
-	char command1[10240] = "", command2[10240] = "" , command3[20480] = "";
+	char command1[1024000] = "", command2[1024000] = "" , command3[2048000] = "";
     //char command2[10240];
 
     stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
@@ -2299,7 +2322,109 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.1 * FORCE_BAR_SCALE) > 0)	
 		drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd3.str();
 
-	drawcmd << "\"";
+
+    vect temp_nuc_posn;
+
+    // create the tracks
+
+    if (POST_PROCESS && BMP_TRACKS)
+    {
+        int lastx = 0, lasty = 0;
+
+        //const int TRACKFRAMESTEP = 5;
+
+        // not the most efficient algorythm, but good enough...
+
+        // find the track node numbers, make sure more than two of each
+
+        vector <int> temptracknodenumbers, tracknodenumbers;
+        temptracknodenumbers.resize(0);
+        tracknodenumbers.resize(0);     
+
+        for (vector <tracknodeinfo>::iterator i_trackpoint  = node_tracks[proj].begin(); 
+                                              i_trackpoint != node_tracks[proj].end(); 
+                                            ++i_trackpoint)
+        {
+            if (i_trackpoint->frame % TRACKFRAMESTEP == 0)   // only plot points *added* every trackframestep frames
+                temptracknodenumbers.push_back(i_trackpoint->nodenum);
+        }
+
+        for (vector <int>::iterator i_pointnodenum  = temptracknodenumbers.begin(); 
+                                    i_pointnodenum != temptracknodenumbers.end(); 
+                                  ++i_pointnodenum)
+        {
+            if (count(temptracknodenumbers.begin(), temptracknodenumbers.end(), *i_pointnodenum) > 2)
+            { // make sure more than 3 points for the line
+                if (find(tracknodenumbers.begin(), tracknodenumbers.end(), *i_pointnodenum) == tracknodenumbers.end())
+                {   // if node not already there, add it
+                    tracknodenumbers.push_back(*i_pointnodenum);  
+                }
+            }
+        }
+
+
+        // go through node by node
+
+        for (vector <int>::iterator i_pointnodenum  = tracknodenumbers.begin(); 
+                                    i_pointnodenum != tracknodenumbers.end(); 
+                                  ++i_pointnodenum)
+        {
+            // and draw a line for each
+
+            drawcmd << "\" -stroke magenta -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \" polyline ";
+
+            int linepoints = 0;
+
+            for (vector <tracknodeinfo>::iterator i_trackpoint  = node_tracks[proj].begin(); 
+                                                  i_trackpoint != node_tracks[proj].end(); 
+                                                ++i_trackpoint)
+            {   
+                if (i_trackpoint->nodenum == *i_pointnodenum)
+                {
+
+                    // get the old node position in our current frame of ref
+                    //tmp_nodepos = i_trackpoint->posn;
+                    //temp_nuc_posn = i_trackpoint->nucposn;
+                    //i_trackpoint->rotation.inverse().rotate(temp_nuc_posn);
+                    //projection_rotation.rotate(temp_nuc_posn);
+                    //projection_rotation.rotate(tmp_nodepos);
+
+                    // convert to pixels
+
+                    x = i_trackpoint->x;
+                    y = i_trackpoint->y;
+
+                    //x = xgmax + movex + pixels(tmp_nodepos.y - temp_nuc_posn.y) +  BMP_WIDTH/2;                      
+		            //y = ygmax + movey + pixels(tmp_nodepos.z - temp_nuc_posn.z) + BMP_HEIGHT/2;
+
+                    if ((lastx != x) ||
+                        (lasty != y))  // only plot if point different
+                    {
+                        if (((linepoints % 40) == 0) &&
+                             (linepoints > 0))
+                        {   // initial draw command at beginning, and every 40 point pairs
+                            drawcmd << "\" -stroke magenta -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \" polyline ";
+                            drawcmd << lastx << ","        // plot
+			                        << lasty << " ";
+                        }
+
+                        drawcmd << x << ","        // plot
+			                    << y << " ";
+
+                        lastx = x;
+                        lasty = y;
+
+                        linepoints++;
+                    }
+                }
+            }    
+        }
+
+    }
+
+    drawcmd << "\"";               
+
+    // cout << drawcmd.str() << endl;
 
 	int scalebarmicrons = (int)ceil(RADIUS*2);
 
@@ -2307,7 +2432,7 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
 
     // drawing image text takes forever on alpha and OSX
     // so have option to bypass
-    // changed to get rid of quotes in imagemagick call
+    // (also changed to get rid of quotes in imagemagick call)
 
 
     if (NO_IMAGE_TEXT)
@@ -2325,13 +2450,13 @@ void actin::savebmp(const int &filenum, projection proj, processfgbg fgbg, bool 
     else 
     {
 		sprintf(command1,
-		"%s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%iuM' rectangle %i %i %i %i text +%i+%i '%s-projection  \\nFrame % 6i\\nTime % 6.1f'\" %s %s %s%s_proj_%05i.%s", 
-        IMAGEMAGICKCONVERT, BMP_COMPRESSION, 
+		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%iuM' rectangle %i %i %i %i text +%i+%i '%s-projection  \\nFrame % 6i\\nTime % 6.1f'\" %s %s%s_proj_%05i.%s", 
+        IMAGEMAGICKCONVERT, temp_BMP_filename, BMP_COMPRESSION, 
             20 * BMP_AA_FACTOR, 5 * BMP_AA_FACTOR, 595 * BMP_AA_FACTOR, scalebarmicrons, 
             5 * BMP_AA_FACTOR, 576 * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  573 * BMP_AA_FACTOR,
             5 * BMP_AA_FACTOR, 20 * BMP_AA_FACTOR, 
             projletter, filenum,
-			filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), temp_BMP_filename, BITMAPDIR,
+			filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
 

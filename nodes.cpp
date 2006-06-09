@@ -16,16 +16,18 @@ removed without prior written permission from the author.
 #include "nodes.h"
 #include "actin.h"
 
+class Colour;
+
 nodes::nodes(void) :
+nodegridptr(NULL),
 onseg(false),
 polymer(false),
 harbinger(true),
 stucktonucleator(false),
 move_harbinger_this_time(false),
-links_broken(0),
 threadnum(0),
 gridx(-1),gridy(-1),gridz(-1),
-nodegridptr(NULL)
+links_broken(0)
 {
 
     threadnum = 0;
@@ -33,7 +35,7 @@ nodegridptr(NULL)
     testsurface = 0;
     creation_iter_num = 0;
 
-	x = y = z = 0.0;
+  	x = y = z = 0.0;
     link_force_vec.zero();
 	rep_force_vec.zero();
 
@@ -47,7 +49,7 @@ nodegridptr(NULL)
 
     listoflinks.reserve(MAX_EXPECTED_LINKS);
 
-	colour.setcol(0);
+	//colour.setcol(0);
  
 	nucleator_stuck_position.zero();
 
@@ -79,7 +81,7 @@ links_broken(0)
 
 	listoflinks.reserve(MAX_EXPECTED_LINKS);
 
-	colour.setcol(0);
+	//colour.setcol(0);
     
     nucleator_stuck_position.zero();
     clearforces();
@@ -132,7 +134,7 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 
     unit_vec_posn = this->unitvec();
 
-	colour=ptheactin->newnodescolour;
+	//colour=ptheactin->newnodescolour;
 
 	creation_iter_num = ptheactin->iteration_num;
 
@@ -147,6 +149,7 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 
 int nodes::save_data(ofstream &ostr) 
 {
+    Colour dummycol;
     // save the nodes
     ostr << nodenum << " " 
 	 << x << " " << y << " " << z << " " 
@@ -154,10 +157,10 @@ int nodes::save_data(ofstream &ostr)
 	 << polymer << " " 
      << testnode << " "
      << testsurface << " "
-	 << colour.r << " " << colour.g << " " << colour.b << " "
-	 << delta.x << " "
-	 << delta.y << " "
-	 << delta.z << " "
+	 << dummycol.r << " " << dummycol.g << " " << dummycol.b << " "  // colour not used, kept to maintain file compatability, delete later.
+	 << delta << " " // .x
+	 //<< delta.y << " "
+	 //<< delta.z << " "
 	 << linkforce_transverse << " " 
 	 << linkforce_radial << " " 
 	 << repforce_transverse << " " 
@@ -165,12 +168,12 @@ int nodes::save_data(ofstream &ostr)
 	 << links_broken << " " 
 	 << nucleator_impacts << " "
 	 << stucktonucleator << " "
-	 << nucleator_stuck_position.x << " "
-     << nucleator_stuck_position.y << " "
-     << nucleator_stuck_position.z << " "
-     << nucleator_link_force.x << " "
-     << nucleator_link_force.y << " "
-     << nucleator_link_force.z << " "
+	 << nucleator_stuck_position << " "  // .x
+     //<< nucleator_stuck_position.y << " "
+     //<< nucleator_stuck_position.z << " "
+     << nucleator_link_force << " "  // .x
+     //<< nucleator_link_force.y << " "
+     //<< nucleator_link_force.z << " "
 	 << creation_iter_num << ":";
     
     // now the links
@@ -189,6 +192,7 @@ int nodes::save_data(ofstream &ostr)
 
 int nodes::load_data(ifstream &istrm) 
 {
+    Colour dummycol;
     // read in from the stream to our private data
     char ch;    
     istrm >> nodenum 
@@ -197,23 +201,23 @@ int nodes::load_data(ifstream &istrm)
 	  >> polymer
       >> testnode
       >> testsurface
-	  >> colour.r >> colour.g >> colour.b 
-	  >> delta.x 
-      >> delta.y 
-      >> delta.z 
+	  >> dummycol.r >> dummycol.g >> dummycol.b    // colour not used, kept to maintain file compatability, delete later.
+	  >> delta //.x 
+      //>> delta.y 
+      //>> delta.z 
 	  >> linkforce_transverse  
 	  >> linkforce_radial  
 	  >> repforce_transverse  
-	  >> repforce_radial  
+	  >> repforce_radial                           
 	  >> links_broken  
 	  >> nucleator_impacts 
 	  >> stucktonucleator 
-	  >> nucleator_stuck_position.x 
-      >> nucleator_stuck_position.y 
-      >> nucleator_stuck_position.z 
-      >> nucleator_link_force.x 
-      >> nucleator_link_force.y 
-      >> nucleator_link_force.z 
+	  >> nucleator_stuck_position //.x 
+      //>> nucleator_stuck_position.y 
+      //>> nucleator_stuck_position.z 
+      >> nucleator_link_force //.x 
+      //>> nucleator_link_force.y 
+      //>> nucleator_link_force.z 
 	  >> creation_iter_num >> ch;
 
 	//if (nucleator_impacts>0.00001)
@@ -268,9 +272,9 @@ void nodes::updategrid(void)
         (fabs(posnoflastgridupdate.z - z) < gridscanjitter))
         return;  // no, then just skip the update
 
-	int oldgridx = gridx;			// store old grid pos'n
-	int oldgridy = gridy;
-	int oldgridz = gridz;
+	short int oldgridx = gridx;			// store old grid pos'n
+	short int oldgridy = gridy;
+	short int oldgridz = gridz;
 
 	setgridcoords();				// set gridx,y,z by x,y,z position
 	//setunitvec();	
@@ -299,7 +303,7 @@ void nodes::updategrid(void)
 		return;
 	}
 
- 	int gridtmpx, gridtmpy, gridtmpz;
+ 	short int gridtmpx, gridtmpy, gridtmpz;
 
 	// move the node in the grid array
 
@@ -394,9 +398,9 @@ void nodes::addtogrid()
 void nodes::setgridcoords(void)
 {  
 
-	gridx = (((int)(x / GRIDRES)) + (GRIDSIZE/2) ); // find new grid pos'n
-	gridy = (((int)(y / GRIDRES)) + (GRIDSIZE/2) );
-	gridz = (((int)(z / GRIDRES)) + (GRIDSIZE/2) );
+	gridx = (((short int)(x / GRIDRES)) + (GRIDSIZE/2) ); // find new grid pos'n
+	gridy = (((short int)(y / GRIDRES)) + (GRIDSIZE/2) );
+	gridz = (((short int)(z / GRIDRES)) + (GRIDSIZE/2) );
 
 	return;
 } 

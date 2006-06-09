@@ -56,6 +56,27 @@ public:
     vect origunitvec;
 };
 
+class tracknodeinfo
+{
+public:
+    tracknodeinfo(){};
+    ~tracknodeinfo(){};
+    //tracknodeinfo(int const & setnodenum, const vect & setposn, const vect & setnucposn, const rotationmatrix & setrotation, int const & setframe ):
+    tracknodeinfo(int const & setnodenum, const int & setx, const int & sety, int const & setframe ):
+    nodenum(setnodenum),frame(setframe),x(setx),y(sety)
+    {
+        //posn = setposn;
+        //nucposn = setnucposn;
+        //rotation = setrotation;
+    }  
+
+    int nodenum;
+    //vect posn, nucposn;
+    //rotationmatrix rotation;
+    int frame;
+    int x,y;
+};
+
 class linkform
 {
 public:
@@ -94,11 +115,15 @@ public:
 	ofstream opvelocityinfo, opinfo;
 	ofstream outbmpfile_x,outbmpfile_y,outbmpfile_z;
 
-   
+    vector <int> nodes_to_track;
+    vector <vector <tracknodeinfo> > node_tracks;
 
     static int lowestnodetoupdate;
 	int highestnodecount;
 	int lastsorthighestnode;
+
+    int stationary_node_number;
+    int stationary_node_xoffset, stationary_node_yoffset;;
 
 	Dbl2d imageR, imageG, imageB;
 
@@ -118,6 +143,10 @@ public:
 
 	//vector <int_vect> nucleatorgrid;
 	vector <int> crosslinknodesdelay;
+
+    ofstream::pos_type bitmap_start;
+
+
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
 	void collisiondetection(void);
@@ -127,13 +156,14 @@ public:
 	void applyforces(void);
 	void addapplyforcesthreads(const int threadnumoffset, const int &lowestnodenum, const int &highestnodenum);
 
-
-	ofstream::pos_type bitmap_start;
+    void set_nodes_to_track(const projection &  proj);
+    void set_axisrotation(const projection &  proj, rotationmatrix & axisrotation);
+	
 
 	void writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
 	void writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight);
 	
-	void savebmp(const int &filenum, projection proj, processfgbg fgbg, bool writefile);
+	void savebmp(const int &filenum, const projection & proj, const processfgbg& fgbg, bool writefile);
 
 	nucleator* p_nuc;
 	void linkforces();
@@ -227,7 +257,7 @@ public:
     void testforces_remove_nontest_nodes();
 
     void testforces_addforces(const int &surface);
-    void testforces_select_nodes(const double& testdist, const int &setsurface);
+    void testforces_select_nodes(const double& testdist, const short int &setsurface);
     void testforces_saveiter();
 
     double sum_delta_movements();

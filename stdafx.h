@@ -252,6 +252,8 @@ extern int MAXNODES;
 extern bool REWRITESYMBREAK;
 extern bool POST_PROCESS;
 
+extern int POST_PROC_ORDER;
+
 
 extern double TOTAL_SIMULATION_TIME;  
 extern double DELTA_T;
@@ -264,7 +266,7 @@ extern bool NUCLEATOR_FORCES;
 
 
 extern double NUC_LINK_FORCE;
-extern double NUC_LINK_BREAKAGE_DIST;
+extern double NUC_LINK_BREAKAGE_FORCE;
 
 extern double FORCE_SCALE_FACT;  // convert forces (nom in pN) into node displacements (nom in uM)
 										// this is related to effective viscosity and effective size of node
@@ -380,10 +382,17 @@ extern int TOTAL_ITERATIONS;  // these variables are global and are calculated f
 extern int NODE_REPULSIVE_GRIDSEARCH;
 extern int NODE_REPULSIVE_RANGE_GRIDSEARCH;
 extern int NODE_XLINK_GRIDSEARCH;
-extern int GRIDSIZE;
+extern short int GRIDSIZE;
 
+extern bool BMP_TRACKS;
 
+extern double TRACK_MIN_RANGE;
+extern double TRACK_MAX_RANGE;
 
+extern int TRACKFRAMESTEP;
+
+extern bool BMP_FIX_BEAD_MOVEMENT;
+extern bool BMP_FIX_BEAD_ROTATION;
 
 const double RECIP_RAND_MAX =  (1/(double)RAND_MAX);
 const double PI = (double) 3.141592653589793238462643383279502884197; // Pi
