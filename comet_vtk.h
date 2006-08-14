@@ -52,6 +52,7 @@ class CometVtkVis {
   bool OptsRenderAxes;
   bool OptsRenderText;
   bool OptsNormaliseFrames;
+  double OptsCameraDistMult;
   OptProjectionType OptsRenderProjection;
   
   bool getBoolOpt(const std::string &value);

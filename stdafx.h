@@ -31,6 +31,8 @@ removed without prior written permission from the author.
 // vector seems quite a bit faster
 //#define NODEGRIDTYPELIST 1
 
+#define BMP_USE_FOCAL_DEPTH 1
+
 #ifdef NODEGRIDTYPELIST
     #define NODEGRIDTYPE list
 #else
@@ -202,6 +204,8 @@ extern bool USE_THREADS;
 extern int NUM_THREADS;
 extern int NUM_THREAD_DATA_CHUNKS;
 
+extern bool COL_NODE_BY_STRAIN;
+
 //-- Threading
 extern TaskQueue thread_queue;
 extern bool USETHREAD_LINKFORCES;
@@ -305,6 +309,12 @@ extern double LINK_POWER_SCALE;
 extern bool X_BMP;										 
 extern bool Y_BMP;
 extern bool Z_BMP;
+
+extern bool PLOTFORCES;
+
+extern double FOCALDEPTH;
+
+extern double BMP_INTENSITY_OFFSET;
 
 extern double gridscanjitter;
 

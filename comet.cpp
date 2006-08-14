@@ -59,12 +59,18 @@ double INIT_R_GAIN = 20;
 double INIT_G_GAIN = 20;
 double INIT_B_GAIN = 20;
 
+double FOCALDEPTH = 2.0;
+
+double BMP_INTENSITY_OFFSET = 0.24;
+
 double VTK_VIEWANGLE = 40;
 
 bool POST_BMP = true;
 bool POST_VTK = false;
 bool POST_REPORTS = false;
 bool BMP_TRACKS = false;
+
+bool PLOTFORCES = true;
 
 bool ALLOW_HARBINGERS_TO_MOVE = false;
 
@@ -90,6 +96,8 @@ bool CAGE_ON_SIDE = true;
 
 bool BMP_FIX_BEAD_MOVEMENT = false;
 bool BMP_FIX_BEAD_ROTATION = false;
+
+bool COL_NODE_BY_STRAIN = false;
 
 double MofI =  0.1;
 
@@ -862,10 +870,22 @@ int main(int argc, char* argv[])
 			{ss >> DISTANCE_TO_UPDATE;} 
 		
 		else if (tag == "GAUSSFWHM") 
-			{ss >> GAUSSFWHM;} 
+			{ss >> GAUSSFWHM;}         
+#ifdef BMP_USE_FOCAL_DEPTH
+        else if (tag == "FOCALDEPTH") 
+			{ss >> FOCALDEPTH;}         
+#endif
+        else if (tag == "BMP_INTENSITY_OFFSET") 
+			{ss >> BMP_INTENSITY_OFFSET;}
 		
 		else if (tag == "SPECKLE") 
-			{ss >> buff2;if(buff2=="true") SPECKLE = true;else SPECKLE = false;} 
+			{ss >> buff2;if(buff2=="true") SPECKLE = true;else SPECKLE = false;}
+
+        else if (tag == "COL_NODE_BY_STRAIN") 
+			{ss >> buff2;if(buff2=="true") COL_NODE_BY_STRAIN = true;else COL_NODE_BY_STRAIN = false;}
+
+        else if (tag == "PLOTFORCES")  
+			{ss >> buff2;if(buff2=="true") PLOTFORCES = true;else PLOTFORCES = false;}
 		
 		else if (tag == "SPECKLE_FACTOR") 
 			{ss >> SPECKLE_FACTOR;}
@@ -1489,6 +1509,8 @@ srand( rand_num_seed );
 				<< center.z << "," 
 				<< delta_center.length() << endl;
 
+            theactin.opvelocityinfo.flush();
+
             // once per save screen and log output
 
 			if (!QUIET)
@@ -1734,14 +1756,15 @@ srand( rand_num_seed );
                 break;
             }
 
-			theactin.clear_node_stats();  // clear the cumulative stats data in the nodes
+            theactin.setdontupdates();
+
+			theactin.clear_node_stats();  // clear the cumulative stats data in the nodes *after setdontupdates*
+                                          // so we preserve the numbers in the ones we're not calculating
 
 			theactin.compressfilesdowork(filenum);
 
 			lastlinksformed = theactin.linksformed;
 			lastlinksbroken = theactin.linksbroken;
-
-            theactin.setdontupdates();
 
 			theactin.opruninfo.flush();
 
@@ -1989,15 +2012,20 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 
 		char command1[255];
 
-		for (int i = 0; i != threads; ++i)
+		for (int i = 1; i != threads; ++i)
 		{
 			sprintf(command1, "%s post %i:%i:%i &", argv[0], firstframe + i, threads, lastframe);
 			system(command1);
 			//cout << command1 << endl;
 		}
 
+        // first one not background:
+
+        sprintf(command1, "%s post %i:%i:%i", argv[0], firstframe , threads, lastframe);
+		system(command1);
+
 	} else
-	{
+    {
 
 		int filenum;
 

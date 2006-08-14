@@ -1326,26 +1326,35 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 		}
 
-// write out colormap key
+        write_colourmap_bitmap(imageR, imageG, imageB);
 
-const int keyheight = bins_bitmap_height;
-const int keywidth  = 10;
+}
 
-const int keyxorig = 0; //centerx - offsetx;
-const int keyyorig = centery - (keyheight / 2);
+void segments::write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB)
+{
 
+    // write out colormap key
 
-	for (pix_y = 0; pix_y < keyheight; ++pix_y)
-	{
-		colour.setcol(1 - (double)pix_y / (double)keyheight);
+    const int keyheight = bins_bitmap_height;
+    const int keywidth  = 10;
 
-		for (pix_x = 0; pix_x < keywidth; ++pix_x)
-		{
-			imageR[pix_x + keyxorig][pix_y + keyyorig] = colour.r;
-			imageG[pix_x + keyxorig][pix_y + keyyorig] = colour.g;
-			imageB[pix_x + keyxorig][pix_y + keyyorig] = colour.b;
-		}
-	}
+    const int keyxorig = 0; //centerx - offsetx;
+    const int keyyorig = centery - (keyheight / 2);
+
+    Colour colour;
+    int pix_x,pix_y;
+
+	    for (pix_y = 0; pix_y < keyheight; ++pix_y)
+	    {
+		    colour.setcol(1 - (double)pix_y / (double)keyheight);
+
+		    for (pix_x = 0; pix_x < keywidth; ++pix_x)
+		    {
+			    imageR[pix_x + keyxorig][pix_y + keyyorig] = colour.r;
+			    imageG[pix_x + keyxorig][pix_y + keyyorig] = colour.g;
+			    imageB[pix_x + keyxorig][pix_y + keyyorig] = colour.b;
+		    }
+	    }
 
 }
 

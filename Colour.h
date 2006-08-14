@@ -25,6 +25,11 @@ public:
 	unsigned char R,G,B;
 	double mag;
 	int setcol(const double & mag);
+    void setwhite()
+    {
+        r=g=b=1.0;
+        R=G=B=255;
+    };
 };
 
 #endif

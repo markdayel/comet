@@ -139,6 +139,8 @@ CometVtkVis::CometVtkVis()//actin * theactin)
     renderwin_npx = 0;
     renderwin_npy = 0;
 
+    OptsCameraDistMult = 7;
+
     setOptions();
 
 	// this is *.99 so that links on the surface don't look like they go inside the sphere
@@ -181,7 +183,7 @@ void CometVtkVis::buildVTK(int framenumber)
     render_win = vtkRenderWindow::New();
     renderer->SetBackground(0, 0, 0);		
 
-	//render_win->LineSmoothingOn();
+	render_win->LineSmoothingOn();
 	//render_win->PointSmoothingOn();
 	//render_win->PolygonSmoothingOn();
 
@@ -246,7 +248,7 @@ void CometVtkVis::buildVTK(int framenumber)
 		{
 			char command1[255];
 			sprintf(command1, 
- "%s -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
+ "%s -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
 				IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,  
 			    framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
 			//cout << command1 << endl;
@@ -975,7 +977,7 @@ void CometVtkVis::addNodes()
     
     // create sphere geometry
     vtkSphereSource *sphere = vtkSphereSource::New();
-    sphere->SetRadius( 0.05*ptheactin->dbl_pixels(RADIUS)/voxel_scale ); // scale with the nucleator
+    sphere->SetRadius( 0.01*ptheactin->dbl_pixels(RADIUS)/voxel_scale ); // scale with the nucleator
     sphere->SetThetaResolution(10); // low res is fine
     sphere->SetPhiResolution(10);
     
@@ -1036,6 +1038,9 @@ void CometVtkVis::addNodes()
 	ptheactin->inverse_actin_rotation.rotate(ncx, ncy, ncz); 
 	vtk_cam_rot.rotate(ncx, ncy, ncz); // bring rip to y-axis
 	
+    if (fabs(ncx) > FOCALDEPTH)
+        continue;  // skip points outside focal depth
+
 	ncx = ptheactin->dbl_pixels(ncx - meanx)/voxel_scale; 
 	ncy = ptheactin->dbl_pixels(ncy - meany)/voxel_scale;
 	ncz = ptheactin->dbl_pixels(ncz - meanz)/voxel_scale;
@@ -1126,14 +1131,31 @@ void CometVtkVis::addLinks()
   Colour col;
   
   VTK_FLOAT_PRECISION rgba[4];
-  for(int i=0; i<100; i++) {
-    col.setcol((double)i/100.0);
-    
-    rgba[0] = col.r;
-    rgba[1] = col.g;
-    rgba[2] = col.b;
-    rgba[3] = 1.0;	
-    lut->SetTableValue(i, rgba);
+  
+  if(OptsShadeLinks)
+  {
+      for(int i=0; i<100; i++) 
+      {
+        col.setcol((double)i/100.0);
+        
+        rgba[0] = col.r;
+        rgba[1] = col.g;
+        rgba[2] = col.b;
+        rgba[3] = 1.0;	
+        lut->SetTableValue(i, rgba);
+      }
+  }
+  else
+  {
+    rgba[0] = 0.75;
+    rgba[1] = 0.75;
+    rgba[2] = 0.75;
+    rgba[3] = 1.0;
+
+    for(int i=0; i<100; i++) 
+    {	
+        lut->SetTableValue(i, rgba);
+    }
   }
   
   // loop over the nodes
@@ -1162,6 +1184,9 @@ void CometVtkVis::addLinks()
     ptheactin->inverse_actin_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); 
     vtk_cam_rot.rotate(n_pt[0], n_pt[1], n_pt[2]); // bring rip to y-axis
     
+    if (fabs(n_pt[0]) > FOCALDEPTH)
+        continue;  // skip points outside focal depth
+
     n_pt[0] = ptheactin->dbl_pixels(n_pt[0] - meanx)/voxel_scale; 
     n_pt[1] = ptheactin->dbl_pixels(n_pt[1] - meany)/voxel_scale;
     n_pt[2] = ptheactin->dbl_pixels(n_pt[2] - meanz)/voxel_scale;
@@ -1210,7 +1235,7 @@ void CometVtkVis::addLinks()
 	linept_ids[1] = linepts->InsertNextPoint( l_pt );
 	vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);	
 	
-	Colour col;	  
+	//Colour col;	  
 	// Set scalar for the line
     if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
     {    
@@ -1224,11 +1249,11 @@ void CometVtkVis::addLinks()
 	  //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
 	  y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
 	  y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
-	  col.setcol(y);
+	  //col.setcol(y);
   
 	  cellscalars->InsertValue(cell_id, y);
 	} else {
-	  cellscalars->InsertValue(cell_id, 1.0);
+	  cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
 	}	
       } // links loop
     }
@@ -1324,24 +1349,24 @@ void CometVtkVis::setProjection()
     if(OptsRenderProjection==X){
 		// x
 		vtk_cam_rot = ptheactin->camera_rotation;
-		renderer->GetActiveCamera()->SetPosition(-radius_pixels*7, 0, 0);
+		renderer->GetActiveCamera()->SetPosition(-radius_pixels*OptsCameraDistMult, 0, 0);
 		renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
     } else if(OptsRenderProjection==Y){
 	// y
 		vtk_cam_rot = ptheactin->camera_rotation;
-		renderer->GetActiveCamera()->SetPosition(0, radius_pixels*7, 0);
+		renderer->GetActiveCamera()->SetPosition(0, radius_pixels*OptsCameraDistMult, 0);
 		renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
     } else if(OptsRenderProjection==Z){
 	// z
 		vtk_cam_rot = ptheactin->camera_rotation;
-		renderer->GetActiveCamera()->SetPosition(0, 0, -radius_pixels*7);
+		renderer->GetActiveCamera()->SetPosition(0, 0, -radius_pixels*OptsCameraDistMult);
 		renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
     } else if(OptsRenderProjection==RIP){
 
 		vtk_cam_rot = ptheactin->camera_rotation2;	  // note using different rotation matrix!
 	// rip
 	//cout << "  projection: rip" << endl;
-	renderer->GetActiveCamera()->SetPosition(radius_pixels*4, 0, -radius_pixels*7);
+	renderer->GetActiveCamera()->SetPosition(radius_pixels*OptsCameraDistMult/2, 0, -radius_pixels*OptsCameraDistMult);
 	renderer->GetActiveCamera()->SetViewUp(1, 0, 0);    
     } else {
 	cout << "!ERROR: unknown projection:" << OptsRenderProjection << endl;
@@ -1473,6 +1498,12 @@ void CometVtkVis::setOptions()
 	    continue;
 	}
 
+    if(tag == "VIS_CAMERADISTMULT") 
+	{
+	    ss >> OptsCameraDistMult;
+	    continue;
+	}
+
     }
 
 	
@@ -1521,6 +1552,8 @@ void CometVtkVis::reportOptions()
     cout << "vx intensity scale    = " << vx_intensity_scale    << endl;
     cout << "file_prefix           = " << file_prefix           << endl;
     cout << "projection_scale      = " << p_scale               << endl;
+    cout << "CameraDistMult        = " << OptsCameraDistMult    << endl;
+    
 }
 
 

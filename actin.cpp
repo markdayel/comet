@@ -2020,6 +2020,9 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     vect tmp_nodepos;
 
+    Colour nodecol;
+    nodecol.setwhite();
+
     for(int i=0; i != highestnodecount; ++i)
     {
 		if (!node[i].polymer)
@@ -2068,9 +2071,17 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 mult = speckle_array[node[i].creation_iter_num % speckle_array_size];
             }
         }
+        else
+        {
+            mult = 1.0;
+        }
 
         x = pixels(rotatednodepositions[i].y - meany) +  BMP_WIDTH/2;                      
 		y = pixels(rotatednodepositions[i].z - meanz) + BMP_HEIGHT/2;
+
+#ifdef BMP_USE_FOCAL_DEPTH
+            mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
+#endif
 
         // displace to bring bead back in bounds
         // and add the offset for the gaussian
@@ -2082,6 +2093,29 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         //    cout << "Plotting test node: " << i << endl;
 
         // add the gaussian
+
+        if (COL_NODE_BY_STRAIN)
+        {
+            //double force;
+            //double sum_force = 0;
+            //double distance=0;
+
+            //for(vector<links>::iterator l=node[i].listoflinks.begin(); l!=node[i].listoflinks.end(); ++l)
+            //{
+	           // l->getlinkforces(distance, force);
+            //    sum_force += fabs(force);
+            //}
+
+            double value = node[i].linkforce_transverse;
+
+	        double y = value / (3000 * LINK_BREAKAGE_FORCE);    
+	        //y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
+	        //y = y*0.9+0.1;
+            if (rand() > 0.99 * RAND_MAX)
+                cout << " " << y;
+            nodecol.setcol(y);
+        }
+  
 
 		for(xg = -xgmax; xg != xgmax+1; ++xg)
         {
@@ -2099,22 +2133,32 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 				//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
 				//	node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
 				
-				imageG[x+xg][y+yg] += 
-						    GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
-				
-				if (SPECKLE)
+                if (COL_NODE_BY_STRAIN)
                 {
-					imageR[x+xg][y+yg] += mult *
-						    GaussMat2[xg+xgmax][yg+ygmax];  // GaussMat2 is narrower than GaussMat
+                    // just store magnitudes in R, color at the end
+                    imageR[x+xg][y+yg] += 10 * nodecol.r * GaussMat[xg+xgmax][yg+ygmax];
+                    imageG[x+xg][y+yg] += 10 * nodecol.g * GaussMat[xg+xgmax][yg+ygmax];
+                    imageB[x+xg][y+yg] += 10 * nodecol.b * GaussMat[xg+xgmax][yg+ygmax];
                 }
-
-                if (node[i].testnode)
+                else
                 {
-                    imageB[x+xg][y+yg] += 
-							GaussMat2[xg+xgmax][yg+ygmax];
+				    imageG[x+xg][y+yg] += mult *
+						        GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
+    				
+				    if (SPECKLE)
+                    {
+					    imageR[x+xg][y+yg] += mult *
+						        GaussMat2[xg+xgmax][yg+ygmax];  // GaussMat2 is narrower than GaussMat
+                    }
 
-                    imageR[x+xg][y+yg] += node[i].testsurface *
-						    GaussMat2[xg+xgmax][yg+ygmax];
+                    if (node[i].testnode)
+                    {
+                        imageB[x+xg][y+yg] += mult *
+							    GaussMat2[xg+xgmax][yg+ygmax];
+
+                        imageR[x+xg][y+yg] += mult * node[i].testsurface *
+						        GaussMat2[xg+xgmax][yg+ygmax];
+                    }
                 }
 			}
         }
@@ -2153,15 +2197,34 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     const double Gscale = BMP_INTENSITY_SCALE / imageGmax[proj];
     const double Bscale = BMP_INTENSITY_SCALE / imageBmax[proj];
 
-    for (x = 0; x != BMP_WIDTH; ++x)
+    if (!COL_NODE_BY_STRAIN)
     {
-	    for (y = 0; y != BMP_HEIGHT; ++y)
-	    {
-		    imageR[x][y] = mymin(imageR[x][y] * Rscale, 1.0);
-		    imageG[x][y] = mymin(imageG[x][y] * Gscale, 1.0);
-		    imageB[x][y] = mymin(imageB[x][y] * Bscale, 1.0);
-	    }
+        for (x = 0; x != BMP_WIDTH; ++x)
+        {
+	        for (y = 0; y != BMP_HEIGHT; ++y)
+	        {
+		        imageR[x][y] = mymin( ((imageR[x][y] * Rscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
+		        imageG[x][y] = mymin( ((imageG[x][y] * Gscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
+		        imageB[x][y] = mymin( ((imageB[x][y] * Bscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
+	        }
+        }
     }
+    else
+    {
+        double minscale = mymin(mymin(Rscale,Gscale),Bscale);
+        for (x = 0; x != BMP_WIDTH; ++x)
+        {
+	        for (y = 0; y != BMP_HEIGHT; ++y)
+	        {
+		        imageR[x][y] = mymin( (imageR[x][y] * minscale) , 1.0); // same scale to keep colors
+		        imageG[x][y] = mymin( (imageG[x][y] * minscale) , 1.0);
+		        imageB[x][y] = mymin( (imageB[x][y] * minscale) , 1.0);
+	        }
+        }
+        
+    }
+
+
 
     // bail out if only doing scaling:
 
@@ -2183,7 +2246,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     const int CAGE_POINT_EXTENT = 4;
                                                        
-	if ((ROTATION || DRAW_CAGE) && !TEST_SQUASH)
+	if (DRAW_CAGE && !TEST_SQUASH)
 	{ // draw the nucleator points cage only if rotation is turned on
 
 	    for (vector <vect>::iterator point  = p_nuc->cagepoints.begin(); 
@@ -2282,7 +2345,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		p_nuc->segs.write_bins_bitmap(imageR, imageG, imageB,
 				    p_nuc->segs.link_transverse, p_nuc->segs.link_transverse_scalefactor, proj);
 	}
-	// write the bitmap file
+	
+    if (COL_NODE_BY_STRAIN)
+        p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB);
+    
+    // write the bitmap file
 		
 	writebitmapfile(*p_outbmpfile, imageR, imageG, imageB);
 
@@ -2297,31 +2364,40 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	char command1[1024000] = "", command2[1024000] = "" , command3[2048000] = "";
     //char command2[10240];
 
-    stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
-
-	// todo figure out how to clear a stringstream so don't have
+    // todo figure out how to clear a stringstream so don't have
 	// to use as disposable objects
 	// .clear() or .str("") don't seem to work.
 
-	drawcmd << "-fill none -stroke grey -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"";
-	p_nuc->segs.drawoutline(drawcmd,proj);				// draw outline of nucleator
-					
-	// check have lines to draw before adding them
-	// else ImageMagick intermittently crashes
+    stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
 
-    // scaled impact forces
-    // note the values are already scaled to have a max of 1 from the symmetry breaking
-    // so we're scaling the 3 colors mainly to show the range of small values
-	
-    //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj, 1 * FORCE_BAR_SCALE) > 0)		
-	//	drawcmd << "\" -stroke blue -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd1.str();
+    if ( PLOTFORCES || (POST_PROCESS && BMP_TRACKS))
+    {
+        // if we're drawing, begin the imagemagick draw command
+	    drawcmd << "-fill none -stroke grey -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"";
+    }
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.5 * FORCE_BAR_SCALE) > 0)	
-		drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
+    if (PLOTFORCES)
+    {
 
-	if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.1 * FORCE_BAR_SCALE) > 0)	
-		drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd3.str();
+	    
+	    p_nuc->segs.drawoutline(drawcmd,proj);				// draw outline of nucleator
+    					
+	    // check have lines to draw before adding them
+	    // else ImageMagick intermittently crashes
 
+        // scaled impact forces
+        // note the values are already scaled to have a max of 1 from the symmetry breaking
+        // so we're scaling the 3 colors mainly to show the range of small values
+    	
+        //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj, 1 * FORCE_BAR_SCALE) > 0)		
+	    //	drawcmd << "\" -stroke blue -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd1.str();
+
+	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.5 * FORCE_BAR_SCALE) > 0)	
+		    drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
+
+	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.1 * FORCE_BAR_SCALE) > 0)	
+		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd3.str();
+    }
 
     vect temp_nuc_posn;
 
@@ -2329,6 +2405,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     if (POST_PROCESS && BMP_TRACKS)
     {
+
         int lastx = 0, lasty = 0;
 
         //const int TRACKFRAMESTEP = 5;
@@ -2422,7 +2499,10 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     }
 
-    drawcmd << "\"";               
+    if ( PLOTFORCES || (POST_PROCESS && BMP_TRACKS))
+    {
+        drawcmd << "\"";
+    }
 
     // cout << drawcmd.str() << endl;
 
@@ -2454,7 +2534,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         IMAGEMAGICKCONVERT, temp_BMP_filename, BMP_COMPRESSION, 
             20 * BMP_AA_FACTOR, 5 * BMP_AA_FACTOR, 595 * BMP_AA_FACTOR, scalebarmicrons, 
             5 * BMP_AA_FACTOR, 576 * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  573 * BMP_AA_FACTOR,
-            5 * BMP_AA_FACTOR, 20 * BMP_AA_FACTOR, 
+            5 * BMP_AA_FACTOR, 20 * BMP_AA_FACTOR,  // first line of text
             projletter, filenum,
 			filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());

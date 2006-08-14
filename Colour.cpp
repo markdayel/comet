@@ -42,7 +42,8 @@ int Colour::setcol(const double & magnitude)
 	// rainbow colormap, 0 = black
 	r = mymin( mymax( -2 * fabs( mag - 1   ) + 1.3  ,0) ,1);
 	g = mymin( mymax( -2 * fabs( mag - 0.55) + 1.05 ,0) ,1);
-	b = mymin( mymax( -5 * fabs( mag - 0.25) + 1.2  ,0) ,1);
+	//b = mymin( mymax( -5 * fabs( mag - 0.25) + 1.2  ,0) ,1);
+    b = mymin( mymax( -2 * fabs( mag - 0.25) + 1.2  ,0) ,1);
 
 	// hls, sort of
 	//r =   mymin(  mymax( (4*    (mag-0.25) ) , 0 ), 1 );
