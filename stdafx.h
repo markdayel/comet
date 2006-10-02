@@ -124,6 +124,7 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 	extern char TEMPDIR[];
 	//extern char TEMPDIR2[];
 	extern char VTKDIR[];
+	extern char STATSDIR[];
 
     extern char IMAGEMAGICKCONVERT[];
     extern char IMAGEMAGICKMOGRIFY[];
@@ -287,6 +288,7 @@ extern double P_NUC;
 extern double MAX_POLYMERISATION_PRESSURE;
 
 extern bool POST_VTK;
+extern bool POST_STATS;
 
 extern int BMP_WIDTH,BMP_HEIGHT;
 extern int VTK_WIDTH;

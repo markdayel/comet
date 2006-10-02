@@ -1,0 +1,6 @@
+#!/bin/sh
+# for example use as 'makemov x_proj'
+ifile=$1_%05d.png
+ofile=$1.mov
+
+ffmpeg -hq -me full -qscale 1 -y -i $ifile -vcodec mpeg4 -strict 100 $ofile

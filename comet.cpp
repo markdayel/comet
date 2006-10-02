@@ -67,6 +67,7 @@ double VTK_VIEWANGLE = 40;
 
 bool POST_BMP = true;
 bool POST_VTK = false;
+bool POST_STATS = false;
 bool POST_REPORTS = false;
 bool BMP_TRACKS = false;
 
@@ -208,6 +209,7 @@ char BITMAPDIR[2048];
 char TEMPDIR[2048];
 //char TEMPDIR2;
 char VTKDIR[2048];
+char STATSDIR[2048];
 
 char IMAGEMAGICKCONVERT[255];
 char IMAGEMAGICKMOGRIFY[255];
@@ -350,6 +352,10 @@ int main(int argc, char* argv[])
 	    cerr << "where numThreads is the number of threads to use per calculation stage" << endl;
 	    cerr << "Set numThreads to 1 to run in single threaded mode" << endl;
 	    cerr << "and 'R' sets use of time-based random number seed" << endl << endl;
+	    cerr << "or to postprocess, specify files in terms of filenumber" 
+		 << endl << "./comet post 1:2:10" << endl;
+	    cerr << endl;
+
 	    exit(EXIT_FAILURE);
 	}
 
@@ -380,7 +386,7 @@ int main(int argc, char* argv[])
 			QUIET = true;
 	}
 
-    bool NOBITMAPS = false;
+    bool NOBITMAPS = false;  
 
     sprintf(IMAGEMAGICKCONVERT,"convert");
     sprintf(IMAGEMAGICKMOGRIFY,"mogrify");
@@ -521,20 +527,19 @@ int main(int argc, char* argv[])
     sprintf(BITMAPDIR,"%s/bitmaps/", path);
     sprintf(TEMPDIR,"%s/temp/", path);
     sprintf(VTKDIR,"%s/vtk/", path);
-
+    sprintf(STATSDIR,"%s/statistics/", path);
 
 #else
 	
-	sprintf(VRMLDIR,"%s\\vrml\\", path);
+    sprintf(VRMLDIR,"%s\\vrml\\", path);
     sprintf(DATADIR,"%s\\data\\", path);
     sprintf(REPORTDIR,"%s\\reports\\", path);
     sprintf(BITMAPDIR,"%s\\bitmaps\\", path);
     sprintf(TEMPDIR,"%s\\temp\\", path);
     sprintf(VTKDIR,"%s\\vtk\\", path);
+    sprintf(STATSDIR,"%s\\statistics\\", path);
 
 #endif
-
-    
 
 
 #ifndef USEWINDOWSCOMMANDS
@@ -551,6 +556,8 @@ int main(int argc, char* argv[])
 	system(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", VTKDIR  );
 	system(command1);
+	sprintf(command1, "mkdir %s 2>/dev/null", STATSDIR  );
+	system(command1);
 #else
 	
 	sprintf(command1, "mkdir %s", VRMLDIR  );
@@ -564,6 +571,8 @@ int main(int argc, char* argv[])
 	sprintf(command1, "mkdir %s", TEMPDIR  );
 	system(command1);
 	sprintf(command1, "mkdir %s", VTKDIR  );
+	system(command1);
+	sprintf(command1, "mkdir %s", STATSDIR  );
 	system(command1);
 #endif
 
@@ -664,6 +673,8 @@ int main(int argc, char* argv[])
 
 		else if (tag == "POST_VTK") 
 			{ss >> buff2; if (buff2=="true") POST_VTK = true; else POST_VTK = false;}
+		else if (tag == "POST_STATS") 
+			{ss >> buff2; if (buff2=="true") POST_STATS = true; else POST_STATS = false;}
 
 		else if (tag == "POST_REPORTS") 
 			{ss >> buff2; if (buff2=="true") POST_REPORTS = true; else POST_REPORTS = false;}
@@ -1171,6 +1182,8 @@ int main(int argc, char* argv[])
 		system(command1);
 		sprintf(command1, "rm -f %s*.* 2>/dev/null", VTKDIR );
 		system(command1);        
+		sprintf(command1, "rm -f %s*.* 2>/dev/null", STATSDIR );
+		system(command1);        
 #else
 		sprintf(command1, "del /q %s*_0*.%s", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
 		system(command1);
@@ -1182,9 +1195,11 @@ int main(int argc, char* argv[])
 		system(command1);
 		sprintf(command1, "del /q %s*.wrl %s*.txt", TEMPDIR, TEMPDIR );
 		system(command1);
-        sprintf(command1, "del /q %s", SYM_BREAK_FILE );
+		sprintf(command1, "del /q %s", SYM_BREAK_FILE );
 		system(command1);
 		sprintf(command1, "del /q %s*.*", VTKDIR );
+		system(command1);
+		sprintf(command1, "del /q %s*.*", STATSDIR );
 		system(command1);
 #endif
 
@@ -1962,19 +1977,21 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 	// : range
 	int start = 0, step = 0, end = 0;
 	if(postprocess_iterations.size() == 1) {
-	    cerr << "ERROR: too few values in range request (2 min):" << iterdesc << endl;
-	    exit(EXIT_FAILURE);
+	  cerr << "ERROR: too few values in range request (2 min):" 
+	       << iterdesc << endl;
+	  exit(EXIT_FAILURE);
 	} else if(postprocess_iterations.size() == 2) {
-	    start = postprocess_iterations[0] * InterRecordIterations;
-	    step = InterRecordIterations;
-	    end = postprocess_iterations[1] * InterRecordIterations;
+	  start = postprocess_iterations[0] * InterRecordIterations;
+	  step = InterRecordIterations;
+	  end = postprocess_iterations[1] * InterRecordIterations;
 	} else if(postprocess_iterations.size() == 3) {
-	    start = postprocess_iterations[0] * InterRecordIterations;
-	    step = postprocess_iterations[1] * InterRecordIterations;
-	    end = postprocess_iterations[2] * InterRecordIterations;	    
+	  start = postprocess_iterations[0] * InterRecordIterations;
+	  step = postprocess_iterations[1] * InterRecordIterations;
+	  end = postprocess_iterations[2] * InterRecordIterations;	    
 	} else if(postprocess_iterations.size() > 3) {
-	    cerr << "ERROR: too many values in range request (3 max):" << iterdesc << endl;
-	    exit(EXIT_FAILURE);
+	  cerr << "ERROR: too many values in range request (3 max):" 
+	       << iterdesc << endl;
+	  exit(EXIT_FAILURE);
 	}
 
     if (start == 0)
@@ -1996,11 +2013,32 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
     } 
 }
 
+// STUB function, doesn't do anything, but fill implementation out here
+// 
+void post_stats(actin &theactin, const int filenum)
+{
+  cout << "  saving statistics for " << filenum << endl;  
+
+  char nstats_filename[255];
+  sprintf(nstats_filename , "%snodestats_%05i.txt", STATSDIR, filenum);
+  //ofstream nout;
+  //nout.open(nstats_filename);
+
+  char lstats_filename[255];
+  sprintf(lstats_filename , "%slinkstats_%05i.txt", STATSDIR, filenum);
+  //ofstream lout;
+  //lout.open(lstats_filename);
+
+  // STUB for the function to get out statistics of current interest
+  // fill in calculations here
+}
+
 // We may want to have a vtk postprocess as a seperate option?
 // otherwise I've lumped it with the bitmap processing here
 // the frame counting is seperated, but consider unifying 
 // this once we are happy with how it all works.
-void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations, char* argv[])
+void postprocess(nucleator& nuc_object, actin &theactin, 
+		 vector<int> &postprocess_iterations, char* argv[])
 {
 	if (POST_PROCESS4CPU)
 	{
@@ -2160,6 +2198,11 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 			    vtkvis.buildVTK(filenum);
 		    }
 
+		    if (POST_STATS)
+		    {
+		      // cout << "- statistics: " << filenum << endl;
+		      post_stats(theactin, filenum);
+		    }
     	}
 
 	}

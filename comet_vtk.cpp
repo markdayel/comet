@@ -25,11 +25,11 @@
 
 #ifndef NOKBHIT
 #ifndef _WIN32
-	#include "kbhit.h"
-	#define kbhit keyb.kbhit
-    #define getch keyb.getch
+ #include "kbhit.h"
+ #define kbhit keyb.kbhit
+ #define getch keyb.getch
 #else
-	#include <conio.h>
+ #include <conio.h>
 #endif
 #endif
 
@@ -135,6 +135,7 @@ CometVtkVis::CometVtkVis()//actin * theactin)
     OptsRenderAxes          = false;
     OptsRenderText          = false;
     OptsNormaliseFrames     = false;
+    OptsSkipOutOfFocusPoints = true;
     OptsRenderProjection    = RIP;
     renderwin_npx = 0;
     renderwin_npy = 0;
@@ -143,21 +144,21 @@ CometVtkVis::CometVtkVis()//actin * theactin)
 
     setOptions();
 
-	// this is *.99 so that links on the surface don't look like they go inside the sphere
-	radius_pixels = ptheactin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
+    // this is *.99 so that links on the surface don't look like they go inside the sphere
+    radius_pixels = ptheactin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
     
     if(renderwin_npx == 0 || renderwin_npy == 0) {
-	if(OptsInteractive) {
-	    renderwin_npx = VTK_WIDTH;
-	    renderwin_npy = VTK_HEIGHT;
-	} else {
-	    renderwin_npx = VTK_WIDTH * VTK_AA_FACTOR;
-	    renderwin_npy = VTK_HEIGHT * VTK_AA_FACTOR;
-	}
+      if(OptsInteractive) {
+	renderwin_npx = VTK_WIDTH;
+	renderwin_npy = VTK_HEIGHT;
+      } else {
+	renderwin_npx = VTK_WIDTH * VTK_AA_FACTOR;
+	renderwin_npy = VTK_HEIGHT * VTK_AA_FACTOR;
+      }
     }
     cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
     cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
-
+    
     // REVISIT: Make a renderer each time? or clear out and rebuild?
     // a renderer and render window
     //renderer = vtkRenderer::New();
@@ -183,26 +184,17 @@ void CometVtkVis::buildVTK(int framenumber)
     render_win = vtkRenderWindow::New();
     renderer->SetBackground(0, 0, 0);		
 
-	render_win->LineSmoothingOn();
-	//render_win->PointSmoothingOn();
-	//render_win->PolygonSmoothingOn();
-
-	if(!OptsInteractive)	 // increase quality for non-interactive
-	{
-		render_win->SetAAFrames(5);
-	}
-
-	//render_win->SetStereoRender(2);
-
-
-    render_win->SetSize(renderwin_npx, renderwin_npy);  
-    if(!OptsInteractive) {
-	render_win->OffScreenRenderingOn();
-    }												
-    render_win->AddRenderer(renderer);    
+    render_win->LineSmoothingOn();
+    //render_win->PointSmoothingOn();
+    //render_win->PolygonSmoothingOn();
     
-    // set projection early
-    setProjection(); 
+    if(!OptsInteractive)	 // increase quality for non-interactive
+      {
+	render_win->SetAAFrames(5);
+      }
+    
+    //render_win->SetStereoRender(2);
+
     
     // add objects to renderer
     if(OptsRenderNucleator)
@@ -222,38 +214,42 @@ void CometVtkVis::buildVTK(int framenumber)
     
     if(OptsRenderAxes)
 	addAxes();
-    
+
+    setProjection(); 
     // if(OptsRenderText)        
     // addVoxelBound(renderer);    
     //addLight();
+
+    render_win->SetSize(renderwin_npx, renderwin_npy);  
+    if(!OptsInteractive) {
+	render_win->OffScreenRenderingOn();
+    }												
+    render_win->AddRenderer(renderer);    
     
     // -- rendering
     if(OptsInteractive) {
+      cout << "interactive" << endl;
 
-	render_win-> Render();
-
-	// allow interaction
-	iren = vtkRenderWindowInteractor::New();
-	iren->SetRenderWindow(render_win);
-	iren->Initialize();
-	iren->Start();
-	
-	iren->Delete();
-    } else 
-	{
-		render_win->Render();
-		saveImage(filename);
-
-		if (VTK_AA_FACTOR!=1)
-		{
-			char command1[255];
-			sprintf(command1, 
- "%s -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
-				IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,  
-			    framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
-			//cout << command1 << endl;
-			system(command1);
-		}
+      // allow interaction
+      iren = vtkRenderWindowInteractor::New();
+      iren->SetRenderWindow(render_win);
+      iren->Initialize();
+      iren->Start();
+      
+      iren->Delete();
+    } else {
+      render_win->Render();
+      saveImage(filename);
+      
+      if (VTK_AA_FACTOR!=1){
+	char command1[255];
+	sprintf(command1, 
+		"%s -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
+		IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,  
+		framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
+	//cout << command1 << endl;
+	system(command1);
+      }
     }
     
     // clear all actors from the renderer
@@ -583,9 +579,9 @@ void CometVtkVis::addSphericalNucleator()
 
     nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
     nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
-	nuc_actor->GetProperty()->SetDiffuse(0.25);
-	nuc_actor->GetProperty()->SetSpecular(1.0);
-	nuc_actor->GetProperty()->SetSpecularPower(5.0);
+    nuc_actor->GetProperty()->SetDiffuse(0.25);
+    nuc_actor->GetProperty()->SetSpecular(1.0);
+    nuc_actor->GetProperty()->SetSpecularPower(5.0);
 
 	
     // add the actor to the scene
@@ -1038,8 +1034,8 @@ void CometVtkVis::addNodes()
 	ptheactin->inverse_actin_rotation.rotate(ncx, ncy, ncz); 
 	vtk_cam_rot.rotate(ncx, ncy, ncz); // bring rip to y-axis
 	
-    if (fabs(ncx) > FOCALDEPTH)
-        continue;  // skip points outside focal depth
+	if(OptsSkipOutOfFocusPoints && fabs(ncx) > FOCALDEPTH)
+	  continue;  // skip points outside focal depth
 
 	ncx = ptheactin->dbl_pixels(ncx - meanx)/voxel_scale; 
 	ncy = ptheactin->dbl_pixels(ncy - meany)/voxel_scale;
@@ -1184,8 +1180,8 @@ void CometVtkVis::addLinks()
     ptheactin->inverse_actin_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); 
     vtk_cam_rot.rotate(n_pt[0], n_pt[1], n_pt[2]); // bring rip to y-axis
     
-    if (fabs(n_pt[0]) > FOCALDEPTH)
-        continue;  // skip points outside focal depth
+    if(OptsSkipOutOfFocusPoints && fabs(n_pt[0]) > FOCALDEPTH)
+      continue;  // skip points outside focal depth
 
     n_pt[0] = ptheactin->dbl_pixels(n_pt[0] - meanx)/voxel_scale; 
     n_pt[1] = ptheactin->dbl_pixels(n_pt[1] - meany)/voxel_scale;
@@ -1346,38 +1342,43 @@ void CometVtkVis::addLight()
 
 void CometVtkVis::setProjection()
 {
-    if(OptsRenderProjection==X){
-		// x
-		vtk_cam_rot = ptheactin->camera_rotation;
-		renderer->GetActiveCamera()->SetPosition(-radius_pixels*OptsCameraDistMult, 0, 0);
-		renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
-    } else if(OptsRenderProjection==Y){
-	// y
-		vtk_cam_rot = ptheactin->camera_rotation;
-		renderer->GetActiveCamera()->SetPosition(0, radius_pixels*OptsCameraDistMult, 0);
-		renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
-    } else if(OptsRenderProjection==Z){
-	// z
-		vtk_cam_rot = ptheactin->camera_rotation;
-		renderer->GetActiveCamera()->SetPosition(0, 0, -radius_pixels*OptsCameraDistMult);
-		renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
-    } else if(OptsRenderProjection==RIP){
 
-		vtk_cam_rot = ptheactin->camera_rotation2;	  // note using different rotation matrix!
-	// rip
-	//cout << "  projection: rip" << endl;
-	renderer->GetActiveCamera()->SetPosition(radius_pixels*OptsCameraDistMult/2, 0, -radius_pixels*OptsCameraDistMult);
-	renderer->GetActiveCamera()->SetViewUp(1, 0, 0);    
+  //renderer->ResetCamera();
+    if(OptsRenderProjection==X){
+      // x
+      vtk_cam_rot = ptheactin->camera_rotation;
+      renderer->GetActiveCamera()->SetPosition(-radius_pixels*OptsCameraDistMult, 0, 0);
+      //renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+    } else if(OptsRenderProjection==Y){
+      // y
+      vtk_cam_rot = ptheactin->camera_rotation;
+      renderer->GetActiveCamera()->SetPosition(0, radius_pixels*OptsCameraDistMult, 0);
+      renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+    } else if(OptsRenderProjection==Z){
+      // z
+      vtk_cam_rot = ptheactin->camera_rotation;
+      renderer->GetActiveCamera()->SetPosition(0, 0, -radius_pixels*OptsCameraDistMult);
+      renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
+    } else if(OptsRenderProjection==RIP){
+      
+      vtk_cam_rot = ptheactin->camera_rotation2;	  // note using different rotation matrix!
+      // rip
+      //cout << "  projection: rip" << endl;
+      renderer->GetActiveCamera()->SetPosition(radius_pixels*OptsCameraDistMult/2, 
+					       0, 
+					       -radius_pixels*OptsCameraDistMult);
+      renderer->GetActiveCamera()->SetViewUp(1, 0, 0);    
     } else {
-	cout << "!ERROR: unknown projection:" << OptsRenderProjection << endl;
+      cout << "!ERROR: unknown projection:" << OptsRenderProjection << endl;
     }
-    
+    //renderer->ResetCamera();
     renderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
-	renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
-	renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
+    renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
+    renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
     // FIXME: ML
     // should scale properly here to a value linked to the render setup
     renderer->GetActiveCamera()->SetParallelScale(p_scale);
+    renderer->ResetCamera();
 }
 
 void CometVtkVis::setOptions()
@@ -1503,11 +1504,13 @@ void CometVtkVis::setOptions()
 	    ss >> OptsCameraDistMult;
 	    continue;
 	}
-
-    }
-
-	
-  
+    if(tag == "VIS_SKIPOUTOFFOCUS") 
+        {
+	    ss >> value;
+	    OptsSkipOutOfFocusPoints = getBoolOpt(value);
+	    continue;
+	}
+    }  
 }
 
 bool CometVtkVis::getBoolOpt(const string &value) {
@@ -1536,26 +1539,25 @@ CometVtkVis::OptProjectionType CometVtkVis::getProjectionOpt(const string &value
 
 void CometVtkVis::reportOptions()
 {   
-    cout << "OptsInteractive       = " << OptsInteractive       << endl;
-    cout << "OptsRenderNucleator   = " << OptsRenderNucleator   << endl;
-    cout << "OptsRenderNodes       = " << OptsRenderNodes       << endl;
-    cout << "OptsRenderLinks       = " << OptsRenderLinks       << endl;
-    cout << "OptsShadeLinks        = " << OptsShadeLinks        << endl;
-    cout << "OptsVolumeRenderNodes = " << OptsVolumeRenderNodes << endl;
-    cout << "OptsIsoRenderNodes    = " << OptsIsoRenderNodes    << endl;
-    cout << "OptsRenderAxes        = " << OptsRenderAxes        << endl;
-    cout << "OptsRenderText        = " << OptsRenderText        << endl;
-    cout << "OptsRenderProjection  = " << OptsRenderProjection  << endl;
-    cout << "OptsNormaliseFrames   = " << OptsNormaliseFrames   << endl;
-    cout << "voxel_scale           = " << voxel_scale           << endl;
-    cout << "ni nj nk              = " << ni<<" "<<nj<<" "<< nk << endl;
-    cout << "vx intensity scale    = " << vx_intensity_scale    << endl;
-    cout << "file_prefix           = " << file_prefix           << endl;
-    cout << "projection_scale      = " << p_scale               << endl;
-    cout << "CameraDistMult        = " << OptsCameraDistMult    << endl;
-    
+    cout << "OptsInteractive          = " << OptsInteractive          << endl;
+    cout << "OptsRenderNucleator      = " << OptsRenderNucleator      << endl;
+    cout << "OptsRenderNodes          = " << OptsRenderNodes          << endl;
+    cout << "OptsRenderLinks          = " << OptsRenderLinks          << endl;
+    cout << "OptsShadeLinks           = " << OptsShadeLinks           << endl;
+    cout << "OptsVolumeRenderNodes    = " << OptsVolumeRenderNodes    << endl;
+    cout << "OptsIsoRenderNodes       = " << OptsIsoRenderNodes       << endl;
+    cout << "OptsRenderAxes           = " << OptsRenderAxes           << endl;
+    cout << "OptsRenderText           = " << OptsRenderText           << endl;
+    cout << "OptsRenderProjection     = " << OptsRenderProjection     << endl;
+    cout << "OptsNormaliseFrames      = " << OptsNormaliseFrames      << endl;
+    cout << "voxel_scale              = " << voxel_scale              << endl;
+    cout << "ni nj nk                 = " << ni<<" "<<nj<<" "<< nk    << endl;
+    cout << "vx intensity scale       = " << vx_intensity_scale       << endl;
+    cout << "file_prefix              = " << file_prefix              << endl;
+    cout << "projection_scale         = " << p_scale                  << endl;
+    cout << "CameraDistMult           = " << OptsCameraDistMult       << endl;
+    cout << "OptsSkipOutOfFocusPoints = " << OptsSkipOutOfFocusPoints << endl;
 }
-
 
 #endif
 

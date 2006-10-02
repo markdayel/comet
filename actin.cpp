@@ -3064,8 +3064,10 @@ int actin::load_data(ifstream &ifstr)
     }
 
     // only add to grid if doing normal run or a post-process that needs links:
-    if (POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
-	    rebuildnodepointers();
+    // REVISIT this is really unexpected behaviour if you add a new post process operation
+    // is it a usefule optimisation?
+    if (POST_STATS || POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
+      rebuildnodepointers();
 
     // check node list
     /*
