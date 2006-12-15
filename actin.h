@@ -179,8 +179,8 @@ public:
 		 temp_BMP_filename_y[255],
 		 temp_BMP_filename_z[255];
 
-	int doreportiteration;
-	int doreportmaxnodes;
+	//int doreportiteration;
+	//int doreportmaxnodes;
 
 	bool brokensymmetry;
 

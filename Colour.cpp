@@ -32,7 +32,7 @@ Colour::~Colour(void)
 int Colour::setcol(const double & magnitude)
 {  // colour scale 0--1
 	
-	mag = magnitude;
+	mag = mymax(0, mymin( 1, magnitude )); // make sure it's between 0 and 1
 
 	// hot colormap
 	//r =  mymin(  mymax( 8*mag / 3    , 0 ), 1 );

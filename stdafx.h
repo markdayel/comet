@@ -19,7 +19,8 @@ removed without prior written permission from the author.
 
 // whether link or proximity viscosity
 //#define LINK_VISCOSITY 1
-#define PROXIMITY_VISCOSITY 1
+//#define PROXIMITY_VISCOSITY 1
+// note: also need to set VISCOSIY variable to true in cometparams.ini
 
 // this doesn't seem to affect speed at all
 #define NODE_GRID_USE_ARRAYS 1
@@ -31,7 +32,15 @@ removed without prior written permission from the author.
 // vector seems quite a bit faster
 //#define NODEGRIDTYPELIST 1
 
+
+#if defined (__SSE__) 
+//#define USE_SSE_APPROX_SQRT 1
+#endif
+
 #define BMP_USE_FOCAL_DEPTH 1
+
+// mersennetwister.h is causing bus error for some reason...
+//#define USE_MERSENNE 1
 
 #ifdef NODEGRIDTYPELIST
     #define NODEGRIDTYPE list
@@ -190,6 +199,14 @@ enum projection
 #include "semaphore.h"
 #include "threadedtaskqueue.h"
 
+#ifdef USE_MERSENNE
+
+#include "MersenneTwister.h"
+
+extern vector <MTRand> mers_rand;
+
+#endif
+
 extern bool ALLOW_HARBINGERS_TO_MOVE;
 extern bool CAGE_ON_SIDE;
 
@@ -281,7 +298,8 @@ extern double XLINK_NODE_RANGE;	// Limit crosslink to within this range
 
 extern double LINK_BREAKAGE_FORCE;  // breakage force per link
 extern double LINK_FORCE;
-extern bool USE_BREAKAGE_STRAIN;
+extern bool USE_BREAKAGE_VISCOSITY;
+extern double BREAKAGE_VISCOSITY_THRESHOLD;
 extern double LINK_BREAKAGE_STRAIN;
 extern double P_XLINK;
 extern double P_NUC;
@@ -367,6 +385,7 @@ extern int CROSSLINKDELAY;
 extern int NODES_TO_UPDATE;
 extern double DISTANCE_TO_UPDATE;
 
+extern double NODE_REPULSIVE_POWER;
 extern double NODE_REPULSIVE_MAG;
 extern double NODE_REPULSIVE_RANGE;
 extern double NODE_REPULSIVE_BUCKLE_RANGE;
@@ -386,7 +405,7 @@ extern int ASYMMETRIC_NUCLEATION;
 const int REPORT_NUM_VARIABLES = 8;
 
 extern bool ROTATION;
-extern double MofI;
+extern double MOFI;
 
 extern bool FORCES_ON_SIDE;
 
@@ -412,6 +431,9 @@ const double LN_TWO = (double) 0.69314718055995; // ln(2)
 
 inline double calcdist(const double & xdist, const double & ydist, const double & zdist);
 inline double calcdist(const double & xdist, const double & ydist); 
+
+inline double recipcalcdist(const double & xdist, const double & ydist, const double & zdist);
+inline double recipcalcdist(const double & xdist, const double & ydist);
 
 inline void endian_swap(unsigned short& x);
 inline void endian_swap(unsigned int& x);
@@ -476,6 +498,66 @@ extern actin *ptheactin;
 
 //extern consts CONST;
 
+
+#if defined(USE_SSE_APPROX_SQRT)
+
+ inline float SSErsqrt(float x) {
+ 
+         __asm {
+            movss xmm0, x
+            rsqrtss xmm0, xmm0
+            movss x, xmm0
+         }
+         return x;
+ }
+  
+ inline float SSEsqrt(float x) {
+
+         __asm {
+            movss xmm0, x
+            sqrtss xmm0, xmm0
+            movss x, xmm0
+         }
+         return x;
+ }
+
+ inline double SSErsqrt(double & x)
+ {
+     return (double) SSErsqrt((float)x);
+ }
+
+ inline double SSEsqrt(double & x)
+ {
+     return (double) SSEsqrt((float)x);
+ }
+
+#else
+
+ inline float SSErsqrt(float x) {
+
+         return 1 / sqrt(x);  
+ }
+  
+ inline float SSEsqrt(float x) {
+ 
+         return sqrt(x);  
+
+ }
+
+ inline double SSErsqrt(double & x)
+ {
+     return 1 / sqrt(x);
+ }
+
+ inline double SSEsqrt(double & x)
+ {
+     return sqrt(x);
+ }
+
+
+#endif
+
+
 inline double calcdist(const double & xdist, const double & ydist, const double & zdist)
 {
 	double sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
@@ -486,7 +568,7 @@ inline double calcdist(const double & xdist, const double & ydist, const double 
 		return SQRT_ACCURACY_LOSS;
 	}
 	else
-		return sqrt(sqr);
+		return SSEsqrt(sqr);
 }
 
 inline double calcdist(const double & xdist, const double & ydist) 
@@ -499,7 +581,7 @@ inline double calcdist(const double & xdist, const double & ydist)
 		return SQRT_ACCURACY_LOSS;
 	}
 	else
-		return sqrt(sqr);
+		return SSEsqrt(sqr);
 }
 
 inline double calcdist(const vect & v1, const vect & v2) 
@@ -507,9 +589,40 @@ inline double calcdist(const vect & v1, const vect & v2)
 	return calcdist(v1.x-v2.x,v1.y-v2.y,v1.z-v2.z);
 }
 
+inline double recipcalcdist(const double & xdist, const double & ydist, const double & zdist)
+{
+	double sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
+	if (sqr < SQRT_ACCURACY_LOSS)
+	{
+		//cout << "Accuracy loss: 3D dist close to zero. Increase math accuracy or reduce DELTA_T" << endl;
+		//cout.flush();
+		return SQRT_ACCURACY_LOSS;
+	}
+	else
+		return SSErsqrt(sqr);
+}
+
+inline double recipcalcdist(const double & xdist, const double & ydist) 
+{
+	double sqr = (xdist*xdist + ydist*ydist);
+	if (sqr < SQRT_ACCURACY_LOSS)
+	{
+		//cout << "Accuracy loss: 2D dist close to zero. Increase math accuracy or reduce DELTA_T" << endl;
+		//cout.flush();
+		return SQRT_ACCURACY_LOSS;
+	}
+	else
+		return SSErsqrt(sqr);
+}
+
+inline double recipcalcdist(const vect & v1, const vect & v2) 
+{
+	return recipcalcdist(v1.x-v2.x,v1.y-v2.y,v1.z-v2.z);
+}
+
 inline void endian_swap(unsigned short& x)
 {
-    x = (unsigned short)( (x>>8) | (x<<8));
+    x = (unsigned short)((x>>8) | (x<<8));
 }
 
 inline void endian_swap(unsigned int& x)
@@ -519,6 +632,42 @@ inline void endian_swap(unsigned int& x)
 	    ((x>>8) & 0x0000FF00) |
 	    (x<<24);
 }
+
+#ifdef USE_MERSENNE
+
+inline bool prob_to_bool(const double & prob)
+{
+    return (mers_rand[0].rand() < prob);
+}
+
+inline bool prob_to_bool(const double & prob, const unsigned int & thread)
+{
+    return (mers_rand[thread].rand() < prob);
+}
+
+inline double rand_0to1()
+{
+    return (mers_rand[0].rand());
+}
+
+#else
+
+inline bool prob_to_bool(const double & prob)
+{
+    return (rand() < prob * RAND_MAX);
+}
+
+inline bool prob_to_bool(const double & prob, const unsigned int & )
+{
+    return (rand() < prob * RAND_MAX);
+}
+
+inline double rand_0to1()
+{
+    return ((double)rand() * (double) RECIP_RAND_MAX);
+}
+
+#endif
 
 #endif
 

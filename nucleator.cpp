@@ -45,18 +45,18 @@ nucleator::nucleator(shape set_geometry)//, actin *actinptr)
 		surf_area = 4 * PI * RADIUS * RADIUS;
 		movability = 0.25 / (RADIUS * NUCLEATOR_INERTIA);
 
-		momentofinertia.x = 1000 * MofI;  // mark:  todo: calculate these numbers
-		momentofinertia.y = 1000 * MofI;
-		momentofinertia.z = 1000 * MofI;
+		momentofinertia.x = 1000 * MOFI;  // mark:  todo: calculate these numbers
+		momentofinertia.y = 1000 * MOFI;
+		momentofinertia.z = 1000 * MOFI;
 	}
 	else
 	{
 		surf_area = 4 * PI * RADIUS * RADIUS  +  4 * PI * RADIUS * CAPSULE_HALF_LINEAR;
 		movability = 0.25 / (NUCLEATOR_INERTIA * (RADIUS + CAPSULE_HALF_LINEAR/2));   // what should this be??
 	
-	    momentofinertia.x = 1000 * CAPSULE_HALF_LINEAR * MofI;  // mark:  todo: calculate these numbers
-		momentofinertia.y = 1000 * CAPSULE_HALF_LINEAR * MofI;
-		momentofinertia.z = 1000 * MofI;
+	    momentofinertia.x = 1000 * CAPSULE_HALF_LINEAR * MOFI;  // mark:  todo: calculate these numbers
+		momentofinertia.y = 1000 * CAPSULE_HALF_LINEAR * MOFI;
+		momentofinertia.z = 1000 * MOFI;
 	}
 
 
@@ -108,13 +108,13 @@ int nucleator::addnodessphere(void)
 
 	int nodestoadd = (int) floatingnodestoadd;  // actual nodes have to be integer
 
-	if (( floatingnodestoadd - nodestoadd ) * RAND_MAX > rand() )
+	if ( prob_to_bool( floatingnodestoadd - nodestoadd ) )
 		nodestoadd++;   // deal with fractional nodes using probability
 
 	for (int i=0; i != nodestoadd; ++i)
 	{
-		z = (2 * (rand() * RECIP_RAND_MAX) ) -1 ;		// random number -1 to 1
-		theta = (2 * PI * (rand() * RECIP_RAND_MAX));  // circle vector
+		z = 2 * rand_0to1() - 1 ;		// random number -1 to 1
+		theta = 2 * PI * rand_0to1();  // circle vector
 		
 		if (z*z<1) // avoid floating exception due to rounding errors causing -ve sqrt
 		{
@@ -138,10 +138,10 @@ int nucleator::addnodessphere(void)
 			if (ASYMMETRIC_NUCLEATION == 1)  // no nucleation above z=0
 				if ((y < 0) || (fabs(x+z) > 0.5)) continue;
 			if (ASYMMETRIC_NUCLEATION == 2)  // linear degredation to zero
-				if (z < RADIUS * ( 2 * rand() * RECIP_RAND_MAX - 1))
+				if (z < RADIUS * ( 2 * rand_0to1() - 1))
 					continue;
 			if (ASYMMETRIC_NUCLEATION == 3)  // linear degredation
-				if (z < RADIUS * ( 4 * rand() * RECIP_RAND_MAX - 3))
+				if (z < RADIUS * ( 4 * rand_0to1() - 3))
 					continue;
 			if (ASYMMETRIC_NUCLEATION == 4) 
             { // fixed random location
@@ -165,7 +165,7 @@ int nucleator::addnodessphere(void)
 
         if (POLY_FEEDBACK)
         {   // calculate probability of polymerization due to +ve feedback (based on nearby nodes)    
-            if ( polyfeedbackprob(x,y,z) * RAND_MAX < rand() )
+            if ( prob_to_bool( polyfeedbackprob(x,y,z) ) )
                 continue;   // don't polymerise
         }
 
@@ -190,7 +190,7 @@ int nucleator::addnodescapsule(void)
 
 	int nodestoadd = (int) floatingnodestoadd;
 
-	if (( floatingnodestoadd - nodestoadd ) > ( rand() * RECIP_RAND_MAX ))
+	if ( prob_to_bool( floatingnodestoadd - nodestoadd ) )
 		nodestoadd++;
 
 	for (int i=0; i != nodestoadd; i++)
@@ -203,10 +203,10 @@ int nucleator::addnodescapsule(void)
 		//           = r/(r+2h)
 
 
-		z = ( 2 * (rand() * RECIP_RAND_MAX) ) - 1 ;  // random number -1 to 1
-		theta = (2 * PI * (rand() * RECIP_RAND_MAX));  // circle vector
+		z =  2 * rand_0to1() - 1 ;  // random number -1 to 1
+		theta = 2 * PI * rand_0to1() ;  // circle vector
 		
-		onseg = ( (CAPSULE_HALF_LINEAR /(RADIUS+CAPSULE_HALF_LINEAR)) > ( rand() * RECIP_RAND_MAX )); // on ends or on segment?
+		onseg = ( prob_to_bool(CAPSULE_HALF_LINEAR /(RADIUS+CAPSULE_HALF_LINEAR)) ); // on ends or on segment?
 		
 		if (onseg)
 		{
@@ -240,10 +240,10 @@ int nucleator::addnodescapsule(void)
 			if (ASYMMETRIC_NUCLEATION==1)  /// no nucleation above z=0
 				if (z<0) continue;
 			if (ASYMMETRIC_NUCLEATION==2)  // linear degredation to zero
-				if (z < (CAPSULE_HALF_LINEAR + rad) *( 2*  (rand() * RECIP_RAND_MAX) - 1))
+				if (z < (CAPSULE_HALF_LINEAR + rad) *( 2 * rand_0to1() - 1))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==3)  // linear degredation
-				if (z < (CAPSULE_HALF_LINEAR + rad) *( 4 * (rand() * RECIP_RAND_MAX) - 3))
+				if (z < (CAPSULE_HALF_LINEAR + rad) *( 4 * rand_0to1() - 3))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==4)  // caps only
 				if (fabs(z) < (CAPSULE_HALF_LINEAR))
@@ -252,7 +252,7 @@ int nucleator::addnodescapsule(void)
 				if ( (fabs(z) < (CAPSULE_HALF_LINEAR)) || ((x<0)&&(z>0)) || ((x>0)&&(z<0)) )
 					continue;
 			if (ASYMMETRIC_NUCLEATION==6)  // caps only
-				if (fabs(z) < 0.5 * (CAPSULE_HALF_LINEAR + rad) * ( 4 * (rand() * RECIP_RAND_MAX) - 3))
+				if (fabs(z) < 0.5 * (CAPSULE_HALF_LINEAR + rad) * ( 4 * rand_0to1() - 3))
 					continue;
 			if (ASYMMETRIC_NUCLEATION==7)  // half caps one side
 				if ( (fabs(z) < (0.7*CAPSULE_HALF_LINEAR)) || ((x>0)&&(z>0)) || ((x<0)&&(z<0)) || (z>0))
@@ -270,7 +270,7 @@ int nucleator::addnodescapsule(void)
 
         if (POLY_FEEDBACK)
         {   // get probability of polymerization due to +ve feedback (based on nearby nodes)    
-            if ( polyfeedbackprob(x,y,z) * RAND_MAX < rand() )
+            if ( prob_to_bool(polyfeedbackprob(x,y,z)) )
                 continue;   // don't polymerise
         }
 

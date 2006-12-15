@@ -100,7 +100,7 @@ bool BMP_FIX_BEAD_ROTATION = false;
 
 bool COL_NODE_BY_STRAIN = false;
 
-double MofI =  0.1;
+double MOFI =  0.1;
 
 bool X_BMP = true;
 bool Y_BMP = true;
@@ -139,7 +139,8 @@ bool VARY_P_XLINK = false;
 double XLINK_NODE_RANGE =  1.0;		// Limit crosslink to within this range
 
 double LINK_BREAKAGE_FORCE =  2;	 // breakage force per link
-bool USE_BREAKAGE_STRAIN = false;
+bool USE_BREAKAGE_VISCOSITY = false;
+double BREAKAGE_VISCOSITY_THRESHOLD = 1000;
 double LINK_BREAKAGE_STRAIN = 1.15;
 //double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NEW_NODE = 100;
@@ -225,6 +226,7 @@ int CROSSLINKDELAY = 200;  // number of interations before crosslinking
 						  //  (to allow position to be equilibrated to something
 						  //       reasonable before locking node in place)
 
+double NODE_REPULSIVE_POWER = 2.7;
 double NODE_REPULSIVE_MAG =  1.5;
 double NODE_REPULSIVE_RANGE = 1.0;
 double NODE_REPULSIVE_BUCKLE_RANGE = NODE_REPULSIVE_RANGE * 0.3;
@@ -280,6 +282,14 @@ unsigned int Node_Grid_Dim;
 
 actin *ptheactin;
 
+#ifdef USE_MERSENNE
+
+#include "MersenneTwister.h"
+
+vector <MTRand> mers_rand;
+
+#endif
+
 vector <nodes>	actin::node;
 vector <bool>   actin::donenode;	
 Nodes2d actin::nodes_by_thread;
@@ -325,6 +335,7 @@ void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postproces
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
 bool POST_PROCESS4CPU = false;
+bool VIEW_VTK = false;
 
 #ifndef NOKBHIT
     #ifndef _WIN32
@@ -338,6 +349,23 @@ bool POST_PROCESS4CPU = false;
 
 bool NOBGIMAGEMAGICK = false;
 
+string strtoupper(string str)
+{
+   for(unsigned int i=0; i != str.length(); i++)
+   {
+      str[i] = toupper(str[i]);
+   }
+   return str;//return the converted string
+}
+ 
+string strtolower(string str)
+{
+   for(unsigned int i=0; i != str.length(); i++)
+   {
+      str[i] = tolower(str[i]);
+   }
+   return str;//return the converted string
+}
 
 // main 
 
@@ -348,12 +376,13 @@ int main(int argc, char* argv[])
 
     if(argc < 2 || argc > 4) 
 	{
-	    cerr << "Usage:" << endl << endl << argv[0] << " numThreads [R]" << endl << endl;
-	    cerr << "where numThreads is the number of threads to use per calculation stage" << endl;
+	    cerr << "Usage:" << endl << endl << argv[0] << " numThreads" << endl << endl;
+	    cerr << "where numThreads is the number of threads to use" << endl;
 	    cerr << "Set numThreads to 1 to run in single threaded mode" << endl;
-	    cerr << "and 'R' sets use of time-based random number seed" << endl << endl;
 	    cerr << "or to postprocess, specify files in terms of filenumber" 
-		 << endl << "./comet post 1:2:10" << endl;
+		 << endl << "./comet post 1:2:10" << endl
+         << "./comet post 0:0  <- use 0:0 to process all frames" << endl
+         << "./comet p4 0:0  <- use p4 to run 4 post-process threads simultaneously" << endl;
 	    cerr << endl;
 
 	    exit(EXIT_FAILURE);
@@ -431,10 +460,11 @@ int main(int argc, char* argv[])
             (strcmp( hostname, "compute-0-7.local") == 0))
         {
             nicelevel = 19;
-            sprintf(IMAGEMAGICKCONVERT,"ssh ec3 convert");
-            sprintf(IMAGEMAGICKMOGRIFY,"ssh ec3 mogrify");
-            NOBGIMAGEMAGICK = true; // prevent extraneous '&' in ssh
-            NOBITMAPS = true;  // eh, this ssh call slows things down interminably
+            //sprintf(IMAGEMAGICKCONVERT,"ssh ec3 convert");
+            //sprintf(IMAGEMAGICKMOGRIFY,"ssh ec3 mogrify");
+            //NOBGIMAGEMAGICK = true; // prevent extraneous '&' in ssh
+            //NOBITMAPS = true;  // eh, this ssh call slows things down interminably
+            QUIET = true;
         }
 		else
 		{
@@ -494,6 +524,8 @@ int main(int argc, char* argv[])
 	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
 	linkforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
 	applyforces_thread_data_array.resize(4 * NUM_THREAD_DATA_CHUNKS);
+
+
 
 	// make directories
 
@@ -598,9 +630,9 @@ int main(int argc, char* argv[])
 
 	while (getline(param, buffer)) 
 	{ 
-		istringstream ss(buffer);
+        istringstream ss(strtoupper(buffer));
 
-		string tag, buff2;
+		string tag, buff2, buff3;
 
 		ss >> tag >> std::ws;
 
@@ -642,7 +674,10 @@ int main(int argc, char* argv[])
 			{ss >> VTK_HEIGHT;}
 
 		else if (tag == "VTK_MOVE_WITH_BEAD") 
-			{ss >> buff2; if (buff2=="true") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false;}
+			{ss >> buff2; if (buff2=="TRUE") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false;}
+
+        else if (tag == "VIEW_VTK") 
+			{ss >> buff2; if (buff2=="TRUE") VIEW_VTK = true; else VTK_MOVE_WITH_BEAD = false;}
 
 		else if (tag == "VTK_AA_FACTOR")	  
 			{ss >> VTK_AA_FACTOR;}
@@ -663,24 +698,25 @@ int main(int argc, char* argv[])
 			{ss >> COVERSLIPGAP;}
 
 		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
-			{ss >> buff2; if (buff2=="true") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false;}
+			{ss >> buff2; if (buff2=="TRUE") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false;}
 
         else if (tag == "POST_PROC_ORDER") 
 			{ss >> POST_PROC_ORDER;}
 
 		else if (tag == "POST_BMP") 
-			{ss >> buff2; if (buff2=="true") POST_BMP = true; else POST_BMP = false;}   
+			{ss >> buff2; if (buff2=="TRUE") POST_BMP = true; else POST_BMP = false;}   
 
 		else if (tag == "POST_VTK") 
-			{ss >> buff2; if (buff2=="true") POST_VTK = true; else POST_VTK = false;}
+			{ss >> buff2; if (buff2=="TRUE") POST_VTK = true; else POST_VTK = false;}
+
 		else if (tag == "POST_STATS") 
-			{ss >> buff2; if (buff2=="true") POST_STATS = true; else POST_STATS = false;}
+			{ss >> buff2; if (buff2=="TRUE") POST_STATS = true; else POST_STATS = false;}
 
 		else if (tag == "POST_REPORTS") 
-			{ss >> buff2; if (buff2=="true") POST_REPORTS = true; else POST_REPORTS = false;}
+			{ss >> buff2; if (buff2=="TRUE") POST_REPORTS = true; else POST_REPORTS = false;}
 
         else if (tag == "BMP_TRACKS") 
-			{ss >> buff2; if (buff2=="true") BMP_TRACKS = true; else BMP_TRACKS = false;}
+			{ss >> buff2; if (buff2=="TRUE") BMP_TRACKS = true; else BMP_TRACKS = false;}
 
         else if (tag == "TRACK_MIN_RANGE") 
 			{ss >> TRACK_MIN_RANGE;} 
@@ -692,22 +728,22 @@ int main(int argc, char* argv[])
 			{ss >> TRACKFRAMESTEP;}
 
 		else if (tag == "X_BMP")     
-			{ss >> buff2; if (buff2=="true") X_BMP = true; else X_BMP = false;}
+			{ss >> buff2; if (buff2=="TRUE") X_BMP = true; else X_BMP = false;}
 
 		else if (tag == "Y_BMP") 
-			{ss >> buff2; if (buff2=="true") Y_BMP = true; else Y_BMP = false;}
+			{ss >> buff2; if (buff2=="TRUE") Y_BMP = true; else Y_BMP = false;}
 
 		else if (tag == "Z_BMP") 
-			{ss >> buff2; if (buff2=="true") Z_BMP = true; else Z_BMP = false;}
+			{ss >> buff2; if (buff2=="TRUE") Z_BMP = true; else Z_BMP = false;}
 
 		else if (tag == "CAGE_ON_SIDE") 
-			{ss >> buff2; if (buff2=="true") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false;}
+			{ss >> buff2; if (buff2=="TRUE") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false;}
 
         else if (tag == "BMP_FIX_BEAD_MOVEMENT") 
-			{ss >> buff2; if (buff2=="true") BMP_FIX_BEAD_MOVEMENT = true; else BMP_FIX_BEAD_MOVEMENT = false;}
+			{ss >> buff2; if (buff2=="TRUE") BMP_FIX_BEAD_MOVEMENT = true; else BMP_FIX_BEAD_MOVEMENT = false;}
 
         else if (tag == "BMP_FIX_BEAD_ROTATION") 
-			{ss >> buff2; if (buff2=="true") BMP_FIX_BEAD_ROTATION = true; else BMP_FIX_BEAD_ROTATION = false;}
+			{ss >> buff2; if (buff2=="TRUE") BMP_FIX_BEAD_ROTATION = true; else BMP_FIX_BEAD_ROTATION = false;}
 
 		else if (tag == "RECORDING_INTERVAL") 
 			{ss >> RECORDING_INTERVAL;} 
@@ -731,16 +767,16 @@ int main(int argc, char* argv[])
 			{ss >> XLINK_NODE_RANGE;} 
 
 		else if (tag == "SEGMENT_BINS") 
-			{ss >> buff2; if(buff2=="true") SEGMENT_BINS = true; else SEGMENT_BINS = false;}
+			{ss >> buff2; if(buff2=="TRUE") SEGMENT_BINS = true; else SEGMENT_BINS = false;}
 
 		else if (tag == "DRAW_CAGE")
-			{ss >> buff2; if(buff2=="true") DRAW_CAGE = true; else DRAW_CAGE = false;}
+			{ss >> buff2; if(buff2=="TRUE") DRAW_CAGE = true; else DRAW_CAGE = false;}
 
 		else if (tag == "P_XLINK") 
 			{ss >> P_XLINK;}
 
         else if (tag == "VARY_P_XLINK")
-			{ss >> buff2; if(buff2=="true") VARY_P_XLINK = true; else VARY_P_XLINK = false;}
+			{ss >> buff2; if(buff2=="TRUE") VARY_P_XLINK = true; else VARY_P_XLINK = false;}
 
 		else if (tag == "NUC_LINK_FORCE")    
 			{ss >> NUC_LINK_FORCE;}
@@ -764,28 +800,31 @@ int main(int argc, char* argv[])
 			{ss >> MAX_POLYMERISATION_PRESSURE;}
         
 		else if (tag == "STICK_TO_NUCLEATOR") 
-			{ss >> buff2; if(buff2=="true") STICK_TO_NUCLEATOR = true; else STICK_TO_NUCLEATOR = false;}
+			{ss >> buff2; if(buff2=="TRUE") STICK_TO_NUCLEATOR = true; else STICK_TO_NUCLEATOR = false;}
 
 		else if (tag == "RESTICK_TO_NUCLEATOR") 
-			{ss >> buff2; if(buff2=="true") RESTICK_TO_NUCLEATOR = true; else RESTICK_TO_NUCLEATOR = false;}
+			{ss >> buff2; if(buff2=="TRUE") RESTICK_TO_NUCLEATOR = true; else RESTICK_TO_NUCLEATOR = false;}
 		
 		else if (tag == "USETHREAD_COLLISION") 
-			{ss >> buff2; if(buff2=="true") USETHREAD_COLLISION = true; else USETHREAD_COLLISION = false;}
+			{ss >> buff2; if(buff2=="TRUE") USETHREAD_COLLISION = true; else USETHREAD_COLLISION = false;}
 		
 		else if (tag == "USETHREAD_LINKFORCES") 
-			{ss >> buff2; if(buff2=="true") USETHREAD_LINKFORCES = true; else USETHREAD_LINKFORCES = false;}
+			{ss >> buff2; if(buff2=="TRUE") USETHREAD_LINKFORCES = true; else USETHREAD_LINKFORCES = false;}
 		
 		else if (tag == "USETHREAD_APPLYFORCES") 
-			{ss >> buff2; if(buff2=="true") USETHREAD_APPLYFORCES = true; else USETHREAD_APPLYFORCES = false;} 
+			{ss >> buff2; if(buff2=="TRUE") USETHREAD_APPLYFORCES = true; else USETHREAD_APPLYFORCES = false;} 
     	
-		else if (tag == "USE_BREAKAGE_STRAIN") 
-			{ss >> buff2; if(buff2=="true") USE_BREAKAGE_STRAIN = true; else USE_BREAKAGE_STRAIN = false;} 
+		else if (tag == "USE_BREAKAGE_VISCOSITY") 
+			{ss >> buff2; if(buff2=="TRUE") USE_BREAKAGE_VISCOSITY = true; else USE_BREAKAGE_VISCOSITY = false;} 
+
+        else if (tag == "BREAKAGE_VISCOSITY_THRESHOLD") 
+			{ss >> BREAKAGE_VISCOSITY_THRESHOLD;}
 		
-		else if (tag == "P_NUC") 
+		else if (tag == "P_NUC")      
 			{ss >> P_NUC;}
 
 		else if (tag == "POLY_FEEDBACK") 
-			{ss >> buff2; if(buff2=="true") POLY_FEEDBACK = true; else POLY_FEEDBACK = false;} 
+			{ss >> buff2; if(buff2=="TRUE") POLY_FEEDBACK = true; else POLY_FEEDBACK = false;} 
 		
 		else if (tag == "POLY_FEEDBACK_DIST") 
 			{ss >> POLY_FEEDBACK_DIST;}
@@ -797,7 +836,7 @@ int main(int argc, char* argv[])
 			{ss >> POLY_FEEDBACK_FACTOR;}
 
 		else if (tag == "VISCOSITY")    
-			{ss >> buff2; if(buff2=="true") VISCOSITY = true; else VISCOSITY = false;} 
+			{ss >> buff2; if(buff2=="TRUE") VISCOSITY = true; else VISCOSITY = false;} 
 		
 		else if (tag == "VISCOSITY_FACTOR") 
 			{ss >> VISCOSITY_FACTOR;} 
@@ -818,10 +857,10 @@ int main(int argc, char* argv[])
 			{ss >> IMPOSED_NUC_ROT_SPEED;} 
 
 		else if (tag == "IMPOSED_NUC_ROT") 
-			{ss >> buff2; if(buff2=="true") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false;}
+			{ss >> buff2; if(buff2=="TRUE") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false;}
 
         else if (tag == "TEST_SQUASH") 
-			{ss >> buff2; if(buff2=="true") TEST_SQUASH = true; else TEST_SQUASH = false;}
+			{ss >> buff2; if(buff2=="TRUE") TEST_SQUASH = true; else TEST_SQUASH = false;}
 
         else if (tag == "TEST_FORCE_INITIAL_MAG")  
 			{ss >> TEST_FORCE_INITIAL_MAG;}
@@ -833,7 +872,7 @@ int main(int argc, char* argv[])
 			{ss >> TEST_DIST_EQUIL;}
 
 		else if (tag == "WRITE_BMPS_PRE_SYMBREAK") 
-			{ss >> buff2; if(buff2=="true") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false;}
+			{ss >> buff2; if(buff2=="TRUE") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false;}
 
 		else if (tag == "RADIUS") 
 			{ss >> RADIUS;} 
@@ -849,6 +888,9 @@ int main(int argc, char* argv[])
 		
 		else if (tag == "NODE_REPULSIVE_MAG") 
 			{ss >> NODE_REPULSIVE_MAG;}
+		
+		else if (tag == "NODE_REPULSIVE_POWER") 
+			{ss >> NODE_REPULSIVE_POWER;}
 		
 		else if (tag == "NODE_REPULSIVE_RANGE") 
 			{ss >> NODE_REPULSIVE_RANGE;}
@@ -890,19 +932,19 @@ int main(int argc, char* argv[])
 			{ss >> BMP_INTENSITY_OFFSET;}
 		
 		else if (tag == "SPECKLE") 
-			{ss >> buff2;if(buff2=="true") SPECKLE = true;else SPECKLE = false;}
+			{ss >> buff2;if(buff2=="TRUE") SPECKLE = true;else SPECKLE = false;}
 
         else if (tag == "COL_NODE_BY_STRAIN") 
-			{ss >> buff2;if(buff2=="true") COL_NODE_BY_STRAIN = true;else COL_NODE_BY_STRAIN = false;}
+			{ss >> buff2;if(buff2=="TRUE") COL_NODE_BY_STRAIN = true;else COL_NODE_BY_STRAIN = false;}
 
         else if (tag == "PLOTFORCES")  
-			{ss >> buff2;if(buff2=="true") PLOTFORCES = true;else PLOTFORCES = false;}
+			{ss >> buff2;if(buff2=="TRUE") PLOTFORCES = true;else PLOTFORCES = false;}
 		
 		else if (tag == "SPECKLE_FACTOR") 
 			{ss >> SPECKLE_FACTOR;}
 
         else if (tag == "SPECKLEGRID") 
-			{ss >> buff2;if(buff2=="true") SPECKLEGRID = true;else SPECKLEGRID = false;}
+			{ss >> buff2;if(buff2=="TRUE") SPECKLEGRID = true;else SPECKLEGRID = false;}
 
     	else if (tag == "SPECKLEGRIDPERIOD") 
 		    {ss >> SPECKLEGRIDPERIOD;}
@@ -923,19 +965,19 @@ int main(int argc, char* argv[])
 			{ss >> INIT_B_GAIN;} 
 		
 		else if (tag == "ROTATION") 
-			{ss >> buff2;if(buff2=="true")ROTATION = true;else ROTATION = false;} 
+			{ss >> buff2;if(buff2=="TRUE") ROTATION = true; else ROTATION = false;} 
 		
-		else if (tag == "MofI") 
-			{ss >> MofI;} 
+		else if (tag == "MOFI") 
+			{ss >> MOFI;} 
 		
 		else if (tag == "NO_IMAGE_TEXT") 
-			{ss >> buff2;if(buff2=="true") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false;} 
+			{ss >> buff2;if(buff2=="TRUE") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false;} 
 		
 		else if (tag == "BMP_COMPRESSION") 
 			{ss >> BMP_COMPRESSION;	if (BMP_COMPRESSION > 100) BMP_COMPRESSION = 100; else if (BMP_COMPRESSION < 0)	BMP_COMPRESSION = 0;} 
 		
 		else if (tag == "BMP_OUTPUT_FILETYPE") 
-			{ss >> BMP_OUTPUT_FILETYPE;} 
+			{ss >> buff2; istringstream ss3(strtolower(buff2)); ss3 >> BMP_OUTPUT_FILETYPE;} 
 		
 		else if (tag == "SHAPE") 
 			{ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere;}
@@ -955,7 +997,7 @@ int main(int argc, char* argv[])
 
 		istringstream ss2(buffer);
 
-		string tag2, buff3;
+		string tag2;
 
 		ss2 >> tag2 >> buff3 >> std::ws;
 
@@ -1002,7 +1044,7 @@ int main(int argc, char* argv[])
 
 	}
 
-	// calculate commonly used constants from parameters:
+    // calculate commonly used constants from parameters:
 
     if (NUCSHAPE == nucleator::capsule)
     {
@@ -1291,7 +1333,6 @@ int main(int argc, char* argv[])
 			 << RESTORE_FROM_FRAME << " (iteration " << starting_iter << ")" << endl;
 
         // srand( (unsigned) 200 );
-	    // cout << "reseeded: " << rand() << endl;
  
 		//	starting_iter = RESTORE_FROM_FRAME + 1; // don't overwrite
 
@@ -1325,7 +1366,16 @@ int main(int argc, char* argv[])
 
 	srand(rand_num_seed);
 
+#ifdef USE_MERSENNE
 
+    mers_rand.resize(NUM_THREAD_DATA_CHUNKS);
+
+    for (int i=0; i !=  NUM_THREAD_DATA_CHUNKS; ++i)
+    {
+        mers_rand[NUM_THREAD_DATA_CHUNKS].seed( rand_num_seed + NUM_THREAD_DATA_CHUNKS );
+    }
+
+#endif
 
 	int filenum = 0;
 	double polrate = 0;
@@ -1357,6 +1407,8 @@ int main(int argc, char* argv[])
 	theactin.opinfo.open(infofilename, ios::out | ios::trunc);
 	if (!theactin.opinfo) 
 	{ cout << "Unable to open file " << infofilename << " for output";}
+
+    CometVtkVis vtkvis(VIEW_VTK);
 
 
 	for(int i=starting_iter; i<=TOTAL_ITERATIONS; i++)
@@ -1432,13 +1484,17 @@ int main(int argc, char* argv[])
 							cout << endl << "Making movie of frames so far..." << endl;
 							cout.flush();
 							cout << endl;
+					        
 
 							if (X_BMP)
-								system("~/bin/ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//x_proj_%05d.png -vcodec mpeg4 x_proj.mov");
-							if (Y_BMP)
-								system("~/bin/ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//y_proj_%05d.png -vcodec mpeg4 y_proj.mov");
-							if (Z_BMP)
-								system("~/bin/ffmpeg -v 1 -me full -qscale 1 -y -i bitmaps//z_proj_%05d.png -vcodec mpeg4 z_proj.mov");
+                            {
+                                sprintf(command1, "~/bin/ffmpeg -v 1 -b 1800000  -y -i bitmaps//x_proj_%%05d.%s -vcodec mpeg4 x_proj.mov", BMP_OUTPUT_FILETYPE.c_str());
+                                system(command1);
+                            }
+							//if (Y_BMP)
+							//	system("~/bin/ffmpeg -v 1 -b 1800000  -y -i bitmaps//y_proj_%05d.jpeg -vcodec mpeg4 y_proj.mov");
+							//if (Z_BMP)
+							//	system("~/bin/ffmpeg -v 1 -b 1800000  -y -i bitmaps//z_proj_%05d.jpeg -vcodec mpeg4 z_proj.mov");
 							
 							cout << endl;
 						}
@@ -1456,6 +1512,7 @@ int main(int argc, char* argv[])
 			    distfromorigin = center.length();
             else
                 distfromorigin = theactin.testsurfaceposn;
+
             theactin.inverse_actin_rotation.getangles(x_angle,y_angle,z_angle);
             tot_rot = fabs(x_angle) + fabs(y_angle) + fabs(z_angle);
 		
@@ -1504,8 +1561,6 @@ srand( rand_num_seed );
 			
 			delta_center = center - last_center;  
 			last_center = center;
-
-			theactin.inverse_actin_rotation.getangles(x_angle,y_angle,z_angle);
 
             //cout << "test nodes: "<< theactin.testnodes.size() << endl;
 
@@ -1677,7 +1732,9 @@ srand( rand_num_seed );
 
 			}  
 
-			save_data(theactin, i);
+            save_data(theactin, i);
+
+            
 
             // save the nodes per dist file for the nodesupdate
 			ofstream opnodesupdate(NODESUPDATEFILE, ios::out | ios::trunc);
@@ -1770,6 +1827,9 @@ srand( rand_num_seed );
                 ABORT = true;
                 break;
             }
+
+            if (VIEW_VTK)
+                vtkvis.buildVTK(filenum);
 
             theactin.setdontupdates();
 
@@ -2015,7 +2075,7 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 
 // STUB function, doesn't do anything, but fill implementation out here
 // 
-void post_stats(actin &theactin, const int filenum)
+void post_stats(actin &, const int filenum)
 {
   cout << "  saving statistics for " << filenum << endl;  
 
@@ -2068,7 +2128,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 		int filenum;
 
 		// vtk
-		CometVtkVis vtkvis;//&theactin);
+		CometVtkVis vtkvis(true);//&theactin);
 	    
 		cout << "Post processing " 
 		 << postprocess_iterations.size()
@@ -2085,20 +2145,25 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
         int iter = *(postprocess_iterations.end()-1);
 
-        cout << "Loading frame " << (iter/InterRecordIterations) << " for scaling" << endl;
+        if (POST_BMP) // if we're doing the bitmaps, need to scale the intensities and segments
+        {
 
-        load_data(theactin, iter, false);
+            cout << "Loading frame " << (iter/InterRecordIterations) << " for scaling" << endl;
 
-        theactin.BMP_intensity_scaling = true;
+            load_data(theactin, iter, false);
 
-        theactin.savebmp(filenum, xaxis, actin::runfg, false); 
-		theactin.savebmp(filenum, yaxis, actin::runfg, false); 
-		theactin.savebmp(filenum, zaxis, actin::runfg, false);
+            theactin.BMP_intensity_scaling = true;
 
-        cout << endl;
+            theactin.savebmp(filenum, xaxis, actin::runfg, false); 
+		    theactin.savebmp(filenum, yaxis, actin::runfg, false); 
+		    theactin.savebmp(filenum, zaxis, actin::runfg, false);
 
-        nuc_object.segs.addallnodes();                                  
-        nuc_object.segs.set_scale_factors();
+            cout << endl;
+
+            nuc_object.segs.addallnodes();                                  
+            nuc_object.segs.set_scale_factors();
+
+        }
 
         if (BMP_TRACKS)
         {

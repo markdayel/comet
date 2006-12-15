@@ -202,9 +202,7 @@ int nodes::load_data(ifstream &istrm)
       >> testnode
       >> testsurface
 	  >> dummycol.r >> dummycol.g >> dummycol.b    // colour not used, kept to maintain file compatability, delete later.
-	  >> delta //.x 
-      //>> delta.y 
-      //>> delta.z 
+	  >> delta 
 	  >> linkforce_transverse  
 	  >> linkforce_radial  
 	  >> repforce_transverse  
@@ -212,12 +210,8 @@ int nodes::load_data(ifstream &istrm)
 	  >> links_broken  
 	  >> nucleator_impacts 
 	  >> stucktonucleator 
-	  >> nucleator_stuck_position //.x 
-      //>> nucleator_stuck_position.y 
-      //>> nucleator_stuck_position.z 
-      >> nucleator_link_force //.x 
-      //>> nucleator_link_force.y 
-      //>> nucleator_link_force.z 
+	  >> nucleator_stuck_position 
+      >> nucleator_link_force 
 	  >> creation_iter_num >> ch;
 
 	//if (nucleator_impacts>0.00001)

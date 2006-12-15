@@ -71,7 +71,7 @@ actin::actin(void)
 
 	crosslinknodesdelay.resize(CROSSLINKDELAY);
 
-	doreportiteration = 9999999;
+	//doreportiteration = 9999999;
 
 	donenode.resize(MAXNODES);
 
@@ -160,8 +160,8 @@ actin::actin(void)
 
 			do
 			{
-				x1 = 2.0 * ((double) rand() / (double) RAND_MAX) - 1.0;
-				x2 = 2.0 * ((double) rand() / (double) RAND_MAX) - 1.0;
+				x1 = 2.0 * rand_0to1() - 1.0;
+				x2 = 2.0 * rand_0to1() - 1.0;
 				w = x1 * x1 + x2 * x2;
 			} while ( w >= 1.0 );
 
@@ -175,7 +175,7 @@ actin::actin(void)
 
 		} while ( (y1<0) || (y1>1) );
 
-		if (rand() < SPECKLE_FACTOR * RAND_MAX)
+		if (prob_to_bool(SPECKLE_FACTOR))
 			speckle_array[i] = y1;
 		else
 			speckle_array[i] = 0;
@@ -1015,8 +1015,8 @@ bool actin::addlinks(nodes& linknode1, nodes& linknode2) const
     else
         pxlink = P_XLINK;
 
-	if ( pxlink * RAND_MAX > rand() )
-	{
+	if ( prob_to_bool(pxlink) )
+    {
 		linknode1.addlink(linknode2,dist); 
 		linknode2.addlink(linknode1,dist);
         
@@ -1217,7 +1217,9 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 	const double local_NODE_REPULSIVE_RANGEsqared = NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE;
 
     vect nodeposvec;
-    double distsqr,dist;
+    double distsqr;
+    //double dist;
+    double recipdist;
     //double recip_dist;
 	double rep_force_mag;
     vect rep_force_vect;
@@ -1292,20 +1294,30 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 			                if ( p_sameGPnode == p_nearnode)
 				                continue;  // skip if self
 
-			                disp = *p_nearnode - nodeposvec; 
-			                distsqr = disp.sqrlength();
-                			
-			                //if (distsqr < 2*SQRT_ACCURACY_LOSS)
-		    		        //    continue;
+
+			                disp = *p_nearnode - nodeposvec;   // relative position of node
+			                
+                            
+                            distsqr = disp.sqrlength();    // square of distance
+                			                               // avoid sqrt at this point, in case it's out of range and we don't need to do the repulsion
                			
 			                if (distsqr < local_NODE_REPULSIVE_RANGEsqared)
 			                {
 
-				                dist = sqrt(distsqr); 
+				                //dist = SSEsqrt(distsqr);  
+                                recipdist = SSErsqrt(distsqr);
+                                // calculate repulsive force
   
-					            rep_force_mag = 13 * NODE_REPULSIVE_MAG * (exp ((-7.0*dist/NODE_REPULSIVE_RANGE)) - exp (-7.0));
+                                // this was the old function
+					            //rep_force_mag = 13 * NODE_REPULSIVE_MAG * (exp ((-7.0*dist/NODE_REPULSIVE_RANGE)) - exp (-7.0));
 
-					            // if harbinger, ramp up the repulsive forces gradually (linearly with itter no):
+                                if (recipdist < (1.0/0.05) )
+                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                               else
+                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+ 
+
+						   // if harbinger, ramp up the repulsive forces gradually (linearly with itter no):
 
 					            if (p_sameGPnode->harbinger)
 					            {	// harbinger being repelled
@@ -1324,7 +1336,8 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
 					            // convert force magnitude to vector
 
-					            rep_force_vect = disp * rep_force_mag;
+       
+					            rep_force_vect = disp * rep_force_mag * recipdist;
 
                                 // add to the actual repulsion
 				                p_sameGPnode->rep_force_vec -= rep_force_vect ;
@@ -1337,9 +1350,9 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
             #ifdef PROXIMITY_VISCOSITY
                                 // do proximity-based viscosity
-					            if ((VISCOSITY) && (dist < VISC_DIST))
+					            if ((VISCOSITY) && (distsqr < VISC_DIST * VISC_DIST))
 					            {
-						            viscfactor = mymin(MAX_VISC_WEIGHTING,1/dist);
+						            viscfactor = mymin(MAX_VISC_WEIGHTING,recipdist);
 
 						            p_sameGPnode->viscosity_velocity_sum += p_nearnode->delta * viscfactor;
 						            p_sameGPnode->viscosity_velocity_unweight += viscfactor;
@@ -2106,13 +2119,13 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             //    sum_force += fabs(force);
             //}
 
-            double value = node[i].linkforce_transverse;
+            double value = node[i].linkforce_transverse + node[i].linkforce_radial;
 
-	        double y = value / (3000 * LINK_BREAKAGE_FORCE);    
+	        double y = value / (4500 * LINK_BREAKAGE_FORCE);    
 	        //y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
 	        //y = y*0.9+0.1;
-            if (rand() > 0.99 * RAND_MAX)
-                cout << " " << y;
+            //if (prob_to_bool(0.01))
+            //    cout << " " << y;
             nodecol.setcol(y);
         }
   
@@ -2197,8 +2210,22 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     const double Gscale = BMP_INTENSITY_SCALE / imageGmax[proj];
     const double Bscale = BMP_INTENSITY_SCALE / imageBmax[proj];
 
-    if (!COL_NODE_BY_STRAIN)
-    {
+    if (COL_NODE_BY_STRAIN)
+    {   // scale RGB by same scale to keep colors
+        double minscale = mymin(mymin(Rscale,Gscale),Bscale);
+        for (x = 0; x != BMP_WIDTH; ++x)
+        {
+	        for (y = 0; y != BMP_HEIGHT; ++y)
+	        {
+		        imageR[x][y] = mymin( (imageR[x][y] * minscale) , 1.0); 
+		        imageG[x][y] = mymin( (imageG[x][y] * minscale) , 1.0);
+		        imageB[x][y] = mymin( (imageB[x][y] * minscale) , 1.0);
+	        }
+        }
+        
+    }
+    else
+    {   // scale RGB separately
         for (x = 0; x != BMP_WIDTH; ++x)
         {
 	        for (y = 0; y != BMP_HEIGHT; ++y)
@@ -2208,20 +2235,6 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		        imageB[x][y] = mymin( ((imageB[x][y] * Bscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
 	        }
         }
-    }
-    else
-    {
-        double minscale = mymin(mymin(Rscale,Gscale),Bscale);
-        for (x = 0; x != BMP_WIDTH; ++x)
-        {
-	        for (y = 0; y != BMP_HEIGHT; ++y)
-	        {
-		        imageR[x][y] = mymin( (imageR[x][y] * minscale) , 1.0); // same scale to keep colors
-		        imageG[x][y] = mymin( (imageG[x][y] * minscale) , 1.0);
-		        imageB[x][y] = mymin( (imageB[x][y] * minscale) , 1.0);
-	        }
-        }
-        
     }
 
 
@@ -2530,13 +2543,16 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     else 
     {
 		sprintf(command1,
-		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%iuM' rectangle %i %i %i %i text +%i+%i '%s-projection  \\nFrame % 6i\\nTime % 6.1f'\" %s %s%s_proj_%05i.%s", 
+		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%iuM' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s%s_proj_%05i.%s", 
         IMAGEMAGICKCONVERT, temp_BMP_filename, BMP_COMPRESSION, 
             20 * BMP_AA_FACTOR, 5 * BMP_AA_FACTOR, 595 * BMP_AA_FACTOR, scalebarmicrons, 
             5 * BMP_AA_FACTOR, 576 * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  573 * BMP_AA_FACTOR,
             5 * BMP_AA_FACTOR, 20 * BMP_AA_FACTOR,  // first line of text
-            projletter, filenum,
-			filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), BITMAPDIR,
+            projletter, 
+            5 * BMP_AA_FACTOR, ( 20 + 25 )* BMP_AA_FACTOR , 
+            filenum,
+			5 * BMP_AA_FACTOR, ( 20 + 50 )* BMP_AA_FACTOR , 
+            filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
 
@@ -2575,7 +2591,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 	p_outbmpfile->flush();  // must flush the bitmap file buffer before calling imagemagick
 
-//cout << command3 << endl;
+    //cout << command3 << endl;
 
 	system(command3);
 
@@ -3038,18 +3054,10 @@ int actin::load_data(ifstream &ifstr)
 
     inverse_actin_rotation = actin_rotation.inverse();
 
-
-   // ifstr >> highestnodecount >> ch
-	  //>> nexttocrosslink  >> ch
-	  //>> iteration_num    >> ch 
-	  //>> linksbroken      >> ch 
-	  //>> linksformed      
-	  //>> actin_rotation   >> ch
-	  //>> camera_rotation  >> ch
-	  //>> camera_rotation2;
-
     ifstr >> str;
+
     // load nodes
+    
     if(str.compare("nodes-links:") !=0 ){
 	cout << "error in data file, 'nodes-links:' expected" << endl;
 	cout << "'" << str <<"' last read." << endl;
@@ -3412,8 +3420,8 @@ void actin::addbrownianforces()
 									i_node != node.begin()+highestnodecount;
 							      ++i_node)
     {
-        i_node->rep_force_vec.x += brownianscale * (double)rand() * RECIP_RAND_MAX;
-        i_node->rep_force_vec.y += brownianscale * (double)rand() * RECIP_RAND_MAX;
-        i_node->rep_force_vec.z += brownianscale * (double)rand() * RECIP_RAND_MAX;
+        i_node->rep_force_vec.x += brownianscale * rand_0to1();
+        i_node->rep_force_vec.y += brownianscale * rand_0to1();
+        i_node->rep_force_vec.z += brownianscale * rand_0to1();
     }
 }

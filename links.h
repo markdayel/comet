@@ -33,11 +33,13 @@ public:
 	double orig_dist_recip;
 	double linkforcescalefactor;
 
+    double last_force;
+
 	//double last_dist;
 	//double last_but_one_dist;
 
 	//int breakcount;
-	bool broken;	
+	bool broken, last_force_set;	
 	//bool breaklastiter;
 	//double theta;
 	//double phi;
@@ -47,31 +49,52 @@ public:
         /// break link if above LINK_BREAKAGE_FORCE
         /// returns false if link broken
 
+
         // calculate forces:
 
         force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip * linkforcescalefactor;
 
-        // decide if link broken:
+        if (force < 0)
+        {
+            // decide if link broken:
 
-        if (USE_BREAKAGE_STRAIN)
-        {	
-		    // since strainlimit = distlimit / orig_dist,
-		    // then distlimit = strainlimit * orig_dist
-	        if (dist > LINK_BREAKAGE_STRAIN * orig_dist)
-		    {
-			    broken = true;
-			    return false;  
-		    }
-        }
-        else
-        { // just using force
-		    if (-force > LINK_BREAKAGE_FORCE)
-		    {   
-			    broken = true;
-                return false;
-		    }
+            if (USE_BREAKAGE_VISCOSITY)
+            {	
+		        // since strainlimit = distlimit / orig_dist,
+		        // then distlimit = strainlimit * orig_dist
+    	        
+                //double p_break = DELTA_T * 1 * exp( (-LINK_BREAKAGE_FORCE * 12) / (force * force));
+
+                if (-force > LINK_BREAKAGE_FORCE)
+		        {
+			        broken = true;
+			        return false;  
+		        }
+
+                if (last_force_set)
+                {
+                    if ( fabs(last_force - force) > BREAKAGE_VISCOSITY_THRESHOLD * DELTA_T )
+                    {
+                        broken = true;
+                        return false;
+                    }
+                }
+
+            }
+            else
+            { // just using force
+		        if (-force > LINK_BREAKAGE_FORCE)
+		        {   
+			        broken = true;
+                    return false;
+		        }
+
+            }
 
         }
+
+        last_force = force;
+        last_force_set = true;
 
 	    return true;
     }

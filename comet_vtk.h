@@ -15,11 +15,29 @@
 #include <string>
 #include "stdafx.h"
 
+#include "vtkVersion.h"
+
 #include "vtkRenderWindow.h"
 #include "vtkRenderer.h"
 #include "vtkRenderWindowInteractor.h"
 
 #include "vtkStructuredPoints.h"
+
+//#include "vtkMesaRenderer.h"
+//#include "vtkMesaRenderWindow.h"
+
+//#include "vtkOpenGLRenderWindow.h"
+//#include "vtkOpenGLRenderer.h"
+
+// vtk 4.2 libaries need floats not doubles
+#if VTK_MAJOR_VERSION < 5
+  #define VTK_FLOAT_PRECISION float
+#else
+  #define VTK_FLOAT_PRECISION double
+#endif
+
+//#define vtkRenderWindow vtkOpenGLOffscreenRenderWindow
+//#define vtkRenderer vtkOpenGLRenderer
 
 class CometVtkVis {
  private:
@@ -33,6 +51,10 @@ class CometVtkVis {
   int renderwin_npy;
   double vx_intensity_scale;
   std::string file_prefix;
+
+  VTK_FLOAT_PRECISION meanx, meany, meanz;
+
+  int movex,movey,movez;
 
   rotationmatrix vtk_cam_rot;
 
@@ -60,9 +82,13 @@ class CometVtkVis {
   OptProjectionType getProjectionOpt(const std::string &value);
   
  public:
-  CometVtkVis();//actin * theactin);
+  CometVtkVis(bool VIEW_VTK);//actin * theactin);
   ~CometVtkVis();
   
+  bool convert_to_vtkcoord(VTK_FLOAT_PRECISION &x, VTK_FLOAT_PRECISION &y, VTK_FLOAT_PRECISION &z);
+
+  void set_mean_posns();
+
   void buildVTK(int framenumber);
   void addNucleator();
   void addCapsuleNucleator();

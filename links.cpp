@@ -24,6 +24,7 @@ links::links(void)
 	broken = true;
 	linkednodeptr = 0;
 	linkednodenumber = -1;
+    last_force_set = false;
 }
 
 links::~links(void)
@@ -33,8 +34,10 @@ links::~links(void)
 links::links(nodes& linknode, const double& linkdist)
 {
 	linkednodeptr = &linknode;
+    linkednodenumber = linknode.nodenum;
     orig_dist = linkdist;
     broken = false;
+    last_force_set = false;
 
     orig_distsqr = orig_dist*orig_dist;
 	orig_dist_recip = 1/orig_dist;
@@ -51,7 +54,9 @@ int links::save_data(ofstream &ostr)
 {
     ostr << broken << " " 
 		 << orig_dist << " "
-		 << linkednodeptr->nodenum;
+		 << linkednodeptr->nodenum << " "
+         << last_force << " "
+         << last_force_set;
 	
     return 0;
 }
@@ -60,13 +65,15 @@ int links::load_data(ifstream &istr)
 {
     istr >> broken 
 		 >> orig_dist  
-		 >> linkednodenumber;
+		 >> linkednodenumber
+         >> last_force 
+         >> last_force_set;                 
 
 	orig_dist_recip = 1/orig_dist;
 	linkforcescalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
     orig_distsqr = orig_dist*orig_dist;
     broken = false;   // todo: are we catching broken links for removal before/after load?
-
+    last_force_set = true;
     // note cannot set the node pointer yet
     // linkednodeptr = &linknode;
 

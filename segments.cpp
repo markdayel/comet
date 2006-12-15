@@ -1336,9 +1336,9 @@ void segments::write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &image
     // write out colormap key
 
     const int keyheight = bins_bitmap_height;
-    const int keywidth  = 10;
+    const int keywidth  = 10 * BMP_AA_FACTOR;
 
-    const int keyxorig = 0; //centerx - offsetx;
+    const int keyxorig = 1 * BMP_AA_FACTOR; //centerx - offsetx;
     const int keyyorig = centery - (keyheight / 2);
 
     Colour colour;

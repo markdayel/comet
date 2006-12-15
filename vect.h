@@ -17,6 +17,8 @@ removed without prior written permission from the author.
 
 //#include "stdafx.h"
 
+
+
 class vect
 {
  public:
@@ -157,6 +159,11 @@ class vect
 	{
 	    return calcdist(x,y,z);
 	}
+
+    inline double recip_length() const
+	{
+	    return recipcalcdist(x,y,z);
+	}
     
     //inline vect cross(const vect &a, const vect &b)
     //{
@@ -183,7 +190,7 @@ class vect
     const inline vect unitvec() const
 	{
 	    vect temp;
-	    double recip_len = 1/length();
+	    double recip_len = recipcalcdist(x,y,z);
 	    
 	    temp.x = x*recip_len;
 	    temp.y = y*recip_len;

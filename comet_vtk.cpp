@@ -16,12 +16,7 @@
 
 #ifdef LINK_VTK
 
-/// win32 vtk 4.2 libaries need floats not doubles
-#ifdef _WIN32
-  #define VTK_FLOAT_PRECISION float
-#else
-  #define VTK_FLOAT_PRECISION double
-#endif
+
 
 #ifndef NOKBHIT
 #ifndef _WIN32
@@ -70,7 +65,7 @@
 
 #include "vtkPolyData.h"
 #include "vtkCellArray.h"
-#include "vtkIdType.h"
+//#include "vtkIdType.h"
 #include "vtkCellData.h"
 #include "vtkDataSet.h"
 
@@ -110,8 +105,9 @@ using namespace std; // REVISIT only iostream probably temporary -- remove later
 // whatever is requested will be added to the visualisation, it's up to the user to set 
 // sensible and compatible options.
 
-CometVtkVis::CometVtkVis()//actin * theactin)
+CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
 {
+
     //ptheactin = theactin;
 
     voxel_scale = 4.0;
@@ -156,14 +152,30 @@ CometVtkVis::CometVtkVis()//actin * theactin)
 	renderwin_npy = VTK_HEIGHT * VTK_AA_FACTOR;
       }
     }
-    cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
-    cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
+
     
     // REVISIT: Make a renderer each time? or clear out and rebuild?
     // a renderer and render window
     //renderer = vtkRenderer::New();
     //render_win = vtkRenderWindow::New();
-    //render_win->AddRenderer(renderer);	
+    //render_win->AddRenderer(renderer);
+
+    if (VIEW_VTK) // only create window if we're actually using vtk
+    {
+        cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
+        cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
+        render_win = vtkRenderWindow::New();
+        if(!OptsInteractive)	 // increase quality for non-interactive
+        {
+            render_win->OffScreenRenderingOn();
+        }
+        else
+        {
+            iren = vtkRenderWindowInteractor::New();
+            iren->SetRenderWindow(render_win);
+            iren->Initialize();
+        }
+    }
 }
 
 CometVtkVis::~CometVtkVis()
@@ -173,83 +185,111 @@ CometVtkVis::~CometVtkVis()
     // iren->Delete();
     //render_win->Delete();
     //renderer->Delete();
+
+    render_win->Delete();
+    if(OptsInteractive)	 // increase quality for non-interactive
+    {
+        iren->Delete();
+    }
 }
 
 void CometVtkVis::buildVTK(int framenumber)
 {
+    
+
     char filename[255];
     sprintf(filename , "%s%s_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, BMP_OUTPUT_FILETYPE.c_str());
   
     renderer = vtkRenderer::New();
-    render_win = vtkRenderWindow::New();
-    renderer->SetBackground(0, 0, 0);		
-
-    render_win->LineSmoothingOn();
-    //render_win->PointSmoothingOn();
-    //render_win->PolygonSmoothingOn();
+	renderer->SetBackground(0, 0, 0);
     
-    if(!OptsInteractive)	 // increase quality for non-interactive
-      {
-	render_win->SetAAFrames(5);
-      }
-    
-    //render_win->SetStereoRender(2);
-
-    
+	setProjection();  // also sets the rotation of the objects, so comes before actors:
+	
     // add objects to renderer
     if(OptsRenderNucleator)
-	addNucleator();
+	    addNucleator();
   
     if(OptsRenderNodes)
-	addNodes();
+	    addNodes();
   
     if(OptsRenderLinks)        
-	addLinks();
+	    addLinks();
   
     if(OptsVolumeRenderNodes)
-	addGuassianNodeVolume(false);        
+	    addGuassianNodeVolume(false);        
     
     if(OptsIsoRenderNodes)
-	addGuassianNodeVolume(true);
+	    addGuassianNodeVolume(true);
     
     if(OptsRenderAxes)
-	addAxes();
-
-    setProjection(); 
+	    addAxes();
+ 
+    
+     
     // if(OptsRenderText)        
     // addVoxelBound(renderer);    
     //addLight();
 
-    render_win->SetSize(renderwin_npx, renderwin_npy);  
-    if(!OptsInteractive) {
-	render_win->OffScreenRenderingOn();
-    }												
-    render_win->AddRenderer(renderer);    
+    //render_win = vtkRenderWindow::New();
+
+	render_win->AddRenderer(renderer);
+	renderer->Delete();
+	
+	render_win->SetSize(renderwin_npx, renderwin_npy);
+	render_win->LineSmoothingOn();
+    //render_win->PointSmoothingOn();
+    //render_win->PolygonSmoothingOn();
+    
+    if(!OptsInteractive)	 // increase quality for non-interactive
+    {
+        render_win->SetAAFrames(5);
+    }
+
+    //render_win->SetStereoRender(2);
+
+	    
     
     // -- rendering
-    if(OptsInteractive) {
-      cout << "interactive" << endl;
+    if(OptsInteractive) 
+    {
+        cout << "Starting interactive mode" << endl;
 
-      // allow interaction
-      iren = vtkRenderWindowInteractor::New();
-      iren->SetRenderWindow(render_win);
-      iren->Initialize();
-      iren->Start();
-      
-      iren->Delete();
-    } else {
-      render_win->Render();
-      saveImage(filename);
-      
-      if (VTK_AA_FACTOR!=1){
-	char command1[255];
-	sprintf(command1, 
-		"%s -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
-		IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,  
-		framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
-	//cout << command1 << endl;
-	system(command1);
-      }
+        // allow interaction
+        //iren = vtkRenderWindowInteractor::New();
+        //iren->SetRenderWindow(render_win);
+        //iren->Initialize();
+        iren->Start();
+
+        //iren->Delete();
+    } 
+    else 
+    {
+	  
+        render_win->Render();
+        saveImage(filename);
+
+        
+
+        if (VTK_AA_FACTOR!=1)
+        {
+            char command1[255];
+            sprintf(command1, 
+                "%s -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
+                IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,  
+                framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
+            //cout << command1 << endl;
+            system(command1);
+        }
+        else
+        {
+            char command1[255];
+            sprintf(command1, 
+            "%s -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i' text +5+45 'Time % 6.1f' \" %s &",
+            IMAGEMAGICKMOGRIFY, BMP_COMPRESSION,  
+            framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
+            //cout << command1 << endl;
+            system(command1);
+        }
     }
     
     // clear all actors from the renderer
@@ -258,8 +298,8 @@ void CometVtkVis::buildVTK(int framenumber)
     
     // CHECK: order matters in deletion of these objects
     // otherwise too many X Servers error.
-    renderer->Delete();
-    render_win->Delete();
+    
+    //render_win->Delete();
 }
 
 // -- Helper functions
@@ -1068,12 +1108,26 @@ void CometVtkVis::addNodes()
     map->Delete();
 }
 
-void CometVtkVis::addLinks()
-{	
-  // Move to fcn
-  // temp: reset center:
-  double meanx = 0.0, meany=0.0, meanz=0.0;
+bool CometVtkVis::convert_to_vtkcoord(VTK_FLOAT_PRECISION &x, VTK_FLOAT_PRECISION &y, VTK_FLOAT_PRECISION &z)
+{
+    ptheactin->inverse_actin_rotation.rotate(x, y, z); 
+    vtk_cam_rot.rotate(x, y, z); // bring rip to y-axis
+
+    if(OptsSkipOutOfFocusPoints && fabs(x) > FOCALDEPTH)
+      return false;  // skip points outside focal depth
+
+    x = ptheactin->dbl_pixels(x - meanx) / voxel_scale + movex; 
+    y = ptheactin->dbl_pixels(y - meany) / voxel_scale + movey;
+    z = ptheactin->dbl_pixels(z - meanz) / voxel_scale + movez;
+
+    return true;
+}
+
+void CometVtkVis::set_mean_posns()
+{
   
+  meanx = meany = meanz =0.0;
+
   if(!VTK_MOVE_WITH_BEAD) {
     meanx = -ptheactin->p_nuc->position.x; 
     meany = -ptheactin->p_nuc->position.y; 
@@ -1097,9 +1151,7 @@ void CometVtkVis::addLinks()
   int beadmaxy = int(ptheactin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
   int beadmaxz = int(ptheactin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
   
-  int movex = 0;
-  int movey = 0;
-  int movez = 0;
+  movex=movey=movez=0;
   
   if(beadminx < 0)
     movex = -(beadminx);
@@ -1115,6 +1167,15 @@ void CometVtkVis::addLinks()
   if(beadmaxz > nk)
     movez = -(beadmaxz - nk);
   // -- ^^ Move to fcn
+}
+
+
+void CometVtkVis::addLinks()
+{	
+  // Move to fcn
+  // temp: reset center:
+  
+  set_mean_posns();
   
   // only used for strain coloring
   vtkLookupTable *lut = vtkLookupTable::New();
@@ -1169,91 +1230,109 @@ void CometVtkVis::addLinks()
 
   double force;
   
-  for(int i=0; i<ptheactin->highestnodecount; i++) {      
+  for(int i=0; i != ptheactin->highestnodecount; i++) 
+  {      
     nodeposvec = ptheactin->node[i];
     
     n_pt[0] = ptheactin->node[i].x;
     n_pt[1] = ptheactin->node[i].y;
     n_pt[2] = ptheactin->node[i].z;		
     
-    // -- Move to fcn
-    ptheactin->inverse_actin_rotation.rotate(n_pt[0], n_pt[1], n_pt[2]); 
-    vtk_cam_rot.rotate(n_pt[0], n_pt[1], n_pt[2]); // bring rip to y-axis
+    if (!convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]))
+        continue;  // out of bounds, so skip
     
-    if(OptsSkipOutOfFocusPoints && fabs(n_pt[0]) > FOCALDEPTH)
-      continue;  // skip points outside focal depth
-
-    n_pt[0] = ptheactin->dbl_pixels(n_pt[0] - meanx)/voxel_scale; 
-    n_pt[1] = ptheactin->dbl_pixels(n_pt[1] - meany)/voxel_scale;
-    n_pt[2] = ptheactin->dbl_pixels(n_pt[2] - meanz)/voxel_scale;
     
-    // displace to bring node back in bounds
-    n_pt[0] += movex;
-    n_pt[1] += movey;
-    n_pt[2] += movez;
-    // -- ^^ Move to fcn
-    
-    if(!ptheactin->node[i].listoflinks.empty()) {
+    if(!ptheactin->node[i].listoflinks.empty()) 
+    {
       // nodes thisnode = ptheactin->node[i];
       
       // loop over linked nodes
-      // check this out if we use this function
+      // check this out if we use this function                          
       for(vector<links>::iterator link_i=ptheactin->node[i].listoflinks.begin(); 
 	  link_i != ptheactin->node[i].listoflinks.end();
 	  ++link_i) {
 	
-	// assume links to nodes 'less' than us have already been added
-	// cout << i << "==" << ptheactin->node[i].nodenum << endl;
-	if( (*link_i).linkednodenumber < i)
-	  continue;
-	
-	// create line for the link
-	l_pt[0] = (*link_i).linkednodeptr->x;
-	l_pt[1] = (*link_i).linkednodeptr->y;
-	l_pt[2] = (*link_i).linkednodeptr->z;
-	
-	// -- Move to fcn
-	ptheactin->inverse_actin_rotation.rotate(l_pt[0], l_pt[1], l_pt[2]); 
-	vtk_cam_rot.rotate(l_pt[0], l_pt[1], l_pt[2]); // bring rip to y-axis
-	
-	l_pt[0] = ptheactin->dbl_pixels(l_pt[0] - meanx)/voxel_scale; 
-	l_pt[1] = ptheactin->dbl_pixels(l_pt[1] - meany)/voxel_scale;
-	l_pt[2] = ptheactin->dbl_pixels(l_pt[2] - meanz)/voxel_scale;
-	
-	// displace to bring node back in bounds
-	l_pt[0] += movex;
-	l_pt[1] += movey;
-	l_pt[2] += movez;
-	// -- ^^ Move to fcn
+	    // assume links to nodes 'less' than us have already been added
+	    // cout << i << "==" << ptheactin->node[i].nodenum << endl;
+          if( (*link_i).linkednodeptr->nodenum < i)
+	      continue;
+    	
+	    // create line for the link
+	    l_pt[0] = (*link_i).linkednodeptr->x;
+	    l_pt[1] = (*link_i).linkednodeptr->y;
+	    l_pt[2] = (*link_i).linkednodeptr->z;
+    	
+	    convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]); 
 
-	vtkIdType linept_ids[2];	
-	linept_ids[0] = linepts->InsertNextPoint( n_pt );
-	linept_ids[1] = linepts->InsertNextPoint( l_pt );
-	vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);	
-	
-	//Colour col;	  
-	// Set scalar for the line
-    if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
-    {    
-	  vect displacement = nodeposvec - *(link_i->linkednodeptr);
-	  double distance = displacement.length();      
-	  //double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
-	  //double y = strain / LINK_BREAKAGE_STRAIN;
-      link_i->getlinkforces(distance, force);
-	  double y = fabs(force) / LINK_BREAKAGE_FORCE;
-	  //y = (5+log(y))/5;	 // log transform	    
-	  //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
-	  y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
-	  y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
-	  //col.setcol(y);
-  
-	  cellscalars->InsertValue(cell_id, y);
-	} else {
-	  cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
-	}	
+	    vtkIdType linept_ids[2];	
+	    linept_ids[0] = linepts->InsertNextPoint( n_pt );
+	    linept_ids[1] = linepts->InsertNextPoint( l_pt );
+	    vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);	
+    	
+	    //Colour col;	  
+	    // Set scalar for the line
+        if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
+        {    
+            vect displacement = nodeposvec - *(link_i->linkednodeptr);
+            double distance = displacement.length();      
+            //double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
+            //double y = strain / LINK_BREAKAGE_STRAIN;
+            link_i->getlinkforces(distance, force);
+            double y = fabs(force) / LINK_BREAKAGE_FORCE;
+            //y = (5+log(y))/5;	 // log transform	    
+            //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
+            y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
+            y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
+            //col.setcol(y);
+      
+            cellscalars->InsertValue(cell_id, y);
+	    } 
+        else 
+        {
+            cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
+	    }	
       } // links loop
     }
-  } // node loop
+
+     if (ptheactin->node[i].stucktonucleator)
+		{
+             // create line for the link
+	        l_pt[0] = ptheactin->node[i].nucleator_stuck_position.x;
+	        l_pt[1] = ptheactin->node[i].nucleator_stuck_position.y;
+	        l_pt[2] = ptheactin->node[i].nucleator_stuck_position.z;
+
+            convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
+        
+            vtkIdType linept_ids[2];	
+	        linept_ids[0] = linepts->InsertNextPoint( n_pt );
+	        linept_ids[1] = linepts->InsertNextPoint( l_pt );
+	        vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);
+        
+            if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
+            {
+                vect displacement = ptheactin->node[i] - ptheactin->node[i].nucleator_stuck_position;
+	            double distance = displacement.length();
+
+                force = NUC_LINK_FORCE * distance;
+        	    	        
+                double y = fabs(force) / LINK_BREAKAGE_FORCE;    // note: colour relative to normal link scale
+	            //y = (5+log(y))/5;	 // log transform	    
+	            //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
+	            y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
+	            y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
+	            //col.setcol(y);
+                //cellscalars->InsertValue(cell_id, 0.7);
+	            cellscalars->InsertValue(cell_id, y);
+	        } 
+            else 
+            {
+	            cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
+	        }	
+            
+        }
+
+    } // node loop
+
   linedata->SetPoints(linepts);
   linepts->Delete();
   linedata->SetLines(cellarray);
@@ -1274,6 +1353,7 @@ void CometVtkVis::addLinks()
   lut->Delete();
   lines_actor->Delete();
 }
+
 // ML FIXME:  This is wrong, sort out a better method for mean strain
 double CometVtkVis::getMeanNodeLinkForce(const int id) 
 {
@@ -1342,13 +1422,26 @@ void CometVtkVis::addLight()
 
 void CometVtkVis::setProjection()
 {
+   // renderer->ResetCamera();
 
-  //renderer->ResetCamera();
+
+  renderer->ResetCamera();
+  renderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
+  
+    renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
+    renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
+    // FIXME: ML
+    // should scale properly here to a value linked to the render setup
+    renderer->GetActiveCamera()->SetParallelScale(p_scale);
+    //renderer->ResetCamera();
+
+  
     if(OptsRenderProjection==X){
       // x
       vtk_cam_rot = ptheactin->camera_rotation;
       renderer->GetActiveCamera()->SetPosition(-radius_pixels*OptsCameraDistMult, 0, 0);
-      //renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+	  //renderer->GetActiveCamera()->SetPosition(-2, 0, 0);
+      renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
     } else if(OptsRenderProjection==Y){
       // y
       vtk_cam_rot = ptheactin->camera_rotation;
@@ -1366,20 +1459,13 @@ void CometVtkVis::setProjection()
       //cout << "  projection: rip" << endl;
       renderer->GetActiveCamera()->SetPosition(radius_pixels*OptsCameraDistMult/2, 
 					       0, 
-					       -radius_pixels*OptsCameraDistMult);
+							-radius_pixels*OptsCameraDistMult);
       renderer->GetActiveCamera()->SetViewUp(1, 0, 0);    
     } else {
       cout << "!ERROR: unknown projection:" << OptsRenderProjection << endl;
     }
-    //renderer->ResetCamera();
-    renderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
-    renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
-    renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
-    // FIXME: ML
-    // should scale properly here to a value linked to the render setup
-    renderer->GetActiveCamera()->SetParallelScale(p_scale);
-    renderer->ResetCamera();
-}
+
+    }
 
 void CometVtkVis::setOptions()
 {
