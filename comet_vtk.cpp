@@ -160,22 +160,26 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
     //render_win = vtkRenderWindow::New();
     //render_win->AddRenderer(renderer);
 
-    if (VIEW_VTK) // only create window if we're actually using vtk
+     OptVIEW_VTK = VIEW_VTK;
+
+    cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
+    cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
+
+    render_win = vtkRenderWindow::New();
+    
+    if(OptsInteractive || VIEW_VTK)	 // only create window if we're actually using vtk
     {
-        cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
-        cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
-        render_win = vtkRenderWindow::New();
-        if(!OptsInteractive)	 // increase quality for non-interactive
-        {
-            render_win->OffScreenRenderingOn();
-        }
-        else
-        {
-            iren = vtkRenderWindowInteractor::New();
-            iren->SetRenderWindow(render_win);
-            iren->Initialize();
-        }
+        iren = vtkRenderWindowInteractor::New();
+        iren->SetRenderWindow(render_win);
+        iren->Initialize();
+            
+    } else
+    {
+        render_win->OffScreenRenderingOn();
+        // increase quality for non-interactive?
     }
+
+
 }
 
 CometVtkVis::~CometVtkVis()
@@ -187,10 +191,26 @@ CometVtkVis::~CometVtkVis()
     //renderer->Delete();
 
     render_win->Delete();
-    if(OptsInteractive)	 // increase quality for non-interactive
+
+    if(OptsInteractive || OptVIEW_VTK)	 // increase quality for non-interactive
     {
         iren->Delete();
     }
+}
+
+void CometVtkVis::RestartRenderWindow()
+{
+    render_win->Delete();
+
+    if(OptsInteractive || OptVIEW_VTK)	 // increase quality for non-interactive
+    {
+        iren->Delete();
+
+        iren = vtkRenderWindowInteractor::New();
+        iren->SetRenderWindow(render_win);
+        iren->Initialize();
+    }
+
 }
 
 void CometVtkVis::buildVTK(int framenumber)
@@ -397,7 +417,7 @@ void CometVtkVis::addVoxelBound()
 
 void CometVtkVis::saveImage(char* image_filename)
 {
-    cout << "Saving image to file: " << image_filename << endl;
+    cout << "Saving " << image_filename << endl;
   
     vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
     rwin_to_image->SetInput(render_win);

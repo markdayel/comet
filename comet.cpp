@@ -2128,7 +2128,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 		int filenum;
 
 		// vtk
-		CometVtkVis vtkvis(true);//&theactin);
+		//CometVtkVis vtkvis(false); //&theactin);
 	    
 		cout << "Post processing " 
 		 << postprocess_iterations.size()
@@ -2259,8 +2259,17 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 		    if (POST_VTK)
 		    {
+                CometVtkVis vtkvis(true);
+
 			    //cout << "- visualisation: " << filenum << endl;
+                unsigned int nowtime = (unsigned) time(NULL);
+
 			    vtkvis.buildVTK(filenum);
+                
+                //vtkvis.RestartRenderWindow(); // see if this gets rid of memory leak, slowdown etc.  this segfaults
+
+                cout << " " << (unsigned) time(NULL) - nowtime << " seconds " << endl;
+
 		    }
 
 		    if (POST_STATS)

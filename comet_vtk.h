@@ -77,6 +77,8 @@ class CometVtkVis {
   double OptsCameraDistMult;
   OptProjectionType OptsRenderProjection;
   bool OptsSkipOutOfFocusPoints;
+
+  bool OptVIEW_VTK;
   
   bool getBoolOpt(const std::string &value);
   OptProjectionType getProjectionOpt(const std::string &value);
@@ -90,6 +92,8 @@ class CometVtkVis {
   void set_mean_posns();
 
   void buildVTK(int framenumber);
+
+  void RestartRenderWindow();
   void addNucleator();
   void addCapsuleNucleator();
   void addSphericalNucleator();
