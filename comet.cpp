@@ -449,7 +449,11 @@ int main(int argc, char* argv[])
 		} else if (strcmp( hostname, "montecarlo.math.ucdavis.edu") == 0)
 		{
 			nicelevel = 19;
-		} else if (
+		} else if (     // for cluster machines, run in quiet mode
+                        // this still produces output, but only once per 
+                        // written file, rather than once per second
+            (strcmp( hostname, "ec3.ucsf.edu") == 0) ||
+            (strcmp( hostname, "sc1.ucsf.edu") == 0) ||
             (strcmp( hostname, "compute-0-0.local") == 0) ||
             (strcmp( hostname, "compute-0-1.local") == 0) ||
             (strcmp( hostname, "compute-0-2.local") == 0) ||
@@ -457,14 +461,20 @@ int main(int argc, char* argv[])
             (strcmp( hostname, "compute-0-4.local") == 0) ||
             (strcmp( hostname, "compute-0-5.local") == 0) ||
             (strcmp( hostname, "compute-0-6.local") == 0) ||
-            (strcmp( hostname, "compute-0-7.local") == 0))
+            (strcmp( hostname, "compute-0-7.local") == 0) ||                  
+            (strcmp( hostname, "compute-0-8.local") == 0) ||
+            (strcmp( hostname, "compute-0-9.local") == 0) ||
+            (strcmp( hostname, "compute-0-10.local") == 0) ||
+            (strcmp( hostname, "compute-0-11.local") == 0) ||
+            (strcmp( hostname, "compute-0-12.local") == 0) ||
+            (strcmp( hostname, "compute-0-13.local") == 0) ||
+            (strcmp( hostname, "compute-0-14.local") == 0) ||
+            (strcmp( hostname, "compute-0-15.local") == 0))
         {
             nicelevel = 19;
-            //sprintf(IMAGEMAGICKCONVERT,"ssh ec3 convert");
-            //sprintf(IMAGEMAGICKMOGRIFY,"ssh ec3 mogrify");
-            //NOBGIMAGEMAGICK = true; // prevent extraneous '&' in ssh
-            //NOBITMAPS = true;  // eh, this ssh call slows things down interminably
-            QUIET = true;
+            //NOBGIMAGEMAGICK = true; 
+            //NOBITMAPS = true;  
+            QUIET = true;   // quiet still produces output, but only once per written file, rather than per second
         }
 		else
 		{
@@ -628,6 +638,8 @@ int main(int argc, char* argv[])
 	string buffer;
 	string unrecognisedlines;
 
+    double tempdbl;
+
 	while (getline(param, buffer)) 
 	{ 
         istringstream ss(strtoupper(buffer));
@@ -783,6 +795,9 @@ int main(int argc, char* argv[])
 
 		else if (tag == "NUC_LINK_BREAKAGE_FORCE") 
 			{ss >> NUC_LINK_BREAKAGE_FORCE;}
+
+        else if (tag == "NUC_LINK_BREAKAGE_DIST")   // note must be called after NUC_LINK_FORCE
+			{ss >> tempdbl; NUC_LINK_BREAKAGE_FORCE = NUC_LINK_FORCE / tempdbl; }
 
 		else if (tag == "LINK_BREAKAGE_FORCE") 
 			{ss >> LINK_BREAKAGE_FORCE;}

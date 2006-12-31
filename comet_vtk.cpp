@@ -136,6 +136,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
     renderwin_npx = 0;
     renderwin_npy = 0;
 
+    VTK_HIGHQUAL = false;
+
     OptsCameraDistMult = 7;
 
     setOptions();
@@ -166,6 +168,16 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
     cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
 
     render_win = vtkRenderWindow::New();
+
+    render_win->SetSize(renderwin_npx, renderwin_npy);
+	render_win->LineSmoothingOn();
+    render_win->PointSmoothingOn();
+    render_win->PolygonSmoothingOn();
+    
+    if(VTK_HIGHQUAL)	 // increase quality for non-interactive
+    {
+        render_win->SetAAFrames(5);
+    }
     
     if(OptsInteractive || VIEW_VTK)	 // only create window if we're actually using vtk
     {
@@ -244,30 +256,14 @@ void CometVtkVis::buildVTK(int framenumber)
     if(OptsRenderAxes)
 	    addAxes();
  
-    
-     
+      
     // if(OptsRenderText)        
     // addVoxelBound(renderer);    
     //addLight();
 
-    //render_win = vtkRenderWindow::New();
-
 	render_win->AddRenderer(renderer);
 	renderer->Delete();
 	
-	render_win->SetSize(renderwin_npx, renderwin_npy);
-	render_win->LineSmoothingOn();
-    //render_win->PointSmoothingOn();
-    //render_win->PolygonSmoothingOn();
-    
-    if(!OptsInteractive)	 // increase quality for non-interactive
-    {
-        render_win->SetAAFrames(5);
-    }
-
-    //render_win->SetStereoRender(2);
-
-	    
     
     // -- rendering
     if(OptsInteractive) 
@@ -288,15 +284,20 @@ void CometVtkVis::buildVTK(int framenumber)
         render_win->Render();
         saveImage(filename);
 
-        
+     
 
         if (VTK_AA_FACTOR!=1)
         {
             char command1[255];
             sprintf(command1, 
-                "%s -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i\\nTime % 6.1f'\" %s &",
+                "%s -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s &",
                 IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,  
-                framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
+                //5 * VTK_AA_FACTOR, ( 20 + 25 )* VTK_AA_FACTOR , 
+                5 , ( 25 ),
+                framenumber,
+			    //5 * VTK_AA_FACTOR, ( 20 + 50 )* VTK_AA_FACTOR ,
+                5 , ( 50 ) ,
+                framenumber * InterRecordIterations * DELTA_T, filename);
             //cout << command1 << endl;
             system(command1);
         }
@@ -304,9 +305,14 @@ void CometVtkVis::buildVTK(int framenumber)
         {
             char command1[255];
             sprintf(command1, 
-            "%s -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +5+20 'Frame % 6i' text +5+45 'Time % 6.1f' \" %s &",
-            IMAGEMAGICKMOGRIFY, BMP_COMPRESSION,  
-            framenumber, framenumber * InterRecordIterations * DELTA_T, filename);
+            "%s -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s &",
+            IMAGEMAGICKMOGRIFY, BMP_COMPRESSION,
+            //5 * VTK_AA_FACTOR, ( 20 + 25 )* VTK_AA_FACTOR ,
+            5 , ( 25 ) ,
+            framenumber,
+			//5 * VTK_AA_FACTOR, ( 20 + 50 )* VTK_AA_FACTOR ,
+            5 , ( 50 ) ,
+            framenumber * InterRecordIterations * DELTA_T, filename);
             //cout << command1 << endl;
             system(command1);
         }
@@ -1268,49 +1274,50 @@ void CometVtkVis::addLinks()
       
       // loop over linked nodes
       // check this out if we use this function                          
-      for(vector<links>::iterator link_i=ptheactin->node[i].listoflinks.begin(); 
-	  link_i != ptheactin->node[i].listoflinks.end();
-	  ++link_i) {
+      for(vector<links>::iterator link_i = ptheactin->node[i].listoflinks.begin(); 
+	                             link_i != ptheactin->node[i].listoflinks.end();
+	                           ++link_i) 
+      {
 	
-	    // assume links to nodes 'less' than us have already been added
-	    // cout << i << "==" << ptheactin->node[i].nodenum << endl;
-          if( (*link_i).linkednodeptr->nodenum < i)
-	      continue;
-    	
-	    // create line for the link
-	    l_pt[0] = (*link_i).linkednodeptr->x;
-	    l_pt[1] = (*link_i).linkednodeptr->y;
-	    l_pt[2] = (*link_i).linkednodeptr->z;
-    	
-	    convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]); 
+	        // assume links to nodes 'less' than us have already been added
+	        // cout << i << "==" << ptheactin->node[i].nodenum << endl;
+            if( (*link_i).linkednodeptr->nodenum < i)
+	            continue;
+        	
+	        // create line for the link
+	        l_pt[0] = (*link_i).linkednodeptr->x;
+	        l_pt[1] = (*link_i).linkednodeptr->y;
+	        l_pt[2] = (*link_i).linkednodeptr->z;
+        	
+	        convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]); 
 
-	    vtkIdType linept_ids[2];	
-	    linept_ids[0] = linepts->InsertNextPoint( n_pt );
-	    linept_ids[1] = linepts->InsertNextPoint( l_pt );
-	    vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);	
-    	
-	    //Colour col;	  
-	    // Set scalar for the line
-        if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
-        {    
-            vect displacement = nodeposvec - *(link_i->linkednodeptr);
-            double distance = displacement.length();      
-            //double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
-            //double y = strain / LINK_BREAKAGE_STRAIN;
-            link_i->getlinkforces(distance, force);
-            double y = fabs(force) / LINK_BREAKAGE_FORCE;
-            //y = (5+log(y))/5;	 // log transform	    
-            //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
-            y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
-            y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
-            //col.setcol(y);
-      
-            cellscalars->InsertValue(cell_id, y);
-	    } 
-        else 
-        {
-            cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
-	    }	
+	        vtkIdType linept_ids[2];	
+	        linept_ids[0] = linepts->InsertNextPoint( n_pt );
+	        linept_ids[1] = linepts->InsertNextPoint( l_pt );
+	        vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);	
+        	
+	        //Colour col;	  
+	        // Set scalar for the line
+            if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
+            {    
+                vect displacement = nodeposvec - *(link_i->linkednodeptr);
+                double distance = displacement.length();      
+                //double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
+                //double y = strain / LINK_BREAKAGE_STRAIN;
+                link_i->getlinkforces(distance, force);
+                double y = fabs(force) / LINK_BREAKAGE_FORCE;
+                //y = (5+log(y))/5;	 // log transform	    
+                //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
+                y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
+                y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
+                //col.setcol(y);
+          
+                cellscalars->InsertValue(cell_id, y);
+	        } 
+            else 
+            {
+                cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
+	        }	
       } // links loop
     }
 
@@ -1505,7 +1512,14 @@ void CometVtkVis::setOptions()
 	if(tag.size() == 0 || tag[0] == '#')
 	    // skip empty line or comment
 	    continue;
-      
+     
+    if(tag == "VIS_VTK_HIGHQUAL") 
+	{ 
+	    ss >> value;
+	    VTK_HIGHQUAL = getBoolOpt(value);
+	    continue;
+	}
+
 	if(tag == "VIS_INTERACTIVE") 
 	{ 
 	    ss >> value;
@@ -1617,6 +1631,8 @@ void CometVtkVis::setOptions()
 	    continue;
 	}
     }  
+
+    
 }
 
 bool CometVtkVis::getBoolOpt(const string &value) {

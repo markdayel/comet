@@ -77,6 +77,7 @@ class CometVtkVis {
   double OptsCameraDistMult;
   OptProjectionType OptsRenderProjection;
   bool OptsSkipOutOfFocusPoints;
+  bool VTK_HIGHQUAL;
 
   bool OptVIEW_VTK;
   
