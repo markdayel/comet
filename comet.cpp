@@ -797,7 +797,7 @@ int main(int argc, char* argv[])
 			{ss >> NUC_LINK_BREAKAGE_FORCE;}
 
         else if (tag == "NUC_LINK_BREAKAGE_DIST")   // note must be called after NUC_LINK_FORCE
-			{ss >> tempdbl; NUC_LINK_BREAKAGE_FORCE = NUC_LINK_FORCE / tempdbl; }
+			{ss >> tempdbl; NUC_LINK_BREAKAGE_FORCE = NUC_LINK_FORCE * tempdbl; }
 
 		else if (tag == "LINK_BREAKAGE_FORCE") 
 			{ss >> LINK_BREAKAGE_FORCE;}
