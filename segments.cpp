@@ -1023,7 +1023,7 @@ void segments::saveradialreport(const int& filenum) const
 	if (!opradialreport) 
 	{ cout << "Unable to open file " << filename << " for output"; return;}
 
-	opradialreport << "RadialSegDist,numnodes,RepForceRadial,RepForceTrans,LinkForceRadial,LinkForceTrans,LinksBroken" << endl;
+    opradialreport << "Distance,Nodes,F_Rep(radial),F_Rep(trans),F_Link(radial),F_Link(trans),LinksBroken" << endl;
 
 	for (int dist = 0; dist < num_radial_bins; ++dist)
 	{

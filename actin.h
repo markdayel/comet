@@ -286,7 +286,8 @@ public:
 
 	inline int pixels(const double & coord) const
 	{  // convert simulation distance into pixel distance
-		return (int)((double) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
+        return int(coord > 0.0 ? dbl_pixels(coord) + 0.5 :
+                                 dbl_pixels(coord) - 0.5);
 	}
 
 	inline double unpixels(const int & pix) const

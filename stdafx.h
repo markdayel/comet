@@ -209,6 +209,7 @@ extern vector <MTRand> mers_rand;
 
 extern bool ALLOW_HARBINGERS_TO_MOVE;
 extern bool CAGE_ON_SIDE;
+extern bool SYM_BREAK_TO_RIGHT;
 
 extern double GRIDBOUNDS;
 extern double GRIDRES;

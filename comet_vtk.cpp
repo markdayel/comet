@@ -171,8 +171,11 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
 
     render_win->SetSize(renderwin_npx, renderwin_npy);
 	render_win->LineSmoothingOn();
-    render_win->PointSmoothingOn();
-    render_win->PolygonSmoothingOn();
+    
+    //render_win->PointSmoothingOn();
+
+    if (!OptsRenderNodes)   // smoothing is too slow if rendering the nodes
+        render_win->PolygonSmoothingOn();   // seem to need this else rendering artifact on sphere
     
     if(VTK_HIGHQUAL)	 // increase quality for non-interactive
     {
@@ -571,8 +574,8 @@ void CometVtkVis::addSphericalNucleator()
     //cout << "  voxel_scale: " << voxel_scale << endl;
     //cout << "  nucleator radius: " << radius_pixels << endl;
     sphere->SetRadius(radius_pixels);
-    sphere->SetThetaResolution(64);
-    sphere->SetPhiResolution(64);
+    sphere->SetThetaResolution(18);
+    sphere->SetPhiResolution(18);
 
     double nx, ny, nz;
     

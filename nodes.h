@@ -69,9 +69,15 @@ public:
 
     double pressure;
 
-	double linkforce_transverse, linkforce_radial,  // index is the threadnum
+	double linkforce_transverse, linkforce_radial,  
 			 repforce_transverse, repforce_radial,
 			 links_broken;
+
+    double linkenergy_transverse, linkenergy_radial,
+			 repenergy_transverse, repenergy_radial,
+			 linksenergy_broken;
+
+
 	
 	double nucleator_impacts;	// keeps track of ejections of node from nucleator
 								// merely for display of ejection forces
@@ -182,9 +188,15 @@ public:
 		repforce_transverse  = 
 		repforce_radial      = 
 		links_broken	     =
- 		nucleator_impacts    = 0;
+ 		nucleator_impacts    = 0.0;
 
 		nucleator_link_force.zero();
+
+  //      linkenergy_transverse = 
+  //      linkenergy_radial     =
+		//repenergy_transverse  =
+  //      repenergy_radial      =
+		//linksenergy_broken    = 0.0;
 
 	}
 

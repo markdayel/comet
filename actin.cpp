@@ -1344,7 +1344,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
                                 // add to the statistics
 				                p_sameGPnode->adddirectionalmags(rep_force_vect, p_sameGPnode->repforce_radial,
-								                p_sameGPnode->repforce_transverse);
+								                                                 p_sameGPnode->repforce_transverse);
 
                                 p_sameGPnode->pressure += rep_force_mag;
 
@@ -1894,6 +1894,12 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	
 	int x,y;
 
+    int bmpcenterx = BMP_WIDTH/2;
+    int bmpcentery = BMP_HEIGHT/2;
+
+    if (SYM_BREAK_TO_RIGHT)
+        bmpcenterx = BMP_WIDTH/3; 
+
 	// precalculate gaussian for psf
 
 	double gaussmax = (double) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
@@ -1991,10 +1997,10 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		 keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
 
 
-	beadmaxx = pixels(  keep_within_border - meany) +  BMP_WIDTH/2;
-	beadmaxy = pixels(  keep_within_border - meanz) +  BMP_HEIGHT/2;
-	beadminx = pixels(- keep_within_border - meany) +  BMP_WIDTH/2;
-	beadminy = pixels(- keep_within_border - meanz) +  BMP_HEIGHT/2;
+	beadmaxx = pixels(  keep_within_border - meany) +  bmpcenterx;
+	beadmaxy = pixels(  keep_within_border - meanz) +  bmpcentery;
+	beadminx = pixels(- keep_within_border - meany) +  bmpcenterx;
+	beadminy = pixels(- keep_within_border - meanz) +  bmpcentery;
 
 	int movex = 0;
 	int movey = 0;
@@ -2035,6 +2041,9 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     Colour nodecol;
     nodecol.setwhite();
+
+
+    //  main loop over nodes:
 
     for(int i=0; i != highestnodecount; ++i)
     {
@@ -2089,8 +2098,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             mult = 1.0;
         }
 
-        x = pixels(rotatednodepositions[i].y - meany) +  BMP_WIDTH/2;                      
-		y = pixels(rotatednodepositions[i].z - meanz) + BMP_HEIGHT/2;
+        x = pixels(rotatednodepositions[i].y - meany) +  bmpcenterx;                      
+		y = pixels(rotatednodepositions[i].z - meanz) + bmpcentery;
 
 #ifdef BMP_USE_FOCAL_DEPTH
             mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
@@ -2253,8 +2262,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	if ((CAGE_ON_SIDE) && (p_nuc->is_sphere()))
 	{   // move cage to side of image
 		cagedispy = cagedispz = 0.0;
-		cagemovex = p_nuc->segs.centerx -  BMP_WIDTH/2 - xgmax;
-		cagemovey = p_nuc->segs.centery - BMP_HEIGHT/2 - ygmax + BMP_HEIGHT/4;
+		cagemovex = p_nuc->segs.centerx -  bmpcenterx - xgmax;
+		cagemovey = p_nuc->segs.centery - bmpcentery - ygmax + BMP_HEIGHT/4;
 	}
 
     const int CAGE_POINT_EXTENT = 4;
@@ -2275,8 +2284,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
             projection_rotation.rotate(rot);
 
-		    double dblx = dbl_pixels(rot.y - cagedispy) + (double) BMP_WIDTH/2.0;
-		    double dbly = dbl_pixels(rot.z - cagedispz) + (double) BMP_HEIGHT/2.0;
+		    double dblx = dbl_pixels(rot.y - cagedispy) + (double) bmpcenterx;
+		    double dbly = dbl_pixels(rot.z - cagedispz) + (double) bmpcentery;
 
             x = (int) (dblx + 0.5);
             y = (int) (dbly + 0.5);
@@ -2484,8 +2493,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                     x = i_trackpoint->x;
                     y = i_trackpoint->y;
 
-                    //x = xgmax + movex + pixels(tmp_nodepos.y - temp_nuc_posn.y) +  BMP_WIDTH/2;                      
-		            //y = ygmax + movey + pixels(tmp_nodepos.z - temp_nuc_posn.z) + BMP_HEIGHT/2;
+                    //x = xgmax + movex + pixels(tmp_nodepos.y - temp_nuc_posn.y) +  bmpcenterx;                      
+		            //y = ygmax + movey + pixels(tmp_nodepos.z - temp_nuc_posn.z) + bmpcentery;
 
                     if ((lastx != x) ||
                         (lasty != y))  // only plot if point different
@@ -3259,10 +3268,20 @@ void actin::set_sym_break_axes(void)
 
 	camera_rotation.settoidentity();
 
-    camera_rotation.rotatematrix(-x_angle, xaxis);
+
+    if (SYM_BREAK_TO_RIGHT)
+    {
+        camera_rotation.rotatematrix(PI/2,xaxis); // rotate so that always breaks to the right
+
+    } else // restore the component of the sym break in the yz plane
+    {
+        camera_rotation.rotatematrix(-x_angle, xaxis);
+    }
+
 	camera_rotation.rotatematrix(maxchiangle, zaxis);
 	camera_rotation.rotatematrix(y_angle, yaxis);
 	camera_rotation.rotatematrix(x_angle, xaxis);
+
 
 
 	camera_rotation2.settoidentity();

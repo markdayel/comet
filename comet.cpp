@@ -163,6 +163,7 @@ double TEST_FORCE_INCREMENT = 10;
 double TEST_DIST_EQUIL = 0.0001;
 
 bool WRITE_BMPS_PRE_SYMBREAK = false;
+bool SYM_BREAK_TO_RIGHT = false;
 
 bool QUIET = false;
 
@@ -253,6 +254,8 @@ bool USETHREAD_COLLISION   = true;
 bool USETHREAD_APPLYFORCES = true;
 bool USETHREAD_LINKFORCES  = true;
 // --
+
+bool CLUSTER = false;
 
 #ifdef _NUMA
     //nsgid_t numa_group;
@@ -472,9 +475,9 @@ int main(int argc, char* argv[])
             (strcmp( hostname, "compute-0-15.local") == 0))
         {
             nicelevel = 19;
-            //NOBGIMAGEMAGICK = true; 
-            //NOBITMAPS = true;  
-            QUIET = true;   // quiet still produces output, but only once per written file, rather than per second
+            CLUSTER=true;
+  
+
         }
 		else
 		{
@@ -684,6 +687,9 @@ int main(int argc, char* argv[])
 
 		else if (tag == "VTK_HEIGHT")	  
 			{ss >> VTK_HEIGHT;}
+
+        else if (tag == "SYM_BREAK_TO_RIGHT") 
+			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
 
 		else if (tag == "VTK_MOVE_WITH_BEAD") 
 			{ss >> buff2; if (buff2=="TRUE") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false;}
@@ -997,6 +1003,9 @@ int main(int argc, char* argv[])
 		else if (tag == "SHAPE") 
 			{ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere;}
 
+        else if (tag == "CLUSTER") 
+			{ss >> buff2;if(buff2=="TRUE") CLUSTER = true; else CLUSTER = false;}
+
 		else if (tag.find("VIS") == 0)
 		{
 			// VTK stuff, ignore for now---perhaps put VTK stuff in here?
@@ -1059,6 +1068,13 @@ int main(int argc, char* argv[])
 
 	}
 
+    if (CLUSTER)
+    {   // override some parameters if running on a cluster machine
+
+        QUIET = true;   // quiet still produces output, but only once per written file, rather than per second
+        NO_IMAGE_TEXT = true;  //remove image text for matrix display
+        SYM_BREAK_TO_RIGHT = true;
+    }
     // calculate commonly used constants from parameters:
 
     if (NUCSHAPE == nucleator::capsule)
