@@ -163,6 +163,13 @@ public:
 		radial_link_transverse,
 		radial_links_broken;
 
+    Dbl1d 
+        radial_repenergy_radial,
+        radial_repenergy_transverse, 
+        radial_linkenergy_radial, 
+        radial_linkenergy_transverse, 
+        radial_linksenergy_broken;
+
 	//Int4d segment_pixel;
 
     void set_scale_factors(void);

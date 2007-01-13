@@ -1034,6 +1034,10 @@ void actin::nucleator_node_interactions()
 	vect disp,forcevec;
 	double dist, force;
 
+#ifndef NO_CALC_STATS
+    vect energyvec;
+#endif
+
     // now using insidenucleator flag set in setunitvec() of node
 
     for(vector <nodes>::iterator	i_node  = node.begin()+lowestnodetoupdate; 
@@ -1069,8 +1073,18 @@ void actin::nucleator_node_interactions()
 
                 i_node->link_force_vec -= forcevec;			// add to move node
 				
+#ifndef NO_CALC_STATS
+
                 // add to node segment stats (tension only since default dist is zero)
-		        i_node->adddirectionalmags(forcevec, i_node->linkforce_radial, i_node->linkforce_transverse);
+		        i_node->adddirectionalmags(forcevec, i_node->linkforce_radial, 
+                                                     i_node->linkforce_transverse);
+
+                energyvec = disp * ( dist * NUC_LINK_FORCE / 2.0);
+
+                i_node->adddirectionalmags(energyvec, i_node->linkenergy_radial, 
+                                                      i_node->linkenergy_transverse);
+
+#endif
 
 				vect tomove = -forcevec * DELTA_T * FORCE_SCALE_FACT;  // convert force to distance
 
@@ -1225,6 +1239,13 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
     vect rep_force_vect;
     vect disp;
 
+#ifndef NO_CALC_STATS
+    vect repenergy_vect;
+
+    // this is so that energy = 0 for dist = NODE_REPULSIVE_RANGE (greater than that is 0 since we don't do the calc'n)
+    const double energyoffset = - 0.06 * NODE_REPULSIVE_MAG * NODE_REPULSIVE_RANGE * ( (1.0 / ( 1 - NODE_REPULSIVE_POWER )) -1  );
+
+#endif
     int x,y,z;
     //int minx,miny,minz;
     //int maxx,maxy,maxz;
@@ -1311,6 +1332,9 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                                 // this was the old function
 					            //rep_force_mag = 13 * NODE_REPULSIVE_MAG * (exp ((-7.0*dist/NODE_REPULSIVE_RANGE)) - exp (-7.0));
 
+
+                                // n.b. if you change this function, also change the energy function below to be the integral
+
                                 if (recipdist < (1.0/0.05) )
                                    rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                                else
@@ -1341,11 +1365,23 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
                                 // add to the actual repulsion
 				                p_sameGPnode->rep_force_vec -= rep_force_vect ;
+#ifndef NO_CALC_STATS
 
                                 // add to the statistics
 				                p_sameGPnode->adddirectionalmags(rep_force_vect, p_sameGPnode->repforce_radial,
 								                                                 p_sameGPnode->repforce_transverse);
 
+                                // this is the integral of the force function 
+                                repenergy_vect = disp * recipdist * ( 0.06 * SSEsqrt(distsqr) * NODE_REPULSIVE_MAG 
+                                    *  ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) / ( 1- NODE_REPULSIVE_POWER) - 1 ) - energyoffset);
+
+                                p_sameGPnode->adddirectionalmags(repenergy_vect, p_sameGPnode->repenergy_radial,
+								                                                 p_sameGPnode->repenergy_transverse);
+
+
+
+#endif
+                                // pressure can be used for polymerizationstalling---not part of the stats 
                                 p_sameGPnode->pressure += rep_force_mag;
 
             #ifdef PROXIMITY_VISCOSITY
@@ -1671,6 +1707,10 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 	double viscfactor;
 #endif
 
+#ifndef NO_CALC_STATS
+    vect energyvec;
+#endif
+
 
     // go through all nodes
     for(vector <nodes>::iterator i_node  = dat->startnode;
@@ -1700,15 +1740,34 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
         		
 				i_node->link_force_vec += forcevec;
         		
-				if (force < 0) // put tension into link forces
+#ifndef NO_CALC_STATS
+
+
+//                energyvec = disp * recipdist * ( LINK_FORCE * linkforcescalefactor * dist * (2 - (dist * orig_dist_recip)  )) / 2.0;
+                energyvec = disp * ( LINK_FORCE * i_link->linkforcescalefactor * (2 - (dist * i_link->orig_dist_recip)  )) / 2.0;
+
+
+                if (force < 0.0) // put tension into link forces
 				{
 					i_node->adddirectionalmags(forcevec, i_node->linkforce_radial, i_node->linkforce_transverse);
+
+                    i_node->adddirectionalmags(energyvec, i_node->linkenergy_radial, 
+                                                          i_node->linkenergy_transverse);
 				} 
 				else 
 				{	   // but put compression into repulsive forces
 					i_node->adddirectionalmags(forcevec, i_node->repforce_radial , i_node->repforce_transverse );
-					i_node->pressure += force;
+
+                    i_node->adddirectionalmags(energyvec, i_node->repenergy_radial, 
+                                                          i_node->repenergy_transverse);		
 				}
+
+#endif
+
+                if (force > 0) // put repulsion into pressure
+				{
+                    i_node->pressure += force;
+                }
 
 #ifdef LINK_VISCOSITY
 				if (VISCOSITY)

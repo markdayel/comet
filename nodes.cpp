@@ -157,23 +157,22 @@ int nodes::save_data(ofstream &ostr)
 	 << polymer << " " 
      << testnode << " "
      << testsurface << " "
-	 << dummycol.r << " " << dummycol.g << " " << dummycol.b << " "  // colour not used, kept to maintain file compatability, delete later.
-	 << delta << " " // .x
-	 //<< delta.y << " "
-	 //<< delta.z << " "
+	 //<< dummycol.r << " " << dummycol.g << " " << dummycol.b << " "  // colour not used, kept to maintain file compatability, delete later.
+	 << delta << " " 
 	 << linkforce_transverse << " " 
 	 << linkforce_radial << " " 
 	 << repforce_transverse << " " 
 	 << repforce_radial << " " 
 	 << links_broken << " " 
+     << linkenergy_transverse << " "  
+     << linkenergy_radial << " "     
+     << repenergy_transverse << " " 
+     << repenergy_radial << " "      
+     << linksenergy_broken << " " 
 	 << nucleator_impacts << " "
 	 << stucktonucleator << " "
-	 << nucleator_stuck_position << " "  // .x
-     //<< nucleator_stuck_position.y << " "
-     //<< nucleator_stuck_position.z << " "
-     << nucleator_link_force << " "  // .x
-     //<< nucleator_link_force.y << " "
-     //<< nucleator_link_force.z << " "
+	 << nucleator_stuck_position << " " 
+     << nucleator_link_force << " "
 	 << creation_iter_num << ":";
     
     // now the links
@@ -201,13 +200,18 @@ int nodes::load_data(ifstream &istrm)
 	  >> polymer
       >> testnode
       >> testsurface
-	  >> dummycol.r >> dummycol.g >> dummycol.b    // colour not used, kept to maintain file compatability, delete later.
+	  //>> dummycol.r >> dummycol.g >> dummycol.b    // colour not used, kept to maintain file compatability, delete later.
 	  >> delta 
 	  >> linkforce_transverse  
 	  >> linkforce_radial  
 	  >> repforce_transverse  
 	  >> repforce_radial                           
-	  >> links_broken  
+	  >> links_broken
+      >> linkenergy_transverse  
+      >> linkenergy_radial     
+      >> repenergy_transverse  
+      >> repenergy_radial      
+      >> linksenergy_broken 
 	  >> nucleator_impacts 
 	  >> stucktonucleator 
 	  >> nucleator_stuck_position 

@@ -116,7 +116,14 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	radial_rep_transverse.resize(num_radial_bins);	
 	radial_link_radial.resize(num_radial_bins);	
 	radial_link_transverse.resize(num_radial_bins);	
-	radial_links_broken.resize(num_radial_bins);	
+	radial_links_broken.resize(num_radial_bins);
+
+
+    radial_repenergy_radial.resize(num_radial_bins);
+    radial_repenergy_transverse.resize(num_radial_bins); 
+    radial_linkenergy_radial.resize(num_radial_bins); 
+    radial_linkenergy_transverse.resize(num_radial_bins); 
+    radial_linksenergy_broken.resize(num_radial_bins);
 
 
 	// allocate surfaceimpacts vector
@@ -574,7 +581,13 @@ void segments::addnode(const nodes& node)
 	    radial_rep_transverse[dist] += node.repforce_transverse; 
 	    radial_link_radial[dist] += node.linkforce_radial;
 	    radial_link_transverse[dist] += node.linkforce_transverse;
-	    radial_links_broken[dist] += node.links_broken;    
+	    radial_links_broken[dist] += node.links_broken;
+
+        radial_linkenergy_transverse[dist] += node.linkenergy_transverse;
+        radial_linkenergy_radial[dist] += node.linkenergy_radial;
+		radial_repenergy_transverse[dist] += node.repenergy_transverse;
+        radial_repenergy_radial[dist] += node.repenergy_radial;
+		radial_linksenergy_broken[dist] += node.linksenergy_broken;
     }
 
 }
@@ -613,7 +626,13 @@ void segments::clearbins(void)
 		radial_rep_transverse[dist] =
 		radial_link_radial[dist] =
 		radial_link_transverse[dist] =
-		radial_links_broken[dist] = 0;
+		radial_links_broken[dist] = 0.0;
+
+        radial_linkenergy_transverse[dist] =
+        radial_linkenergy_radial[dist] =
+		radial_repenergy_transverse[dist] =
+        radial_repenergy_radial[dist] =
+		radial_linksenergy_broken[dist] =0.0;
 	}
 
     for (int axis = 0; axis != 3; ++axis)
@@ -625,7 +644,7 @@ void segments::clearbins(void)
 		    rep_transverse_SD[axis][dist] =
 		    link_radial_SD[axis][dist] =
 		    link_transverse_SD[axis][dist] =
-		    links_broken_SD[axis][dist] = 0;
+		    links_broken_SD[axis][dist] = 0.0;
         }
     }
 }
@@ -1023,7 +1042,8 @@ void segments::saveradialreport(const int& filenum) const
 	if (!opradialreport) 
 	{ cout << "Unable to open file " << filename << " for output"; return;}
 
-    opradialreport << "Distance,Nodes,F_Rep(radial),F_Rep(trans),F_Link(radial),F_Link(trans),LinksBroken" << endl;
+    opradialreport << "Distance,Nodes,F_Rep(radial),F_Rep(trans),F_Link(radial),F_Link(trans),LinksBroken"
+                   << ",E_Rep(radial),E_Rep(trans),E_Link(radial),E_Link(trans),E_LinksBroken" << endl;
 
 	for (int dist = 0; dist < num_radial_bins; ++dist)
 	{
@@ -1035,7 +1055,13 @@ void segments::saveradialreport(const int& filenum) const
 			<< radial_rep_transverse[dist] << ","
 			<< radial_link_radial[dist] << ","
 			<< radial_link_transverse[dist] << ","
-			<< radial_links_broken[dist] << endl;
+			<< radial_links_broken[dist] << ","
+            << radial_repenergy_radial[dist] << ","
+            << radial_repenergy_transverse[dist] << ","
+            << radial_linkenergy_radial[dist] << ","
+            << radial_linkenergy_transverse[dist] << ","
+		    << radial_linksenergy_broken[dist]
+            << endl;
 	}
 
 	opradialreport << endl;

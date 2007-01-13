@@ -146,7 +146,7 @@ public:
     }
 
 	inline void clearforces()
-	{
+	{   // this is called every iteration (as opposed to clearstats() which builds up until savepoints)
 		
 	    if (VISCOSITY)
 	    {
@@ -163,20 +163,20 @@ public:
 
 
 
-	inline void getdirectionalmags(const vect &displacement, double &dotmag, double &crossmag) const
+	inline void getdirectionalmags(const vect &v, double &dotmag, double &crossmag) const
 	{
-		dotmag = fabs(unit_vec_posn.dot(displacement));
-		crossmag = displacement.length() - dotmag;
+		dotmag = fabs(unit_vec_posn.dot(v));
+		crossmag = v.length() - dotmag;
 	}
 
-	inline void adddirectionalmags(const vect &displacement, double &dotmag, double &crossmag) const
+	inline void adddirectionalmags(const vect &v, double &dotmag, double &crossmag) const
 	{  
 		double tmp_dotmag; 
 		
-		tmp_dotmag = fabs(unit_vec_posn.dot(displacement));
+		tmp_dotmag = fabs(unit_vec_posn.dot(v));
 
 		dotmag   += tmp_dotmag;
-		crossmag += displacement.length() - tmp_dotmag;
+		crossmag += v.length() - tmp_dotmag;
 	}
 
 	inline void clearstats()
@@ -192,11 +192,11 @@ public:
 
 		nucleator_link_force.zero();
 
-  //      linkenergy_transverse = 
-  //      linkenergy_radial     =
-		//repenergy_transverse  =
-  //      repenergy_radial      =
-		//linksenergy_broken    = 0.0;
+        linkenergy_transverse = 
+        linkenergy_radial     =
+		repenergy_transverse  =
+        repenergy_radial      =
+		linksenergy_broken    = 0.0;
 
 	}
 
