@@ -570,9 +570,15 @@ int main(int argc, char* argv[])
     sprintf(DATADIR,"%s/data/", path);
     sprintf(REPORTDIR,"%s/reports/", path);
     sprintf(BITMAPDIR,"%s/bitmaps/", path);
-    sprintf(TEMPDIR,"%s/temp/", path);
+    //sprintf(TEMPDIR,"%s/temp/", path);
     sprintf(VTKDIR,"%s/vtk/", path);
     sprintf(STATSDIR,"%s/statistics/", path);
+    
+    sprintf(TEMPDIR,"/tmp/comet.XXXXXX");
+    mkdtemp(TEMPDIR);
+    sprintf(TEMPDIR,"%s/",TEMPDIR);
+
+    cout << "Temp dir: " << TEMPDIR << endl;
 
 #else
 	
@@ -583,6 +589,8 @@ int main(int argc, char* argv[])
     sprintf(TEMPDIR,"%s\\temp\\", path);
     sprintf(VTKDIR,"%s\\vtk\\", path);
     sprintf(STATSDIR,"%s\\statistics\\", path);
+
+    
 
 #endif
 
