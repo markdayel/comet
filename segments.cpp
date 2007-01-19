@@ -583,11 +583,11 @@ void segments::addnode(const nodes& node)
 	    radial_link_transverse[dist] += node.linkforce_transverse;
 	    radial_links_broken[dist] += node.links_broken;
 
-        radial_linkenergy_transverse[dist] += node.linkenergy_transverse;
-        radial_linkenergy_radial[dist] += node.linkenergy_radial;
-		radial_repenergy_transverse[dist] += node.repenergy_transverse;
-        radial_repenergy_radial[dist] += node.repenergy_radial;
-		radial_linksenergy_broken[dist] += node.linksenergy_broken;
+//        radial_linkenergy_transverse[dist] += node.linkenergy_transverse;
+//       radial_linkenergy_radial[dist] += node.linkenergy_radial;
+//		radial_repenergy_transverse[dist] += node.repenergy_transverse;
+//        radial_repenergy_radial[dist] += node.repenergy_radial;
+//		radial_linksenergy_broken[dist] += node.linksenergy_broken;
     }
 
 }

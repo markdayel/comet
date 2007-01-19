@@ -35,6 +35,8 @@ links_broken(0)
     testsurface = 0;
     creation_iter_num = 0;
 
+//    initial_repulsive_energy = -1.0; // start -ve before set
+
   	x = y = z = 0.0;
     link_force_vec.zero();
 	rep_force_vec.zero();
@@ -69,6 +71,8 @@ links_broken(0)
     testnode = false;
     testsurface = 0;
     creation_iter_num = 0;
+
+//    initial_repulsive_energy = -1.0; // start -ve before set
 
 	link_force_vec.zero();
 	rep_force_vec.zero();
@@ -164,11 +168,12 @@ int nodes::save_data(ofstream &ostr)
 	 << repforce_transverse << " " 
 	 << repforce_radial << " " 
 	 << links_broken << " " 
-     << linkenergy_transverse << " "  
-     << linkenergy_radial << " "     
-     << repenergy_transverse << " " 
-     << repenergy_radial << " "      
-     << linksenergy_broken << " " 
+//     << linkenergy_transverse << " "  
+//     << linkenergy_radial << " "     
+//     << repenergy_transverse << " " 
+//     << repenergy_radial << " "      
+//     << linksenergy_broken << " " 
+//     << initial_repulsive_energy << " "
 	 << nucleator_impacts << " "
 	 << stucktonucleator << " "
 	 << nucleator_stuck_position << " " 
@@ -207,11 +212,12 @@ int nodes::load_data(ifstream &istrm)
 	  >> repforce_transverse  
 	  >> repforce_radial                           
 	  >> links_broken
-      >> linkenergy_transverse  
-      >> linkenergy_radial     
-      >> repenergy_transverse  
-      >> repenergy_radial      
-      >> linksenergy_broken 
+//      >> linkenergy_transverse  
+//      >> linkenergy_radial     
+//      >> repenergy_transverse  
+//      >> repenergy_radial      
+//      >> linksenergy_broken 
+//      >> initial_repulsive_energy
 	  >> nucleator_impacts 
 	  >> stucktonucleator 
 	  >> nucleator_stuck_position 

@@ -354,6 +354,9 @@ actin::~actin(void)
 	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_z );
 	system(command1);
 
+	sprintf(command1, "rmdir %s", TEMPDIR);
+	system(command1);
+
     system("stty sane");
 }
 
@@ -692,6 +695,9 @@ void actin::iterate()  // this is the main iteration loop call
 
 	if (!TEST_SQUASH)
         nucleator_node_interactions();	    // do forcable node ejection
+
+    if (USE_BROWNIAN_FORCES)
+        addbrownianforces();
 	
 	applyforces();              // move the nodes and update the grid
 
@@ -1079,10 +1085,10 @@ void actin::nucleator_node_interactions()
 		        i_node->adddirectionalmags(forcevec, i_node->linkforce_radial, 
                                                      i_node->linkforce_transverse);
 
-                energyvec = disp * ( dist * NUC_LINK_FORCE / 2.0);
+                //energyvec = disp * ( dist * NUC_LINK_FORCE / 2.0);
 
-                i_node->adddirectionalmags(energyvec, i_node->linkenergy_radial, 
-                                                      i_node->linkenergy_transverse);
+                //i_node->adddirectionalmags(energyvec, i_node->linkenergy_radial, 
+                //                                      i_node->linkenergy_transverse);
 
 #endif
 
@@ -1243,7 +1249,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
     vect repenergy_vect;
 
     // this is so that energy = 0 for dist = NODE_REPULSIVE_RANGE (greater than that is 0 since we don't do the calc'n)
-    const double energyoffset = - 0.06 * NODE_REPULSIVE_MAG * NODE_REPULSIVE_RANGE * ( (1.0 / ( 1 - NODE_REPULSIVE_POWER )) -1  );
+//    const double energyoffset = - 0.06 * NODE_REPULSIVE_MAG * NODE_REPULSIVE_RANGE * ( (1.0 / ( 1 - NODE_REPULSIVE_POWER )) -1  );
 
 #endif
     int x,y,z;
@@ -1372,11 +1378,11 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 								                                                 p_sameGPnode->repforce_transverse);
 
                                 // this is the integral of the force function 
-                                repenergy_vect = disp * recipdist * ( 0.06 * SSEsqrt(distsqr) * NODE_REPULSIVE_MAG 
-                                    *  ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) / ( 1- NODE_REPULSIVE_POWER) - 1 ) - energyoffset);
+//                                repenergy_vect = disp * recipdist * ( 0.06 * SSEsqrt(distsqr) * NODE_REPULSIVE_MAG 
+//                                    *  ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) / ( 1- NODE_REPULSIVE_POWER) - 1 ) - energyoffset);
 
-                                p_sameGPnode->adddirectionalmags(repenergy_vect, p_sameGPnode->repenergy_radial,
-								                                                 p_sameGPnode->repenergy_transverse);
+//                                p_sameGPnode->adddirectionalmags(repenergy_vect, p_sameGPnode->repenergy_radial,
+//								                                                 p_sameGPnode->repenergy_transverse);
 
 
 
@@ -1751,15 +1757,15 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 				{
 					i_node->adddirectionalmags(forcevec, i_node->linkforce_radial, i_node->linkforce_transverse);
 
-                    i_node->adddirectionalmags(energyvec, i_node->linkenergy_radial, 
-                                                          i_node->linkenergy_transverse);
+//                    i_node->adddirectionalmags(energyvec, i_node->linkenergy_radial, 
+//                                                          i_node->linkenergy_transverse);
 				} 
 				else 
 				{	   // but put compression into repulsive forces
 					i_node->adddirectionalmags(forcevec, i_node->repforce_radial , i_node->repforce_transverse );
 
-                    i_node->adddirectionalmags(energyvec, i_node->repenergy_radial, 
-                                                          i_node->repenergy_transverse);		
+//                    i_node->adddirectionalmags(energyvec, i_node->repenergy_radial, 
+//                                                          i_node->repenergy_transverse);		
 				}
 
 #endif
@@ -3490,7 +3496,7 @@ void actin::reservemorenodes(const int extranodes)
 
 void actin::addbrownianforces()
 {
-    const double BROWNIANFORCESCALE = 0.01;
+    
 
     const double brownianscale = BROWNIANFORCESCALE * DELTA_T;
 
@@ -3498,8 +3504,13 @@ void actin::addbrownianforces()
 									i_node != node.begin()+highestnodecount;
 							      ++i_node)
     {
-        i_node->rep_force_vec.x += brownianscale * rand_0to1();
-        i_node->rep_force_vec.y += brownianscale * rand_0to1();
-        i_node->rep_force_vec.z += brownianscale * rand_0to1();
+        if (i_node->harbinger)
+            continue;
+
+        // qn: is it worth making this spherically symmetric?
+
+        i_node->rep_force_vec.x += brownianscale * ( rand_0to1() - 0.5 );
+        i_node->rep_force_vec.y += brownianscale * ( rand_0to1() - 0.5 );
+        i_node->rep_force_vec.z += brownianscale * ( rand_0to1() - 0.5 );
     }
 }

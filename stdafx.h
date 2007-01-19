@@ -32,6 +32,10 @@ removed without prior written permission from the author.
 // vector seems quite a bit faster
 //#define NODEGRIDTYPELIST 1
 
+#define NO_CALC_STATS 1 // calculating stats slows things considerably (prolly because of trig functions,
+                        // but is required if we want force/energy graphs)
+
+// #define NON_RANDOM 1   // keep nucleating from same places
 
 #if defined (__SSE__) 
 //#define USE_SSE_APPROX_SQRT 1
@@ -54,7 +58,7 @@ removed without prior written permission from the author.
 	#define NODEGRID(i,j,k)	 nodegrid[(i)][(j)][(k)]
 #endif
 
-const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per node
+const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per node
                                               // OK if goes over, just slows things
 
 #define SYM_BREAK_FILE "sym_break_axis.txt"
@@ -98,33 +102,6 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
 
 #endif
 
-//#ifndef USEWINDOWSCOMMANDS
-//
-//	//#include <unistd.h>
-//	//#define VRMLDIR "vrml/"
-//	//#define DATADIR "data/"
-//	//#define REPORTDIR "reports/"
-//	//#define BITMAPDIR "bitmaps/"
-//	//#define TEMPDIR "temp/"
-//	//#define VTKDIR "vtk/"
-//
-//	#define IMAGEMAGICKCONVERT "convert"
-//	#define IMAGEMAGICKMOGRIFY "mogrify"
-//
-//#else
-//	
-//	//#define VRMLDIR "vrml\\"
-//	//#define DATADIR "data\\"
-//	//#define REPORTDIR "reports\\"
-//	//#define BITMAPDIR "bitmaps\\"
-//	//#define TEMPDIR "temp\\"
-//	//#define TEMPDIR2 "temp/"
-//	//#define VTKDIR "vtk\\"
-//
-//	#define IMAGEMAGICKCONVERT "convert"
-//	#define IMAGEMAGICKMOGRIFY "mogrify"
-//
-//#endif
  
 	extern char VRMLDIR[];
 	extern char DATADIR[];
@@ -138,9 +115,7 @@ const unsigned int MAX_EXPECTED_LINKS = 32;   // reserves this no of links per n
     extern char IMAGEMAGICKCONVERT[];
     extern char IMAGEMAGICKMOGRIFY[];
 
-// #define FORCES_BOTH_WAYS 1
-// #define NO_CALC_STATS 1
-// #define NON_RANDOM 1 // keep nucleating from same places
+
 
 #ifndef mymax
 #define mymax(a,b)  (((a) > (b)) ? (a) : (b))
@@ -218,6 +193,9 @@ extern bool VISCOSITY;
 extern double VISCOSITY_EDGE_FACTOR;
 extern double VISC_DIST;
 extern double MAX_VISC_WEIGHTING;
+
+extern bool USE_BROWNIAN_FORCES;
+extern double BROWNIANFORCESCALE;
 
 extern bool USE_THREADS;
 extern int NUM_THREADS;

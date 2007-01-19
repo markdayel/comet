@@ -73,11 +73,11 @@ public:
 			 repforce_transverse, repforce_radial,
 			 links_broken;
 
-    double linkenergy_transverse, linkenergy_radial,
-			 repenergy_transverse, repenergy_radial,
-			 linksenergy_broken;
+    //double linkenergy_transverse, linkenergy_radial,
+	//		 repenergy_transverse, repenergy_radial,
+	//		 linksenergy_broken;
 
-
+    //double initial_repulsive_energy;
 	
 	double nucleator_impacts;	// keeps track of ejections of node from nucleator
 								// merely for display of ejection forces
@@ -192,11 +192,11 @@ public:
 
 		nucleator_link_force.zero();
 
-        linkenergy_transverse = 
-        linkenergy_radial     =
-		repenergy_transverse  =
-        repenergy_radial      =
-		linksenergy_broken    = 0.0;
+//        linkenergy_transverse = 
+//       linkenergy_radial     =
+//		repenergy_transverse  =
+//       repenergy_radial      =
+//		linksenergy_broken    = 0.0;
 
 	}
 

@@ -174,8 +174,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
     
     //render_win->PointSmoothingOn();
 
-    if (!OptsRenderNodes)   // smoothing is too slow if rendering the nodes
-        render_win->PolygonSmoothingOn();   // seem to need this else rendering artifact on sphere
+    //if (!OptsRenderNodes)   // smoothing is too slow if rendering the nodes
+    //   render_win->PolygonSmoothingOn();   // seem to need this else rendering artifact on sphere
     
     if(VTK_HIGHQUAL)	 // increase quality for non-interactive
     {
@@ -238,7 +238,7 @@ void CometVtkVis::buildVTK(int framenumber)
     renderer = vtkRenderer::New();
 	renderer->SetBackground(0, 0, 0);
     
-	setProjection();  // also sets the rotation of the objects, so comes before actors:
+	
 	
     // add objects to renderer
     if(OptsRenderNucleator)
@@ -263,10 +263,12 @@ void CometVtkVis::buildVTK(int framenumber)
     // if(OptsRenderText)        
     // addVoxelBound(renderer);    
     //addLight();
+    setProjection();  // also sets the rotation of the objects, so comes before actors:
+
 
 	render_win->AddRenderer(renderer);
 	renderer->Delete();
-	
+	 
     
     // -- rendering
     if(OptsInteractive) 
@@ -480,8 +482,8 @@ void CometVtkVis::addCapsuleNucleator()
     // create top sphere geometry
     vtkSphereSource *endcap = vtkSphereSource::New();
     endcap->SetRadius(0.95*RADIUS); // can't we get radius through nucleator:: ??
-    endcap->SetThetaResolution(18);
-    endcap->SetPhiResolution(18);
+    endcap->SetThetaResolution(64);
+    endcap->SetPhiResolution(64);
     endcap->SetStartPhi(0);
     endcap->SetEndPhi(90);
     // endcap mapper
@@ -573,9 +575,12 @@ void CometVtkVis::addSphericalNucleator()
     
     //cout << "  voxel_scale: " << voxel_scale << endl;
     //cout << "  nucleator radius: " << radius_pixels << endl;
+
+    
     sphere->SetRadius(radius_pixels);
     sphere->SetThetaResolution(18);
     sphere->SetPhiResolution(18);
+    //sphere->LatLongTessellationOn();
 
     double nx, ny, nz;
     
@@ -636,8 +641,10 @@ void CometVtkVis::addSphericalNucleator()
     nz += movez;
 
     // map
-    vtkPolyDataMapper *map = vtkPolyDataMapper::New();
+    vtkPolyDataMapper *map = vtkPolyDataMapper::New(); 
     map->SetInput(sphere->GetOutput());
+    //map->SetResolveCoincidentTopologyToPolygonOffset(); // SetResolveCoincidentTopologyToShiftZBuffer();  // mark: testing this
+    //map->ScalarVisibilityOff(); // mark: testing this too
     sphere->Delete();
     
     // actor coordinates geometry, properties, transformation

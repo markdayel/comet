@@ -146,6 +146,9 @@ double LINK_BREAKAGE_STRAIN = 1.15;
 unsigned int MAX_LINKS_PER_NEW_NODE = 100;
 unsigned int MAX_LINK_ATTEMPTS = 20;
 
+bool USE_BROWNIAN_FORCES = false;
+double BROWNIANFORCESCALE = 0.01;
+
 double NUCLEATOR_INERTIA = 10;
 
 double NUC_LINK_FORCE = 0.25;
@@ -423,38 +426,19 @@ int main(int argc, char* argv[])
     sprintf(IMAGEMAGICKCONVERT,"convert");
     sprintf(IMAGEMAGICKMOGRIFY,"mogrify");
 
-	if (!POST_PROCESS && !REWRITESYMBREAK)
-	{	// don't drop priority if re-writing bitmaps
-		// because calling thread already has low priority
-		// and this would drop it further
-		// so process would halt on single cpu machine
+
+
+    int nicelevel = 0;
+
+	char hostname[255]="";
 
 #ifndef _WIN32
 
-		int nicelevel = 0;
+	gethostname( hostname, 255);
 
-		char hostname[255];
+#endif
 
-		gethostname( hostname, 255);
-
-		if (strcmp( hostname, "adenine.cgl.ucsf.edu") == 0 ||
-			strcmp( hostname, "cytosine.cgl.ucsf.edu") == 0||
-			strcmp( hostname, "thymine.cgl.ucsf.edu") == 0||
-			strcmp( hostname, "uracil.cgl.ucsf.edu")== 0 )
-		{
-			nicelevel = 19;
-		} else if (strcmp( hostname, "guanine.ucsg.edu") == 0)
-		{
-			nicelevel = 0;
-		}else if (strcmp( hostname, "r2d2") == 0)
-		{
-			nicelevel = 19;
-		} else if (strcmp( hostname, "montecarlo.math.ucdavis.edu") == 0)
-		{
-			nicelevel = 19;
-		} else if (     // for cluster machines, run in quiet mode
-                        // this still produces output, but only once per 
-                        // written file, rather than once per second
+    if (     
             (strcmp( hostname, "ec3.ucsf.edu") == 0) ||
             (strcmp( hostname, "sc1.ucsf.edu") == 0) ||
             (strcmp( hostname, "compute-0-0.local") == 0) ||
@@ -473,24 +457,47 @@ int main(int argc, char* argv[])
             (strcmp( hostname, "compute-0-13.local") == 0) ||
             (strcmp( hostname, "compute-0-14.local") == 0) ||
             (strcmp( hostname, "compute-0-15.local") == 0))
+    {
+        CLUSTER=true;
+    }
+
+
+	if (!POST_PROCESS && !REWRITESYMBREAK)
+	{	// don't drop priority if re-writing bitmaps
+		// because calling thread already has low priority
+		// and this would drop it further
+		// so process would halt on single cpu machine
+
+		if (strcmp( hostname, "adenine.cgl.ucsf.edu") == 0 ||
+			strcmp( hostname, "cytosine.cgl.ucsf.edu") == 0||
+			strcmp( hostname, "thymine.cgl.ucsf.edu") == 0||
+			strcmp( hostname, "uracil.cgl.ucsf.edu")== 0 )
+		{
+			nicelevel = 19;
+		} else if (strcmp( hostname, "guanine.ucsg.edu") == 0)
+		{
+			nicelevel = 0;
+		}else if (strcmp( hostname, "r2d2") == 0)
+		{
+			nicelevel = 19;
+		} else if (strcmp( hostname, "montecarlo.math.ucdavis.edu") == 0)
+		{
+			nicelevel = 19;
+		} else if (CLUSTER)
         {
             nicelevel = 19;
-            CLUSTER=true;
-  
-
         }
 		else
 		{
 			nicelevel = 19;
         }
+    }
 
-		nice(nicelevel);
-		
+#ifndef _WIN32
 
-#else
-		//SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_LOWEST);
+	nice(nicelevel);
+
 #endif
-	}
 
 
   	NUM_THREADS = atoi(argv[1]);
@@ -874,7 +881,13 @@ int main(int argc, char* argv[])
 			{ss >> VISCOSITY_EDGE_FACTOR;}
 
 		else if (tag == "VISC_DIST") 
-			{ss >> VISC_DIST;}
+			{ss >> VISC_DIST;}    
+
+        else if (tag == "BROWNIANFORCESCALE") 
+			{ss >> BROWNIANFORCESCALE;}
+
+        else if (tag == "USE_BROWNIAN_FORCES") 
+			{ss >> buff2; if(buff2=="TRUE") USE_BROWNIAN_FORCES = true; else USE_BROWNIAN_FORCES = false;}
 
 		else if (tag == "NON_VISC_WEIGHTING") 
 			{ss >> NON_VISC_WEIGHTING;}		 
@@ -1081,8 +1094,10 @@ int main(int argc, char* argv[])
 
         QUIET = true;   // quiet still produces output, but only once per written file, rather than per second
         NO_IMAGE_TEXT = true;  //remove image text for matrix display
-        SYM_BREAK_TO_RIGHT = true;
+        SYM_BREAK_TO_RIGHT = true;  // offset and fix break direction to right for matrix display
     }
+
+
     // calculate commonly used constants from parameters:
 
     if (NUCSHAPE == nucleator::capsule)
@@ -1441,8 +1456,10 @@ int main(int argc, char* argv[])
 
 	lastitertime = starttime = (unsigned) time(NULL);
 
+
+    // this info file is opened here, because there's one per frame
 	char infofilename[255];
-	sprintf ( infofilename , "%sinfo%05i.txt",TEMPDIR, 0 );
+	sprintf ( infofilename , "%sinfo%05i.txt",REPORTDIR, 0 );
 	theactin.opinfo.open(infofilename, ios::out | ios::trunc);
 	if (!theactin.opinfo) 
 	{ cout << "Unable to open file " << infofilename << " for output";}
@@ -1759,14 +1776,14 @@ srand( rand_num_seed );
 
 				if (WRITE_BMPS_PRE_SYMBREAK)
 				{
-					// if we have already written draft bitmaps, need to delete this one
+					// if we have already written draft bitmaps, need to delete the last one
 					// so we know when it's re-written
 					sprintf(command1, "rm %s 1>/dev/null 2>/dev/null", last_symbreak_bmp_filename);
 					system(command1);
 				}
 
 				// call self with 'sym' argument to re-write the bitmaps
-				sprintf(command1, "%s sym 1>/dev/null 2>/dev/null &", argv[0]);
+				sprintf(command1, "%s sym 1>rewritesymbreak.txt 2>rewritesymbreak.err &", argv[0]);
 				system(command1);
 
 			}  
@@ -1907,6 +1924,7 @@ srand( rand_num_seed );
     // deleting the temp bitmap files
     if (!ABORT)
         system("sleep 5");
+
 	
 	exit(EXIT_SUCCESS);
 }
@@ -2375,9 +2393,10 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 
 		// run them in foreground to slow things down
 		// so don't overload system with too many bg processes
+        // (do we want to change to conditional fg/bg, if not need y, z etc. as above)
 
-		theactin.savebmp(filenum, xaxis, actin::runbg, true);  // was bg
-		theactin.savebmp(filenum, yaxis, actin::runbg, true);	// was bg
+		theactin.savebmp(filenum, xaxis, actin::runfg, true);  // was bg
+		theactin.savebmp(filenum, yaxis, actin::runfg, true);	// was bg
 		theactin.savebmp(filenum, zaxis, actin::runfg, true);
 		
 		cout << "\r";
