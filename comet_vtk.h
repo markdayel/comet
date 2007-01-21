@@ -74,6 +74,7 @@ class CometVtkVis {
   bool OptsRenderAxes;
   bool OptsRenderText;
   bool OptsNormaliseFrames;
+  bool OptsUseNucTextureMap;
   double OptsCameraDistMult;
   OptProjectionType OptsRenderProjection;
   bool OptsSkipOutOfFocusPoints;

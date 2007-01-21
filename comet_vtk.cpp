@@ -95,6 +95,12 @@
 #include "vtkJPEGWriter.h"
 #include "vtkPNGWriter.h"
 
+// Texture map
+#include "vtkTexture.h"
+#include "vtkTextureMapToSphere.h"
+#include "vtkTransformTextureCoords.h"
+#include "vtkJPEGReader.h"
+
 using namespace std; // REVISIT only iostream probably temporary -- remove later
 
 // Simple visualisation uing the current 'actin' simulation object to get at the results
@@ -133,6 +139,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
     OptsNormaliseFrames     = false;
     OptsSkipOutOfFocusPoints = true;
     OptsRenderProjection    = RIP;
+    OptsUseNucTextureMap    = true;
     renderwin_npx = 0;
     renderwin_npy = 0;
 
@@ -238,7 +245,7 @@ void CometVtkVis::buildVTK(int framenumber)
     renderer = vtkRenderer::New();
 	renderer->SetBackground(0, 0, 0);
     
-	
+    setProjection();  // also sets the rotation of the objects, so comes before actors:	
 	
     // add objects to renderer
     if(OptsRenderNucleator)
@@ -263,7 +270,7 @@ void CometVtkVis::buildVTK(int framenumber)
     // if(OptsRenderText)        
     // addVoxelBound(renderer);    
     //addLight();
-    setProjection();  // also sets the rotation of the objects, so comes before actors:
+
 
 
 	render_win->AddRenderer(renderer);
@@ -640,22 +647,59 @@ void CometVtkVis::addSphericalNucleator()
     ny += movey;
     nz += movez;
 
-    // map
-    vtkPolyDataMapper *map = vtkPolyDataMapper::New(); 
-    map->SetInput(sphere->GetOutput());
-    //map->SetResolveCoincidentTopologyToPolygonOffset(); // SetResolveCoincidentTopologyToShiftZBuffer();  // mark: testing this
+    // mapper
+    vtkPolyDataMapper *mapper = vtkPolyDataMapper::New(); 
+
+    //map->SetResolveCoincidentTopologyToPolygonOffset()
+    // SetResolveCoincidentTopologyToShiftZBuffer();  // mark: testing this
     //map->ScalarVisibilityOff(); // mark: testing this too
-    sphere->Delete();
     
     // actor coordinates geometry, properties, transformation
     vtkActor *nuc_actor = vtkActor::New();
-    nuc_actor->SetMapper(map);
-    nuc_actor->SetPosition(nx, ny, nz);
-    map->Delete();
+    
+    if(OptsUseNucTextureMap) {
+	// add texture map to the nucleator,
+	// see vtk example: 'GenerateTextureCoords.tcl'
+	//
+	// ML REVISIT: check file exists
+	// I have hardcoded location and filename here, make selectable
+	// --
+	// read texture image
+	vtkJPEGReader *tx_reader = vtkJPEGReader::New();
+	tx_reader->SetFileName("../src/nuctex.jpg");
 
-    nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
+	// create texturemap to sphere
+	vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
+	tx_mapper->SetInput( sphere->GetOutput() );
+	vtkTransformTextureCoords *tx_xfm =  vtkTransformTextureCoords::New();
+	tx_xfm->SetInput( tx_mapper->GetOutput() );
+
+	// add the texture to the nucleator
+	vtkTexture *tx = vtkTexture::New();
+	tx->SetInputConnection( tx_reader->GetOutputPort() );
+	nuc_actor->SetTexture( tx );
+
+	// set the mapper
+	mapper->SetInputConnection( tx_xfm->GetOutputPort() );
+	nuc_actor->SetMapper(mapper);
+	
+	// clear up
+	tx_reader->Delete();
+	tx_mapper->Delete();
+	tx_xfm->Delete();
+	tx->Delete();
+    } else {
+	mapper->SetInput(sphere->GetOutput());
+	nuc_actor->SetMapper(mapper);
+	nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
+    }
+    sphere->Delete();
+    mapper->Delete();
+
+    nuc_actor->SetPosition(nx, ny, nz);
     nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
     nuc_actor->GetProperty()->SetDiffuse(0.25);
+    nuc_actor->GetProperty()->SetAmbient(0.5);
     nuc_actor->GetProperty()->SetSpecular(1.0);
     nuc_actor->GetProperty()->SetSpecularPower(5.0);
 
@@ -1462,7 +1506,6 @@ void CometVtkVis::setProjection()
    // renderer->ResetCamera();
 
 
-  renderer->ResetCamera();
   renderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
   
     renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
@@ -1640,6 +1683,12 @@ void CometVtkVis::setOptions()
 	    OptsSkipOutOfFocusPoints = getBoolOpt(value);
 	    continue;
 	}
+    if(tag == "VIS_USENUCTEXMAP") 
+        {
+	    ss >> value;
+	    OptsUseNucTextureMap = getBoolOpt(value);
+	    continue;
+	}
     }  
 
     
@@ -1689,6 +1738,7 @@ void CometVtkVis::reportOptions()
     cout << "projection_scale         = " << p_scale                  << endl;
     cout << "CameraDistMult           = " << OptsCameraDistMult       << endl;
     cout << "OptsSkipOutOfFocusPoints = " << OptsSkipOutOfFocusPoints << endl;
+    cout << "OptsUseNucTextureMap = " << OptsUseNucTextureMap << endl;
 }
 
 #endif
