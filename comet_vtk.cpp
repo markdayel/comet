@@ -657,37 +657,57 @@ void CometVtkVis::addSphericalNucleator()
     // actor coordinates geometry, properties, transformation
     vtkActor *nuc_actor = vtkActor::New();
     
-    if(OptsUseNucTextureMap) {
-	// add texture map to the nucleator,
-	// see vtk example: 'GenerateTextureCoords.tcl'
-	//
-	// ML REVISIT: check file exists
-	// I have hardcoded location and filename here, make selectable
-	// --
-	// read texture image
-	vtkJPEGReader *tx_reader = vtkJPEGReader::New();
-	tx_reader->SetFileName("../src/nuctex.jpg");
+ 
 
-	// create texturemap to sphere
-	vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
-	tx_mapper->SetInput( sphere->GetOutput() );
-	vtkTransformTextureCoords *tx_xfm =  vtkTransformTextureCoords::New();
-	tx_xfm->SetInput( tx_mapper->GetOutput() );
+    if((OptsUseNucTextureMap) && (VTK_MAJOR_VERSION > 4)) 
+    {
 
-	// add the texture to the nucleator
-	vtkTexture *tx = vtkTexture::New();
-	tx->SetInputConnection( tx_reader->GetOutputPort() );
-	nuc_actor->SetTexture( tx );
+ #if VTK_MAJOR_VERSION > 4	
+        
+        // add texture map to the nucleator,
+	    // see vtk example: 'GenerateTextureCoords.tcl'
+	    //
+	    // ML REVISIT: check file exists
+	    // I have hardcoded location and filename here, make selectable
+	    // --
+	    // read texture image
+	    vtkJPEGReader *tx_reader = vtkJPEGReader::New();
+	    tx_reader->SetFileName("nuctex.jpg");
 
-	// set the mapper
-	mapper->SetInputConnection( tx_xfm->GetOutputPort() );
-	nuc_actor->SetMapper(mapper);
-	
-	// clear up
-	tx_reader->Delete();
-	tx_mapper->Delete();
-	tx_xfm->Delete();
-	tx->Delete();
+
+
+	    // create texturemap to sphere
+	    vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
+	    tx_mapper->SetInput( sphere->GetOutput() );
+	    vtkTransformTextureCoords *tx_xfm =  vtkTransformTextureCoords::New();
+	    tx_xfm->SetInput( tx_mapper->GetOutput() );
+
+
+
+    	
+        // add the texture to the nucleator
+	    vtkTexture *tx = vtkTexture::New();
+
+        tx->SetInputConnection( tx_reader->GetOutputPort() );
+        nuc_actor->SetTexture( tx );
+
+	    // set the mapper
+	    mapper->SetInputConnection( tx_xfm->GetOutputPort() );
+
+
+
+
+	    nuc_actor->SetMapper(mapper);
+    	
+	    // clear up
+	    tx_reader->Delete();
+	    tx_mapper->Delete();
+	    tx_xfm->Delete();
+	    tx->Delete();
+
+ #endif
+
+
     } else {
 	mapper->SetInput(sphere->GetOutput());
 	nuc_actor->SetMapper(mapper);
