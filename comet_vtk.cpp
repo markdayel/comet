@@ -502,7 +502,7 @@ void CometVtkVis::addCapsuleNucleator()
     vtkCylinderSource *body = vtkCylinderSource::New();
     body->SetRadius(0.95*RADIUS); // why not through nucleator:: ??
     body->SetHeight(2*CAPSULE_HALF_LINEAR);
-    body->SetResolution(18);
+    body->SetResolution(32);
     body->CappingOff();
     // body mapper
     vtkPolyDataMapper *body_mapper = vtkPolyDataMapper::New();
@@ -585,8 +585,8 @@ void CometVtkVis::addSphericalNucleator()
 
     
     sphere->SetRadius(radius_pixels);
-    sphere->SetThetaResolution(18);
-    sphere->SetPhiResolution(18);
+    sphere->SetThetaResolution(32);
+    sphere->SetPhiResolution(32);
     //sphere->LatLongTessellationOn();
 
     double nx, ny, nz;
@@ -717,7 +717,20 @@ void CometVtkVis::addSphericalNucleator()
     sphere->Delete();
     mapper->Delete();
 
+    // rotate the nucleator sections
+    double nrotation[3];
+    ptheactin->inverse_actin_rotation.getangles(nrotation[0], 
+						 nrotation[1], 
+						 nrotation[2]);
+    nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
+    nrotation[1] *= vtkMath::DoubleRadiansToDegrees();
+    nrotation[2] *= vtkMath::DoubleRadiansToDegrees();
+
     nuc_actor->SetPosition(nx, ny, nz);
+    nuc_actor->SetOrientation( nrotation[0] + 180,
+				   nrotation[1],
+				   nrotation[2]);
+ 
     nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
     nuc_actor->GetProperty()->SetDiffuse(0.25);
     nuc_actor->GetProperty()->SetAmbient(0.5);
