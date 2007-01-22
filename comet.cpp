@@ -1645,7 +1645,7 @@ srand( rand_num_seed );
 			}
 			else
 			{
-				cout << "PID: " << getpid();    // write out pid if quiet so we know which proc to kill
+				cout << "PID:" << setw(6) << getpid();    // write out pid if quiet so we know which proc to kill
 			}
 
             theactin.opruninfo 

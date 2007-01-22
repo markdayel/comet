@@ -678,7 +678,8 @@ void CometVtkVis::addSphericalNucleator()
 
 	    // create texturemap to sphere
 	    vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
-	    tx_mapper->SetInput( sphere->GetOutput() );
+	    tx_mapper->PreventSeamOff();
+        tx_mapper->SetInput( sphere->GetOutput() );
 	    vtkTransformTextureCoords *tx_xfm =  vtkTransformTextureCoords::New();
 	    tx_xfm->SetInput( tx_mapper->GetOutput() );
 
