@@ -356,6 +356,9 @@ extern double TEST_DIST_EQUIL;
 extern bool WRITE_BMPS_PRE_SYMBREAK;
 
 extern double NUCLEATOR_INERTIA;
+extern bool VARY_INERT_W_RAD;
+
+extern double VTK_MIN_PLOT_LINK_FORCE_PCT;
 
 extern double RADIUS;   // radius and segment are the true radius and segment of nucleator
 extern double CAPSULE_HALF_LINEAR;

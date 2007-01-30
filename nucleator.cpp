@@ -43,7 +43,15 @@ nucleator::nucleator(shape set_geometry)//, actin *actinptr)
 	if (geometry==sphere)
 	{
 		surf_area = 4 * PI * RADIUS * RADIUS;
-		movability = 0.25 / (RADIUS * NUCLEATOR_INERTIA);
+        
+        if (VARY_INERT_W_RAD)
+        {
+            movability = 0.25 / (RADIUS * NUCLEATOR_INERTIA);
+        }
+        else
+        {
+            movability = 0.25 / (2.5 * NUCLEATOR_INERTIA);
+        }
 
 		momentofinertia.x = 1000 * MOFI;  // mark:  todo: calculate these numbers
 		momentofinertia.y = 1000 * MOFI;
@@ -52,8 +60,17 @@ nucleator::nucleator(shape set_geometry)//, actin *actinptr)
 	else
 	{
 		surf_area = 4 * PI * RADIUS * RADIUS  +  4 * PI * RADIUS * CAPSULE_HALF_LINEAR;
-		movability = 0.25 / (NUCLEATOR_INERTIA * (RADIUS + CAPSULE_HALF_LINEAR/2));   // what should this be??
-	
+		
+        if (VARY_INERT_W_RAD)
+        {
+            movability = 0.25 / (NUCLEATOR_INERTIA * (RADIUS + CAPSULE_HALF_LINEAR/2));   // what should this be??
+        }
+        else
+        {
+            movability = 0.25 / (NUCLEATOR_INERTIA * (2.5 + 1.5/2));   // what should this be??
+        }
+        
+
 	    momentofinertia.x = 1000 * CAPSULE_HALF_LINEAR * MOFI;  // mark:  todo: calculate these numbers
 		momentofinertia.y = 1000 * CAPSULE_HALF_LINEAR * MOFI;
 		momentofinertia.z = 1000 * MOFI;

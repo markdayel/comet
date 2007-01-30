@@ -71,6 +71,18 @@ class rotationmatrix
 	    return;
 	}
 
+    // these are for rotation the vtk coordinates which are in arrays
+
+    inline void rotate(float f[])
+    {
+        rotate( f[0], f[1], f[2] );
+    }
+
+    inline void rotate(double f[])
+    {
+        rotate( f[0], f[1], f[2] );
+    }
+
     inline rotationmatrix operator*(const double &scale) const
 	{
 	    rotationmatrix tmp;

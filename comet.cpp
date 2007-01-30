@@ -27,12 +27,19 @@ class tracknodeinfo;
   #include "comet_novtk.h"
 #endif
 
+const int default_nice_level = 15;
+
+// these are fixed compile time limits, so make sure they are well above what will be used (else will core dump)
+
 double GRIDBOUNDS =  50.0;	  // size of grid in um (i.e. bead can move half of this from origin)
 double GRIDRES    =   0.8;	  // low res grid range
+int MAXNODES = 50000;
+
+// calc GRIDSIZE from above
 
 short int GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
 
-int MAXNODES = 50000;
+// these are the default values for parameters that can be overridden by the cometparams.ini file
 
 double TOTAL_SIMULATION_TIME = 20000;  
 double DELTA_T = 0.1;	
@@ -52,6 +59,7 @@ int VTK_HEIGHT = 600;
 int VTK_AA_FACTOR = 1;
 double VTK_LINK_COLOUR_GAMMA = 1.8;
 bool VTK_MOVE_WITH_BEAD = true;
+double VTK_MIN_PLOT_LINK_FORCE_PCT = 0.0;
 
 double BMP_INTENSITY_SCALE = 1.4;
 
@@ -88,7 +96,7 @@ double POLY_FEEDBACK_FACTOR = 4;
 
 
 bool ROTATION = true;
-//bool GRASS_IS_GREEN = true;
+
 bool DRAW_CAGE = false;
 
 bool SEGMENT_BINS = true;
@@ -150,6 +158,7 @@ bool USE_BROWNIAN_FORCES = false;
 double BROWNIANFORCESCALE = 0.01;
 
 double NUCLEATOR_INERTIA = 10;
+bool VARY_INERT_W_RAD = false;
 
 double NUC_LINK_FORCE = 0.25;
 double NUC_LINK_BREAKAGE_FORCE = 2;
@@ -196,12 +205,6 @@ double COVERSLIPGAP = 10000;
 
 nucleator::shape NUCSHAPE = nucleator::sphere;  //default to sphere
 
-//double SEG_INCOMP = 2*CAPSULE_HALF_LINEAR + NODE_INCOMPRESSIBLE_RADIUS/2;
-//double RADIUS = RADIUS;// + NODE_INCOMPRESSIBLE_RADIUS/2;
-
-//double NODEMASS = 1.0;
-//double INERTIAL_DAMPING_HALFTIME = 50;
-
 int TOTAL_ITERATIONS ;
 int NODE_REPULSIVE_GRIDSEARCH ;
 int NODE_XLINK_GRIDSEARCH ;
@@ -212,7 +215,6 @@ char DATADIR[2048];
 char REPORTDIR[2048];
 char BITMAPDIR[2048];
 char TEMPDIR[2048];
-//char TEMPDIR2;
 char VTKDIR[2048];
 char STATSDIR[2048];
 
@@ -225,7 +227,6 @@ int RADIAL_SEGMENTS = 12;
 int NODES_TO_UPDATE = 5000;  //only update the NODES_TO_UPDATE newest nodes
 double DISTANCE_TO_UPDATE = 0;
 
-//double DAMPING_FACTOR = 10;
 int CROSSLINKDELAY = 200;  // number of interations before crosslinking 
 						  //  (to allow position to be equilibrated to something
 						  //       reasonable before locking node in place)
@@ -240,6 +241,8 @@ double NODE_REPULSIVE_BUCKLE_TO	= 0.2;
 double NODE_FORCE_TO_DIST;
 double NODE_DIST_TO_FORCE;
 
+bool NOBGIMAGEMAGICK = false;
+
 int ASYMMETRIC_NUCLEATION = 0;
 
 int XLINK_NEAREST = 1;
@@ -249,10 +252,9 @@ double VIEW_HEIGHT = 12;
 bool USE_THREADS;
 int NUM_THREADS;
 int NUM_THREAD_DATA_CHUNKS;
+
 //-- ThreadTaskTeam
 TaskQueue thread_queue;
-//pthread_mutex_t removelinks_mutex;
-//pthread_mutex_t nodedone_mutex;
 bool USETHREAD_COLLISION   = true;
 bool USETHREAD_APPLYFORCES = true;
 bool USETHREAD_LINKFORCES  = true;
@@ -323,8 +325,12 @@ bool actin::isinthread;
 Nodes2d actin::linkremovefrom;
 Nodes2d actin::linkremoveto;
 
+// set per instance, for when forks
+
 bool REWRITESYMBREAK = false;
 bool POST_PROCESS = false;
+bool POST_PROCESS4CPU = false;
+bool VIEW_VTK = false;
 
 int POST_PROC_ORDER = +1;  // +1 = forward, -1 = reverse;
 
@@ -333,6 +339,8 @@ int InterRecordIterations = 0;
 bool DISTANCE_TO_UPDATE_reached = false;
 bool finished_writing_sym_bitmaps = false;
 
+// functions
+
 int load_data(actin &theactin, int iteration, const bool &loadscale);
 int save_data(actin &theactin, int iteration);
 string get_datafilename(const int iteration);
@@ -340,8 +348,7 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations, char* argv[]);
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
-bool POST_PROCESS4CPU = false;
-bool VIEW_VTK = false;
+// keyboard monitoring function
 
 #ifndef NOKBHIT
     #ifndef _WIN32
@@ -353,7 +360,7 @@ bool VIEW_VTK = false;
     #endif
 #endif
 
-bool NOBGIMAGEMAGICK = false;
+
 
 string strtoupper(string str)
 {
@@ -466,30 +473,18 @@ int main(int argc, char* argv[])
 	{	// don't drop priority if re-writing bitmaps
 		// because calling thread already has low priority
 		// and this would drop it further
-		// so process would halt on single cpu machine
+		// so process would halt on a single cpu machine
 
-		if (strcmp( hostname, "adenine.cgl.ucsf.edu") == 0 ||
-			strcmp( hostname, "cytosine.cgl.ucsf.edu") == 0||
-			strcmp( hostname, "thymine.cgl.ucsf.edu") == 0||
-			strcmp( hostname, "uracil.cgl.ucsf.edu")== 0 )
-		{
-			nicelevel = 19;
-		} else if (strcmp( hostname, "guanine.ucsg.edu") == 0)
+		if (strcmp( hostname, "guanine.ucsg.edu") == 0)
 		{
 			nicelevel = 0;
-		}else if (strcmp( hostname, "r2d2") == 0)
-		{
-			nicelevel = 19;
-		} else if (strcmp( hostname, "montecarlo.math.ucdavis.edu") == 0)
-		{
-			nicelevel = 19;
 		} else if (CLUSTER)
         {
-            nicelevel = 19;
+            nicelevel = default_nice_level;
         }
 		else
 		{
-			nicelevel = 19;
+			nicelevel = default_nice_level;
         }
     }
 
@@ -709,7 +704,10 @@ int main(int argc, char* argv[])
 		else if (tag == "VTK_MOVE_WITH_BEAD") 
 			{ss >> buff2; if (buff2=="TRUE") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false;}
 
-        else if (tag == "VIEW_VTK") 
+        else if (tag == "VTK_MIN_PLOT_LINK_FORCE_PCT") 
+			{ss >> VTK_MIN_PLOT_LINK_FORCE_PCT;}
+
+        else if (tag == "VIEW_VTK")  
 			{ss >> buff2; if (buff2=="TRUE") VIEW_VTK = true; else VTK_MOVE_WITH_BEAD = false;}
 
 		else if (tag == "VTK_AA_FACTOR")	  
@@ -795,6 +793,9 @@ int main(int argc, char* argv[])
 
 		else if (tag == "NUCLEATOR_INERTIA") 
 			{ss >> NUCLEATOR_INERTIA;} 
+
+        else if (tag == "VARY_INERT_W_RAD")
+			{ss >> buff2; if(buff2=="TRUE") VARY_INERT_W_RAD = true; else VARY_INERT_W_RAD = false;}
 
 		else if (tag == "XLINK_NODE_RANGE") 
 			{ss >> XLINK_NODE_RANGE;} 

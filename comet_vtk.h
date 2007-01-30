@@ -62,7 +62,7 @@ class CometVtkVis {
   vtkRenderWindow *render_win;
   vtkRenderWindowInteractor *iren;
 
-  double radius_pixels;
+  double radius_pixels, capsule_length_pixels;
   
   bool OptsInteractive;
   bool OptsRenderNucleator;

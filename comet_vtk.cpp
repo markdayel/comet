@@ -151,6 +151,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
 
     // this is *.99 so that links on the surface don't look like they go inside the sphere
     radius_pixels = ptheactin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
+    capsule_length_pixels = ptheactin->dbl_pixels(CAPSULE_HALF_LINEAR)/voxel_scale;
     
     if(renderwin_npx == 0 || renderwin_npy == 0) {
       if(OptsInteractive) {
@@ -272,7 +273,7 @@ void CometVtkVis::buildVTK(int framenumber)
     //addLight();
 
 
-
+    renderer->ResetCameraClippingRange();
 	render_win->AddRenderer(renderer);
 	renderer->Delete();
 	 
@@ -282,21 +283,12 @@ void CometVtkVis::buildVTK(int framenumber)
     {
         cout << "Starting interactive mode" << endl;
 
-        // allow interaction
-        //iren = vtkRenderWindowInteractor::New();
-        //iren->SetRenderWindow(render_win);
-        //iren->Initialize();
         iren->Start();
-
-        //iren->Delete();
     } 
     else 
     {
-	  
         render_win->Render();
         saveImage(filename);
-
-     
 
         if (VTK_AA_FACTOR!=1)
         {
@@ -488,9 +480,9 @@ void CometVtkVis::addCapsuleNucleator()
     // -- endcap source
     // create top sphere geometry
     vtkSphereSource *endcap = vtkSphereSource::New();
-    endcap->SetRadius(0.95*RADIUS); // can't we get radius through nucleator:: ??
-    endcap->SetThetaResolution(64);
-    endcap->SetPhiResolution(64);
+    endcap->SetRadius(radius_pixels); // can't we get radius through nucleator:: ??
+    endcap->SetThetaResolution(32);
+    endcap->SetPhiResolution(32);
     endcap->SetStartPhi(0);
     endcap->SetEndPhi(90);
     // endcap mapper
@@ -500,8 +492,8 @@ void CometVtkVis::addCapsuleNucleator()
     
     // - body source
     vtkCylinderSource *body = vtkCylinderSource::New();
-    body->SetRadius(0.95*RADIUS); // why not through nucleator:: ??
-    body->SetHeight(2*CAPSULE_HALF_LINEAR);
+    body->SetRadius(radius_pixels); // why not through nucleator:: ??
+    body->SetHeight(2*capsule_length_pixels);
     body->SetResolution(32);
     body->CappingOff();
     // body mapper
@@ -526,26 +518,28 @@ void CometVtkVis::addCapsuleNucleator()
     VTK_FLOAT_PRECISION centre[3];
     centre[0] = 0;
     centre[1] = 0;
-    centre[2] = +CAPSULE_HALF_LINEAR;
+    centre[2] = +capsule_length_pixels;
     endcap1_actor->SetOrientation( nrotation[0],
 				   nrotation[1],
 				   nrotation[2]);
+    ptheactin->actin_rotation.rotate(centre); //[0],centre[1],centre[2]);
     endcap1_actor->SetPosition( centre );
-    endcap1_actor->GetProperty ()->SetColor(0, 0, 1);	// sphere color blue
-    endcap1_actor->GetProperty()->SetOpacity(0.4);
+    endcap1_actor->GetProperty ()->SetColor(0.7, 0.7, 0.7);	
+    endcap1_actor->GetProperty()->SetOpacity(nuc_opacity);
     
     // - lower endcap
     vtkActor *endcap2_actor = vtkActor::New();
     endcap2_actor->SetMapper(endcap_mapper);
     centre[0] = 0;
     centre[1] = 0;
-    centre[2] = -CAPSULE_HALF_LINEAR;
+    centre[2] = -capsule_length_pixels;
     // endcap2_actor->RotateX( 180 );
     endcap2_actor->SetOrientation( nrotation[0] + 180,
 				   nrotation[1],
 				   nrotation[2]);
+    ptheactin->actin_rotation.rotate(centre); //[0],centre[1],centre[2]);
     endcap2_actor->SetPosition( centre );
-    endcap2_actor->GetProperty ()->SetColor(0, 0, 1);	// sphere color blue
+    endcap2_actor->GetProperty ()->SetColor(0.7, 0.7, 0.7);	
     endcap2_actor->GetProperty()->SetOpacity(nuc_opacity);
     
     endcap_mapper->Delete();
@@ -560,8 +554,8 @@ void CometVtkVis::addCapsuleNucleator()
     body_actor->SetOrientation( nrotation[0] + 90,
 				nrotation[1],
 				nrotation[2]);
-    body_actor->GetProperty()->SetColor(0, 0, 1);	// sphere color blue
-    body_actor->GetProperty()->SetOpacity(0.4);
+    body_actor->GetProperty()->SetColor(0.7, 0.7, 0.7);	
+    body_actor->GetProperty()->SetOpacity(nuc_opacity);
     body_mapper->Delete();
 
     // add the actors to the scene
@@ -1366,78 +1360,91 @@ void CometVtkVis::addLinks()
 	                             link_i != ptheactin->node[i].listoflinks.end();
 	                           ++link_i) 
       {
-	
-	        // assume links to nodes 'less' than us have already been added
-	        // cout << i << "==" << ptheactin->node[i].nodenum << endl;
+            // assume links to nodes 'less' than us have already been added
             if( (*link_i).linkednodeptr->nodenum < i)
-	            continue;
-        	
-	        // create line for the link
-	        l_pt[0] = (*link_i).linkednodeptr->x;
-	        l_pt[1] = (*link_i).linkednodeptr->y;
-	        l_pt[2] = (*link_i).linkednodeptr->z;
-        	
-	        convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]); 
+                continue;
 
-	        vtkIdType linept_ids[2];	
-	        linept_ids[0] = linepts->InsertNextPoint( n_pt );
-	        linept_ids[1] = linepts->InsertNextPoint( l_pt );
-	        vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);	
-        	
-	        //Colour col;	  
-	        // Set scalar for the line
+            double distance = ( nodeposvec - *(link_i->linkednodeptr) ).length();      
+            //double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
+            //double y = strain / LINK_BREAKAGE_STRAIN;
+
+            link_i->getlinkforces(distance, force);
+
+            double y = -force / LINK_BREAKAGE_FORCE;
+
+            if (y<0)
+                y = 0.0;
+
+            if ( y * 100.0 < VTK_MIN_PLOT_LINK_FORCE_PCT)
+                continue;
+
+            y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
+            y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
+            //col.setcol(y);
+
+            // create line for the link
+
+            l_pt[0] = (*link_i).linkednodeptr->x;
+            l_pt[1] = (*link_i).linkednodeptr->y;
+            l_pt[2] = (*link_i).linkednodeptr->z;
+
+            convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]); 
+
+            vtkIdType linept_ids[2];	
+            linept_ids[0] = linepts->InsertNextPoint( n_pt );
+            linept_ids[1] = linepts->InsertNextPoint( l_pt );
+            vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);
+
+            //Colour col;	  
+            // Set scalar for the line
             if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
             {    
-                vect displacement = nodeposvec - *(link_i->linkednodeptr);
-                double distance = displacement.length();      
-                //double strain = fabs(distance-link_i->orig_dist) / link_i->orig_dist;    
-                //double y = strain / LINK_BREAKAGE_STRAIN;
-                link_i->getlinkforces(distance, force);
-                double y = fabs(force) / LINK_BREAKAGE_FORCE;
-                //y = (5+log(y))/5;	 // log transform	    
-                //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
-                y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
-                y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
-                //col.setcol(y);
-          
                 cellscalars->InsertValue(cell_id, y);
-	        } 
+            } 
             else 
             {
                 cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
-	        }	
+            }
+
       } // links loop
+    
     }
 
      if (ptheactin->node[i].stucktonucleator)
-		{
-             // create line for the link
-	        l_pt[0] = ptheactin->node[i].nucleator_stuck_position.x;
-	        l_pt[1] = ptheactin->node[i].nucleator_stuck_position.y;
-	        l_pt[2] = ptheactin->node[i].nucleator_stuck_position.z;
+     {
+            vect displacement = ptheactin->node[i] - ptheactin->node[i].nucleator_stuck_position;
+	        double distance = displacement.length();
+
+            force = NUC_LINK_FORCE * distance;
+    	    
+            // note this is scaled by LINK_BREAKAGE_FORCE not NUC_LINK_BREAKAGE_FORCE, to keep colours consistant
+
+            double y = force / LINK_BREAKAGE_FORCE;    // note: colour relative to normal link scale
+            if ( y * 100.0 < VTK_MIN_PLOT_LINK_FORCE_PCT) // only plot ones with this force or greater
+                continue;
+
+    	     //y = (5+log(y))/5;	 // log transform	    
+            //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
+            y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
+            y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
+            //col.setcol(y);
+            //cellscalars->InsertValue(cell_id, 0.7);
+
+            // create line for the link
+            l_pt[0] = ptheactin->node[i].nucleator_stuck_position.x;
+            l_pt[1] = ptheactin->node[i].nucleator_stuck_position.y;
+            l_pt[2] = ptheactin->node[i].nucleator_stuck_position.z;
 
             convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
         
             vtkIdType linept_ids[2];	
-	        linept_ids[0] = linepts->InsertNextPoint( n_pt );
-	        linept_ids[1] = linepts->InsertNextPoint( l_pt );
-	        vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);
-        
+            linept_ids[0] = linepts->InsertNextPoint( n_pt );
+            linept_ids[1] = linepts->InsertNextPoint( l_pt );
+            vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);
+       
             if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
             {
-                vect displacement = ptheactin->node[i] - ptheactin->node[i].nucleator_stuck_position;
-	            double distance = displacement.length();
-
-                force = NUC_LINK_FORCE * distance;
-        	    	        
-                double y = fabs(force) / LINK_BREAKAGE_FORCE;    // note: colour relative to normal link scale
-	            //y = (5+log(y))/5;	 // log transform	    
-	            //double VTK_LINK_COLOUR_GAMMA = 1.8;	    
-	            y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
-	            y = y*0.9+0.1; // prevent zeros because colorscheme makes them black
-	            //col.setcol(y);
-                //cellscalars->InsertValue(cell_id, 0.7);
-	            cellscalars->InsertValue(cell_id, y);
+                cellscalars->InsertValue(cell_id, y);
 	        } 
             else 
             {
@@ -1579,7 +1586,9 @@ void CometVtkVis::setProjection()
       cout << "!ERROR: unknown projection:" << OptsRenderProjection << endl;
     }
 
-    }
+    //renderer->ResetCamera();
+
+}
 
 void CometVtkVis::setOptions()
 {
