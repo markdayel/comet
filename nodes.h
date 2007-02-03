@@ -192,6 +192,13 @@ public:
 
 		nucleator_link_force.zero();
 
+        for (vector <links>::iterator i_link  = listoflinks.begin();
+                                      i_link != listoflinks.end();
+                                    ++i_link )
+		{
+            i_link->clearstats();
+        }
+
 //        linkenergy_transverse = 
 //       linkenergy_radial     =
 //		repenergy_transverse  =

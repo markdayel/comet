@@ -25,6 +25,8 @@ links::links(void)
 	linkednodeptr = 0;
 	linkednodenumber = -1;
     last_force_set = false;
+
+    forcesum=0.0;
 }
 
 links::~links(void)
@@ -42,6 +44,7 @@ links::links(nodes& linknode, const double& linkdist)
     orig_distsqr = orig_dist*orig_dist;
 	orig_dist_recip = 1/orig_dist;
 	linkforcescalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);
+    forcesum=0.0;
 }
 
 links::links(ifstream &istr)
@@ -56,7 +59,8 @@ int links::save_data(ofstream &ostr)
 		 << orig_dist << " "
 		 << linkednodeptr->nodenum << " "
          << last_force << " "
-         << last_force_set;
+         << last_force_set << " "
+         << forcesum;
 	
     return 0;
 }
@@ -67,7 +71,8 @@ int links::load_data(ifstream &istr)
 		 >> orig_dist  
 		 >> linkednodenumber
          >> last_force 
-         >> last_force_set;                 
+         >> last_force_set
+         >> forcesum;                 
 
 	orig_dist_recip = 1/orig_dist;
 	linkforcescalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);

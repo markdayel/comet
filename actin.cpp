@@ -1714,7 +1714,7 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 #endif
 
 #ifndef NO_CALC_STATS
-    vect energyvec;
+//    vect energyvec;
 #endif
 
 
@@ -1745,12 +1745,13 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 				forcevec = disp * (force/dist); // convert force to vector
         		
 				i_node->link_force_vec += forcevec;
-        		
+
+        		i_link->forcesum += force;  // this is one of the stats, but calc'n is quick since no trig, so leave in
+
 #ifndef NO_CALC_STATS
 
 
-//                energyvec = disp * recipdist * ( LINK_FORCE * linkforcescalefactor * dist * (2 - (dist * orig_dist_recip)  )) / 2.0;
-                energyvec = disp * ( LINK_FORCE * i_link->linkforcescalefactor * (2 - (dist * i_link->orig_dist_recip)  )) / 2.0;
+//                energyvec = disp * ( LINK_FORCE * i_link->linkforcescalefactor * (2 - (dist * i_link->orig_dist_recip)  )) / 2.0;
 
 
                 if (force < 0.0) // put tension into link forces
@@ -1767,6 +1768,9 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 //                    i_node->adddirectionalmags(energyvec, i_node->repenergy_radial, 
 //                                                          i_node->repenergy_transverse);		
 				}
+
+
+                
 
 #endif
 

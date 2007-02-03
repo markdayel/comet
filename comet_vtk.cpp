@@ -522,9 +522,9 @@ void CometVtkVis::addCapsuleNucleator()
     endcap1_actor->SetOrientation( nrotation[0],
 				   nrotation[1],
 				   nrotation[2]);
-    ptheactin->actin_rotation.rotate(centre); //[0],centre[1],centre[2]);
+    ptheactin->actin_rotation.rotate( centre ); //[0],centre[1],centre[2]);
     endcap1_actor->SetPosition( centre );
-    endcap1_actor->GetProperty ()->SetColor(0.7, 0.7, 0.7);	
+    endcap1_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     endcap1_actor->GetProperty()->SetOpacity(nuc_opacity);
     
     // - lower endcap
@@ -537,9 +537,9 @@ void CometVtkVis::addCapsuleNucleator()
     endcap2_actor->SetOrientation( nrotation[0] + 180,
 				   nrotation[1],
 				   nrotation[2]);
-    ptheactin->actin_rotation.rotate(centre); //[0],centre[1],centre[2]);
+    ptheactin->actin_rotation.rotate( centre ); //[0],centre[1],centre[2]);
     endcap2_actor->SetPosition( centre );
-    endcap2_actor->GetProperty ()->SetColor(0.7, 0.7, 0.7);	
+    endcap2_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     endcap2_actor->GetProperty()->SetOpacity(nuc_opacity);
     
     endcap_mapper->Delete();
@@ -554,7 +554,7 @@ void CometVtkVis::addCapsuleNucleator()
     body_actor->SetOrientation( nrotation[0] + 90,
 				nrotation[1],
 				nrotation[2]);
-    body_actor->GetProperty()->SetColor(0.7, 0.7, 0.7);	
+    body_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     body_actor->GetProperty()->SetOpacity(nuc_opacity);
     body_mapper->Delete();
 
@@ -1371,6 +1371,8 @@ void CometVtkVis::addLinks()
             link_i->getlinkforces(distance, force);
 
             double y = -force / LINK_BREAKAGE_FORCE;
+
+            force = link_i->forcesum / InterRecordIterations;
 
             if (y<0)
                 y = 0.0;

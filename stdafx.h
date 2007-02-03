@@ -67,6 +67,8 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 #define NODESUPDATEFILE "nodesupdate.txt"
 #define TESTNODESFILE "testnodes.txt"
 
+
+
 #ifdef _WIN32
 
     #define LINK_VTK 1    // link with vtk if on windows

@@ -33,6 +33,8 @@ public:
 	double orig_dist_recip;
 	double linkforcescalefactor;
 
+    double forcesum;
+
     double last_force;
 
 	//double last_dist;
@@ -43,6 +45,11 @@ public:
 	//bool breaklastiter;
 	//double theta;
 	//double phi;
+
+    inline void clearstats()
+	{
+        forcesum=0.0;
+    }
 
     inline bool getlinkforces(const double & dist, double &force)
     {   /// calculate link forces
