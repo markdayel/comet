@@ -161,19 +161,12 @@ int nodes::save_data(ofstream &ostr)
 	 << polymer << " " 
      << testnode << " "
      << testsurface << " "
-	 //<< dummycol.r << " " << dummycol.g << " " << dummycol.b << " "  // colour not used, kept to maintain file compatability, delete later.
 	 << delta << " " 
 	 << linkforce_transverse << " " 
 	 << linkforce_radial << " " 
 	 << repforce_transverse << " " 
 	 << repforce_radial << " " 
 	 << links_broken << " " 
-//     << linkenergy_transverse << " "  
-//     << linkenergy_radial << " "     
-//     << repenergy_transverse << " " 
-//     << repenergy_radial << " "      
-//     << linksenergy_broken << " " 
-//     << initial_repulsive_energy << " "
 	 << nucleator_impacts << " "
 	 << stucktonucleator << " "
 	 << nucleator_stuck_position << " " 
@@ -194,7 +187,7 @@ int nodes::save_data(ofstream &ostr)
     return 0;
 }
 
-int nodes::load_data(ifstream &istrm) 
+bool nodes::load_data(ifstream &istrm) 
 {
     Colour dummycol;
     // read in from the stream to our private data
@@ -205,19 +198,12 @@ int nodes::load_data(ifstream &istrm)
 	  >> polymer
       >> testnode
       >> testsurface
-	  //>> dummycol.r >> dummycol.g >> dummycol.b    // colour not used, kept to maintain file compatability, delete later.
 	  >> delta 
 	  >> linkforce_transverse  
 	  >> linkforce_radial  
 	  >> repforce_transverse  
 	  >> repforce_radial                           
 	  >> links_broken
-//      >> linkenergy_transverse  
-//      >> linkenergy_radial     
-//      >> repenergy_transverse  
-//      >> repenergy_radial      
-//      >> linksenergy_broken 
-//      >> initial_repulsive_energy
 	  >> nucleator_impacts 
 	  >> stucktonucleator 
 	  >> nucleator_stuck_position 
@@ -227,11 +213,36 @@ int nodes::load_data(ifstream &istrm)
 	//if (nucleator_impacts>0.00001)
 	//	cout << "Loaded nucleator impact " <<nucleator_impacts << endl;
     
+    //cout << "Loaded node " << nodenum << endl;
+
+    if (nodenum < 0)
+    {
+        cout << "Nodenum < 0 : " << nodenum << endl;
+        cout << "Read: " << nodenum << " " 
+	         << x << " " << y << " " << z << " " 
+	         << harbinger << " " 
+	         << polymer << " " 
+             << testnode << " "
+             << testsurface << " "
+	         << delta << " " 
+	         << linkforce_transverse << " " 
+	         << linkforce_radial << " " 
+	         << repforce_transverse << " " 
+	         << repforce_radial << " " 
+	         << links_broken << " " 
+	         << nucleator_impacts << " "
+	         << stucktonucleator << " "
+	         << nucleator_stuck_position << " " 
+             << nucleator_link_force << " "
+	         << creation_iter_num << endl;
+        return false;
+    }
+
     // check we are ready to read links
     if(ch!=':' ){
 	cout << "error in checkpoint file, end of node ':' expected" 
 	     << endl;
-	return 1;
+	return false;
     }
     
     int linklistsize;
@@ -239,7 +250,7 @@ int nodes::load_data(ifstream &istrm)
     if( ch!=')' ){
 	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
 	     << endl;
-	return 1;
+	return false;
     }
 
     // use resize(0) if we can, to save reallocating memory
@@ -264,7 +275,7 @@ int nodes::load_data(ifstream &istrm)
     if (POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
 	    updategrid();
 
-    return 0;
+    return true;
 }
 
 

@@ -107,6 +107,8 @@ bool BMP_FIX_BEAD_MOVEMENT = false;
 bool BMP_FIX_BEAD_ROTATION = false;
 
 bool COL_NODE_BY_STRAIN = false;
+bool COL_LINK_BY_DIRN = false;
+bool COL_INDIVIDUAL_NODES = false;
 
 double MOFI =  0.1;
 
@@ -341,7 +343,7 @@ bool finished_writing_sym_bitmaps = false;
 
 // functions
 
-int load_data(actin &theactin, int iteration, const bool &loadscale);
+bool load_data(actin &theactin, int iteration, const bool &loadscale);
 int save_data(actin &theactin, int iteration);
 string get_datafilename(const int iteration);
 void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations, const int& lastframedone);
@@ -937,15 +939,6 @@ int main(int argc, char* argv[])
 		
 		else if (tag == "NODE_REPULSIVE_RANGE") 
 			{ss >> NODE_REPULSIVE_RANGE;}
-
-		else if (tag == "NODE_REPULSIVE_BUCKLE_RANGE") 
-			{ss >> NODE_REPULSIVE_BUCKLE_RANGE;}
-
-		else if (tag == "NODE_REPULSIVE_BUCKLE_MAG") 
-			{ss >> NODE_REPULSIVE_BUCKLE_MAG;}
-
-		else if (tag == "NODE_REPULSIVE_BUCKLE_TO") 
-			{ss >> NODE_REPULSIVE_BUCKLE_TO;}
 		
 		else if (tag == "ASYMMETRIC_NUCLEATION") 
 			{ss >> ASYMMETRIC_NUCLEATION;} 
@@ -980,7 +973,13 @@ int main(int argc, char* argv[])
         else if (tag == "COL_NODE_BY_STRAIN") 
 			{ss >> buff2;if(buff2=="TRUE") COL_NODE_BY_STRAIN = true;else COL_NODE_BY_STRAIN = false;}
 
-        else if (tag == "PLOTFORCES")  
+        else if (tag == "COL_LINK_BY_DIRN") 
+			{ss >> buff2;if(buff2=="TRUE") COL_LINK_BY_DIRN = true;else COL_LINK_BY_DIRN = false;}
+
+        else if (tag == "COL_INDIVIDUAL_NODES") 
+			{ss >> buff2;if(buff2=="TRUE") COL_INDIVIDUAL_NODES = true;else COL_INDIVIDUAL_NODES = false;}
+
+        else if (tag == "PLOTFORCES")         
 			{ss >> buff2;if(buff2=="TRUE") PLOTFORCES = true;else PLOTFORCES = false;}
 		
 		else if (tag == "SPECKLE_FACTOR") 
@@ -1061,7 +1060,7 @@ int main(int argc, char* argv[])
 		cerr << endl << endl;
 		
  #ifndef NOKBHIT
-		if (!REWRITESYMBREAK && !POST_PROCESS && !QUIET)
+		if (!REWRITESYMBREAK && !POST_PROCESS && !QUIET && !CLUSTER)
 		{        
 			cout << "Ignore errors and start run anyway(y/n)?";
 		    
@@ -1891,7 +1890,7 @@ srand( rand_num_seed );
             theactin.setdontupdates();
 
 			theactin.clear_node_stats();  // clear the cumulative stats data in the nodes *after setdontupdates*
-                                          // so we preserve the numbers in the ones we're not calculating
+                                          // so we preserve the numbers in the ones we're no longer calculating
 
 			theactin.compressfilesdowork(filenum);
 
@@ -1940,7 +1939,7 @@ string get_datafilename(const int iteration)
     
 }
 
-int load_data(actin &theactin, int iteration, const bool &loadscale)
+bool load_data(actin &theactin, int iteration, const bool &loadscale)
 {
 
     
@@ -1993,8 +1992,12 @@ int load_data(actin &theactin, int iteration, const bool &loadscale)
             >> DISTANCE_TO_UPDATE_reached
             >> NODES_TO_UPDATE;
 
-    theactin.load_data(ifstrm);
-
+    if (!theactin.load_data(ifstrm))
+    {
+        cout << "Load data failed" << endl;
+        cout.flush();
+        abort();
+    }
     theactin.setdontupdates();
     
     ifstrm.close();
@@ -2028,7 +2031,7 @@ int load_data(actin &theactin, int iteration, const bool &loadscale)
 
 
 
-    return iteration;
+    return true;
 }
 
 int save_data(actin &theactin, int iteration)

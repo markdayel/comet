@@ -32,6 +32,8 @@ removed without prior written permission from the author.
 // vector seems quite a bit faster
 //#define NODEGRIDTYPELIST 1
 
+#define BMPS_USING_LINKS 1
+
 #define NO_CALC_STATS 1 // calculating stats slows things considerably (prolly because of trig functions,
                         // but is required if we want force/energy graphs)
 
@@ -204,6 +206,8 @@ extern int NUM_THREADS;
 extern int NUM_THREAD_DATA_CHUNKS;
 
 extern bool COL_NODE_BY_STRAIN;
+extern bool COL_LINK_BY_DIRN;
+extern bool COL_INDIVIDUAL_NODES;
 
 //-- Threading
 extern TaskQueue thread_queue;

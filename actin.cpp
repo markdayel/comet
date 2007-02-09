@@ -83,7 +83,7 @@ actin::actin(void)
 		//node[i].ptheactin=this;
 	}
 
-	cout << "     GridExtent : " << GRIDBOUNDS << " uM" << endl;
+	cout << "     GridExtent : +/-" << GRIDBOUNDS << " uM" << endl;
 	cout << " GridResolution : " << GRIDRES << " uM" << endl;
 	cout << "TotalGridpoints : " << (GRIDSIZE*GRIDSIZE*GRIDSIZE) << endl;
 
@@ -357,7 +357,7 @@ actin::~actin(void)
 	sprintf(command1, "rmdir %s", TEMPDIR);
 	system(command1);
 
-    system("stty sane");
+    system("stty sane");   // fix for something that messes the terminal up (kbhit?)
 }
 
 
@@ -512,22 +512,19 @@ int actin::saveinfo()
 		}
 	}
 
+    // write info
 
 	opruninfo << "Final existant nodes: " << existantnodes << endl;
 	cout << "Final existant nodes: " << existantnodes << endl;
-	// write info
 
-	opruninfo << "min x, min y, min z, max x, max y, max z" << endl;
-
-	opruninfo << minx << "," << miny << "," << minz << "," 
-					  << maxx << "," << maxy << "," << maxz << endl;
-
-
-
-	cout << "min x, min y, min z, max x, max y, max z" << endl;
-
-	cout << minx << ", " << miny << ", " << minz << ", " 
-					  << maxx << ", " << maxy << ", " << maxz << endl;
+    opruninfo << "x bounds: " << setw(5) << minx << " to " << setw(5) << maxx << endl;
+    opruninfo << "y bounds: " << setw(5) << miny << " to " << setw(5) << maxy << endl;
+    opruninfo << "z bounds: " << setw(5) << minz << " to " << setw(5) << maxz << endl;
+	
+    cout << "Gridrange: +/- " << GRIDBOUNDS << " uM" << endl;
+    cout << "x bounds: " << setw(5) << minx << " to " << setw(5) << maxx << endl;
+    cout << "y bounds: " << setw(5) << miny << " to " << setw(5) << maxy << endl;
+    cout << "z bounds: " << setw(5) << minz << " to " << setw(5) << maxz << endl;
 
 	return 0;
 }
@@ -2167,47 +2164,83 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             mult = 1.0;
         }
 
-        x = pixels(rotatednodepositions[i].y - meany) +  bmpcenterx;                      
+
+        x = pixels(rotatednodepositions[i].y - meany) + bmpcenterx;                      
 		y = pixels(rotatednodepositions[i].z - meanz) + bmpcentery;
+
+
+#ifdef BMPS_USING_LINKS
+
+        for(vector<links>::iterator link_i  = node[i].listoflinks.begin(); 
+	                                link_i != node[i].listoflinks.end();
+	                              ++link_i)
+        {
+
+        // for the links, take the position as the midpoint of the link
+
+        double posy = (rotatednodepositions[i].y + rotatednodepositions[link_i->linkednodenumber].y) / 2.0;
+        double posz = (rotatednodepositions[i].z + rotatednodepositions[link_i->linkednodenumber].z) / 2.0;
+
+        x = pixels(posy - meany) + bmpcenterx;                      
+		y = pixels(posz - meanz) + bmpcentery;
+
+
+#endif 
+
+        // displace to bring bead back in bounds
+        // and add the offset for the gaussian
+        x += movex + xgmax;  
+		y += movey + ygmax;
+
+
+        //if (prob_to_bool(0.01))
+        //     cout << " " << x << "," << y ;
 
 #ifdef BMP_USE_FOCAL_DEPTH
             mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
 #endif
 
-        // displace to bring bead back in bounds
-        // and add the offset for the gaussian
 
-		x += movex + xgmax;  
-		y += movey + ygmax;
-
-        //if (node[i].testnode)
-        //    cout << "Plotting test node: " << i << endl;
-
-        // add the gaussian
 
         if (COL_NODE_BY_STRAIN)
         {
-            //double force;
-            //double sum_force = 0;
-            //double distance=0;
 
-            //for(vector<links>::iterator l=node[i].listoflinks.begin(); l!=node[i].listoflinks.end(); ++l)
-            //{
-	           // l->getlinkforces(distance, force);
-            //    sum_force += fabs(force);
-            //}
+#ifdef BMPS_USING_LINKS
 
-            double value = node[i].linkforce_transverse + node[i].linkforce_radial;
+            double value = link_i->forcesum / (InterRecordIterations * LINK_BREAKAGE_FORCE) ;   // scale by 1/LINK_BREAKAGE_FORCE
+            
+            if (value < 0.0)
+                continue;
 
-	        double y = value / (4500 * LINK_BREAKAGE_FORCE);    
-	        //y = pow( y , 1/VTK_LINK_COLOUR_GAMMA);	    
-	        //y = y*0.9+0.1;
+            vect linkvec = node[i] - *(link_i->linkednodeptr);
+
+            double dirfactor = fabs ( linkvec.unitvec().dot(node[i].unit_vec_posn) );  // we don't care about sign, just angle
+
+            if (COL_LINK_BY_DIRN)
+                value = dirfactor ;  // put the actual direction in the links
+            else
+                value = value * ( 1 - dirfactor );
+
+#else
+            double value = node[i].linkforce_transverse + node[i].linkforce_radial; 
+#endif
+
             //if (prob_to_bool(0.01))
-            //    cout << " " << y;
-            nodecol.setcol(y);
-        }
-  
+            //    cout << " " << value;
 
+            if (COL_INDIVIDUAL_NODES)
+                nodecol.setcol(value);
+            else          
+                mult = value;
+
+	        //w = pow( w , 1/VTK_LINK_COLOUR_GAMMA);	    
+	        //w = w*0.9+0.1;
+            
+            //nodecol.setcol(w);        
+        }
+
+  
+        // add the gaussian
 		for(xg = -xgmax; xg != xgmax+1; ++xg)
         {
 			for(yg = -ygmax; yg != ygmax+1; ++yg)
@@ -2221,15 +2254,18 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                     (y+yg >= BMP_HEIGHT))
                     continue;   // skip if outside image bounds
 				
-				//imageR[x+xg+xgmax][y+yg+ygmax]+=		// link forces
-				//	node[i].linkforce_transverse[0] * GaussMat[xg+xgmax][yg+ygmax];
-				
                 if (COL_NODE_BY_STRAIN)
-                {
-                    // just store magnitudes in R, color at the end
+                {   // just store magnitudes in R, color at the end
+                    if (!COL_INDIVIDUAL_NODES)
+                    {
+                    imageR[x+xg][y+yg] += 10 * mult * GaussMat[xg+xgmax][yg+ygmax];
+                    } 
+                    else
+                    {
                     imageR[x+xg][y+yg] += 10 * nodecol.r * GaussMat[xg+xgmax][yg+ygmax];
                     imageG[x+xg][y+yg] += 10 * nodecol.g * GaussMat[xg+xgmax][yg+ygmax];
                     imageB[x+xg][y+yg] += 10 * nodecol.b * GaussMat[xg+xgmax][yg+ygmax];
+                    }
                 }
                 else
                 {
@@ -2254,6 +2290,12 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 			}
         }
 
+#ifdef BMPS_USING_LINKS
+
+    }
+
+#endif
+
         // add the tracks data:
 
         if (POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
@@ -2263,8 +2305,6 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         }
 
 	}
-
-
 
 
 
@@ -2289,18 +2329,38 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     const double Bscale = BMP_INTENSITY_SCALE / imageBmax[proj];
 
     if (COL_NODE_BY_STRAIN)
-    {   // scale RGB by same scale to keep colors
-        double minscale = mymin(mymin(Rscale,Gscale),Bscale);
-        for (x = 0; x != BMP_WIDTH; ++x)
-        {
-	        for (y = 0; y != BMP_HEIGHT; ++y)
-	        {
-		        imageR[x][y] = mymin( (imageR[x][y] * minscale) , 1.0); 
-		        imageG[x][y] = mymin( (imageG[x][y] * minscale) , 1.0);
-		        imageB[x][y] = mymin( (imageB[x][y] * minscale) , 1.0);
-	        }
-        }
+    {   
+        if (COL_INDIVIDUAL_NODES)
+         { // scale RGB by same scale to keep colors
+            double minscale = mymin(mymin(Rscale,Gscale),Bscale);
+            for (x = 0; x != BMP_WIDTH; ++x)
+            {
+	            for (y = 0; y != BMP_HEIGHT; ++y)
+	            {
+		            imageR[x][y] = mymin( (imageR[x][y] * minscale) , 1.0); 
+		            imageG[x][y] = mymin( (imageG[x][y] * minscale) , 1.0);
+		            imageB[x][y] = mymin( (imageB[x][y] * minscale) , 1.0);
+	            }
+            }
         
+        }
+        else
+        {
+            for (x = 0; x != BMP_WIDTH; ++x)
+            {
+	            for (y = 0; y != BMP_HEIGHT; ++y)
+	            {
+                    if (imageR[x][y] > 0.00001)
+                    {
+                        nodecol.setcol( imageR[x][y] * Rscale );
+                        double scale = mymin ( (imageR[x][y]* Rscale) / 0.6, 1.0);   // fade to black for bottom part
+		                imageR[x][y] = scale * nodecol.r;
+                        imageG[x][y] = scale * nodecol.g; 
+                        imageB[x][y] = scale * nodecol.b;
+                    }
+	            }
+            }
+        }
     }
     else
     {   // scale RGB separately
@@ -2365,30 +2425,6 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		    x += cagemovex + xgmax;  // displace to bring bead back in bounds
 		    y += cagemovey + ygmax;
 
-            //double intensitysum = 0.0;  // normalise intensity on point-by-point basis (why do we need to do this??)
-
-            //for (int i  = - CAGE_POINT_EXTENT * BMP_AA_FACTOR; 
-            //         i !=   CAGE_POINT_EXTENT * BMP_AA_FACTOR + 1; ++i)
-            //{
-            //    for (int j  = - CAGE_POINT_EXTENT * BMP_AA_FACTOR; 
-            //             j !=   CAGE_POINT_EXTENT * BMP_AA_FACTOR + 1; ++j)
-            //    {
-            //        if ((i*i+j*j) > (CAGE_POINT_EXTENT * BMP_AA_FACTOR)*(CAGE_POINT_EXTENT * BMP_AA_FACTOR))  // corners
-            //            continue;
-
-            //        if ((x+i<0) || (x+i >= BMP_WIDTH) ||
-			         //   (y+j<0) || (y+j >= BMP_HEIGHT))  // only plot if point in bounds
-			         //   continue;
-
-            //        double dist = calcdist(xfractpxl + (double) i, yfractpxl + (double) j);
-
-            //        double intensity =  exp( - 2.0 * dist * dist / 
-            //                     (double) (BMP_AA_FACTOR * CAGE_POINT_EXTENT));
-            //        
-	           //     intensitysum += intensity;
-            //                                                       
-            //    }
-            //}
 
             const double intensitysum = 10.0;
 
@@ -3103,7 +3139,7 @@ int actin::save_data(ofstream &ofstrm)
     return 0;
 }
 
-int actin::load_data(ifstream &ifstr)
+bool actin::load_data(ifstream &ifstr)
 {
 	
 
@@ -3118,7 +3154,7 @@ int actin::load_data(ifstream &ifstr)
     // ensure the identifier for the start of the actin
     if(str.compare("actin:") !=0 ){
 	cout << "error in checkpoint file, 'actin:' expected" << endl;
-	return 1;
+	return false;
     }
 
 	ifstr >> highestnodecount 
@@ -3139,21 +3175,23 @@ int actin::load_data(ifstream &ifstr)
     if(str.compare("nodes-links:") !=0 ){
 	cout << "error in data file, 'nodes-links:' expected" << endl;
 	cout << "'" << str <<"' last read." << endl;
-	return 1;
+	return true;
     }
     // ** Remember the node vector is preallocated to MAXNODES
     for(vector <nodes>::iterator	i_node  = node.begin(); 
 									i_node != node.begin()+highestnodecount;
 							      ++i_node)
     {
-		i_node->load_data(ifstr);
+		if (!i_node->load_data(ifstr))  // false if fails
+        {
+            return false;
+        }
+
     }
 
-    // only add to grid if doing normal run or a post-process that needs links:
-    // REVISIT this is really unexpected behaviour if you add a new post process operation
-    // is it a usefule optimisation?
-    if (POST_STATS || POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
-      rebuildnodepointers();
+
+    //if (POST_STATS || POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
+    rebuildnodepointers();
 
     // check node list
     /*
@@ -3174,7 +3212,7 @@ int actin::load_data(ifstream &ifstr)
     if(str.compare("xlinkdelays:") !=0 ){
 	cout << "error in checkpoint file, 'xlinkdelays:' expected" 
 	     << endl;
-	return 1;
+	return false;
     }
     
     int numcrosslinkdelay;
@@ -3182,7 +3220,7 @@ int actin::load_data(ifstream &ifstr)
     if(ch!=')' ){
 	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
 	     << endl;
-	return 1;
+	return false;
     }
     //crosslinknodesdelay.clear();
     crosslinknodesdelay.resize(numcrosslinkdelay);
@@ -3197,11 +3235,11 @@ int actin::load_data(ifstream &ifstr)
     if(str.compare("nucleator:") !=0 ){
 	cout << "error in checkpoint file, 'nucleator:' expected" 
 	     << endl;
-	return 1;
+	return false;
     }
     p_nuc->load_data(ifstr);
     
-    return 0;
+    return true;
 }
 
 void actin::rebuildnodepointers()

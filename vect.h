@@ -144,6 +144,7 @@ class vect
 	    
 	    return *this;
 	}
+
     
     //inline double dot(vect &a, vect &b)
     //{
@@ -159,6 +160,8 @@ class vect
 	{
 	    return calcdist(x,y,z);
 	}
+
+
 
     inline double recip_length() const
 	{

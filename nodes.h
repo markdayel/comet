@@ -105,7 +105,7 @@ public:
 	bool depolymerize(void);
 	bool polymerize(const double& set_x, const double& set_y, const double& set_z);
 	int save_data(ofstream &ofstr);
-	int load_data(ifstream &ifstr);
+	bool load_data(ifstream &ifstr);
 
 	void addlink(nodes& linkto, const double& dist);
 	void removelink(const nodes* linkednode);
@@ -155,7 +155,7 @@ public:
 	    }
 
 	    rep_force_vec.zero();
-	    link_force_vec.zero();
+	    link_force_vec.zero();                                    
 
 	    pressure = 0;
 
@@ -170,7 +170,7 @@ public:
 	}
 
 	inline void adddirectionalmags(const vect &v, double &dotmag, double &crossmag) const
-	{  
+	{   // add components of v into dotmag a crossmag vectors
 		double tmp_dotmag; 
 		
 		tmp_dotmag = fabs(unit_vec_posn.dot(v));

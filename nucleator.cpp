@@ -495,7 +495,7 @@ bool nucleator::collision(nodes &node)//(double &x, double &y, double &z)
 	    (fabs(node_disp.z) > 0.2*RADIUS))
     {
 		cout << endl;
-		cout << "node " << node.nodenum << " nucleus ejection too great. radius:" << oldpos.length() <<  endl;
+		cout << "node " << node.nodenum << " nucleus ejection too great. Radius:" << oldpos.length() <<  endl;
 	    cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
 	    cout << "new (x,y,z): " <<  node.x << ", " << node.y << ", " << node.z <<  endl;
 		//cout << "#links: " << (int) node.listoflinks.size() << endl;

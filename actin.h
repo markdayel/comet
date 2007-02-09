@@ -272,7 +272,7 @@ public:
 
 	void clear_nodegrid();
 	int save_data(ofstream &ofstrm);
-	int load_data(ifstream &ifstrm);
+	bool load_data(ifstream &ifstrm);
     void rebuildnodepointers();
 	void setdontupdates(void);
 	void set_sym_break_axes(void);
