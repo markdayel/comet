@@ -23,6 +23,8 @@
 
 #include "vtkStructuredPoints.h"
 
+#include "vtkPolyDataMapper.h"
+
 //#include "vtkMesaRenderer.h"
 //#include "vtkMesaRenderWindow.h"
 
@@ -109,6 +111,9 @@ class CometVtkVis {
   void addStructuredPointIsoRender(vtkStructuredPoints *sp);
   void addAxes();
   void addVoxelBound();
+
+  void SetFocalDepthPlanes(vtkPolyDataMapper *map);
+
   
   void setOptions();
   void reportOptions();

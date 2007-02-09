@@ -71,6 +71,10 @@
 
 #include "vtkExporter.h"
 
+#include "vtkPlanes.h"
+#include "vtkPlane.h"
+#include "vtkPoints.h"
+//#include "vtkNormals.h"
 
 #include "vtkLightCollection.h"
 // vol rend
@@ -273,10 +277,33 @@ void CometVtkVis::buildVTK(int framenumber)
     addLight();
 
 
-    //renderer->ResetCameraClippingRange();
+    renderer->ResetCameraClippingRange();
+    
+    //VTK_FLOAT_PRECISION focdepposx = ptheactin->dbl_pixels(FOCALDEPTH - meanx) / voxel_scale + movex ;
 
-    double focaldepthvoxels = ptheactin->dbl_pixels(FOCALDEPTH) / voxel_scale;
-    renderer->ResetCameraClippingRange( -focaldepthvoxels , focaldepthvoxels  , -100000, 100000, -10000, 10000);
+    //vtkPlanes *planes = vtkPlanes::New();
+    //vtkPoints *points = vtkPoints::New();
+
+    //points->InsertNextPoint(focdepposx, 0, 0);
+    //points->InsertNextPoint(focdepposx, 0, 1);
+    //points->InsertNextPoint(focdepposx, 1, 0);
+    //
+    //planes->SetPoints(points);
+
+    //points->Reset();
+
+    //points->InsertNextPoint(-focdepposx, 0, 0);
+    //points->InsertNextPoint(-focdepposx, 0, 1);
+    //points->InsertNextPoint(-focdepposx, 1, 0);
+
+    //vtkPlane *plane2=planes->GetPlane(1);
+    //plane2->SetPoints(points);
+
+
+//    renderer->SetClippingPlanes( planes );
+
+    //renderer->ResetCameraClippingRange( -focdepposx , focdepposx  , -100000, 100000, -10000, 10000);
+    //renderer->
 	render_win->AddRenderer(renderer);
 	renderer->Delete();
 	 
@@ -646,6 +673,8 @@ void CometVtkVis::addSphericalNucleator()
 
     // mapper
     vtkPolyDataMapper *mapper = vtkPolyDataMapper::New(); 
+
+    SetFocalDepthPlanes(mapper);
 
     //map->SetResolveCoincidentTopologyToPolygonOffset()
     // SetResolveCoincidentTopologyToShiftZBuffer();  // mark: testing this
@@ -1378,6 +1407,9 @@ void CometVtkVis::addLinks()
 
         secondpointinfocus = convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
 
+        if (!firstpointinfocus && !secondpointinfocus)
+            continue;
+
         vect linkvec = nodeposvec - ptheactin->node[link_i->linkednodenumber];//*(link_i->linkednodeptr) ;
 
         force = link_i->forcesum / InterRecordIterations;
@@ -1488,6 +1520,27 @@ void CometVtkVis::addLinks()
   
   // mapper
   vtkPolyDataMapper *map = vtkPolyDataMapper::New();
+  
+
+  SetFocalDepthPlanes(map);
+  //VTK_FLOAT_PRECISION focdepposx = ptheactin->dbl_pixels(FOCALDEPTH - meanx) / voxel_scale + movex ;
+
+  //map->RemoveAllClippingPlanes();
+
+  //vtkPlane* newplane = vtkPlane::New();
+  //newplane->SetOrigin( focdepposx,0,0 );
+  //newplane->SetNormal( -1,0,0 );
+  //map->AddClippingPlane( newplane );
+  //newplane->Delete();
+
+  //vtkPlane* newplane2 = vtkPlane::New();
+  //newplane2->SetOrigin( -focdepposx,0,0 );
+  //newplane2->SetNormal( 1,0,0 );
+  //map->AddClippingPlane( newplane2 );
+  //newplane2->Delete();
+
+
+
   map->SetLookupTable( lut );
   map->SetInput( linedata );
   linedata->Delete();
@@ -1499,6 +1552,25 @@ void CometVtkVis::addLinks()
   
   lut->Delete();
   lines_actor->Delete();
+}
+
+void CometVtkVis::SetFocalDepthPlanes(vtkPolyDataMapper *map)
+{
+  VTK_FLOAT_PRECISION focdepposx = ptheactin->dbl_pixels(FOCALDEPTH - meanx) / voxel_scale + movex ;
+
+  map->RemoveAllClippingPlanes();
+
+  vtkPlane* newplane = vtkPlane::New();
+  newplane->SetOrigin( focdepposx,0,0 );
+  newplane->SetNormal( -1,0,0 );
+  map->AddClippingPlane( newplane );
+  newplane->Delete();
+
+  vtkPlane* newplane2 = vtkPlane::New();
+  newplane2->SetOrigin( -focdepposx,0,0 );
+  newplane2->SetNormal( 1,0,0 );
+  map->AddClippingPlane( newplane2 );
+  newplane2->Delete();
 }
 
 // ML FIXME:  This is wrong, sort out a better method for mean strain
