@@ -2270,10 +2270,17 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 		    cout << "Post processing iteration: " << *iteration << " file " << filenum 
 			     << " (" << frame << "/" 
 			     << maxframes << ")"
-			     << endl; 
+			     << endl;
+            cout.flush();
     		
+            unsigned int nowtime = (unsigned) time(NULL);
+
 		    load_data(theactin, *iteration, false);
+
+            cout << " Loadtime: " << (unsigned) time(NULL) - nowtime << " seconds " << endl;
     		
+            cout.flush();
+
 		    if (POST_BMP || POST_REPORTS)
 		    {		  
 			    nuc_object.segs.addallnodes();  // put node data into segment bins
@@ -2329,7 +2336,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
                 
                 //vtkvis.RestartRenderWindow(); // see if this gets rid of memory leak, slowdown etc.  this segfaults
 
-                cout << " " << (unsigned) time(NULL) - nowtime << " seconds " << endl;
+                cout << " Rendertime: " << (unsigned) time(NULL) - nowtime << " seconds " << endl;
 
 		    }
 

@@ -83,6 +83,7 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 	
     #define USEWINDOWSCOMMANDS
 
+    #include <windows.h>
     #include <direct.h>      // windows name for dirent.h
 	#include <process.h>
 	#define getpid _getpid
@@ -150,6 +151,7 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 #include <vector>
 #include <list>
 #include <float.h>
+
 
 //#define _NUMA 1
 

@@ -354,6 +354,17 @@ actin::~actin(void)
 	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_z );
 	system(command1);
 
+    // we can't clear the temp directory, because background imagemagick processes could still be using it
+    // maybe put a wait loop here later?
+    //sprintf(command1, "rm %s/* ", TEMPDIR );
+	//system(command1);
+
+#ifdef _WIN32
+    Sleep(10000);
+#else
+    usleep(10000);
+#endif
+
 	sprintf(command1, "rmdir %s", TEMPDIR);
 	system(command1);
 

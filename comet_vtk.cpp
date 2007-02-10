@@ -98,6 +98,7 @@
 #include "vtkWindowToImageFilter.h"
 #include "vtkJPEGWriter.h"
 #include "vtkPNGWriter.h"
+#include "vtkBMPWriter.h"
 
 // Texture map
 #include "vtkTexture.h"
@@ -206,43 +207,49 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
         // increase quality for non-interactive?
     }
 
-    // write out file with colourmap
-
-    Dbl2d imageR, imageG, imageB;
-
-    const int width  = VTK_WIDTH * VTK_AA_FACTOR;
-    const int height = VTK_HEIGHT * VTK_AA_FACTOR;
-
-    imageR.resize(width);
-	imageG.resize(width);
-	imageB.resize(width);
-
-	for (int x = 0; x<width; x++)
-	{
-		imageR[x].resize(height);
-		imageG[x].resize(height);
-		imageB[x].resize(height);
-
-        fill(imageR[x].begin(),imageR[x].end(),0.0);
-        fill(imageG[x].begin(),imageG[x].end(),0.0);
-        fill(imageB[x].begin(),imageB[x].end(),0.0);
-	}
-
     
-    ptheactin->p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB, VTK_AA_FACTOR); 
-    
-    // write the bitmap file
-	
-    ofstream outbmpfile;
-    
-    char tmpfilename[1024];
-
-    sprintf(tmpfilename,         "%stempVTKcolmap.bmp", TEMPDIR);
+    // write the colourmap file
+    // this is kind of slow, so only write if doesn't already exist
+   
     sprintf(VTK_colmap_filename, "%stempVTKcolmap.png", TEMPDIR);
 
     ifstream isthere(VTK_colmap_filename);
-    if (!isthere)
+    
+    if (isthere)
     {
+         isthere.close();
+    }
+    else
+    {   // colourmap file doesn't exist, so create
+        
+        char tmpfilename[1024];
+
+        sprintf(tmpfilename,         "%stempVTKcolmap.bmp", TEMPDIR);
+        ofstream outbmpfile;
+        // write out file with colourmap
+
+        Dbl2d imageR, imageG, imageB;
+
+        const int width  = VTK_WIDTH * VTK_AA_FACTOR;
+        const int height = VTK_HEIGHT * VTK_AA_FACTOR;
+
+        imageR.resize(width);
+	    imageG.resize(width);
+	    imageB.resize(width);
+
+	    for (int x = 0; x<width; x++)
+	    {
+		    imageR[x].resize(height);
+		    imageG[x].resize(height);
+		    imageB[x].resize(height);
+
+            fill(imageR[x].begin(),imageR[x].end(),0.0);
+            fill(imageG[x].begin(),imageG[x].end(),0.0);
+            fill(imageB[x].begin(),imageB[x].end(),0.0);
+	    }
+
+        ptheactin->p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB, VTK_AA_FACTOR); 
+    
 	    outbmpfile.open(tmpfilename, ios::out | ios::binary | ios::trunc);
 
         ptheactin->writebitmapheader(outbmpfile, width, height);
@@ -251,7 +258,6 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
         outbmpfile.close();
 
         // change the black background to transparent, and convert to png:
-        //double VTKGAMMA=1.3;
 
         char command1[1024];
         sprintf(command1, 
@@ -263,7 +269,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
         sprintf(command1, "rm %s", tmpfilename);
         system(command1);
     }
-
+ 
 }
 
 CometVtkVis::~CometVtkVis()
@@ -462,7 +468,7 @@ void CometVtkVis::addVoxelBound()
 void CometVtkVis::saveImage(int framenumber)
 {
     char tmpfilename[1024],filename[1024];
-    sprintf(tmpfilename , "%s%s_%05i.png", TEMPDIR, file_prefix.c_str(), framenumber );
+    sprintf(tmpfilename , "%s%s_%05i.bmp", TEMPDIR, file_prefix.c_str(), framenumber );
     sprintf(filename    , "%s%s_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, BMP_OUTPUT_FILETYPE.c_str());
 
     cout << "Saving " << filename << endl;
@@ -470,11 +476,11 @@ void CometVtkVis::saveImage(int framenumber)
     vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
     rwin_to_image->SetInput(render_win);
   
-    vtkPNGWriter *png_writer = vtkPNGWriter::New();
-    png_writer->SetInput( rwin_to_image->GetOutput() );
-    png_writer->SetFileName( tmpfilename );
-    png_writer->Write();    
-    png_writer->Delete();
+    vtkBMPWriter *imagewriter = vtkBMPWriter::New();
+    imagewriter->SetInput( rwin_to_image->GetOutput() );
+    imagewriter->SetFileName( tmpfilename );
+    imagewriter->Write();    
+    imagewriter->Delete();
 
 	//vtkVRMLExporter *VRMLExporter = vtkVRMLExporter::New();'
 
@@ -502,7 +508,7 @@ void CometVtkVis::saveImage(int framenumber)
     {
         char command1[1024];
         sprintf(command1, 
-            "%s -compose plus -composite -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
+            "(%s -compose plus -composite -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION,
             5 , ( 25 ) ,
             framenumber,
