@@ -71,9 +71,9 @@
 
 #include "vtkExporter.h"
 
-#include "vtkPlanes.h"
+//#include "vtkPlanes.h"
 #include "vtkPlane.h"
-#include "vtkPoints.h"
+//#include "vtkPoints.h"
 //#include "vtkNormals.h"
 
 #include "vtkLightCollection.h"
@@ -174,7 +174,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
     //render_win = vtkRenderWindow::New();
     //render_win->AddRenderer(renderer);
 
-     OptVIEW_VTK = VIEW_VTK;
+    OptVIEW_VTK = VIEW_VTK;
 
     cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
     cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
@@ -206,6 +206,63 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
         // increase quality for non-interactive?
     }
 
+    // write out file with colourmap
+
+    Dbl2d imageR, imageG, imageB;
+
+    const int width  = VTK_WIDTH * VTK_AA_FACTOR;
+    const int height = VTK_HEIGHT * VTK_AA_FACTOR;
+
+    imageR.resize(width);
+	imageG.resize(width);
+	imageB.resize(width);
+
+	for (int x = 0; x<width; x++)
+	{
+		imageR[x].resize(height);
+		imageG[x].resize(height);
+		imageB[x].resize(height);
+
+        fill(imageR[x].begin(),imageR[x].end(),0.0);
+        fill(imageG[x].begin(),imageG[x].end(),0.0);
+        fill(imageB[x].begin(),imageB[x].end(),0.0);
+	}
+
+    
+    ptheactin->p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB, VTK_AA_FACTOR); 
+    
+    // write the bitmap file
+	
+    ofstream outbmpfile;
+    
+    char tmpfilename[1024];
+
+    sprintf(tmpfilename,         "%stempVTKcolmap.bmp", TEMPDIR);
+    sprintf(VTK_colmap_filename, "%stempVTKcolmap.png", TEMPDIR);
+
+    ifstream isthere(VTK_colmap_filename);
+    if (!isthere)
+    {
+	    outbmpfile.open(tmpfilename, ios::out | ios::binary | ios::trunc);
+
+        ptheactin->writebitmapheader(outbmpfile, width, height);
+	    ptheactin->writebitmapfile(outbmpfile, imageR, imageG, imageB);
+
+        outbmpfile.close();
+
+        // change the black background to transparent, and convert to png:
+        //double VTKGAMMA=1.3;
+
+        char command1[1024];
+        sprintf(command1, 
+            "%s -transparent black %s %s",
+            IMAGEMAGICKCONVERT, tmpfilename, VTK_colmap_filename);
+        system(command1);
+
+        // remove the temp bitmap
+        sprintf(command1, "rm %s", tmpfilename);
+        system(command1);
+    }
 
 }
 
@@ -223,6 +280,13 @@ CometVtkVis::~CometVtkVis()
     {
         iren->Delete();
     }
+
+    // remove the scalebar png file
+
+    //char command1[1024];
+    //sprintf(command1, "rm %s", VTK_colmap_filename);
+    //system(command1);
+
 }
 
 void CometVtkVis::RestartRenderWindow()
@@ -243,10 +307,6 @@ void CometVtkVis::RestartRenderWindow()
 void CometVtkVis::buildVTK(int framenumber)
 {
     
-
-    char filename[255];
-    sprintf(filename , "%s%s_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, BMP_OUTPUT_FILETYPE.c_str());
-  
     renderer = vtkRenderer::New();
 	renderer->SetBackground(0, 0, 0);
     
@@ -279,31 +339,6 @@ void CometVtkVis::buildVTK(int framenumber)
 
     renderer->ResetCameraClippingRange();
     
-    //VTK_FLOAT_PRECISION focdepposx = ptheactin->dbl_pixels(FOCALDEPTH - meanx) / voxel_scale + movex ;
-
-    //vtkPlanes *planes = vtkPlanes::New();
-    //vtkPoints *points = vtkPoints::New();
-
-    //points->InsertNextPoint(focdepposx, 0, 0);
-    //points->InsertNextPoint(focdepposx, 0, 1);
-    //points->InsertNextPoint(focdepposx, 1, 0);
-    //
-    //planes->SetPoints(points);
-
-    //points->Reset();
-
-    //points->InsertNextPoint(-focdepposx, 0, 0);
-    //points->InsertNextPoint(-focdepposx, 0, 1);
-    //points->InsertNextPoint(-focdepposx, 1, 0);
-
-    //vtkPlane *plane2=planes->GetPlane(1);
-    //plane2->SetPoints(points);
-
-
-//    renderer->SetClippingPlanes( planes );
-
-    //renderer->ResetCameraClippingRange( -focdepposx , focdepposx  , -100000, 100000, -10000, 10000);
-    //renderer->
 	render_win->AddRenderer(renderer);
 	renderer->Delete();
 	 
@@ -318,38 +353,7 @@ void CometVtkVis::buildVTK(int framenumber)
     else 
     {
         render_win->Render();
-        saveImage(filename);
-
-        if (VTK_AA_FACTOR!=1)
-        {
-            char command1[255];
-            sprintf(command1, 
-                "%s -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s &",
-                IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,  
-                //5 * VTK_AA_FACTOR, ( 20 + 25 )* VTK_AA_FACTOR , 
-                5 , ( 25 ),
-                framenumber,
-			    //5 * VTK_AA_FACTOR, ( 20 + 50 )* VTK_AA_FACTOR ,
-                5 , ( 50 ) ,
-                framenumber * InterRecordIterations * DELTA_T, filename);
-            //cout << command1 << endl;
-            system(command1);
-        }
-        else
-        {
-            char command1[255];
-            sprintf(command1, 
-            "%s -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s &",
-            IMAGEMAGICKMOGRIFY, BMP_COMPRESSION,
-            //5 * VTK_AA_FACTOR, ( 20 + 25 )* VTK_AA_FACTOR ,
-            5 , ( 25 ) ,
-            framenumber,
-			//5 * VTK_AA_FACTOR, ( 20 + 50 )* VTK_AA_FACTOR ,
-            5 , ( 50 ) ,
-            framenumber * InterRecordIterations * DELTA_T, filename);
-            //cout << command1 << endl;
-            system(command1);
-        }
+        saveImage(framenumber);
     }
     
     // clear all actors from the renderer
@@ -455,16 +459,20 @@ void CometVtkVis::addVoxelBound()
     line_actor3->Delete();
 }
 
-void CometVtkVis::saveImage(char* image_filename)
+void CometVtkVis::saveImage(int framenumber)
 {
-    cout << "Saving " << image_filename << endl;
+    char tmpfilename[1024],filename[1024];
+    sprintf(tmpfilename , "%s%s_%05i.png", TEMPDIR, file_prefix.c_str(), framenumber );
+    sprintf(filename    , "%s%s_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, BMP_OUTPUT_FILETYPE.c_str());
+
+    cout << "Saving " << filename << endl;
   
     vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
     rwin_to_image->SetInput(render_win);
   
     vtkPNGWriter *png_writer = vtkPNGWriter::New();
     png_writer->SetInput( rwin_to_image->GetOutput() );
-    png_writer->SetFileName( image_filename );
+    png_writer->SetFileName( tmpfilename );
     png_writer->Write();    
     png_writer->Delete();
 
@@ -476,6 +484,34 @@ void CometVtkVis::saveImage(char* image_filename)
  //   VRMLExporter->Delete();
   
     rwin_to_image->Delete();
+
+    if (VTK_AA_FACTOR!=1)
+    {
+        char command1[1024];
+        sprintf(command1, 
+            "(%s -compose plus -composite -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
+            IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,   
+            5 , ( 25 ),
+            framenumber,
+            5 , ( 50 ) ,
+            framenumber * InterRecordIterations * DELTA_T, tmpfilename, VTK_colmap_filename, filename, tmpfilename);
+        //cout << command1 << endl;
+        system(command1);
+    }
+    else
+    {
+        char command1[1024];
+        sprintf(command1, 
+            "%s -compose plus -composite -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
+            IMAGEMAGICKCONVERT, BMP_COMPRESSION,
+            5 , ( 25 ) ,
+            framenumber,
+            5 , ( 50 ) ,
+            framenumber * InterRecordIterations * DELTA_T, tmpfilename, VTK_colmap_filename, filename, tmpfilename);
+        //cout << command1 << endl;
+        system(command1);
+    }
+
 }
 
 void CometVtkVis::addGuassianNodeVolume(bool do_iso)
@@ -687,7 +723,7 @@ void CometVtkVis::addSphericalNucleator()
 
     if((OptsUseNucTextureMap) && (VTK_MAJOR_VERSION > 4)) 
     {
-
+      // texture commands not in VTK 4 or below, so skip:
  #if VTK_MAJOR_VERSION > 4	
         
         // add texture map to the nucleator,
@@ -767,6 +803,7 @@ void CometVtkVis::addSphericalNucleator()
     // add the actor to the scene
     renderer->AddActor(nuc_actor);
     nuc_actor->Delete();
+
 }
 
 void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx)
@@ -1521,41 +1558,27 @@ void CometVtkVis::addLinks()
   // mapper
   vtkPolyDataMapper *map = vtkPolyDataMapper::New();
   
-
   SetFocalDepthPlanes(map);
-  //VTK_FLOAT_PRECISION focdepposx = ptheactin->dbl_pixels(FOCALDEPTH - meanx) / voxel_scale + movex ;
-
-  //map->RemoveAllClippingPlanes();
-
-  //vtkPlane* newplane = vtkPlane::New();
-  //newplane->SetOrigin( focdepposx,0,0 );
-  //newplane->SetNormal( -1,0,0 );
-  //map->AddClippingPlane( newplane );
-  //newplane->Delete();
-
-  //vtkPlane* newplane2 = vtkPlane::New();
-  //newplane2->SetOrigin( -focdepposx,0,0 );
-  //newplane2->SetNormal( 1,0,0 );
-  //map->AddClippingPlane( newplane2 );
-  //newplane2->Delete();
-
-
-
+ 
   map->SetLookupTable( lut );
   map->SetInput( linedata );
   linedata->Delete();
   // actor
   vtkActor *lines_actor = vtkActor::New();
   lines_actor->SetMapper(map);
+  map->Delete();
   //render
   renderer->AddActor(lines_actor);
   
   lut->Delete();
   lines_actor->Delete();
+
 }
 
 void CometVtkVis::SetFocalDepthPlanes(vtkPolyDataMapper *map)
-{
+{    // sets the mapper clipping planes to reject data outside of distance of FOCALDEPTH
+     // above and below the nucleator (in x direction)
+  
   VTK_FLOAT_PRECISION focdepposx = ptheactin->dbl_pixels(FOCALDEPTH - meanx) / voxel_scale + movex ;
 
   map->RemoveAllClippingPlanes();

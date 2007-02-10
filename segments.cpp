@@ -917,7 +917,7 @@ void segments::calcSD(const Dbl3d& data, Dbl2d& SD)
 void segments::savereport(const int& filenum) const
 {
 
-	char filename[255];
+	char filename[1024];
 
 	double x,y,z;
 	double radius;
@@ -1034,7 +1034,7 @@ void segments::savereport(const int& filenum) const
 void segments::saveradialreport(const int& filenum) const
 {
 
-	char filename [255];
+	char filename [1024];
 
 	sprintf ( filename , "%sreport_radial%05i.txt", TEMPDIR, filenum );
 
@@ -1071,7 +1071,7 @@ void segments::saveradialreport(const int& filenum) const
 void segments::saveradialaxisreport(const int& filenum, const int axis) const
 {
 
-	char filename [255];
+	char filename [1024];
 
     char projletter[] = "z";
 
@@ -1136,7 +1136,7 @@ void segments::saveradialaxisreport(const int& filenum, const int axis) const
 void segments::saveSDreport(const int& filenum) const
 {
 
-	char filename [255];
+	char filename [1024];
 
 	sprintf ( filename , "%sreport_SD%05i.txt", TEMPDIR, filenum );
 
@@ -1352,20 +1352,23 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 		}
 
-        write_colourmap_bitmap(imageR, imageG, imageB);
+        write_colourmap_bitmap(imageR, imageG, imageB, BMP_AA_FACTOR);
 
 }
 
-void segments::write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB)
+void segments::write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB, double scalefactor)
 {
 
     // write out colormap key
 
-    const int keyheight = bins_bitmap_height;
-    const int keywidth  = 10 * BMP_AA_FACTOR;
+    //const int width  = (int) imageR.size();
+    const int height = (int) imageR[0].size();
 
-    const int keyxorig = 1 * BMP_AA_FACTOR; //centerx - offsetx;
-    const int keyyorig = centery - (keyheight / 2);
+    const int keyheight = (int) ((double) height * 2/3);
+    const int keywidth  = (int) (10 * scalefactor);
+
+    const int keyxorig = (int)(1 * scalefactor); //centerx - offsetx;
+    const int keyyorig = (height/2) - (keyheight / 2);
 
     Colour colour;
     int pix_x,pix_y;

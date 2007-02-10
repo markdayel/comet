@@ -189,7 +189,7 @@ double VISCOSITY_EDGE_FACTOR = 4.0;
 double VISC_DIST = 0.7;
 //double VISCOSITY_UNWEIGHTING_FACTOR = 100;
 
-//char temp_BMP_filename[255];
+//char temp_BMP_filename[1024];
 
 bool STICK_TO_NUCLEATOR = false;
 bool RESTICK_TO_NUCLEATOR = true;
@@ -220,8 +220,8 @@ char TEMPDIR[2048];
 char VTKDIR[2048];
 char STATSDIR[2048];
 
-char IMAGEMAGICKCONVERT[255];
-char IMAGEMAGICKMOGRIFY[255];
+char IMAGEMAGICKCONVERT[1024];
+char IMAGEMAGICKMOGRIFY[1024];
 
 double LINK_POWER_SCALE = 0;
 
@@ -439,7 +439,7 @@ int main(int argc, char* argv[])
 
     int nicelevel = 0;
 
-	char hostname[255]="";
+	char hostname[1024]="";
 
 #ifndef _WIN32
 
@@ -546,7 +546,7 @@ int main(int argc, char* argv[])
 
 	// make directories
 
-	char command1[255];
+	char command1[1024];
 
 	cout << "Working Directory: ";
 	cout.flush();
@@ -1434,7 +1434,7 @@ int main(int argc, char* argv[])
 	int filenum = 0;
 	double polrate = 0;
 
-    char last_symbreak_bmp_filename[255] = "";
+    char last_symbreak_bmp_filename[1024] = "";
 
 	cout << endl;
 	cout << "Starting iterations..." << endl << endl; 
@@ -1458,7 +1458,7 @@ int main(int argc, char* argv[])
 
 
     // this info file is opened here, because there's one per frame
-	char infofilename[255];
+	char infofilename[1024];
 	sprintf ( infofilename , "%sinfo%05i.txt",REPORTDIR, 0 );
 	theactin.opinfo.open(infofilename, ios::out | ios::trunc);
 	if (!theactin.opinfo) 
@@ -1633,7 +1633,7 @@ srand( rand_num_seed );
 				<< center.x << "," 
 				<< center.y << "," 
 				<< center.z << "," 
-				<< delta_center.length() << endl;
+				<< delta_center.length()/DELTA_T << endl;
 
             theactin.opvelocityinfo.flush();
 
@@ -1933,7 +1933,7 @@ srand( rand_num_seed );
 string get_datafilename(const int iteration)
 {
 	//stringstream filenamestr;
-    char filename[255];
+    char filename[1024];
 	sprintf(filename , "data_%07i.txt", iteration);
     return filename;
     
@@ -1945,7 +1945,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
     
     string filename = get_datafilename(iteration);
 
-	char tmpdatafile[255];
+	char tmpdatafile[1024];
 
 	sprintf(tmpdatafile, "%stempdata_%u_%u.txt", TEMPDIR,
 		(unsigned int) getpid(), (unsigned int) time(NULL) );
@@ -1954,7 +1954,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 
 #ifndef _WIN32
 
-	char command1[255];
+	char command1[1024];
     sprintf(command1, "gunzip --stdout %s > %s",filename.c_str(), tmpdatafile);
     system(command1);
     
@@ -2140,12 +2140,12 @@ void post_stats(actin &, const int filenum)
 {
   cout << "  saving statistics for " << filenum << endl;  
 
-  char nstats_filename[255];
+  char nstats_filename[1024];
   sprintf(nstats_filename , "%snodestats_%05i.txt", STATSDIR, filenum);
   //ofstream nout;
   //nout.open(nstats_filename);
 
-  char lstats_filename[255];
+  char lstats_filename[1024];
   sprintf(lstats_filename , "%slinkstats_%05i.txt", STATSDIR, filenum);
   //ofstream lout;
   //lout.open(lstats_filename);
@@ -2169,7 +2169,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 		//lastframe = lastframe - (lastframe % 4);  // make # frames divisible by 4 for quicktime compat
 
-		char command1[255];
+		char command1[1024];
 
 		for (int i = 1; i != threads; ++i)
 		{
@@ -2344,7 +2344,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 	if (POST_REPORTS)
 	{
-		char command1[255];
+		char command1[1024];
 		sprintf(command1, "(gzip -q -f -9 %s*report*.txt 2>/dev/null; mv %s*report*.gz %s 2>/dev/null) &"
 			,TEMPDIR,TEMPDIR, REPORTDIR);
 		system(command1);

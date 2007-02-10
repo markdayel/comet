@@ -91,6 +91,8 @@ class CometVtkVis {
   CometVtkVis(bool VIEW_VTK);//actin * theactin);
   ~CometVtkVis();
   
+  char VTK_colmap_filename[1024];
+
   bool convert_to_vtkcoord(VTK_FLOAT_PRECISION &x, VTK_FLOAT_PRECISION &y, VTK_FLOAT_PRECISION &z);
 
   void set_mean_posns();
@@ -120,7 +122,7 @@ class CometVtkVis {
   void createGaussianVoxelRepresentation(vtkStructuredPoints *vx);
   void setProjection();
   void fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx);// ,double vd, double* min);
-  void saveImage(char *filename);
+  void saveImage(int framenumber);
   void renderProjections(vtkRenderWindow *render_win, string base_filename);
   double getMeanNodeLinkForce(const int node_i);
 };

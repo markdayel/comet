@@ -74,7 +74,7 @@ public:
 	void write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 					   const Dbl3d & var, const double& scale, const projection &axis);
 
-    void write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB);
+    void write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB, double scalefactor);
 
 	void setbitmapcoords();
 

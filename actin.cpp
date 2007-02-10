@@ -246,18 +246,18 @@ actin::actin(void)
 	imageB.resize(BMP_WIDTH);
 
 	for (int x = 0; x<BMP_WIDTH; x++)
-		{
-			imageR[x].resize(BMP_HEIGHT);
-			imageG[x].resize(BMP_HEIGHT);
-			imageB[x].resize(BMP_HEIGHT);
+	{
+		imageR[x].resize(BMP_HEIGHT);
+		imageG[x].resize(BMP_HEIGHT);
+		imageB[x].resize(BMP_HEIGHT);
 
-			for (int y = 0; y<BMP_HEIGHT; y++)
-			{
-				imageR[x][y]=0;
-				imageG[x][y]=0;
-				imageB[x][y]=0;
-			}
+		for (int y = 0; y<BMP_HEIGHT; y++)
+		{
+			imageR[x][y]=0;
+			imageG[x][y]=0;
+			imageB[x][y]=0;
 		}
+	}
 
     //GetProcessId(GetCurrentThread());
 
@@ -343,7 +343,7 @@ actin::~actin(void)
 
 	// delete the temp bitmap files
 
-	char command1[255];
+	char command1[1024];
 
 	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_x );
 	system(command1);
@@ -473,10 +473,10 @@ void actin::crosslinknewnodes(const int &numnewnodes)
 
 int actin::saveinfo()
 {
-	//char filename[255];
+	//char filename[1024];
 	double minx, miny, minz;
 	double maxx, maxy, maxz; 
-	//char time[255], date[255];
+	//char time[1024], date[1024];
 
     //_strtime( time );
     //_strdate( date );
@@ -531,8 +531,8 @@ int actin::saveinfo()
 
 int actin::savevrml(int filenum)
 {
-	char filename[255];
-	//char time[255], date[255];
+	char filename[1024];
+	//char time[1024], date[1024];
 
     //_strtime( time );
     //_strdate( date );
@@ -2474,7 +2474,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	}
 	
     if (COL_NODE_BY_STRAIN)
-        p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB);
+        p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB, BMP_AA_FACTOR);
     
     // write the bitmap file
 		
@@ -2861,23 +2861,27 @@ void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl
 
 #pragma pack(pop)
 
+    const int width  = (int) imageR.size();
+    const int height = (int) imageR[0].size();
+
+    //cout << "Width :" << width << "  Height: " << height << endl;
 
 	RGB *line;
-	line = new RGB[BMP_WIDTH];
+    line = new RGB[width];
 
 	outbmpfile.seekp(bitmap_start); // move to start
 
 	// write out the data, line by line (note: y is backwards)
-	for (int y = (BMP_HEIGHT-1); y>=0; y--)
-		{
+	for (int y = (height-1); y>=0; y--)
+		{ //cout << "Line : " << y << endl;
 		//outbmpfile.write(picbuff + (bitmapwidth*y), bitmapwidth);
-		for (int x = 0; x<BMP_WIDTH; x++)
+		for (int x = 0; x < width; x++)
 			{
 			line[x].B=(unsigned char)(255 * imageB[x][y]);
 			line[x].G=(unsigned char)(255 * imageG[x][y]);
 			line[x].R=(unsigned char)(255 * imageR[x][y]);
 			}
-			outbmpfile.write((char*)line,BMP_WIDTH*3);
+			outbmpfile.write((char*)line,width*3);
 		}
 
 	outbmpfile.flush();
@@ -3026,7 +3030,7 @@ void actin::compressfilesdowork(const int & filenum)
 
 #ifndef _WIN32
 
-	char command1[255];
+	char command1[1024];
 	// report files
 		
 	sprintf(command1, "(gzip -q -f -9 %s*report*.txt 2>/dev/null; mv %s*report*.gz %s 2>/dev/null) &"
@@ -3047,7 +3051,7 @@ void actin::compressfilesdowork(const int & filenum)
 
 #else
 
-	char command2[255];
+	char command2[1024];
 
 	//sprintf(command1, "gzip -q -f -9 %s*report*.txt",TEMPDIR);
 	sprintf(command2, "move %s*report%05i.txt %s",TEMPDIR,filenum,REPORTDIR);

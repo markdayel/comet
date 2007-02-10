@@ -175,9 +175,9 @@ public:
 
 	bool currentlyusingthreads;
 
-	char temp_BMP_filename_x[255],
-		 temp_BMP_filename_y[255],
-		 temp_BMP_filename_z[255];
+	char temp_BMP_filename_x[1024],
+		 temp_BMP_filename_y[1024],
+		 temp_BMP_filename_z[1024];
 
 	//int doreportiteration;
 	//int doreportmaxnodes;
