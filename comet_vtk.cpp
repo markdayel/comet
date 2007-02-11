@@ -99,6 +99,7 @@
 #include "vtkJPEGWriter.h"
 #include "vtkPNGWriter.h"
 #include "vtkBMPWriter.h"
+#include "vtkVRMLExporter.h"
 
 // Texture map
 #include "vtkTexture.h"
@@ -315,9 +316,10 @@ void CometVtkVis::buildVTK(int framenumber)
     
     renderer = vtkRenderer::New();
 	renderer->SetBackground(0, 0, 0);
-    
+
     setProjection();  // also sets the rotation of the objects, so comes before actors:
-	
+	renderer->ResetCameraClippingRange();
+
     // add objects to renderer
     if(OptsRenderNucleator)
 	    addNucleator();
@@ -336,14 +338,13 @@ void CometVtkVis::buildVTK(int framenumber)
     
     if(OptsRenderAxes)
 	    addAxes();
- 
-      
+       
     // if(OptsRenderText)        
-    // addVoxelBound(renderer);    
+    // addVoxelBound(renderer);
+
     addLight();
 
-
-    renderer->ResetCameraClippingRange();
+    
     
 	render_win->AddRenderer(renderer);
 	renderer->Delete();
@@ -360,6 +361,7 @@ void CometVtkVis::buildVTK(int framenumber)
     {
         render_win->Render();
         saveImage(framenumber);
+        //saveVRML(framenumber);
     }
     
     // clear all actors from the renderer
@@ -475,32 +477,27 @@ void CometVtkVis::saveImage(int framenumber)
   
     vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
     rwin_to_image->SetInput(render_win);
-  
+    
+    // vtkBMPWriter seems a bit faster than vtkPNGWriter, and we're compressing with IM to png anyway later
+    // so use BMP here
     vtkBMPWriter *imagewriter = vtkBMPWriter::New();
     imagewriter->SetInput( rwin_to_image->GetOutput() );
     imagewriter->SetFileName( tmpfilename );
     imagewriter->Write();    
     imagewriter->Delete();
 
-	//vtkVRMLExporter *VRMLExporter = vtkVRMLExporter::New();'
-
-	//VRMLExporter->SetInput( rwin_to_image->GetOutput() );
- //   VRMLExporter->SetFileName( image_filename );
- //   VRMLExporter->Write();    
- //   VRMLExporter->Delete();
-  
     rwin_to_image->Delete();
 
     if (VTK_AA_FACTOR!=1)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose plus -composite -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
+            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,   
             5 , ( 25 ),
             framenumber,
             5 , ( 50 ) ,
-            framenumber * InterRecordIterations * DELTA_T, tmpfilename, VTK_colmap_filename, filename, tmpfilename);
+            framenumber * InterRecordIterations * DELTA_T, VTK_colmap_filename, tmpfilename, filename, tmpfilename);
         //cout << command1 << endl;
         system(command1);
     }
@@ -508,16 +505,37 @@ void CometVtkVis::saveImage(int framenumber)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose plus -composite -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
+            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION,
             5 , ( 25 ) ,
             framenumber,
             5 , ( 50 ) ,
-            framenumber * InterRecordIterations * DELTA_T, tmpfilename, VTK_colmap_filename, filename, tmpfilename);
+            framenumber * InterRecordIterations * DELTA_T, VTK_colmap_filename, tmpfilename, filename, tmpfilename);
         //cout << command1 << endl;
         system(command1);
     }
 
+}
+
+void CometVtkVis::saveVRML(int framenumber)
+{   // for some reason this produces *huge* files (>16MB) when nucleator texture is turned on
+    // it also doesn't seem to work at all...(lighting problem?)
+    char vrmltmpfilename[1024],vrmlfilename[1024];
+    sprintf(vrmltmpfilename , "%s%s_%05i.wrl", TEMPDIR, file_prefix.c_str(), framenumber );
+    sprintf(vrmlfilename , "%s%s_%05i.wrz", VRMLDIR, file_prefix.c_str(), framenumber );
+
+    cout << "Saving " << vrmlfilename << endl;
+
+	vtkVRMLExporter *VRMLExporter = vtkVRMLExporter::New();
+
+	VRMLExporter->SetInput( render_win );
+    VRMLExporter->SetFileName( vrmltmpfilename );
+    VRMLExporter->Write();    
+    VRMLExporter->Delete();
+  
+    char command1[1024];
+    sprintf(command1 , "gzip -9 %s; mv %s.gz %s ", vrmltmpfilename, vrmltmpfilename, vrmlfilename );
+    system(command1);
 }
 
 void CometVtkVis::addGuassianNodeVolume(bool do_iso)
@@ -1695,7 +1713,7 @@ void CometVtkVis::setProjection()
 
   renderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
   
-    renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
+    renderer->GetActiveCamera()->ParallelProjectionOn(); // ParallelProjectionOn();
     renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
     // FIXME: ML
     // should scale properly here to a value linked to the render setup

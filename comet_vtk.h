@@ -115,7 +115,7 @@ class CometVtkVis {
   void addVoxelBound();
 
   void SetFocalDepthPlanes(vtkPolyDataMapper *map);
-
+  void saveVRML(int framenumber);
   
   void setOptions();
   void reportOptions();

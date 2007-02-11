@@ -1961,7 +1961,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
     ifstream ifstrm( tmpdatafile );
 
 #else
-
+    // windows can't do gunzip, (and shouln't have been able to zip it either) so assume it's not zipped
 	ifstream ifstrm( filename.c_str() );
 
 #endif
