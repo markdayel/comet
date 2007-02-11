@@ -520,6 +520,7 @@ void CometVtkVis::saveImage(int framenumber)
 void CometVtkVis::saveVRML(int framenumber)
 {   // for some reason this produces *huge* files (>16MB) when nucleator texture is turned on
     // it also doesn't seem to work at all...(lighting problem?)
+
     char vrmltmpfilename[1024],vrmlfilename[1024];
     sprintf(vrmltmpfilename , "%s%s_%05i.wrl", TEMPDIR, file_prefix.c_str(), framenumber );
     sprintf(vrmlfilename , "%s%s_%05i.wrz", VRMLDIR, file_prefix.c_str(), framenumber );
@@ -661,32 +662,24 @@ void CometVtkVis::addCapsuleNucleator()
 
 void CometVtkVis::addSphericalNucleator()
 {   
-    // create sphere geometry
-    vtkSphereSource *sphere = vtkSphereSource::New();
     
-    //cout << "  voxel_scale: " << voxel_scale << endl;
-    //cout << "  nucleator radius: " << radius_pixels << endl;
-
-    
-    sphere->SetRadius(radius_pixels);
-    sphere->SetThetaResolution(32);
-    sphere->SetPhiResolution(32);
-    //sphere->LatLongTessellationOn();
 
     double nx, ny, nz;
     
     // temp: reset center:
-	if (!VTK_MOVE_WITH_BEAD)
-	{
-		nx = -ptheactin->p_nuc->position.x; 
-		ny = -ptheactin->p_nuc->position.y; 
-		nz = -ptheactin->p_nuc->position.z; 
-	}
-	else
+	if (VTK_MOVE_WITH_BEAD)
 	{
 		nx = ny = nz = 0.0;
 
 	}
+    else
+    {
+		nx = -ptheactin->p_nuc->position.x; 
+		ny = -ptheactin->p_nuc->position.y; 
+		nz = -ptheactin->p_nuc->position.z; 
+	}
+	
+
     ptheactin->inverse_actin_rotation.rotate(nx, ny, nz);
     vtk_cam_rot.rotate(nx, ny, nz); 
 
@@ -709,18 +702,18 @@ void CometVtkVis::addSphericalNucleator()
     int movez = 0;
 
     if(beadminx < 0)
-	movex = -(beadminx);
+	    movex = -beadminx;
     if(beadminy < 0)
-	movey = -(beadminy);
+	    movey = -beadminy;
     if(beadminz < 0)
-	movez = -(beadminz);    
+	    movez = -beadminz;    
 
     if(beadmaxx > ni)
-	movex = -(beadmaxx - ni);
+	    movex = -(beadmaxx - ni);
     if(beadmaxy > nj)
-	movey = -(beadmaxy - nj);
+	    movey = -(beadmaxy - nj);
     if(beadmaxz > nk)
-	movez = -(beadmaxz - nk);
+	    movez = -(beadmaxz - nk);
     
     nx = ptheactin->dbl_pixels(-nx)/voxel_scale; 
     ny = ptheactin->dbl_pixels(-ny)/voxel_scale; 
@@ -731,19 +724,56 @@ void CometVtkVis::addSphericalNucleator()
     ny += movey;
     nz += movez;
 
-    // mapper
-    vtkPolyDataMapper *mapper = vtkPolyDataMapper::New(); 
-
-    SetFocalDepthPlanes(mapper);
 
     //map->SetResolveCoincidentTopologyToPolygonOffset()
     // SetResolveCoincidentTopologyToShiftZBuffer();  // mark: testing this
     //map->ScalarVisibilityOff(); // mark: testing this too
     
     // actor coordinates geometry, properties, transformation
-    vtkActor *nuc_actor = vtkActor::New();
     
+    
+    // rotate the nucleator
+    double nrotation[3];
+
+    ptheactin->inverse_actin_rotation.getangles(nrotation[0], 
+						 nrotation[1], 
+						 nrotation[2]);
+    nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
+    nrotation[1] *= vtkMath::DoubleRadiansToDegrees();
+    nrotation[2] *= vtkMath::DoubleRadiansToDegrees();
+
+
+    // create sphere geometry
+    vtkSphereSource *sphere = vtkSphereSource::New();
+    
+    //cout << "  voxel_scale: " << voxel_scale << endl;
+    //cout << "  nucleator radius: " << radius_pixels << endl;
+
+    
+    sphere->SetRadius(radius_pixels);
+    sphere->SetThetaResolution(32);
+    sphere->SetPhiResolution(32);
+    //sphere->LatLongTessellationOn();
+
+
+    vtkActor *nuc_actor = vtkActor::New();
+
+    nuc_actor->SetPosition(nx, ny, nz);
+    nuc_actor->SetOrientation( nrotation[0] + 180,
+				   nrotation[1],
+				   nrotation[2]);
  
+    nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
+    nuc_actor->GetProperty()->SetDiffuse(0.25);
+    nuc_actor->GetProperty()->SetAmbient(0.3);
+    nuc_actor->GetProperty()->SetSpecular(1.0);
+    nuc_actor->GetProperty()->SetSpecularPower(5.0);
+ 
+     // mapper
+    vtkPolyDataMapper *mapper = vtkPolyDataMapper::New(); 
+
+    SetFocalDepthPlanes(mapper);
+
 
     if((OptsUseNucTextureMap) && (VTK_MAJOR_VERSION > 4)) 
     {
@@ -760,17 +790,12 @@ void CometVtkVis::addSphericalNucleator()
 	    vtkJPEGReader *tx_reader = vtkJPEGReader::New();
 	    tx_reader->SetFileName("nuctex.jpg");
 
-
-
 	    // create texturemap to sphere
 	    vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
 	    tx_mapper->PreventSeamOff();
         tx_mapper->SetInput( sphere->GetOutput() );
 	    vtkTransformTextureCoords *tx_xfm =  vtkTransformTextureCoords::New();
 	    tx_xfm->SetInput( tx_mapper->GetOutput() );
-
-
-
     	
         // add the texture to the nucleator
 	    vtkTexture *tx = vtkTexture::New();
@@ -781,10 +806,6 @@ void CometVtkVis::addSphericalNucleator()
 	    // set the mapper
 	    mapper->SetInputConnection( tx_xfm->GetOutputPort() );
 
-
-
-
-	    nuc_actor->SetMapper(mapper);
     	
 	    // clear up
 	    tx_reader->Delete();
@@ -797,32 +818,14 @@ void CometVtkVis::addSphericalNucleator()
 
     } else {
 	mapper->SetInput(sphere->GetOutput());
-	nuc_actor->SetMapper(mapper);
 	nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
     }
+
+
+    nuc_actor->SetMapper(mapper);
+
     sphere->Delete();
     mapper->Delete();
-
-    // rotate the nucleator sections
-    double nrotation[3];
-    ptheactin->inverse_actin_rotation.getangles(nrotation[0], 
-						 nrotation[1], 
-						 nrotation[2]);
-    nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
-    nrotation[1] *= vtkMath::DoubleRadiansToDegrees();
-    nrotation[2] *= vtkMath::DoubleRadiansToDegrees();
-
-    nuc_actor->SetPosition(nx, ny, nz);
-    nuc_actor->SetOrientation( nrotation[0] + 180,
-				   nrotation[1],
-				   nrotation[2]);
- 
-    nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
-    nuc_actor->GetProperty()->SetDiffuse(0.25);
-    nuc_actor->GetProperty()->SetAmbient(0.3);
-    nuc_actor->GetProperty()->SetSpecular(1.0);
-    nuc_actor->GetProperty()->SetSpecularPower(5.0);
-
 	
     // add the actor to the scene
     renderer->AddActor(nuc_actor);
