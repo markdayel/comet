@@ -40,7 +40,7 @@ actin::actin(void)
 	cout << "comet " << endl << "Mark J Dayel" << endl << "(" << __DATE__ << " " << __TIME__ << ") " << endl << endl;
 	cout.flush();
 
-    if (!REWRITESYMBREAK)
+    if (!REWRITESYMBREAK && !POST_PROCESS) // don't clobber if just doing post-process
     {
 	    opvelocityinfo.open("velocities.txt", ios::out | ios::trunc);
 	    if (!opvelocityinfo) 
@@ -358,11 +358,11 @@ actin::~actin(void)
     // maybe put a wait loop here later?
     //sprintf(command1, "rm %s/* ", TEMPDIR );
 	//system(command1);
-
+    cout << "Pausing for background jobs to complete" << endl;
 #ifdef _WIN32
-    Sleep(10000);
+    Sleep(5000);
 #else
-    usleep(10000);
+    usleep(5000);
 #endif
 
 	sprintf(command1, "rmdir %s", TEMPDIR);
@@ -3044,19 +3044,19 @@ void actin::compressfilesdowork(const int & filenum)
 	char command1[1024];
 	// report files
 		
-	sprintf(command1, "(gzip -q -f -9 %s*report*.txt 2>/dev/null; mv %s*report*.gz %s 2>/dev/null) &"
-		,TEMPDIR,TEMPDIR, REPORTDIR);
+	sprintf(command1, "(%s %s*report*.txt 2>/dev/null; mv %s*report*%s %s 2>/dev/null) &"
+		,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
 	system(command1);
 
 	// save data file
 
-	sprintf(command1 , "(gzip -q -f -9 %s*data*.txt 2>/dev/null; mv %s*data*.gz %s 2>/dev/null) &",
-		TEMPDIR, TEMPDIR, DATADIR);
+	sprintf(command1 , "(%s %s*data*.txt 2>/dev/null; mv %s*data*%s %s 2>/dev/null) &",
+	     COMPRESSCOMMAND, TEMPDIR, TEMPDIR, COMPRESSEDEXTENSION, DATADIR);
 	system(command1);
-
+                                       
 	// wrl file
 
-	sprintf(command1 , "(gzip -f -9 %snodes%05i.wrl 2>/dev/null; mv %snodes%05i.wrl.gz %snodes%05i.wrz 2>/dev/null) &",
+	sprintf(command1 , "(gzip -9 -f  %snodes%05i.wrl 2>/dev/null; mv %snodes%05i.wrl.gz %snodes%05i.wrz 2>/dev/null) &",
 						TEMPDIR, filenum, TEMPDIR,filenum, VRMLDIR,filenum );
 	system(command1);
 
@@ -3064,15 +3064,15 @@ void actin::compressfilesdowork(const int & filenum)
 
 	char command2[1024];
 
-	//sprintf(command1, "gzip -q -f -9 %s*report*.txt",TEMPDIR);
+	//sprintf(command1, "%s %s*report*.txt",COMPRESSCOMMAND, TEMPDIR);
 	sprintf(command2, "move %s*report%05i.txt %s",TEMPDIR,filenum,REPORTDIR);
 	//system(command1);
 	system(command2);
 
 	// save data file
 
-	//sprintf(command1, "gzip -q -f -9 %s*data*.txt",TEMPDIR2);
-	//sprintf(command2, "move %s*data*.gz %s >NUL",TEMPDIR,DATADIR);
+	//sprintf(command1, "%s %s*data*.txt",COMPRESSCOMMAND, TEMPDIR2);
+	//sprintf(command2, "move %s*data*%s %s >NUL",TEMPDIR,COMPRESSEDEXTENSION, DATADIR);
 	sprintf(command2, "move %s*data*.txt %s >NUL",TEMPDIR,DATADIR);
 	//system(command1);
 	system(command2);
@@ -3080,8 +3080,8 @@ void actin::compressfilesdowork(const int & filenum)
 
 	// wrl file
 
-	//sprintf(command1, "gzip -f -9 %snodes%05i.wrl",TEMPDIR);
-	//sprintf(command2, "move %snodes%05i.wrl.gz %snodes%05i.wrz",TEMPDIR,VRMLDIR);
+	//sprintf(command1, "%s %snodes%05i.wrl",COMPRESSCOMMAND, TEMPDIR);
+	//sprintf(command2, "move %snodes%05i.wrl%s %snodes%05i.wrz",TEMPDIR, COMPRESSEDEXTENSION, VRMLDIR);
 	//system(command1);
 	//system(command2);
 

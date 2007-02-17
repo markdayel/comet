@@ -117,7 +117,8 @@ using namespace std; // REVISIT only iostream probably temporary -- remove later
 // whatever is requested will be added to the visualisation, it's up to the user to set 
 // sensible and compatible options.
 
-CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
+CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to create a viewing window
+                                        // does it need to be true for off-screen as well?
 {
 
     //ptheactin = theactin;
@@ -270,6 +271,17 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK)//actin * theactin)
         sprintf(command1, "rm %s", tmpfilename);
         system(command1);
     }
+
+#if VTK_MAJOR_VERSION > 4	
+
+	    // ML REVISIT: check file exists
+	    // I have hardcoded location and filename here, make selectable
+	    // --
+	    // read texture image
+	    tx_reader = vtkJPEGReader::New();
+	    tx_reader->SetFileName("nuctex.jpg");
+
+#endif
  
 }
 
@@ -288,6 +300,9 @@ CometVtkVis::~CometVtkVis()
         iren->Delete();
     }
 
+#if VTK_MAJOR_VERSION > 4
+    tx_reader->Delete();
+#endif
     // remove the scalebar png file
 
     //char command1[1024];
@@ -365,13 +380,12 @@ void CometVtkVis::buildVTK(int framenumber)
     }
     
     // clear all actors from the renderer
-    // renderer->RemoveAllProps();
+    //renderer->RemoveAllProps();
     // this reuse of renderer seems to cause segfaults in vtk.
-    
+    //renderer->Delete();
     // CHECK: order matters in deletion of these objects
     // otherwise too many X Servers error.
     
-    //render_win->Delete();
 }
 
 // -- Helper functions
@@ -487,12 +501,12 @@ void CometVtkVis::saveImage(int framenumber)
     imagewriter->Delete();
 
     rwin_to_image->Delete();
-
+                                         
     if (VTK_AA_FACTOR!=1)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -resize %f%%  -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
+            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -resize %f%% -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,   
             5 , ( 25 ),
             framenumber,
@@ -535,7 +549,7 @@ void CometVtkVis::saveVRML(int framenumber)
     VRMLExporter->Delete();
   
     char command1[1024];
-    sprintf(command1 , "gzip -9 %s; mv %s.gz %s ", vrmltmpfilename, vrmltmpfilename, vrmlfilename );
+    sprintf(command1 , "gzip %s; mv %s.gz %s ", vrmltmpfilename, vrmltmpfilename, vrmlfilename );
     system(command1);
 }
 
@@ -547,7 +561,7 @@ void CometVtkVis::addGuassianNodeVolume(bool do_iso)
     if(do_iso){
 	// render the volume using an iso surface
 	addStructuredPointIsoRender(spoints);    
-    } else {
+    } else {                                                                                          
 	// volume render the points
 	addStructuredPointVolumeRender(spoints);
     }
@@ -787,8 +801,8 @@ void CometVtkVis::addSphericalNucleator()
 	    // I have hardcoded location and filename here, make selectable
 	    // --
 	    // read texture image
-	    vtkJPEGReader *tx_reader = vtkJPEGReader::New();
-	    tx_reader->SetFileName("nuctex.jpg");
+	    //*tx_reader = vtkJPEGReader::New();
+	    //tx_reader->SetFileName("nuctex.jpg");
 
 	    // create texturemap to sphere
 	    vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
@@ -808,7 +822,7 @@ void CometVtkVis::addSphericalNucleator()
 
     	
 	    // clear up
-	    tx_reader->Delete();
+	    //tx_reader->Delete();
 	    tx_mapper->Delete();
 	    tx_xfm->Delete();
 	    tx->Delete();
@@ -1687,22 +1701,21 @@ void CometVtkVis::addLight()
     rot1.rotatematrix(-40 * PI / 180 , zaxis);
     rot1.rotatematrix(-50 * PI / 180 , yaxis);
     rot1.rotate(l1pos);
-
     
     rot2.rotatematrix(40 * PI / 180 , zaxis);
     rot2.rotatematrix(10 * PI / 180 , yaxis);
     rot2.rotate(l2pos);
 
-	vtkLight *light = vtkLight::New();                                                       
-	light->SetIntensity(1.0);
-	light->SetColor(1,0.9,0.8);
-    light->SetPosition(l1pos.x, l1pos.y, l1pos.z);
-    renderer->AddLight(light);
-    light->Delete();
+	vtkLight *light1 = vtkLight::New();
+	light1->SetIntensity(1.0);
+	light1->SetColor(0.8,0.8,1.0);
+    light1->SetPosition(l1pos.x, l1pos.y, l1pos.z);
+    renderer->AddLight(light1);
+    light1->Delete();
 
-	vtkLight *light2 = vtkLight::New();
+    vtkLight *light2 = vtkLight::New();                                                       
 	light2->SetIntensity(1.0);
-	light2->SetColor(0.8,0.8,1.0);
+	light2->SetColor(1,0.9,0.8);
     light2->SetPosition(l2pos.x, l2pos.y, l2pos.z);
     renderer->AddLight(light2);
     light2->Delete();

@@ -16,6 +16,8 @@ removed without prior written permission from the author.
 #include "comet.h"
 #include "threadedtaskqueue.h"
 
+#include "mytimer.h"
+
 //#include "consts.h"
 
 class tracknodeinfo;
@@ -27,7 +29,7 @@ class tracknodeinfo;
   #include "comet_novtk.h"
 #endif
 
-const int default_nice_level = 15;
+const int default_nice_level = 15;   // v. low priority, but above screesaver :)
 
 // these are fixed compile time limits, so make sure they are well above what will be used (else will core dump)
 
@@ -43,20 +45,19 @@ short int GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
 
 double TOTAL_SIMULATION_TIME = 20000;  
 double DELTA_T = 0.1;	
-//double MAX_DISP_PERDT = 0.01;
-//double MAX_DISP_PERDT_DIVSQRTTWO = 0.00707;
-double GAUSSFWHM =  0.266;
 
 bool NUCLEATOR_FORCES = true;
 
+double GAUSSFWHM =  0.266;
+
 int BMP_WIDTH  = 800;
 int BMP_HEIGHT = 600;
-
 int BMP_AA_FACTOR = 1;
 
-int VTK_WIDTH  = 800;
-int VTK_HEIGHT = 600;
+int VTK_WIDTH  = 1024;
+int VTK_HEIGHT = 768;
 int VTK_AA_FACTOR = 1;
+
 double VTK_LINK_COLOUR_GAMMA = 1.8;
 bool VTK_MOVE_WITH_BEAD = true;
 double VTK_MIN_PLOT_LINK_FORCE_PCT = 0.0;
@@ -1175,6 +1176,9 @@ int main(int argc, char* argv[])
 
     vector <double> distmoved(NUMBER_RECORDINGS+1,0.0);  // keep track of the distance moved and num nodes
     vector <int> numnodes(NUMBER_RECORDINGS+1,0);      // for the NODES_TO_UPDATE
+    vector <vect> velocities(NUMBER_RECORDINGS+1);
+    vector <vect> posn(NUMBER_RECORDINGS+1);
+
     int lastframedone = 0;
 
     if ((RESTORE_FROM_FRAME != 0) || (POST_PROCESS))
@@ -1193,7 +1197,9 @@ int main(int argc, char* argv[])
             {
                 ipnodesupdate 
 	                >> distmoved[fn]
-	                >> numnodes[fn];
+	                >> numnodes[fn]
+                    >> posn[fn]
+                    >> velocities[fn] ;
 
                 if (numnodes[fn]>0)
                     lastframedone = fn;
@@ -1268,9 +1274,9 @@ int main(int argc, char* argv[])
 		system(command1);
 		sprintf(command1, "rm -f %s*.wrz 2>/dev/null", VRMLDIR );
 		system(command1);
-		sprintf(command1, "rm -f %s*.gz 2>/dev/null", REPORTDIR );
+		sprintf(command1, "rm -f %s*%s 2>/dev/null", REPORTDIR, COMPRESSEDEXTENSION);
 		system(command1);
-		sprintf(command1, "rm -f %s*.gz 2>/dev/null", DATADIR );
+		sprintf(command1, "rm -f %s*%s 2>/dev/null", DATADIR, COMPRESSEDEXTENSION );
 		system(command1);
 		sprintf(command1, "rm -f %s*.wrl %s*.txt 2>/dev/null", TEMPDIR, TEMPDIR );
 		system(command1);
@@ -1285,9 +1291,9 @@ int main(int argc, char* argv[])
 		system(command1);
 		sprintf(command1, "del /q %s*.wrz", VRMLDIR );
 		system(command1);
-		sprintf(command1, "del /q %s*.gz", REPORTDIR );
+		sprintf(command1, "del /q %s*%s", REPORTDIR, COMPRESSEDEXTENSION );
 		system(command1);
-		sprintf(command1, "del /q %s*.gz", DATADIR );
+		sprintf(command1, "del /q %s*%s", DATADIR, COMPRESSEDEXTENSION );
 		system(command1);
 		sprintf(command1, "del /q %s*.wrl %s*.txt", TEMPDIR, TEMPDIR );
 		system(command1);
@@ -1316,7 +1322,7 @@ int main(int argc, char* argv[])
 
 	if (REWRITESYMBREAK)
 	{
-		rewrite_symbreak_bitmaps(nuc_object, theactin);
+		rewrite_symbreak_bitmaps(nuc_object, theactin);   
 		exit(EXIT_SUCCESS);
 	}
 
@@ -1328,12 +1334,14 @@ int main(int argc, char* argv[])
 	theactin.opruninfo.flush();
 
 	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
-	cout << "Saving snapshot every " << InterRecordIterations  
+	cout << "Frames every " << InterRecordIterations  
 		<< " iterations (" << NUMBER_RECORDINGS << " total)" << endl;
 
 	
 
-	unsigned int starttime, endtime, lasttime ,nowtime, lastitertime;
+	unsigned int starttime, endtime, lasttime ,nowtime;//, lastitertime;
+
+    starttime = (unsigned) time(NULL);
 
 	lasttime=0;
 
@@ -1436,6 +1444,8 @@ int main(int argc, char* argv[])
 
     char last_symbreak_bmp_filename[1024] = "";
 
+    CometVtkVis vtkvis(VIEW_VTK);   // create vtk object
+
 	cout << endl;
 	cout << "Starting iterations..." << endl << endl; 
 
@@ -1451,10 +1461,12 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		cout << "Itternum|TotNode|Pol  |Links+|Links-|dist   |Rotn   |T   |SaveNum" << endl << endl;
+		cout << "Itternum|TotNode|Pol  |Links+|Links-|dist   |Rotn   |T     |SaveNum" << endl << endl;
 	}
 
-	lastitertime = starttime = (unsigned) time(NULL);
+    mytimer frametimer;
+    frametimer.setprecision(1);
+    frametimer.start();
 
 
     // this info file is opened here, because there's one per frame
@@ -1464,7 +1476,7 @@ int main(int argc, char* argv[])
 	if (!theactin.opinfo) 
 	{ cout << "Unable to open file " << infofilename << " for output";}
 
-    CometVtkVis vtkvis(VIEW_VTK);
+    
 
 
 	for(int i=starting_iter; i<=TOTAL_ITERATIONS; i++)
@@ -1583,15 +1595,20 @@ int main(int argc, char* argv[])
 				    << "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
 				    << "|d"  << setw(6) << setprecision(3) << distfromorigin
 				    << "|R"  << setw(6) << setprecision(1) << (180/PI) * tot_rot
-				    << "|T"  << setw(3) << ((unsigned) time(NULL) - lastitertime) << "\r";
+                    << "|T"  << setw(5) << frametimer << "\r"; //((unsigned) time(NULL) - lastitertime) << "\r";
 				cout.flush();
 			}			
 		}
 
 		theactin.iterate();
 		
+
+
+
+
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
-		{
+		{   // we've reached a frame save point
+            
             if (theactin.attemptedpolrate >0)
 				    polrate = (double) theactin.polrate/ (double) theactin.attemptedpolrate;// / (double) (i % InterRecordIterations);
                 else
@@ -1604,6 +1621,8 @@ srand( rand_num_seed );
 #endif
 
 			theactin.find_center(center);
+
+            posn[filenum] = center;
             distmoved[filenum] = center.length();
             numnodes[filenum] = theactin.highestnodecount;
 
@@ -1617,6 +1636,9 @@ srand( rand_num_seed );
 			
 			delta_center = center - last_center;  
 			last_center = center;
+
+            // velocity is how far moved divided by the frame time (i.e. DELTA_T * InterRecordIterations) 
+            velocities[filenum] = delta_center * ( 1 / (DELTA_T * InterRecordIterations));
 
             //cout << "test nodes: "<< theactin.testnodes.size() << endl;
 
@@ -1633,7 +1655,7 @@ srand( rand_num_seed );
 				<< center.x << "," 
 				<< center.y << "," 
 				<< center.z << "," 
-				<< delta_center.length()/DELTA_T << endl;
+				<< velocities[filenum].length() << endl;
 
             theactin.opvelocityinfo.flush();
 
@@ -1655,7 +1677,7 @@ srand( rand_num_seed );
 				    << "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
 				    << "|d"  << setw(6) << setprecision(3) << distfromorigin
 				    << "|R"  << setw(6) << setprecision(1) << (180/PI) * tot_rot	
-				    << "|T"  << setw(3) << ((unsigned) time(NULL) - lastitertime)
+				    << "|T"  << setw(5) << frametimer 
 				    << "|S " << setw(3) << (int)filenum  
 				    << "/"   << NUMBER_RECORDINGS;
 
@@ -1665,7 +1687,7 @@ srand( rand_num_seed );
 				    << "|L-" << setw(4) << (theactin.linksbroken-lastlinksbroken)/2
 				    << "|d"  << setw(6) << setprecision(3) << distfromorigin
 				    << "|R"  << setw(6) << setprecision(1) << (180/PI) * tot_rot	
-				    << "|T"  << setw(3) << ((unsigned) time(NULL) - lastitertime)
+				    << "|T"  << setw(5) << frametimer 
 				    << "|S " << setw(3) << (int)filenum  
 				    << "/"   << NUMBER_RECORDINGS;
 
@@ -1799,12 +1821,66 @@ srand( rand_num_seed );
 			    { cout << "Unable to open file " << NODESUPDATEFILE << " for output"; }
             else
             {
-                for (int fn = 1; fn != NUMBER_RECORDINGS+1; ++fn)
+                int SYMBREAKSEARCHWINDOWHALFWIDTH = 3; // look over double this width to find max speed
+                //double  maxvelmoved;
+                int framemaxvelmoved = 0;
+                
+                double maxvelmovedmag = 0.0;     
+                vect maxvelmoved;
+                
+                maxvelmoved.zero();
+
+                for (int frame = 1; frame != NUMBER_RECORDINGS+1; ++frame)
                 {
                     opnodesupdate 
-				    << distmoved[fn] << " " 
-				    << numnodes[fn] << endl;
+				        << distmoved[frame]  << " " 
+				        << numnodes[frame]   << " "
+                        << posn[frame]       << " "
+                        << velocities[frame] << endl;
+
+                    if ((frame > SYMBREAKSEARCHWINDOWHALFWIDTH * 2) && (frame <= filenum))
+                    {   // we need length separate from the vectors because the mag is not just sum of delta lengths of the vectors,
+                        // but the sum of the lengths i.e. it's negative if it's slowing down
+                        vect deltav;
+                        deltav.zero();
+                        double deltavmag = 0.0;
+
+                        for (int fr = frame - SYMBREAKSEARCHWINDOWHALFWIDTH * 2; fr <= frame; ++fr)
+                        {  // find delta v over range
+                            deltavmag += velocities[fr].length() - velocities[fr-1].length();
+                            deltav    += velocities[fr]          - velocities[fr-1];
+                        }
+
+                        deltavmag *= 1.0/(SYMBREAKSEARCHWINDOWHALFWIDTH * 2); // rescale by window width
+                        deltav    *= 1.0/(SYMBREAKSEARCHWINDOWHALFWIDTH * 2);
+
+                        //vect vel = (posn[frame] - posn[frame - SYMBREAKSEARCHWINDOWHALFWIDTH * 2]) * ( (double) SYMBREAKSEARCHWINDOWHALFWIDTH / (DELTA_T * InterRecordIterations)) ;
+                        
+                        //cout << "Frame " << frame << setprecision(4) << " deltav: " << deltavmag << " " << endl ;
+                        if (deltavmag > maxvelmovedmag)
+                        {     
+                            maxvelmovedmag = deltavmag;
+                            maxvelmoved = deltav;
+                            framemaxvelmoved = frame - SYMBREAKSEARCHWINDOWHALFWIDTH; 
+                            //cout << setprecision(4) << "Max vel set to: " << maxvelmoved ;
+                            //cout << " At frame: "<< frame << endl;
+                        }
+                        
+                    }                 
                 }
+
+                ofstream opsymbreaktime("symbreaktime.txt", ios::out | ios::trunc);
+                if (!opsymbreaktime) 
+			    { 
+                    cout << "Unable to open file symbreaktime.txt for output"; 
+                }
+                else
+                {
+                    opsymbreaktime << "Frame Time Speed Velocity" << endl;
+                    opsymbreaktime << framemaxvelmoved << " " << framemaxvelmoved * DELTA_T * InterRecordIterations << " " << " " << maxvelmoved << endl;
+                    opsymbreaktime.close();
+                }
+
                 opnodesupdate.close();
             }
 			
@@ -1899,7 +1975,8 @@ srand( rand_num_seed );
 
 			theactin.opruninfo.flush();
 
-			lastitertime = (unsigned) time(NULL);
+            frametimer.start();
+
 		}
 	}
 
@@ -1916,7 +1993,7 @@ srand( rand_num_seed );
 		<< ((endtime-starttime) % 60) << "s " << endl;
         
     cout<< endl << "Time : " 
-		<< ((endtime-starttime) / 3600) << "h " 
+		<< setprecision(1) << ((endtime-starttime) / 3600) << "h " 
 		<< ((endtime-starttime) / 60) % 60 << "m " 
 		<< ((endtime-starttime) % 60) << "s " << endl;
  
@@ -1955,7 +2032,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 #ifndef _WIN32
 
 	char command1[1024];
-    sprintf(command1, "gunzip --stdout %s > %s",filename.c_str(), tmpdatafile);
+    sprintf(command1, "%s -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
     system(command1);
     
     ifstream ifstrm( tmpdatafile );
@@ -2189,7 +2266,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 		int filenum;
 
 		// vtk
-		//CometVtkVis vtkvis(false); //&theactin);
+		
 	    
 		cout << "Post processing " 
 		 << postprocess_iterations.size()
@@ -2243,6 +2320,12 @@ void postprocess(nucleator& nuc_object, actin &theactin,
             POST_PROC_ORDER = 1;  // must go forwards for tracks
         }
 
+        // we can't create the vkt object here because we can't reuse the renderer without
+        // causing segfaults for some reason
+        // workaround is to create the vtk object within the loop, so that
+        // the destructor clears out and we recreate the object every time
+        //CometVtkVis vtkvis(true); // should this be false? (i.e. no render window)
+
 
         vector<int>::iterator start = postprocess_iterations.begin();
         vector<int>::iterator end = postprocess_iterations.end();
@@ -2273,11 +2356,16 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 			     << endl;
             cout.flush();
     		
-            unsigned int nowtime = (unsigned) time(NULL);
+            mytimer loadtimer;
+            loadtimer.start();
+
+            //unsigned int nowtime = (unsigned) clock();
 
 		    load_data(theactin, *iteration, false);
 
-            cout << " Loadtime: " << (unsigned) time(NULL) - nowtime << " seconds " << endl;
+            cout << " Loadtime: " << loadtimer << endl;
+
+            //cout << " Loadtime: " << setprecision(2) <<  ((double)( (unsigned)clock() - nowtime) ) / (double) CLOCKS_PER_SEC << " seconds " << endl;
     		
             cout.flush();
 
@@ -2327,16 +2415,18 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 		    if (POST_VTK)
 		    {
-                CometVtkVis vtkvis(true);
+                CometVtkVis vtkvis(true);  // true?
 
+                mytimer rendertimer;
+                rendertimer.start();
 			    //cout << "- visualisation: " << filenum << endl;
-                unsigned int nowtime = (unsigned) time(NULL);
+                //unsigned int nowtime = (unsigned) clock();
 
 			    vtkvis.buildVTK(filenum);
                 
                 //vtkvis.RestartRenderWindow(); // see if this gets rid of memory leak, slowdown etc.  this segfaults
 
-                cout << " Rendertime: " << (unsigned) time(NULL) - nowtime << " seconds " << endl;
+                cout << " Rendertime: " << rendertimer  << " seconds " << endl;
 
 		    }
 
@@ -2352,8 +2442,8 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 	if (POST_REPORTS)
 	{
 		char command1[1024];
-		sprintf(command1, "(gzip -q -f -9 %s*report*.txt 2>/dev/null; mv %s*report*.gz %s 2>/dev/null) &"
-			,TEMPDIR,TEMPDIR, REPORTDIR);
+		sprintf(command1, "(%s %s*report*.txt 2>/dev/null; mv %s*report*%s %s 2>/dev/null) &"
+			,COMPRESSCOMMAND, TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
 		system(command1);
 	}
 

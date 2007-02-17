@@ -45,7 +45,7 @@ nucleator::nucleator(shape set_geometry)//, actin *actinptr)
 		surf_area = 4 * PI * RADIUS * RADIUS;
         
         if (VARY_INERT_W_RAD)
-        {
+        {   // movability is a *fraction* representing the ratio of how movable the nucleator is compared to the nodes
             movability = 0.25 / (RADIUS * NUCLEATOR_INERTIA);
         }
         else

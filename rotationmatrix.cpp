@@ -79,13 +79,13 @@ void rotationmatrix::rotatematrix(const double &angle, const projection &a)
 }
 
 rotationmatrix rotationmatrix::inverse()
-{
+{                                                             
     rotationmatrix adj;
 
     // determinant
-    double det =  xx*(yy*zz-yz*zy)
-                + yx*(zy*xz-xy*zz)
-                + zx*(xy*yz-yy*xz);
+    double det =  xx * ( yy*zz - yz*zy )
+                + yx * ( zy*xz - xy*zz )
+                + zx * ( xy*yz - yy*xz );
     // adjunct
     adj.xx = yy*zz - yz*zy;     adj.xy = xz*zy - xy*zz;     adj.xz = xy*yz - xz*yy;
     adj.yx = yz*zx - yx*zz; 	adj.yy = xx*zz - xz*zx; 	adj.yz = xz*yx - xx*yz;

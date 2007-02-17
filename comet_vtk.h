@@ -25,6 +25,8 @@
 
 #include "vtkPolyDataMapper.h"
 
+#include "vtkJPEGReader.h"
+
 //#include "vtkMesaRenderer.h"
 //#include "vtkMesaRenderWindow.h"
 
@@ -63,6 +65,8 @@ class CometVtkVis {
   vtkRenderer *renderer;
   vtkRenderWindow *render_win;
   vtkRenderWindowInteractor *iren;
+
+  vtkJPEGReader *tx_reader;
 
   double radius_pixels, capsule_length_pixels;
   

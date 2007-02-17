@@ -32,7 +32,7 @@ removed without prior written permission from the author.
 // vector seems quite a bit faster
 //#define NODEGRIDTYPELIST 1
 
-#define BMPS_USING_LINKS 1
+//#define BMPS_USING_LINKS 1
 
 #define NO_CALC_STATS 1 // calculating stats slows things considerably (prolly because of trig functions,
                         // but is required if we want force/energy graphs)
@@ -45,9 +45,13 @@ removed without prior written permission from the author.
 
 #define BMP_USE_FOCAL_DEPTH 1
 
+//#define TIMERCPUTIME  // timers report cpu time instead of wall time
+
 // mersennetwister.h is causing bus error for some reason...
 //#define USE_MERSENNE 1
 
+
+// test optimizations
 #ifdef NODEGRIDTYPELIST
     #define NODEGRIDTYPE list
 #else
@@ -69,6 +73,17 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 #define NODESUPDATEFILE "nodesupdate.txt"
 #define TESTNODESFILE "testnodes.txt"
 
+#define USEBZIP2 1
+
+#ifdef USEBZIP2
+ #define COMPRESSCOMMAND "bzip2 -9 -f"
+ #define DECOMPRESSCOMMAND "bunzip2"
+ #define COMPRESSEDEXTENSION ".bz2"
+#else
+ #define COMPRESSCOMMAND "gzip -9 -f"                                     
+ #define DECOMPRESSCOMMAND "gunzip"
+ #define COMPRESSEDEXTENSION ".gz"
+#endif
 
 
 #ifdef _WIN32
