@@ -281,7 +281,6 @@ extern int POST_PROC_ORDER;
 
 extern double TOTAL_SIMULATION_TIME;  
 extern double DELTA_T;
-extern int RECORDED_TIMESTEPS;		// number of recorded timesteps(data files)
 
 extern bool STICK_TO_NUCLEATOR;
 extern bool RESTICK_TO_NUCLEATOR;

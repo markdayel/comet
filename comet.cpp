@@ -124,7 +124,7 @@ int TRACKFRAMESTEP = 5;
 
 double gridscanjitter = 0.01;
 
-//int SAVE_DATA_PRECISION	= 4;
+int SAVE_DATA_PRECISION	= 4;
 
 
 //bool FORCES_ON_SIDE = true;
@@ -135,11 +135,9 @@ string BMP_OUTPUT_FILETYPE = "png";
 
 //int REPORT_AVERAGE_ITTERATIONS = 50;
 
-int RECORDED_TIMESTEPS=200;			// number of recorded timesteps(data files)
-
 int RESTORE_FROM_FRAME = 0; // =0 don't load a checkpoint 
 int RECORDING_INTERVAL = 0;
-int NUMBER_RECORDINGS = 0;
+int TOT_FRAMES = 400;
 
 double FORCE_SCALE_FACT = 0.001;	// convert forces (nom in pN) into node displacements (nom in uM)
 					        // this is related to effective viscosity and effective size of node
@@ -669,13 +667,16 @@ int main(int argc, char* argv[])
             continue;
 
 		if (tag == "TOTAL_SIMULATION_TIME") 
-			{ss >> TOTAL_SIMULATION_TIME;} 
+			{ss >> TOTAL_SIMULATION_TIME;}
+
+        else if (tag == "TOT_FRAMES") 
+			{ss >> TOT_FRAMES;}
 
 		else if (tag == "RAND_SEED") 
 			{ss >> RAND_SEED;}
 
-		//else if (tag == "SAVE_DATA_PRECISION") 
-		//	{ss >> SAVE_DATA_PRECISION;}
+		else if (tag == "SAVE_DATA_PRECISION") 
+			{ss >> SAVE_DATA_PRECISION;}
 
 		else if (tag == "DELTA_T") 
 			{ss >> DELTA_T;}
@@ -777,10 +778,7 @@ int main(int argc, char* argv[])
 			{ss >> buff2; if (buff2=="TRUE") BMP_FIX_BEAD_MOVEMENT = true; else BMP_FIX_BEAD_MOVEMENT = false;}
 
         else if (tag == "BMP_FIX_BEAD_ROTATION") 
-			{ss >> buff2; if (buff2=="TRUE") BMP_FIX_BEAD_ROTATION = true; else BMP_FIX_BEAD_ROTATION = false;}
-
-		else if (tag == "RECORDING_INTERVAL") 
-			{ss >> RECORDING_INTERVAL;} 
+			{ss >> buff2; if (buff2=="TRUE") BMP_FIX_BEAD_ROTATION = true; else BMP_FIX_BEAD_ROTATION = false;} 
 
 		else if (tag == "RESTORE_FROM_FRAME") 
 			{ss >> RESTORE_FROM_FRAME;} 
@@ -1148,10 +1146,12 @@ int main(int argc, char* argv[])
 #endif
 
 	TOTAL_ITERATIONS = (int) (((double)TOTAL_SIMULATION_TIME / (double)DELTA_T)+0.5);
-
-	// loop iterations per recorded timestep
-	InterRecordIterations = RECORDING_INTERVAL;
-	NUMBER_RECORDINGS = int(TOTAL_ITERATIONS / RECORDING_INTERVAL);
+    RECORDING_INTERVAL = int(TOTAL_ITERATIONS / TOT_FRAMES);
+    TOTAL_ITERATIONS = RECORDING_INTERVAL * TOTAL_ITERATIONS; // just to make sure it's an exact muliple
+	
+	InterRecordIterations = RECORDING_INTERVAL;  // redundant---combine these two variables at some point
+    
+	//TOT_FRAMES = int(TOTAL_ITERATIONS / RECORDING_INTERVAL);
 
 	NODE_FORCE_TO_DIST = DELTA_T * FORCE_SCALE_FACT;
 	NODE_DIST_TO_FORCE = 1.0 / NODE_FORCE_TO_DIST;
@@ -1174,10 +1174,10 @@ int main(int argc, char* argv[])
 	}
 	
 
-    vector <double> distmoved(NUMBER_RECORDINGS+1,0.0);  // keep track of the distance moved and num nodes
-    vector <int> numnodes(NUMBER_RECORDINGS+1,0);      // for the NODES_TO_UPDATE
-    vector <vect> velocities(NUMBER_RECORDINGS+1);
-    vector <vect> posn(NUMBER_RECORDINGS+1);
+    vector <double> distmoved(TOT_FRAMES+1,0.0);  // keep track of the distance moved and num nodes
+    vector <int> numnodes(TOT_FRAMES+1,0);      // for the NODES_TO_UPDATE
+    vector <vect> velocities(TOT_FRAMES+1);
+    vector <vect> posn(TOT_FRAMES+1);
 
     int lastframedone = 0;
 
@@ -1193,7 +1193,7 @@ int main(int argc, char* argv[])
             { cout << "Unable to open file " << NODESUPDATEFILE << " for input"; }
         else
         {
-            for (int fn = 1; fn != NUMBER_RECORDINGS+1; ++fn)
+            for (int fn = 1; fn != TOT_FRAMES+1; ++fn)
             {
                 ipnodesupdate 
 	                >> distmoved[fn]
@@ -1335,7 +1335,7 @@ int main(int argc, char* argv[])
 
 	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
 	cout << "Frames every " << InterRecordIterations  
-		<< " iterations (" << NUMBER_RECORDINGS << " total)" << endl;
+		<< " iterations (" << TOT_FRAMES << " total)" << endl;
 
 	
 
@@ -1679,7 +1679,7 @@ srand( rand_num_seed );
 				    << "|R"  << setw(6) << setprecision(1) << (180/PI) * tot_rot	
 				    << "|T"  << setw(5) << frametimer 
 				    << "|S " << setw(3) << (int)filenum  
-				    << "/"   << NUMBER_RECORDINGS;
+				    << "/"   << TOT_FRAMES;
 
             cout    << "|N"  << setw(6) << theactin.highestnodecount
 				    << "|P"  << setw(4) << setprecision(2) << polrate
@@ -1689,7 +1689,7 @@ srand( rand_num_seed );
 				    << "|R"  << setw(6) << setprecision(1) << (180/PI) * tot_rot	
 				    << "|T"  << setw(5) << frametimer 
 				    << "|S " << setw(3) << (int)filenum  
-				    << "/"   << NUMBER_RECORDINGS;
+				    << "/"   << TOT_FRAMES;
 
 			if ( !WRITE_BMPS_PRE_SYMBREAK && 
 				 !finished_writing_sym_bitmaps)
@@ -1830,7 +1830,7 @@ srand( rand_num_seed );
                 
                 maxvelmoved.zero();
 
-                for (int frame = 1; frame != NUMBER_RECORDINGS+1; ++frame)
+                for (int frame = 1; frame != TOT_FRAMES+1; ++frame)
                 {
                     opnodesupdate 
 				        << distmoved[frame]  << " " 
@@ -2000,8 +2000,15 @@ srand( rand_num_seed );
     // allow imagemagick to catch up before calling actin destructor and 
     // deleting the temp bitmap files
     if (!ABORT)
-        system("sleep 5");
-
+    {
+        cout << "Pausing for background jobs to complete" << endl;
+#ifdef _WIN32
+        Sleep(10000);
+#else
+        usleep(10000);
+#endif
+    }
+          
 	
 	exit(EXIT_SUCCESS);
 }
@@ -2131,7 +2138,7 @@ int save_data(actin &theactin, int iteration)
        << DISTANCE_TO_UPDATE_reached << " "
        << NODES_TO_UPDATE << endl;
     
-	//ofstrm << setprecision(SAVE_DATA_PRECISION);
+	ofstrm << setprecision(SAVE_DATA_PRECISION);
 
     // actin does all the real work
     theactin.save_data(ofstrm);

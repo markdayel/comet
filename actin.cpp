@@ -358,12 +358,7 @@ actin::~actin(void)
     // maybe put a wait loop here later?
     //sprintf(command1, "rm %s/* ", TEMPDIR );
 	//system(command1);
-    cout << "Pausing for background jobs to complete" << endl;
-#ifdef _WIN32
-    Sleep(5000);
-#else
-    usleep(5000);
-#endif
+    
 
 	sprintf(command1, "rmdir %s", TEMPDIR);
 	system(command1);
