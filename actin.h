@@ -191,11 +191,7 @@ public:
 	vector <double> speckle_array;
 	int speckle_array_size;
 
-//#ifdef NODE_GRID_USE_ARRAYS
-//	static nodes** __restrict nodegrid;
-//#else
-//	static Nodes3d nodegrid;
-//#endif
+
 
 	static vector <nodes> node;
 	static vector <bool> donenode;	
@@ -301,60 +297,6 @@ public:
 	}
 	
 
-
-	//void removenodefromgrid(nodes* remnode)
-	//{
-	//	// are we on the grid?
-	//	if (remnode->gridx==-1) return;  // return if not
-
-	//	// are we the only grid node?
-	//	if ((remnode->nextnode==remnode) &&
-	//			(NODEGRID(remnode->gridx,remnode->gridy,remnode->gridz) == remnode))
-	//		{	// if so, just delete the grid reference
-	//			NODEGRID(remnode->gridx,remnode->gridy,remnode->gridz) = 0;
-	//		}
-	//		else
-	//		{	// other nodes on grid
-	//			if (NODEGRID(remnode->gridx,remnode->gridy,remnode->gridz) == remnode)
-	//			{  // if we're the grid reference set ref to next node
-	//				NODEGRID(remnode->gridx,remnode->gridy,remnode->gridz) = remnode->nextnode;
-	//			}
-
-	//			remnode->nextnode->prevnode = remnode->prevnode;  //  remove self from circular list
-	//			remnode->prevnode->nextnode = remnode->nextnode;
-
-	//		}
-
-	//		remnode->gridx=remnode->gridy=remnode->gridz=-1;
-
-	//	return;
-	//}
-
-	//void addnodetogrid(nodes* addnode)
-	//{
-	//	// are we already on the grid?
-	//	//if (gridx!=-1) return 0;
-
-	//	// is the new grid node empty?
-	//	if ((NODEGRID(addnode->gridx,addnode->gridy,addnode->gridz) == 0))
-	//	{	// if so, just add self to the grid reference
-	//		NODEGRID(addnode->gridx,addnode->gridy,addnode->gridz) = addnode;
-	//		addnode->nextnode = addnode->prevnode = addnode;  // and loop to self
-	//	}
-	//	else
-	//	{	// otherwise sew into loop
-	//		addnode->nextnode = NODEGRID(addnode->gridx,addnode->gridy,addnode->gridz);  // our next is the grid
-	//		addnode->prevnode = addnode->nextnode->prevnode;  //our new previous is the new next's old previous
-
-	//		addnode->nextnode->prevnode = addnode;  // and we are theirs
-	//		addnode->prevnode->nextnode = addnode;
-	//	}
-
-	//return;
-	//}
-
-
-    void keep_mem_resident(void);
     void reservemorenodes(const int extranodes);
 };
 

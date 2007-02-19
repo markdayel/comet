@@ -3468,26 +3468,6 @@ void actin::clear_node_stats(void)
 
 }
 
-void actin::keep_mem_resident(void)
-{
-
-#ifdef _NUMA
-
- nmadvise(&nodegrid, sizeof(nodegrid), MADV_WILLNEED, NULL);
-    //madvise((caddr_t)&nodegrid, sizeof(nodegrid), MADV_WILLNEED);
-	for (int i=0; i!=(GRIDSIZE+1); i++)  
-	{
-        nmadvise(&nodegrid[i], sizeof(nodegrid[i]), MADV_WILLNEED, NULL);
-        //madvise((caddr_t)&nodegrid[i], sizeof(nodegrid[i]), MADV_WILLNEED);
-        for (int j=0; j!=(GRIDSIZE+1); j++)
-		{
-            nmadvise(&nodegrid[i][j], sizeof(nodegrid[i][j]), MADV_WILLNEED, NULL);
-            //madvise((caddr_t)&nodegrid[i][j], sizeof(nodegrid[i][j]), MADV_WILLNEED);
-        }
-	}
-
-#endif
-}
 
 void actin::reservemorenodes(const int extranodes)
 {

@@ -168,15 +168,7 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 #include <float.h>
 
 
-//#define _NUMA 1
 
-
-#ifdef _NUMA
-    #include <numa.h>
-    //extern nsgid_t numa_group;
-    extern radset_t radset;
-    //extern cpuset_t cpuset;
-#endif
 
 // namespace:
 

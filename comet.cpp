@@ -263,12 +263,6 @@ bool USETHREAD_LINKFORCES  = true;
 
 bool CLUSTER = false;
 
-#ifdef _NUMA
-    //nsgid_t numa_group;
-    radset_t radset;
-    //cpuset_t cpuset;
-#endif
-
 pthread_attr_t thread_attr;
 vector<pthread_t> threads;
 
@@ -436,7 +430,7 @@ int main(int argc, char* argv[])
 
 
 
-    int nicelevel = 0;
+    
 
 	char hostname[1024]="";
 
@@ -446,35 +440,38 @@ int main(int argc, char* argv[])
 
 #endif
 
-    if (     
-            (strcmp( hostname, "ec3.ucsf.edu") == 0) ||
-            (strcmp( hostname, "sc1.ucsf.edu") == 0) ||
-            (strcmp( hostname, "compute-0-0.local") == 0) ||
-            (strcmp( hostname, "compute-0-1.local") == 0) ||
-            (strcmp( hostname, "compute-0-2.local") == 0) ||
-            (strcmp( hostname, "compute-0-3.local") == 0) ||
-            (strcmp( hostname, "compute-0-4.local") == 0) ||
-            (strcmp( hostname, "compute-0-5.local") == 0) ||
-            (strcmp( hostname, "compute-0-6.local") == 0) ||
-            (strcmp( hostname, "compute-0-7.local") == 0) ||                  
-            (strcmp( hostname, "compute-0-8.local") == 0) ||
-            (strcmp( hostname, "compute-0-9.local") == 0) ||
+    // is the machine part of a rocks cluster?  (if so, we'll set output to quiet etc. later on)
+    if (    (strcmp( hostname, "ec3.ucsf.edu")       == 0) ||
+            (strcmp( hostname, "sc1.ucsf.edu")       == 0) ||
+            (strcmp( hostname, "compute-0-0.local")  == 0) ||
+            (strcmp( hostname, "compute-0-1.local")  == 0) ||
+            (strcmp( hostname, "compute-0-2.local")  == 0) ||
+            (strcmp( hostname, "compute-0-3.local")  == 0) ||
+            (strcmp( hostname, "compute-0-4.local")  == 0) ||
+            (strcmp( hostname, "compute-0-5.local")  == 0) ||
+            (strcmp( hostname, "compute-0-6.local")  == 0) ||
+            (strcmp( hostname, "compute-0-7.local")  == 0) ||                  
+            (strcmp( hostname, "compute-0-8.local")  == 0) ||
+            (strcmp( hostname, "compute-0-9.local")  == 0) ||
             (strcmp( hostname, "compute-0-10.local") == 0) ||
             (strcmp( hostname, "compute-0-11.local") == 0) ||
             (strcmp( hostname, "compute-0-12.local") == 0) ||
             (strcmp( hostname, "compute-0-13.local") == 0) ||
             (strcmp( hostname, "compute-0-14.local") == 0) ||
-            (strcmp( hostname, "compute-0-15.local") == 0))
+            (strcmp( hostname, "compute-0-15.local") == 0) )
     {
         CLUSTER=true;
     }
 
+
+    int nicelevel = 0;
 
 	if (!POST_PROCESS && !REWRITESYMBREAK)
 	{	// don't drop priority if re-writing bitmaps
 		// because calling thread already has low priority
 		// and this would drop it further
 		// so process would halt on a single cpu machine
+        // while the main process was running
 
 		if (strcmp( hostname, "guanine.ucsg.edu") == 0)
 		{
@@ -514,17 +511,6 @@ int main(int argc, char* argv[])
 	// -- Threading TaskTeam, create and intialise the team
 	if (USE_THREADS  && !POST_PROCESS && !REWRITESYMBREAK)
 	{
-#ifdef _NUMA
-        radsetcreate(&radset);
-        pid_t pid = getpid();
-        rad_attach_pid(pid, radset, RAD_INSIST || RAD_SMALLMEM || RAD_MIGRATE || RAD_WAIT);
-        //pid_t pid = getpid();
-        //numa_group = nsg_init(pid, NSG_GETBYPID);
-
-        //cpusetcreate(&cpuset);
-        //cpuid_t cpu = cpu_get_current();
-        //cpuaddset(cpuset, cpu);
-#endif
 	    thread_queue.create_threads(NUM_THREADS);
 	}
 
@@ -1147,7 +1133,7 @@ int main(int argc, char* argv[])
 
 	TOTAL_ITERATIONS = (int) (((double)TOTAL_SIMULATION_TIME / (double)DELTA_T)+0.5);
     RECORDING_INTERVAL = int(TOTAL_ITERATIONS / TOT_FRAMES);
-    TOTAL_ITERATIONS = RECORDING_INTERVAL * TOTAL_ITERATIONS; // just to make sure it's an exact muliple
+    TOTAL_ITERATIONS = RECORDING_INTERVAL * TOT_FRAMES; // just to make sure it's an exact muliple
 	
 	InterRecordIterations = RECORDING_INTERVAL;  // redundant---combine these two variables at some point
     
@@ -1569,9 +1555,7 @@ int main(int argc, char* argv[])
 					}
 				}
 #endif
-			}
-			
-			//theactin.keep_mem_resident();            
+			}           
 
 			lasttime = nowtime;
 			theactin.find_center(center);
@@ -1602,8 +1586,6 @@ int main(int argc, char* argv[])
 
 		theactin.iterate();
 		
-
-
 
 
 		if (((i % InterRecordIterations) == 0) && (i>starting_iter))
@@ -1821,15 +1803,7 @@ srand( rand_num_seed );
 			    { cout << "Unable to open file " << NODESUPDATEFILE << " for output"; }
             else
             {
-                int SYMBREAKSEARCHWINDOWHALFWIDTH = 3; // look over double this width to find max speed
-                //double  maxvelmoved;
-                int framemaxvelmoved = 0;
-                
-                double maxvelmovedmag = 0.0;     
-                vect maxvelmoved;
-                
-                maxvelmoved.zero();
-
+                // save the nodes update file
                 for (int frame = 1; frame != TOT_FRAMES+1; ++frame)
                 {
                     opnodesupdate 
@@ -1837,52 +1811,90 @@ srand( rand_num_seed );
 				        << numnodes[frame]   << " "
                         << posn[frame]       << " "
                         << velocities[frame] << endl;
-
-                    if ((frame > SYMBREAKSEARCHWINDOWHALFWIDTH * 2) && (frame <= filenum))
-                    {   // we need length separate from the vectors because the mag is not just sum of delta lengths of the vectors,
-                        // but the sum of the lengths i.e. it's negative if it's slowing down
-                        vect deltav;
-                        deltav.zero();
-                        double deltavmag = 0.0;
-
-                        for (int fr = frame - SYMBREAKSEARCHWINDOWHALFWIDTH * 2; fr <= frame; ++fr)
-                        {  // find delta v over range
-                            deltavmag += velocities[fr].length() - velocities[fr-1].length();
-                            deltav    += velocities[fr]          - velocities[fr-1];
-                        }
-
-                        deltavmag *= 1.0/(SYMBREAKSEARCHWINDOWHALFWIDTH * 2); // rescale by window width
-                        deltav    *= 1.0/(SYMBREAKSEARCHWINDOWHALFWIDTH * 2);
-
-                        //vect vel = (posn[frame] - posn[frame - SYMBREAKSEARCHWINDOWHALFWIDTH * 2]) * ( (double) SYMBREAKSEARCHWINDOWHALFWIDTH / (DELTA_T * InterRecordIterations)) ;
-                        
-                        //cout << "Frame " << frame << setprecision(4) << " deltav: " << deltavmag << " " << endl ;
-                        if (deltavmag > maxvelmovedmag)
-                        {     
-                            maxvelmovedmag = deltavmag;
-                            maxvelmoved = deltav;
-                            framemaxvelmoved = frame - SYMBREAKSEARCHWINDOWHALFWIDTH; 
-                            //cout << setprecision(4) << "Max vel set to: " << maxvelmoved ;
-                            //cout << " At frame: "<< frame << endl;
-                        }
-                        
-                    }                 
-                }
-
-                ofstream opsymbreaktime("symbreaktime.txt", ios::out | ios::trunc);
-                if (!opsymbreaktime) 
-			    { 
-                    cout << "Unable to open file symbreaktime.txt for output"; 
-                }
-                else
-                {
-                    opsymbreaktime << "Frame Time Speed Velocity" << endl;
-                    opsymbreaktime << framemaxvelmoved << " " << framemaxvelmoved * DELTA_T * InterRecordIterations << " " << " " << maxvelmoved << endl;
-                    opsymbreaktime.close();
                 }
 
                 opnodesupdate.close();
             }
+
+            // find the symmetry break time
+
+
+
+            // find max velocity
+
+            double maxvel = 0;
+
+            for (int frame = 1; frame != TOT_FRAMES+1; ++frame)
+            {
+                if (velocities[frame].length() > maxvel)
+                    maxvel = velocities[frame].length();
+            }
+
+            
+            // find where crosses half max
+
+            int framemaxvelmoved = 0;                
+            vect maxvelmoved;
+
+            for (int frame = 1; frame != TOT_FRAMES+1; ++frame)
+            {
+                if (velocities[frame].length() > maxvel / 2.0) 
+                {
+                    maxvelmoved = velocities[frame];
+                    framemaxvelmoved = frame;
+                    break;
+                }
+            }
+
+            //int SYMBREAKSEARCHWINDOWHALFWIDTH = 3; // look over double this width to find max speed
+            //for (int frame = 1; frame != TOT_FRAMES+1; ++frame)
+            //{
+            //    if ((frame > SYMBREAKSEARCHWINDOWHALFWIDTH * 2) && (frame <= filenum))
+            //    {   // we need length separate from the vectors because the mag is not just sum of delta lengths of the vectors,
+            //        // but the sum of the lengths i.e. it's negative if it's slowing down
+            //        vect deltav;
+            //        deltav.zero();
+            //        double deltavmag = 0.0;
+
+            //        for (int fr = frame - SYMBREAKSEARCHWINDOWHALFWIDTH * 2; fr <= frame; ++fr)
+            //        {  // find delta v over range
+            //            deltavmag += velocities[fr].length() - velocities[fr-1].length();
+            //            deltav    += velocities[fr]          - velocities[fr-1];
+            //        }
+
+            //        deltavmag *= 1.0/(SYMBREAKSEARCHWINDOWHALFWIDTH * 2); // rescale by window width
+            //        deltav    *= 1.0/(SYMBREAKSEARCHWINDOWHALFWIDTH * 2);
+
+            //        //vect vel = (posn[frame] - posn[frame - SYMBREAKSEARCHWINDOWHALFWIDTH * 2]) * ( (double) SYMBREAKSEARCHWINDOWHALFWIDTH / (DELTA_T * InterRecordIterations)) ;
+            //        
+            //        //cout << "Frame " << frame << setprecision(4) << " deltav: " << deltavmag << " " << endl ;
+            //        if (deltavmag > maxvelmovedmag)
+            //        {     
+            //            maxvelmovedmag = deltavmag;
+            //            maxvelmoved = deltav;
+            //            framemaxvelmoved = frame - SYMBREAKSEARCHWINDOWHALFWIDTH; 
+            //            //cout << setprecision(4) << "Max vel set to: " << maxvelmoved ;
+            //            //cout << " At frame: "<< frame << endl;
+            //        }
+            //        
+            //    }                 
+            //}
+
+            // write symmetry break time (and direction) to file
+
+            ofstream opsymbreaktime("symbreaktime.txt", ios::out | ios::trunc);
+            if (!opsymbreaktime) 
+		    { 
+                cout << "Unable to open file symbreaktime.txt for output"; 
+            }
+            else
+            {
+                opsymbreaktime << "Frame Time Speed Velocity" << endl;
+                opsymbreaktime << framemaxvelmoved << " " << framemaxvelmoved * DELTA_T * InterRecordIterations << " " << " " << maxvelmoved << endl;
+                opsymbreaktime.close();
+            }
+
+   
 			
             if ( (DISTANCE_TO_UPDATE > 0.01) &&
 				 (distmoved[filenum] > DISTANCE_TO_UPDATE*RADIUS) )
@@ -2248,7 +2260,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 	if (POST_PROCESS4CPU)
 	{
 		int threads = 4;
-		int firstframe = *postprocess_iterations.begin() / InterRecordIterations;
+		int firstframe =  *postprocess_iterations.begin()  / InterRecordIterations;
 		int lastframe  = *(postprocess_iterations.end()-1) / InterRecordIterations;
 
 		//lastframe = lastframe - (lastframe % 4);  // make # frames divisible by 4 for quicktime compat
