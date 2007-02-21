@@ -92,6 +92,11 @@ public:
 	double distsqr;
 };
 
+/// One actin object is created per program run and it contains the nodes which make up the network, and associated functions.
+
+/// The actin object is created in main().
+/// etc etc
+
 class actin
 {
 public:

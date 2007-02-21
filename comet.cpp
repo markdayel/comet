@@ -224,8 +224,10 @@ char IMAGEMAGICKMOGRIFY[1024];
 
 double LINK_POWER_SCALE = 0;
 
+bool COMPRESSDATAFILES = true;
+
 int RADIAL_SEGMENTS = 12;
-int NODES_TO_UPDATE = 5000;  //only update the NODES_TO_UPDATE newest nodes
+int NODES_TO_UPDATE = 300000;  //only update the NODES_TO_UPDATE newest nodes
 double DISTANCE_TO_UPDATE = 0;
 
 int CROSSLINKDELAY = 200;  // number of interations before crosslinking 
@@ -281,7 +283,7 @@ vector<struct thread_data>  applyforces_thread_data_array;
     NG4d nodegrid;
 #endif
 
-unsigned int Node_Grid_Dim;
+//unsigned int GRIDSIZE;
 
 actin *ptheactin;
 
@@ -673,6 +675,9 @@ int main(int argc, char* argv[])
 		else if (tag == "MAXNODES") 
 			{ss >> MAXNODES;}
 
+        else if (tag == "COMPRESSDATAFILES") 
+			{ss >> buff2; if (buff2=="TRUE") COMPRESSDATAFILES = true; else COMPRESSDATAFILES = false;}
+
 		else if (tag == "BMP_WIDTH")	  
 			{ss >> BMP_WIDTH;}
 
@@ -686,7 +691,7 @@ int main(int argc, char* argv[])
 			{ss >> VTK_WIDTH;}
 
 		else if (tag == "VTK_HEIGHT")	  
-			{ss >> VTK_HEIGHT;}
+			{ss >> VTK_HEIGHT;}         
 
         else if (tag == "SYM_BREAK_TO_RIGHT") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
@@ -937,8 +942,8 @@ int main(int argc, char* argv[])
 		else if (tag == "VIEW_HEIGHT") 
 			{ss >> VIEW_HEIGHT;} 
 		
-		else if (tag == "NODES_TO_UPDATE") 
-			{ss >> NODES_TO_UPDATE;} 
+		//else if (tag == "NODES_TO_UPDATE") 
+		//	{ss >> NODES_TO_UPDATE;} 
 		
 		else if (tag == "DISTANCE_TO_UPDATE") 
 			{ss >> DISTANCE_TO_UPDATE;} 
@@ -1116,7 +1121,6 @@ int main(int argc, char* argv[])
     gridscanjitter = GRIDRES - grid_scan_range; // how far a node can move before we update its grid posn
 
     GRIDSIZE = (int) ( 2 * GRIDBOUNDS / GRIDRES );
-	Node_Grid_Dim = GRIDSIZE;
 
 	NODE_XLINK_GRIDSEARCH = (int) floor( XLINK_NODE_RANGE / GRIDRES ) + 1; 
 
@@ -2038,7 +2042,6 @@ string get_datafilename(const int iteration)
 bool load_data(actin &theactin, int iteration, const bool &loadscale)
 {
 
-    
     string filename = get_datafilename(iteration);
 
 	char tmpdatafile[1024];
@@ -2048,23 +2051,32 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 
 	filename = DATADIR + filename;
 
+    // try to open uncompressed file first, then compressed file
+    // (when working repeatedly on same dataset, prolly best to unzip the whole data directory)
+
+    ifstream ifstrm;
+    ifstrm.open( filename.c_str() );
+
+    bool usingtmpdatafile = false;
+
+    if (!ifstrm)
+    {
+        // uncompressed file open failed, so try decompressing the compressed file to a temp file and opening that
+        ifstrm.close();
+
 #ifndef _WIN32
+	    char command1[1024];
+        sprintf(command1, "%s -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
+        system(command1);
 
-	char command1[1024];
-    sprintf(command1, "%s -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
-    system(command1);
-    
-    ifstream ifstrm( tmpdatafile );
-
-#else
-    // windows can't do gunzip, (and shouln't have been able to zip it either) so assume it's not zipped
-	ifstream ifstrm( filename.c_str() );
+        ifstrm.open( tmpdatafile );
+        usingtmpdatafile = true;
 
 #endif
-
-
+    }
+                                                    
     if(!ifstrm) {
-	cout << "Unable to open file " << tmpdatafile << " / " << filename << " for input" << endl;
+	cout << "Unable to open file " << filename.c_str() << " or " << tmpdatafile << " for input" << endl;
     #ifdef _WIN32
     cout << "Note that on windows, you must manually unzip any gzipped data files" << endl;
     #endif
@@ -2098,10 +2110,16 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
     
     ifstrm.close();
 
-#ifndef _WIN32 
-    sprintf(command1, "rm  %s",tmpdatafile);
-    system(command1);
-#endif
+ 
+    if (usingtmpdatafile)
+    {
+#ifndef _WIN32
+        char command1[1024];
+        sprintf(command1, "rm  %s",tmpdatafile);
+        system(command1);
+#endif    
+    }
+
 
     // check the iteration is correct
     if( saved_iteration != iteration ){
@@ -2134,7 +2152,10 @@ int save_data(actin &theactin, int iteration)
 {
     string filename = get_datafilename(iteration);
 
-	filename = TEMPDIR + filename;
+    if (COMPRESSDATAFILES) // if compressing, put in temp directory, else save directly
+	    filename = TEMPDIR + filename;
+    else
+        filename = DATADIR + filename;
 
     ofstream ofstrm( filename.c_str() );    
     if(!ofstrm) {
@@ -2150,7 +2171,10 @@ int save_data(actin &theactin, int iteration)
        << DISTANCE_TO_UPDATE_reached << " "
        << NODES_TO_UPDATE << endl;
     
+
+    // what's the best way to set the data format (so keeps enough accuracy, but compresses well)
 	ofstrm << setprecision(SAVE_DATA_PRECISION);
+    //ofstrm.setf(ios_base::fixed);
 
     // actin does all the real work
     theactin.save_data(ofstrm);
@@ -2299,8 +2323,29 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         theactin.node_tracks[zaxis].resize(0);
 
         // load the *last* image to set bmp calib
+        int framemaxvelmoved;
+        vect maxvelmoved;
+        
+        int iter = *(postprocess_iterations.end()-1);  // default to last frame if we can't find sym break time
 
-        int iter = *(postprocess_iterations.end()-1);
+        ifstream ipsymbreaktime("symbreaktime.txt");
+        if (!ipsymbreaktime) 
+	    { 
+            cout << "Unable to open file symbreaktime.txt for input";
+        }
+        else
+        {
+            string buff;
+            
+            ipsymbreaktime >> buff >> buff >> buff >> buff;
+            ipsymbreaktime >> framemaxvelmoved >> buff >> maxvelmoved;
+            ipsymbreaktime.close();
+
+            iter =  framemaxvelmoved * InterRecordIterations;
+        }
+
+        
+
 
         if (POST_BMP) // if we're doing the bitmaps, need to scale the intensities and segments
         {
@@ -2486,6 +2531,7 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 	//	 << " theactin.symbreakiter " << theactin.symbreakiter << endl;
 
     // go in reverse order, in case we're autoscaling
+
 
     for(int i = theactin.symbreakiter - InterRecordIterations; i > 0; i-=InterRecordIterations)
 	{

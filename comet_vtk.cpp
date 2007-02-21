@@ -506,12 +506,12 @@ void CometVtkVis::saveImage(int framenumber)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -resize %f%% -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
+            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -resize %f%% -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s %s ; rm %s ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,   
             5 , ( 25 ),
             framenumber,
             5 , ( 50 ) ,
-            framenumber * InterRecordIterations * DELTA_T, VTK_colmap_filename, tmpfilename, filename, tmpfilename);
+            int(framenumber * InterRecordIterations * DELTA_T), VTK_colmap_filename, tmpfilename, filename, tmpfilename);
         //cout << command1 << endl;
         system(command1);
     }
@@ -519,12 +519,12 @@ void CometVtkVis::saveImage(int framenumber)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s %s ; rm %s ) &",
+            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s %s ; rm %s ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION,
             5 , ( 25 ) ,
             framenumber,
             5 , ( 50 ) ,
-            framenumber * InterRecordIterations * DELTA_T, VTK_colmap_filename, tmpfilename, filename, tmpfilename);
+            int(framenumber * InterRecordIterations * DELTA_T), VTK_colmap_filename, tmpfilename, filename, tmpfilename);
         //cout << command1 << endl;
         system(command1);
     }

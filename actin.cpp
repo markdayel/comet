@@ -93,7 +93,7 @@ actin::actin(void)
     	     
     #ifdef NODE_GRID_USE_ARRAYS
 
-	    nodegrid = new NG1d[(Node_Grid_Dim+1)*(Node_Grid_Dim+1)*(Node_Grid_Dim+1)];
+	    nodegrid = new NG1d[(GRIDSIZE+1)*(GRIDSIZE+1)*(GRIDSIZE+1)];
 
 	    clear_nodegrid();
 
@@ -704,7 +704,7 @@ void actin::iterate()  // this is the main iteration loop call
 	
 	applyforces();              // move the nodes and update the grid
 
-    if (COVERSLIPGAP > RADIUS)   // skip if less than RADIUS (it's set to 0 to disable) 
+    if (COVERSLIPGAP > 2 * RADIUS)   // skip if less than diameter (so set to 0 to disable) 
 	    squash(COVERSLIPGAP);	 
 
 	iteration_num++;
@@ -1221,7 +1221,7 @@ size_t actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, co
 //            {
 //				// skip the 0,0,0 gridpoint since will be added separately
 //				if ((x!=0) || (y!=0) || (z!=0))
-//					nearby_collision_gridpoint_offsets.push_back((Node_Grid_Dim*Node_Grid_Dim*x) + (Node_Grid_Dim*y) + z);
+//					nearby_collision_gridpoint_offsets.push_back((GRIDSIZE*GRIDSIZE*x) + (GRIDSIZE*y) + z);
 //            }
 //        }
 //    }
@@ -1626,7 +1626,7 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
         }
     }
     else
-    {   // just move/rotate
+    {   // just move/rotate, don't apply forces
         for(vector <nodes>::iterator i_node  = dat->startnode;
                                      i_node != dat->endnode;
                                    ++i_node)
@@ -1966,11 +1966,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	
 	int x,y;
 
-    int bmpcenterx = BMP_WIDTH/2;
-    int bmpcentery = BMP_HEIGHT/2;
 
-    if (SYM_BREAK_TO_RIGHT)
-        bmpcenterx = BMP_WIDTH/3; 
 
 	// precalculate gaussian for psf
 
@@ -2003,6 +1999,12 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 					= exp(-9*((double)(xg*xg + yg*yg)) / (double)(xgmax*ygmax));
 		}
 	}
+
+    int bmpcenterx = BMP_WIDTH/2;
+    int bmpcentery = BMP_HEIGHT/2;
+
+    if (SYM_BREAK_TO_RIGHT)
+        bmpcenterx = BMP_WIDTH/3; 
 
 	// clear the image array
 
@@ -2194,9 +2196,9 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 #endif 
 
         // displace to bring bead back in bounds
-        // and add the offset for the gaussian
-        x += movex + xgmax;  
-		y += movey + ygmax;
+        // and add the offset for the gaussian (not?)
+        x += movex;// - xgmax;  
+		y += movey;// - ygmax;
 
 
         //if (prob_to_bool(0.01))
@@ -2663,7 +2665,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     else 
     {
 		sprintf(command1,
-		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%iuM' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6.1f'\" %s %s%s_proj_%05i.%s", 
+		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%iuM' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s%s_proj_%05i.%s", 
         IMAGEMAGICKCONVERT, temp_BMP_filename, BMP_COMPRESSION, 
             20 * BMP_AA_FACTOR, 5 * BMP_AA_FACTOR, 595 * BMP_AA_FACTOR, scalebarmicrons, 
             5 * BMP_AA_FACTOR, 576 * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  573 * BMP_AA_FACTOR,
@@ -2672,7 +2674,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             5 * BMP_AA_FACTOR, ( 20 + 25 )* BMP_AA_FACTOR , 
             filenum,
 			5 * BMP_AA_FACTOR, ( 20 + 50 )* BMP_AA_FACTOR , 
-            filenum * InterRecordIterations * DELTA_T, drawcmd.str().c_str(), BITMAPDIR,
+            int(filenum * InterRecordIterations * DELTA_T), drawcmd.str().c_str(), BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
 
@@ -2914,11 +2916,10 @@ void actin::squash(const double & thickness)
 
         inverse_actin_rotation.rotate(rotpos); // rotate
 
-        if (rotpos.x >  halfthickness)  // above
-			rotpos.x =  halfthickness * 0.999; 
-        else 
-        if (rotpos.x < -halfthickness)  // below
-			rotpos.x = -halfthickness * 0.999;
+        if      (rotpos.x >  halfthickness)  // above
+			     rotpos.x =  halfthickness; 
+        else if (rotpos.x < -halfthickness)  // below
+			     rotpos.x = -halfthickness;
         else 
             continue;                   // within coverslip, skip
         
@@ -3045,9 +3046,13 @@ void actin::compressfilesdowork(const int & filenum)
 
 	// save data file
 
+    if (COMPRESSDATAFILES)
+    {
 	sprintf(command1 , "(%s %s*data*.txt 2>/dev/null; mv %s*data*%s %s 2>/dev/null) &",
 	     COMPRESSCOMMAND, TEMPDIR, TEMPDIR, COMPRESSEDEXTENSION, DATADIR);
 	system(command1);
+    }
+
                                        
 	// wrl file
 

@@ -59,7 +59,7 @@ removed without prior written permission from the author.
 #endif
 
 #ifdef NODE_GRID_USE_ARRAYS
-	#define NODEGRID(i,j,k)  (*(nodegrid + ((((Node_Grid_Dim*Node_Grid_Dim*(i)) + (Node_Grid_Dim*(j)) + (k))))))
+	#define NODEGRID(i,j,k)  (*(nodegrid + ((((GRIDSIZE*GRIDSIZE*(i)) + (GRIDSIZE*(j)) + (k))))))
 #else
 	#define NODEGRID(i,j,k)	 nodegrid[(i)][(j)][(k)]
 #endif
@@ -198,6 +198,8 @@ extern vector <MTRand> mers_rand;
 extern bool ALLOW_HARBINGERS_TO_MOVE;
 extern bool CAGE_ON_SIDE;
 extern bool SYM_BREAK_TO_RIGHT;
+
+extern bool COMPRESSDATAFILES; 
 
 extern double GRIDBOUNDS;
 extern double GRIDRES;
@@ -479,8 +481,6 @@ extern vector<struct thread_data>  applyforces_thread_data_array;
 	//extern Nodes3d nodegrid;
     extern NG4d nodegrid;
 #endif
-
-extern unsigned int Node_Grid_Dim;
 
 extern bool VARY_P_XLINK;
 
