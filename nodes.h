@@ -15,13 +15,15 @@ removed without prior written permission from the author.
 #ifndef nodes_H
 #define nodes_H
 
-//#include "stdafx.h"
+#include "stdafx.h"
+//#include "actin.h"
 #include "vect.h"
 #include "Colour.h"
 #include "links.h"
 
 class links;
 class Colour;
+class actin;
 
 class nodes: public vect
 {
@@ -46,13 +48,7 @@ public:
 
 	short int gridx, gridy, gridz;
 
-	//actin* ptheactin;
-	//nodes* nextnode;
-	//nodes* prevnode;
-
-
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
-	//vect nearest_surface_point;
 
 	vect link_force_vec;  
 	
@@ -147,7 +143,7 @@ public:
     }
 
 	inline void clearforces()
-	{   // this is called every iteration (as opposed to clearstats() which builds up until savepoints)
+	{   // this is called every iteration (as opposed to clearstats() which builds up until the end of a frame)
 		
 	    if (VISCOSITY)
 	    {
@@ -208,65 +204,9 @@ public:
 
 	}
 
-	void setunitvec(void)
-	{	
 
-		if (NUCSHAPE == nucleator::sphere)
-		{
-            dist_from_surface = this->length();	 // not really dist_from_surface yet, need to subtract radius
-            unit_vec_posn = *this * (1/dist_from_surface);  // set unit vector position
-			//nearest_surface_point = unit_vec_posn
-			dist_from_surface -= RADIUS;
+    void setunitvec();
 
-		}
-		else
-		{	// capsule
-			if (fabs(z) < CAPSULE_HALF_LINEAR)
-			{  // on cylinder, no z component
-
-				dist_from_surface = calcdist(x,y);   // not really dist_from_surface yet, need to subtract radius
-				unit_vec_posn = vect(x/dist_from_surface, y/dist_from_surface, 0);
-				dist_from_surface -= RADIUS;
-				//nearest_surface_point = unit_vec_posn + vect(0,0,z);
-				onseg = true;
-
-			}
-			else
-			{	// on ends
-
-				onseg = false;
-
-				if (z>0) // top
-				{
-					vect offsetvec = *this;
-					offsetvec.z -= CAPSULE_HALF_LINEAR;
-
-                    dist_from_surface = offsetvec.length();	// not really dist_from_surface yet, need to subtract radius
-
-                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
-
-					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
-
-					dist_from_surface -= RADIUS;
-
-				}
-				else
-				{
-					vect offsetvec = *this;
-					offsetvec.z += CAPSULE_HALF_LINEAR;
-
-                    dist_from_surface = offsetvec.length();	 // not really dist_from_surface yet, need to subtract radius
-
-                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
-
-					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
-
-					dist_from_surface -= RADIUS;
-
-				}	
-			}
-		}
-	}
 };
 
 #endif

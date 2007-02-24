@@ -305,7 +305,7 @@ vector <int> actin::nearby_collision_gridpoint_offsets;
 
 
 rotationmatrix actin::torque_rotate;
-vect actin::nuc_disp;
+//vect actin::nuc_disp;
 int actin::lowestnodetoupdate;
 
 vector<int>::iterator actin::nearby_collision_gridpoint_offset_begin;

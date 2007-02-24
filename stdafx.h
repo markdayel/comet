@@ -195,6 +195,9 @@ extern vector <MTRand> mers_rand;
 
 #endif
 
+//class actin;
+
+
 extern bool ALLOW_HARBINGERS_TO_MOVE;
 extern bool CAGE_ON_SIDE;
 extern bool SYM_BREAK_TO_RIGHT;
@@ -245,7 +248,7 @@ extern bool NOBGIMAGEMAGICK;
     #define cos cosf
     #define log logf
     #define floor floorf
-    #define ceil ceilf
+    #define ceil ceilf 
     #define sqrt sqrtf
 	#define exp expf
 	#define fabs fabsf

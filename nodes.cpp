@@ -146,7 +146,7 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 	setgridcoords(); // set grid by x,y,z
 	addtogrid();     // add node to the grid
 
-    unit_vec_posn = this->unitvec();
+    //unit_vec_posn = this->unitvec();
 
 	//colour=ptheactin->newnodescolour;
 
@@ -484,3 +484,67 @@ int nodes::savelinks(ofstream * outputstream)
 
 	return 0;
 }
+
+
+
+    void nodes::setunitvec(void)
+	{	
+        vect pos=*this;
+        ptheactin->world_to_nuc_frame(pos);
+
+		if (NUCSHAPE == nucleator::sphere)
+		{
+            dist_from_surface = pos.length();	 // not really dist_from_surface yet, need to subtract radius
+            unit_vec_posn = pos * (1/dist_from_surface);  // set unit vector position
+			//nearest_surface_point = unit_vec_posn
+			dist_from_surface -= RADIUS;
+
+		}
+		else
+		{	// capsule
+			if (fabs(z) < CAPSULE_HALF_LINEAR)
+			{  // on cylinder, no z component
+
+				dist_from_surface = calcdist(pos.x,pos.y);   // not really dist_from_surface yet, need to subtract radius
+				unit_vec_posn = vect(pos.x/dist_from_surface, pos.y/dist_from_surface, 0);
+				dist_from_surface -= RADIUS;
+				//nearest_surface_point = unit_vec_posn + vect(0,0,z);
+				onseg = true;
+
+			}
+			else
+			{	// on ends
+
+				onseg = false;
+
+				if (z>0) // top
+				{
+					vect offsetvec = pos;
+					offsetvec.z -= CAPSULE_HALF_LINEAR;
+
+                    dist_from_surface = offsetvec.length();	// not really dist_from_surface yet, need to subtract radius
+
+                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
+
+					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
+
+					dist_from_surface -= RADIUS;
+
+				}
+				else
+				{
+					vect offsetvec = pos;
+					offsetvec.z += CAPSULE_HALF_LINEAR;
+
+                    dist_from_surface = offsetvec.length();	 // not really dist_from_surface yet, need to subtract radius
+
+                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
+
+					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
+
+					dist_from_surface -= RADIUS;
+
+				}	
+			}
+        }
+    }

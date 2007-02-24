@@ -140,7 +140,7 @@ public:
 			reverse_camera_rotation;
 
 	static rotationmatrix torque_rotate;
-	static vect nuc_disp;
+	//static vect nuc_disp;
 
 	//int num_rotate, num_displace;
 
@@ -307,14 +307,15 @@ public:
 
     inline void world_to_nuc_frame(vect & v)
     {
-        world_to_nuc_rot.rotate(v); 
         v -= p_nuc->position;
+        world_to_nuc_rot.rotate(v); 
+        
     }
 
     inline void nuc_to_world_frame(vect & v)
     {
-        v += p_nuc->position;
-        nuc_to_world_rot.rotate(v); 
+        nuc_to_world_rot.rotate(v);
+        v += p_nuc->position; 
     }
 	
 

@@ -523,11 +523,14 @@ int actin::saveinfo()
 	opruninfo << "Final existant nodes: " << existantnodes << endl;
 	cout << "Final existant nodes: " << existantnodes << endl;
 
+    opruninfo << setprecision(2);
     opruninfo << "x bounds: " << setw(5) << minx << " to " << setw(5) << maxx << endl;
     opruninfo << "y bounds: " << setw(5) << miny << " to " << setw(5) << maxy << endl;
     opruninfo << "z bounds: " << setw(5) << minz << " to " << setw(5) << maxz << endl;
 	
     cout << "Gridrange: +/- " << GRIDBOUNDS << " uM" << endl;
+    
+    cout << setprecision(2);
     cout << "x bounds: " << setw(5) << minx << " to " << setw(5) << maxx << endl;
     cout << "y bounds: " << setw(5) << miny << " to " << setw(5) << maxy << endl;
     cout << "z bounds: " << setw(5) << minz << " to " << setw(5) << maxz << endl;
@@ -1047,8 +1050,6 @@ void actin::nucleator_node_interactions()
     vect energyvec;
 #endif
 
-    // now using insidenucleator flag set in setunitvec() of node
-
     for(vector <nodes>::iterator	i_node  = node.begin()+lowestnodetoupdate; 
 									i_node != node.begin()+highestnodecount;
 							      ++i_node)
@@ -1065,7 +1066,10 @@ void actin::nucleator_node_interactions()
 
         if (i_node->stucktonucleator)
 		{
-            disp = *i_node - i_node->nucleator_stuck_position;
+            vect nodepos = *i_node;
+            world_to_nuc_frame(nodepos);
+
+            disp = nodepos - i_node->nucleator_stuck_position; // this vector is in the nucleator frame
 	        dist = disp.length();
 
             force = NUC_LINK_FORCE * dist;
@@ -1079,9 +1083,8 @@ void actin::nucleator_node_interactions()
             {
 
                 forcevec = disp * (force/dist);  // '(disp/dist)' is just to get the unit vector
-
-                i_node->link_force_vec -= forcevec;			// add to move node
-				
+                                                 // note this vector in nucleator frame!
+	
 #ifndef NO_CALC_STATS
 
                 // add to node segment stats (tension only since default dist is zero)
@@ -1101,6 +1104,9 @@ void actin::nucleator_node_interactions()
 
 				i_node->nucleator_link_force += tomove;	// add to nuc link force stats
 
+                nuc_to_world_rot.rotate(forcevec); // rotate to world co-ords before adding to the node vector
+
+                i_node->link_force_vec -= forcevec;			// add to move node
             }
             
         }
@@ -1419,6 +1425,9 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 // ApplyForces
 void actin::applyforces(void) 
 {   /// this applys the previously calculated forces
+
+    /// sets the rotation etc. up then calls threads to do the work
+
 	if (highestnodecount == 0)
 		return;
 
@@ -1445,7 +1454,7 @@ void actin::applyforces(void)
 		y_angle = p_nuc->torque.y / p_nuc->momentofinertia.y;
 		z_angle = p_nuc->torque.z / p_nuc->momentofinertia.z;
 
-		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);
+		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);    // fixme: write a proper axial vector to rotation matrix function
 	}
 
     if (!TEST_SQUASH)
@@ -1453,33 +1462,33 @@ void actin::applyforces(void)
 
 	    if (IMPOSED_NUC_ROT || ROTATION)
 	    {
-            // rotate the actin reference frame:
+            // rotate the nucleator
             world_to_nuc_rot.rotatematrix(torque_rotate);
             nuc_to_world_rot = world_to_nuc_rot.inverse();
 
-            //nuc_to_world_frame(
+            // deltanucposn is in nucleator frame, so change to world frame and move the nucleator
 
-            // todo: is this right?
+            nuc_to_world_rot.rotate(p_nuc->deltanucposn);
 
             // update the nucleator position
 	        p_nuc->position += p_nuc->deltanucposn;
 
             // rotate the nucleator displacement vector
-	        torque_rotate.rotate(p_nuc->position);
+	        //torque_rotate.rotate(p_nuc->position);
 	    }
 
-	    nuc_disp = p_nuc->deltanucposn; // store nucleator movement in static for threads
+	    //nuc_disp = p_nuc->deltanucposn; // store nucleator movement in static for threads
 
     }
-    else
-    {   // TEST_SQUASH is true, so lock the nucleator position
-        nuc_disp.zero();
-    }
+    //else
+    //{   // TEST_SQUASH is true, so lock the nucleator position
+    //    nuc_disp.zero();
+    //}
 
 	// and zero
 	p_nuc->deltanucposn.zero();
 
-	// clear the torque vector now that the torque rotation matrix is set
+	// clear the torque vector now that the rotation matrix is set
 	p_nuc->torque.zero();
 	
 
@@ -1524,17 +1533,13 @@ void actin::applyforces(void)
 
     }
     
-    // note: we have to updategrid() for *all* the nodes, because of
-    // the rotation and translation, and we can't do it in threads because
+    // note: we can't do it in threads because
     // of the linked list in the nodegrid.
 	// this is relatively slow, but not too bad.  could possibly thread this based on 
 	// xyz co-ords of nodes, if the removefromgrid function is OK
-    
-    // note: is this necessary?  only use grid for repulsion anyway
-    // and we're not calculating that
 
-	for(vector <nodes>::iterator	i_node  = node.begin(); 
-									i_node != node.begin()+highestnodecount;
+	for(vector <nodes>::iterator	i_node  = node.begin() + lowestnodetoupdate; 
+									i_node != node.begin() + highestnodecount;
 							      ++i_node)
     {
 	    i_node->updategrid(); // move the point on the grid if need to
@@ -1618,24 +1623,24 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 		    }
 		    else
 		    {	// move if not harbinger
-			    torque_rotate.rotate(*i_node);	 // rotate
-			    *i_node -= nuc_disp;	 // move wrt nucleator frame of ref
+			    //torque_rotate.rotate(*i_node);	 // rotate
+			    //*i_node -= nuc_disp;	 // move wrt nucleator frame of ref
                 i_node->applyforces();
 			    //if (i>=lowestnodetoupdate)
 				   // i_node->applyforces();	         // move according to forces
 		    }
         }
     }
-    else
-    {   // just move/rotate, don't apply forces
-        for(vector <nodes>::iterator i_node  = dat->startnode;
-                                     i_node != dat->endnode;
-                                   ++i_node)
-	    {
-		    torque_rotate.rotate(*i_node);	 // rotate
-		    *i_node -= nuc_disp;	             // move wrt nucleator frame of ref
-        }
-    }
+    //else
+    //{   // just move/rotate, don't apply forces
+    //    for(vector <nodes>::iterator i_node  = dat->startnode;
+    //                                 i_node != dat->endnode;
+    //                               ++i_node)
+	//    {
+	//	    torque_rotate.rotate(*i_node);	 // rotate
+	//	    *i_node -= nuc_disp;	             // move wrt nucleator frame of ref
+    //    }
+    //}
 
     return NULL;
 }
@@ -1855,8 +1860,8 @@ void actin::set_nodes_to_track(const projection & proj)
                                                               // using camera_rotation2 so we can tell the furthest node back
                                                               // from the sym break direction
     
-    if (!BMP_FIX_BEAD_ROTATION)
-        projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
+    //if (!BMP_FIX_BEAD_ROTATION)
+    //    projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
 
     cout << "Selecting nodes from frame " << TRACK_MIN_RANGE << " to " << TRACK_MAX_RANGE << endl;
 
@@ -1943,8 +1948,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     projection_rotation.rotatematrix(axisrotation);           // rotates for the projection axis 
     projection_rotation.rotatematrix(camera_rotation);        // rotates for the symmetry breaking direction
     
-    if (!BMP_FIX_BEAD_ROTATION)
-        projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
+    //if (!BMP_FIX_BEAD_ROTATION)
+    //    projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
     
 
     // create vector with rotated node positions
@@ -2913,11 +2918,6 @@ void actin::squash(const double & thickness)
 							      ++i_node)
     {
         rotpos = *i_node;
-        //rotpos += p_nuc->position;
-
-
-
-        //nuc_to_world_rot.rotate(rotpos); // rotate nuc frame to world frame
 
         nuc_to_world_frame(rotpos);
 
@@ -2929,9 +2929,6 @@ void actin::squash(const double & thickness)
             continue;                   // within coverslip, skip
         
         world_to_nuc_frame(rotpos);
-
-        //world_to_nuc_rot.rotate(rotpos);  // rotate back
-        //rotpos -= p_nuc->position;
 
         i_node->x = rotpos.x;
         i_node->y = rotpos.y;
