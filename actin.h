@@ -136,7 +136,7 @@ public:
 
     bool BMP_intensity_scaling;
 
-	rotationmatrix actin_rotation, camera_rotation, camera_rotation2,
+	rotationmatrix world_to_nuc_rot, camera_rotation, camera_rotation2,
 			reverse_camera_rotation;
 
 	static rotationmatrix torque_rotate;
@@ -169,6 +169,8 @@ public:
 	void writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight);
 	
 	void savebmp(const int &filenum, const projection & proj, const processfgbg& fgbg, bool writefile);
+
+
 
 	nucleator* p_nuc;
 	void linkforces();
@@ -283,7 +285,7 @@ public:
 
     void addbrownianforces();
 
-    rotationmatrix inverse_actin_rotation;
+    rotationmatrix nuc_to_world_rot;
 
 	inline int pixels(const double & coord) const
 	{  // convert simulation distance into pixel distance
@@ -300,6 +302,20 @@ public:
 	{  // convert simulation distance into pixel distance
 		return ((double) BMP_HEIGHT * ( (coord)/VIEW_HEIGHT) ); 
 	}
+
+    // convert positions from one frame of ref to the other
+
+    inline void world_to_nuc_frame(vect & v)
+    {
+        world_to_nuc_rot.rotate(v); 
+        v -= p_nuc->position;
+    }
+
+    inline void nuc_to_world_frame(vect & v)
+    {
+        v += p_nuc->position;
+        nuc_to_world_rot.rotate(v); 
+    }
 	
 
     void reservemorenodes(const int extranodes);

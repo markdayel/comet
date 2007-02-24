@@ -139,6 +139,12 @@ void rotationmatrix::rotatematrix(const double& x_angle, const double& y_angle, 
     rotatematrix(z_angle, zaxis);
 }
 
+//void rotationmatriz::rotatematrix(const vect & v) // work in progress---attempt to rotate along axis vector, angle proportional to length
+//{
+//   
+//}
+
+
 void rotationmatrix::rotatematrixrevorder(const double& x_angle, const double& y_angle, const double& z_angle)
 {   // not commutative, so have to reverse the order when calculating inverse
     // todo: matrix inverse function?

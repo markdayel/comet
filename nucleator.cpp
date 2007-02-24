@@ -175,21 +175,33 @@ int nucleator::addnodessphere(void)
                        (z < 0) )
 					continue;
 		}
-
-        ptheactin->attemptedpolrate++;  // add this here, for an aborted node should appear as an attempt
-        
+    
         // modifier for +ve feedback in polymerisation
 
         if (POLY_FEEDBACK)
         {   // calculate probability of polymerization due to +ve feedback (based on nearby nodes)    
             if ( prob_to_bool( polyfeedbackprob(x,y,z) ) )
+            {   
+                // don't add node
+                ptheactin->attemptedpolrate++;  // an aborted node should appear as an attempt
                 continue;   // don't polymerise
+            }
         }
 
-        ptheactin->attemptedpolrate--; // delete if we're actually making the node (since this will be dealt with in harbinger (crosslink) code
+        // transform co-ords to lab frame
+        vect nucframepos(x,y,z);
+        vect worldframepos=nucframepos;
 
-		ptheactin->node[ptheactin->highestnodecount++].polymerize(x,y,z);
-		nodesadded++;
+        //ptheactin->nuc_to_world_frame(worldframepos);
+
+        // add the new node:
+        ptheactin->highestnodecount++;
+        ptheactin->node[ptheactin->highestnodecount].polymerize(worldframepos);
+
+        // set the stuck position to the nuc frame pos'n
+        ptheactin->node[ptheactin->highestnodecount].nucleator_stuck_position = nucframepos;
+
+        nodesadded++;
 	}
 
 	return nodesadded;
@@ -279,22 +291,33 @@ int nucleator::addnodescapsule(void)
 					continue;
 		}
 
-		//}
 
-        ptheactin->attemptedpolrate++;  // add this here, for an aborted node should appear as an attempt
-        
         // modifier for +ve feedback in polymerisation
 
         if (POLY_FEEDBACK)
-        {   // get probability of polymerization due to +ve feedback (based on nearby nodes)    
-            if ( prob_to_bool(polyfeedbackprob(x,y,z)) )
+        {   // calculate probability of polymerization due to +ve feedback (based on nearby nodes)    
+            if ( prob_to_bool( polyfeedbackprob(x,y,z) ) )
+            {   
+                // don't add node
+                ptheactin->attemptedpolrate++;  // an aborted node should appear as an attempt
                 continue;   // don't polymerise
+            }
         }
 
-        ptheactin->attemptedpolrate--; // delete if we're actually making the node (since this will be dealt with in harbinger (crosslink) code
+        // transform co-ords to lab frame
+        vect nucframepos(x,y,z);
+        vect worldframepos=nucframepos;
 
-		ptheactin->node[ptheactin->highestnodecount++].polymerize(x,y,z);
-		nodesadded++;
+        //ptheactin->nuc_to_world_frame(worldframepos);
+
+        // add the new node:
+        ptheactin->highestnodecount++;
+        ptheactin->node[ptheactin->highestnodecount].polymerize(worldframepos);
+
+        // set the stuck position to the nuc frame pos'n
+        ptheactin->node[ptheactin->highestnodecount].nucleator_stuck_position=nucframepos;
+
+        nodesadded++;
 
 	}
 	return nodesadded;

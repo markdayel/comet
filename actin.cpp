@@ -298,8 +298,8 @@ actin::actin(void)
 
     BMP_intensity_scaling = true;
 
-    actin_rotation.settoidentity();
-    inverse_actin_rotation.settoidentity();
+    world_to_nuc_rot.settoidentity();
+    nuc_to_world_rot.settoidentity();
 
     gridpointsbythread.resize(NUM_THREAD_DATA_CHUNKS);
 
@@ -1454,17 +1454,18 @@ void actin::applyforces(void)
 	    if (IMPOSED_NUC_ROT || ROTATION)
 	    {
             // rotate the actin reference frame:
-            actin_rotation.rotatematrix(torque_rotate);
-            inverse_actin_rotation = actin_rotation.inverse();
+            world_to_nuc_rot.rotatematrix(torque_rotate);
+            nuc_to_world_rot = world_to_nuc_rot.inverse();
 
-            // rotate the nucleator displacement vector
-	        torque_rotate.rotate(p_nuc->position);
+            //nuc_to_world_frame(
 
             // todo: is this right?
 
             // update the nucleator position
 	        p_nuc->position += p_nuc->deltanucposn;
 
+            // rotate the nucleator displacement vector
+	        torque_rotate.rotate(p_nuc->position);
 	    }
 
 	    nuc_disp = p_nuc->deltanucposn; // store nucleator movement in static for threads
@@ -1855,7 +1856,7 @@ void actin::set_nodes_to_track(const projection & proj)
                                                               // from the sym break direction
     
     if (!BMP_FIX_BEAD_ROTATION)
-        projection_rotation.rotatematrix(inverse_actin_rotation); // compensates for bead rotation
+        projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
 
     cout << "Selecting nodes from frame " << TRACK_MIN_RANGE << " to " << TRACK_MAX_RANGE << endl;
 
@@ -1943,7 +1944,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     projection_rotation.rotatematrix(camera_rotation);        // rotates for the symmetry breaking direction
     
     if (!BMP_FIX_BEAD_ROTATION)
-        projection_rotation.rotatematrix(inverse_actin_rotation); // compensates for bead rotation
+        projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
     
 
     // create vector with rotated node positions
@@ -2000,8 +2001,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		}
 	}
 
-    int bmpcenterx = BMP_WIDTH/2;
-    int bmpcentery = BMP_HEIGHT/2;
+    int bmpcenterx = BMP_WIDTH  / 2;
+    int bmpcentery = BMP_HEIGHT / 2;
 
     if (SYM_BREAK_TO_RIGHT)
         bmpcenterx = BMP_WIDTH/3; 
@@ -2912,9 +2913,13 @@ void actin::squash(const double & thickness)
 							      ++i_node)
     {
         rotpos = *i_node;
-        rotpos += p_nuc->position;
+        //rotpos += p_nuc->position;
 
-        inverse_actin_rotation.rotate(rotpos); // rotate
+
+
+        //nuc_to_world_rot.rotate(rotpos); // rotate nuc frame to world frame
+
+        nuc_to_world_frame(rotpos);
 
         if      (rotpos.x >  halfthickness)  // above
 			     rotpos.x =  halfthickness; 
@@ -2923,8 +2928,10 @@ void actin::squash(const double & thickness)
         else 
             continue;                   // within coverslip, skip
         
-        actin_rotation.rotate(rotpos);  // rotate back
-        rotpos -= p_nuc->position;
+        world_to_nuc_frame(rotpos);
+
+        //world_to_nuc_rot.rotate(rotpos);  // rotate back
+        //rotpos -= p_nuc->position;
 
         i_node->x = rotpos.x;
         i_node->y = rotpos.y;
@@ -2934,6 +2941,8 @@ void actin::squash(const double & thickness)
 
 	return;
 }
+
+
 
 
 void actin::sortnodesbygridpoint(void)
@@ -3122,7 +3131,7 @@ int actin::save_data(ofstream &ofstrm)
 	   << iteration_num << " " 
 	   << linksbroken  << " " 
 	   << linksformed << " "
-       << actin_rotation << " "
+       << world_to_nuc_rot << " "
 	   << camera_rotation << " "
 	   << camera_rotation2 << endl;
 
@@ -3177,11 +3186,11 @@ bool actin::load_data(ifstream &ifstr)
 	  >> iteration_num    
 	  >> linksbroken      
 	  >> linksformed      
-	  >> actin_rotation   
+	  >> world_to_nuc_rot   
 	  >> camera_rotation  
 	  >> camera_rotation2;
 
-    inverse_actin_rotation = actin_rotation.inverse();
+    nuc_to_world_rot = world_to_nuc_rot.inverse();
 
     ifstr >> str;
 

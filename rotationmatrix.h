@@ -27,6 +27,7 @@ class rotationmatrix
     void rotatematrix(const double &angle, const projection &a);
     void rotatematrix(const double &x_angle, const double &y_angle, const double &z_angle);
     void rotatematrixrevorder(const double &x_angle, const double &y_angle, const double &z_angle);
+    //void rotatematrix(const vect & v);
     rotationmatrix inverse();
 
     rotationmatrix& operator*=(const rotationmatrix& rotmatrix);
@@ -68,6 +69,12 @@ class rotationmatrix
     inline void rotate(vect& v) const
 	{
 		rotate(v.x,v.y,v.z);
+	    return;
+	}
+
+    inline void rotate(vect* v) const
+	{
+		rotate(v->x,v->y,v->z);
 	    return;
 	}
 

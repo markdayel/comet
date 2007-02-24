@@ -104,6 +104,7 @@ public:
 
 	bool depolymerize(void);
 	bool polymerize(const double& set_x, const double& set_y, const double& set_z);
+    bool polymerize(const vect& v);
 	int save_data(ofstream &ofstr);
 	bool load_data(ifstream &ifstr);
 

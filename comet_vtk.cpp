@@ -609,7 +609,7 @@ void CometVtkVis::addCapsuleNucleator()
     // -- Actors
     // rotate the nucleator sections
     double nrotation[3];
-    ptheactin->inverse_actin_rotation.getangles(nrotation[0], 
+    ptheactin->nuc_to_world_rot.getangles(nrotation[0], 
 						 nrotation[1], 
 						 nrotation[2]);
     nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
@@ -627,7 +627,7 @@ void CometVtkVis::addCapsuleNucleator()
     endcap1_actor->SetOrientation( nrotation[0],
 				   nrotation[1],
 				   nrotation[2]);
-    ptheactin->actin_rotation.rotate( centre ); //[0],centre[1],centre[2]);
+    ptheactin->world_to_nuc_rot.rotate( centre ); //[0],centre[1],centre[2]);
     endcap1_actor->SetPosition( centre );
     endcap1_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     endcap1_actor->GetProperty()->SetOpacity(nuc_opacity);
@@ -642,7 +642,7 @@ void CometVtkVis::addCapsuleNucleator()
     endcap2_actor->SetOrientation( nrotation[0] + 180,
 				   nrotation[1],
 				   nrotation[2]);
-    ptheactin->actin_rotation.rotate( centre ); //[0],centre[1],centre[2]);
+    ptheactin->world_to_nuc_rot.rotate( centre ); //[0],centre[1],centre[2]);
     endcap2_actor->SetPosition( centre );
     endcap2_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     endcap2_actor->GetProperty()->SetOpacity(nuc_opacity);
@@ -694,7 +694,7 @@ void CometVtkVis::addSphericalNucleator()
 	}
 	
 
-    ptheactin->inverse_actin_rotation.rotate(nx, ny, nz);
+    ptheactin->nuc_to_world_rot.rotate(nx, ny, nz);
     vtk_cam_rot.rotate(nx, ny, nz); 
 
     // stops bead 
@@ -749,7 +749,7 @@ void CometVtkVis::addSphericalNucleator()
     // rotate the nucleator
     double nrotation[3];
 
-    ptheactin->inverse_actin_rotation.getangles(nrotation[0], 
+    ptheactin->nuc_to_world_rot.getangles(nrotation[0], 
 						 nrotation[1], 
 						 nrotation[2]);
     nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
@@ -866,7 +866,7 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     meany = -ptheactin->p_nuc->position.y; 
     meanz = -ptheactin->p_nuc->position.z; 
   
-    ptheactin->inverse_actin_rotation.rotate(meanx, meany, meanz);
+    ptheactin->nuc_to_world_rot.rotate(meanx, meany, meanz);
     vtk_cam_rot.rotate(meanx, meany, meanz); 
   
     // move to static
@@ -948,7 +948,7 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
       
 	node_pos = ptheactin->node[n]; // copy x,y,z coords from node[n]
     
-	ptheactin->inverse_actin_rotation.rotate(node_pos); 
+	ptheactin->nuc_to_world_rot.rotate(node_pos); 
 	vtk_cam_rot.rotate(node_pos); // bring rip to y-axis
     
 	// node centre in local voxel coords (nuc at centre) 
@@ -1246,7 +1246,7 @@ void CometVtkVis::addNodes()
     meany = -ptheactin->p_nuc->position.y; 
     meanz = -ptheactin->p_nuc->position.z; 
     
-    ptheactin->inverse_actin_rotation.rotate(meanx, meany, meanz);
+    ptheactin->nuc_to_world_rot.rotate(meanx, meany, meanz);
     vtk_cam_rot.rotate(meanx, meany, meanz); 
 
     // stops bead 
@@ -1289,7 +1289,7 @@ void CometVtkVis::addNodes()
 	ncy = ptheactin->node[i].y;
 	ncz = ptheactin->node[i].z;
 
-	ptheactin->inverse_actin_rotation.rotate(ncx, ncy, ncz); 
+	ptheactin->nuc_to_world_rot.rotate(ncx, ncy, ncz); 
 	vtk_cam_rot.rotate(ncx, ncy, ncz); // bring rip to y-axis
 	
 	if(OptsSkipOutOfFocusPoints && fabs(ncx) > FOCALDEPTH)
@@ -1328,7 +1328,7 @@ void CometVtkVis::addNodes()
 
 bool CometVtkVis::convert_to_vtkcoord(VTK_FLOAT_PRECISION &x, VTK_FLOAT_PRECISION &y, VTK_FLOAT_PRECISION &z)
 {
-    ptheactin->inverse_actin_rotation.rotate(x, y, z); 
+    ptheactin->nuc_to_world_rot.rotate(x, y, z); 
     vtk_cam_rot.rotate(x, y, z); // bring rip to y-axis
 
     bool infocus = !(OptsSkipOutOfFocusPoints && fabs(x) > FOCALDEPTH);
@@ -1351,7 +1351,7 @@ void CometVtkVis::set_mean_posns()
     meanz = -ptheactin->p_nuc->position.z;
   }
   
-  ptheactin->inverse_actin_rotation.rotate(meanx, meany, meanz);
+  ptheactin->nuc_to_world_rot.rotate(meanx, meany, meanz);
   vtk_cam_rot.rotate(meanx, meany, meanz); 
   
   // stops bead 

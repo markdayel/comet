@@ -1569,7 +1569,7 @@ int main(int argc, char* argv[])
             else
                 distfromorigin = theactin.testsurfaceposn;
 
-            theactin.inverse_actin_rotation.getangles(x_angle,y_angle,z_angle);
+            theactin.nuc_to_world_rot.getangles(x_angle,y_angle,z_angle);
             tot_rot = fabs(x_angle) + fabs(y_angle) + fabs(z_angle);
 		
 
@@ -1617,7 +1617,7 @@ srand( rand_num_seed );
             else
                 distfromorigin = theactin.testsurfaceposn;
 
-            theactin.inverse_actin_rotation.getangles(x_angle,y_angle,z_angle);
+            theactin.nuc_to_world_rot.getangles(x_angle,y_angle,z_angle);
             tot_rot = fabs(x_angle) + fabs(y_angle) + fabs(z_angle);
 			
 			delta_center = center - last_center;  
@@ -2420,14 +2420,14 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 			     << endl;
             cout.flush();
     		
-            mytimer loadtimer;
-            loadtimer.start();
+            //mytimer loadtimer;
+            //loadtimer.start();
 
             //unsigned int nowtime = (unsigned) clock();
 
 		    load_data(theactin, *iteration, false);
 
-            cout << " Loadtime: " << loadtimer << endl;
+            //cout << " Loadtime: " << loadtimer << endl;
 
             //cout << " Loadtime: " << setprecision(2) <<  ((double)( (unsigned)clock() - nowtime) ) / (double) CLOCKS_PER_SEC << " seconds " << endl;
     		

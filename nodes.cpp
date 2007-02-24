@@ -28,7 +28,11 @@ move_harbinger_this_time(false),
 threadnum(0),
 gridx(-1),gridy(-1),gridz(-1),
 links_broken(0)
-{
+{   /// Create a blank node
+
+    /// This is the default constructor, called in the main node allocation.  
+    /// Before the node joins the network, it must be initialised properly with call to polymerize.
+    /// alternatively call the other nodes(x,y,z) constructor.
 
     threadnum = 0;
     testnode = false;
@@ -126,7 +130,13 @@ bool nodes::depolymerize(void)
 }
 
 bool nodes::polymerize(const double& set_x, const double& set_y, const double& set_z)
-{
+{   /// Initialises the node at given position (world co-ords) before adding to the network
+
+    /// Effectively this creates a harbinger.  The node isn't crosslinked here, just created so it
+    /// can interact with the network (added to the grid, position set etc.)
+    /// it is not stuck to the nucleator here, since it's passed world co-ords, and the nucleator stuck
+    /// position is relative to the nucleator.
+
 	x = set_x;
 	y = set_y;
 	z = set_z;
@@ -142,13 +152,18 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
 
 	creation_iter_num = ptheactin->iteration_num;
 
-    nucleator_stuck_position = *this;
+    //nucleator_stuck_position = *this;
 
 	harbinger = true;
 
     setunitvec();
 
 	return true;       
+}
+
+bool nodes::polymerize(const vect& v)
+{
+    return polymerize(v.x, v.y, v.z);
 }
 
 int nodes::save_data(ofstream &ostr) 
