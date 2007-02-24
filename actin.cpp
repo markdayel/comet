@@ -2060,11 +2060,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     vect nucposn = - ptheactin->p_nuc->position;
     projection_rotation.rotate(nucposn); 
 
-    if (!BMP_FIX_BEAD_MOVEMENT)
+    if (BMP_FIX_BEAD_MOVEMENT)
     {
-        meanx = nucposn.x;
-        meany = nucposn.y;
-        meanz = nucposn.z;
+        meanx = -nucposn.x;
+        meany = -nucposn.y;
+        meanz = -nucposn.z;
     }
 
     // determine offset (if any) needed to keep bead in picture
@@ -2072,28 +2072,31 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	double keep_within_border;
 
 	if (p_nuc->geometry == nucleator::sphere)
-		 keep_within_border = 2* RADIUS;
+		 keep_within_border = 2 * RADIUS;
 	else
-		 keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
+		 keep_within_border = CAPSULE_HALF_LINEAR + ( 2 * RADIUS );
 
 
-	beadmaxx = pixels(  keep_within_border - meany) +  bmpcenterx;
-	beadmaxy = pixels(  keep_within_border - meanz) +  bmpcentery;
-	beadminx = pixels(- keep_within_border - meany) +  bmpcenterx;
-	beadminy = pixels(- keep_within_border - meanz) +  bmpcentery;
+	beadmaxx = pixels(   keep_within_border - nucposn.y ) + bmpcenterx;
+	beadmaxy = pixels(   keep_within_border - nucposn.z ) + bmpcentery;
+	beadminx = pixels( - keep_within_border - nucposn.y ) + bmpcenterx;
+	beadminy = pixels( - keep_within_border - nucposn.z ) + bmpcentery;
 
 	int movex = 0;
 	int movey = 0;
 
 	if (beadmaxx > BMP_WIDTH)
 		movex =- (beadmaxx - BMP_WIDTH);
+
 	if (beadmaxy > BMP_HEIGHT)
 		movey =- (beadmaxy - BMP_HEIGHT);
+
 	if (beadminx < 0)
 		movex =- beadminx;
+
 	if (beadminy < 0)
 		movey =- beadminy;
-
+   
 
     if ((stationary_node_number != 0) && (stationary_node_number < highestnodecount))
     {   
@@ -2397,15 +2400,15 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         return;
 
     //double cagedispx = meanx;
-	double cagedispy = meany;
-	double cagedispz = meanz;
+	double cagedispy = nucposn.y;
+	double cagedispz = nucposn.z;
 	int cagemovex = movex;
 	int cagemovey = movey;
 
 	if ((CAGE_ON_SIDE) && (p_nuc->is_sphere()))
 	{   // move cage to side of image
 		cagedispy = cagedispz = 0.0;
-		cagemovex = p_nuc->segs.centerx -  bmpcenterx - xgmax;
+		cagemovex = p_nuc->segs.centerx - bmpcenterx - xgmax;
 		cagemovey = p_nuc->segs.centery - bmpcentery - ygmax + BMP_HEIGHT/4;
 	}
 
@@ -2436,8 +2439,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             double xfractpxl = (double) x - dblx;
             double yfractpxl = (double) y - dbly;
 
-		    x += cagemovex + xgmax;  // displace to bring bead back in bounds
-		    y += cagemovey + ygmax;
+		    x += cagemovex;  // displace to bring bead back in bounds
+		    y += cagemovey;
 
 
             const double intensitysum = 10.0;

@@ -54,7 +54,7 @@ public:
 		return (geometry == sphere);
 	}
 
-    void move_nuc(vect& origin_of_movement, vect& tomove);
+    void move_nuc(const vect& origin_of_movement, const vect& tomove);
 
 	int addnodes(void);
 	int addnodessphere(void);

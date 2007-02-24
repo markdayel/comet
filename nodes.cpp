@@ -44,6 +44,7 @@ links_broken(0)
   	x = y = z = 0.0;
     link_force_vec.zero();
 	rep_force_vec.zero();
+    unit_vec_correct = false;
 
 	nuc_repulsion_displacement_vec.zero();
 
@@ -75,7 +76,7 @@ links_broken(0)
     testnode = false;
     testsurface = 0;
     creation_iter_num = 0;
-
+    unit_vec_correct = false;
 //    initial_repulsive_energy = -1.0; // start -ve before set
 
 	link_force_vec.zero();
@@ -155,7 +156,7 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
     //nucleator_stuck_position = *this;
 
 	harbinger = true;
-
+    unit_vec_correct = false;
     setunitvec();
 
 	return true;       
@@ -204,6 +205,7 @@ int nodes::save_data(ofstream &ostr)
 
 bool nodes::load_data(ifstream &istrm) 
 {
+    unit_vec_correct = false;
     Colour dummycol;
     // read in from the stream to our private data
     char ch;    
@@ -386,23 +388,6 @@ void nodes::removefromgrid(void)
     
     posnoflastgridupdate.zero();
 
-    // erase these elsewhere
-
-    //if(nodegridptr->size() == 0)  // check if emptied gridpoint
-    //{   // if so, remove gridpoint from the list
-    //    for (vector <vector <nodes*>*>::iterator i_gp  = ptheactin->gridpointsbythread.begin();
-		  //                                      i_gp != ptheactin->gridpointsbythread.end() ;
-				//			                ++i_gp )
-	   // {	 
-		  //  if (nodegridptr == *i_gp)
-		  //  {
-    //            // renove node
-			 //   ptheactin->gridpointsbythread.erase(i_gp);
-			 //   break;
-		  //  }
-	   // }  
-    //}
-
     nodegridptr = NULL;
 
 	return;
@@ -411,12 +396,6 @@ void nodes::removefromgrid(void)
 void nodes::addtogrid()
 {
     nodegridptr = &NODEGRID(gridx,gridy,gridz);
-
-    //if(nodegridptr->size() == 0)  // check new gridpoint if so add this gridpoint to list
-    //{
-    //    ptheactin->gridpointsbythread[ptheactin->currentsmallestgridthread].push_back(nodegridptr);
-    //    ptheactin->currentsmallestgridthread = (ptheactin->currentsmallestgridthread + 1) % NUM_THREAD_DATA_CHUNKS;
-    //}
 
     nodegridptr->push_back(this); // add to nodegrid
 
@@ -489,13 +468,17 @@ int nodes::savelinks(ofstream * outputstream)
 
     void nodes::setunitvec(void)
 	{	
-        vect pos=*this;
-        ptheactin->world_to_nuc_frame(pos);
+        if (unit_vec_correct)
+            return;
+        unit_vec_correct = true;  // prevent unnecessary recalculation if node not moved, etc.
+
+        pos_in_nuc_frame=*this;
+        ptheactin->world_to_nuc_frame(pos_in_nuc_frame);
 
 		if (NUCSHAPE == nucleator::sphere)
 		{
-            dist_from_surface = pos.length();	 // not really dist_from_surface yet, need to subtract radius
-            unit_vec_posn = pos * (1/dist_from_surface);  // set unit vector position
+            dist_from_surface = pos_in_nuc_frame.length();	 // not really dist_from_surface yet, need to subtract radius
+            unit_vec_posn = pos_in_nuc_frame * (1/dist_from_surface);  // set unit vector position
 			//nearest_surface_point = unit_vec_posn
 			dist_from_surface -= RADIUS;
 
@@ -505,8 +488,8 @@ int nodes::savelinks(ofstream * outputstream)
 			if (fabs(z) < CAPSULE_HALF_LINEAR)
 			{  // on cylinder, no z component
 
-				dist_from_surface = calcdist(pos.x,pos.y);   // not really dist_from_surface yet, need to subtract radius
-				unit_vec_posn = vect(pos.x/dist_from_surface, pos.y/dist_from_surface, 0);
+				dist_from_surface = calcdist(pos_in_nuc_frame.x,pos_in_nuc_frame.y);   // not really dist_from_surface yet, need to subtract radius
+				unit_vec_posn = vect(pos_in_nuc_frame.x/dist_from_surface, pos_in_nuc_frame.y/dist_from_surface, 0);
 				dist_from_surface -= RADIUS;
 				//nearest_surface_point = unit_vec_posn + vect(0,0,z);
 				onseg = true;
@@ -519,12 +502,12 @@ int nodes::savelinks(ofstream * outputstream)
 
 				if (z>0) // top
 				{
-					vect offsetvec = pos;
+					vect offsetvec = pos_in_nuc_frame;
 					offsetvec.z -= CAPSULE_HALF_LINEAR;
 
                     dist_from_surface = offsetvec.length();	// not really dist_from_surface yet, need to subtract radius
 
-                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
+                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector pos
 
 					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
 
@@ -533,12 +516,12 @@ int nodes::savelinks(ofstream * outputstream)
 				}
 				else
 				{
-					vect offsetvec = pos;
+					vect offsetvec = pos_in_nuc_frame;
 					offsetvec.z += CAPSULE_HALF_LINEAR;
 
                     dist_from_surface = offsetvec.length();	 // not really dist_from_surface yet, need to subtract radius
 
-                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector position
+                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector pos
 
 					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
 

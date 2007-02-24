@@ -2414,7 +2414,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 		    filenum = (int)(*iteration/InterRecordIterations);
             frame++;
 
-		    cout << "Post processing iteration: " << *iteration << " file " << filenum 
+		    cout << "Post processing iteration: " << *iteration << " frame " << filenum 
 			     << " (" << frame << "/" 
 			     << maxframes << ")"
 			     << endl;

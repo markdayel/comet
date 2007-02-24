@@ -403,38 +403,33 @@ for (vector <vect>::iterator point=cagepoints.begin();
 }
 
 bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
-{  // returns true if succeeds, false if fails due to too great node ejection
+{   /// returns true if succeeds, false if fails due to too great node ejection
 
-	// node has entered nucleator,
-	// push to surface
-
-    vect node_nuc=node_world;
-    ptheactin->world_to_nuc_frame(node_nuc);  // move node to the nucleator frame of ref
+	/// node has entered nucleator,
+	/// push to surface
 
     double r, scale, z2;
 	vect node_disp;
-	vect oldpos;
+	const vect oldpos = node_world.pos_in_nuc_frame;
 
-	oldpos = node_nuc;
-
-	double rad = RADIUS * NUCPOINT_SCALE; // needed to prevent rounding errors putting back inside nuclator
+	const double rad = RADIUS * NUCPOINT_SCALE; // needed to prevent rounding errors putting back inside nuclator
 
     // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
 	switch (geometry)
 	{
 	    case (sphere):
 	    {
-		    r = node_nuc.length();
+		    r = node_world.pos_in_nuc_frame.length();
 
 			if ((!node_world.stucktonucleator) && (STICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
 			{
 				node_world.stucktonucleator = true;
-				node_world.nucleator_stuck_position = node_nuc * (RADIUS/r); // link to point *on* the nucleator surface
+				node_world.nucleator_stuck_position = node_world.pos_in_nuc_frame * (RADIUS/r); // link to point *on* the nucleator surface
 			}
 
 			scale = rad / r;
 
-		    node_nuc *= scale;
+		    node_world.pos_in_nuc_frame *= scale;
         	
             node_world.nucleator_impacts += rad - r;
 
@@ -445,11 +440,11 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 	    case (capsule):
 
 	    {
-		    if ((fabs(node_nuc.z) < CAPSULE_HALF_LINEAR))
+		    if ((fabs(node_world.pos_in_nuc_frame.z) < CAPSULE_HALF_LINEAR))
 		    { 
 			    // on the cylinder
 
-			    r = calcdist(node_nuc.x,node_nuc.y);
+			    r = calcdist(node_world.pos_in_nuc_frame.x,node_world.pos_in_nuc_frame.y);
 
                 // note the nucleator_stuck_position is used to produce the patterned speckle
                 // tracks and should represent the last nucleator collision position
@@ -458,14 +453,14 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 				{
 					node_world.stucktonucleator = true;
 
-                    node_world.nucleator_stuck_position.x = node_nuc.x * (RADIUS/r);  // link to point *on* the nucleator surface
-				    node_world.nucleator_stuck_position.y = node_nuc.y * (RADIUS/r);
-				    node_world.nucleator_stuck_position.z = node_nuc.z;  // cylinder, so not scale z
+                    node_world.nucleator_stuck_position.x = node_world.pos_in_nuc_frame.x * (RADIUS/r);  // link to point *on* the nucleator surface
+				    node_world.nucleator_stuck_position.y = node_world.pos_in_nuc_frame.y * (RADIUS/r);
+				    node_world.nucleator_stuck_position.z = node_world.pos_in_nuc_frame.z;  // cylinder, so not scale z
 				}
 
 			    scale = rad / r;
-			    node_nuc.x *= scale;
-			    node_nuc.y *= scale;
+			    node_world.pos_in_nuc_frame.x *= scale;
+			    node_world.pos_in_nuc_frame.y *= scale;
     			
                 node_world.nucleator_impacts += rad - r;
 
@@ -476,35 +471,35 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
     			
 			    // calculate theta, phi :
 
-				if (node_nuc.z<0)  // make into a sphere again
-				    z2 = node_nuc.z + CAPSULE_HALF_LINEAR;
+				if (node_world.pos_in_nuc_frame.z<0)  // make into a sphere again
+				    z2 = node_world.pos_in_nuc_frame.z + CAPSULE_HALF_LINEAR;
 			    else
-				    z2 = node_nuc.z - CAPSULE_HALF_LINEAR;
+				    z2 = node_world.pos_in_nuc_frame.z - CAPSULE_HALF_LINEAR;
 
-				r = calcdist(node_nuc.x,node_nuc.y,z2);
+				r = calcdist(node_world.pos_in_nuc_frame.x,node_world.pos_in_nuc_frame.y,z2);
 
 				if ((!node_world.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
 				{
 					node_world.stucktonucleator = true;
 
-                    node_world.nucleator_stuck_position.x = node_nuc.x * (RADIUS/r);
-				    node_world.nucleator_stuck_position.y = node_nuc.y * (RADIUS/r);
+                    node_world.nucleator_stuck_position.x = node_world.pos_in_nuc_frame.x * (RADIUS/r);
+				    node_world.nucleator_stuck_position.y = node_world.pos_in_nuc_frame.y * (RADIUS/r);
 
-                    if (node_nuc.z<0)  // make into a sphere again
+                    if (node_world.pos_in_nuc_frame.z<0)  // make into a sphere again
 					    node_world.nucleator_stuck_position.z = z2 * (RADIUS/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
 				    else
 					    node_world.nucleator_stuck_position.z = z2 * (RADIUS/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
 				}
 
 			    scale = rad / r;
-			    node_nuc.x *= scale;
-			    node_nuc.y *= scale;
+			    node_world.pos_in_nuc_frame.x *= scale;
+			    node_world.pos_in_nuc_frame.y *= scale;
 			    z2 *= scale;
 
-				if (node_nuc.z<0)
-				    node_nuc.z = z2 - (CAPSULE_HALF_LINEAR);
+				if (node_world.pos_in_nuc_frame.z<0)
+				    node_world.pos_in_nuc_frame.z = z2 - (CAPSULE_HALF_LINEAR);
 			    else
-				    node_nuc.z = z2 + (CAPSULE_HALF_LINEAR);
+				    node_world.pos_in_nuc_frame.z = z2 + (CAPSULE_HALF_LINEAR);
     		
 			    node_world.nucleator_impacts += rad - r;
 		    }
@@ -514,7 +509,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
 	}
 
-    node_disp = node_nuc - oldpos;  // now much we have moved
+    node_disp = node_world.pos_in_nuc_frame - oldpos;  // check now much we have moved
 
     if ((fabs(node_disp.x) > 0.2*RADIUS) ||
 	    (fabs(node_disp.y) > 0.2*RADIUS) ||
@@ -523,7 +518,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 		cout << endl;
 		cout << "node " << node_world.nodenum << " nucleus ejection too great. Radius:" << oldpos.length() <<  endl;
 	    cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
-	    cout << "new (x,y,z): " <<  node_nuc.x << ", " << node_nuc.y << ", " << node_nuc.z <<  endl;
+	    cout << "new (x,y,z): " <<  node_world.pos_in_nuc_frame.x << ", " << node_world.pos_in_nuc_frame.y << ", " << node_world.pos_in_nuc_frame.z <<  endl;
 		//cout << "#links: " << (int) node.listoflinks.size() << endl;
 	    return false;  // failed
     }
@@ -531,22 +526,22 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
 #ifndef SEED_INSIDE
 
-    node_nuc -= node_disp * movability;  // move the node *back* scaled by movibility (since nucleator should move this much)
+    node_world.pos_in_nuc_frame -= node_disp * movability;  // move the node *back* scaled by movibility (since nucleator should move this much)
 
     move_nuc(oldpos,node_disp);  // move the nucleator
 
 #endif
 
-    ptheactin->nuc_to_world_frame(node_nuc);  // move node back to the world frame of ref
+    node_world.x = node_world.pos_in_nuc_frame.x; // set the position of the node
+    node_world.y = node_world.pos_in_nuc_frame.y;
+    node_world.z = node_world.pos_in_nuc_frame.z;
 
-    node_world.x = node_nuc.x; // set the position of the node
-    node_world.y = node_nuc.y;
-    node_world.z = node_nuc.z;
+    ptheactin->nuc_to_world_frame(node_world);  // move node back to the world frame of ref
 
 	return true; // sucessful node ejection
 }
 
-void nucleator::move_nuc(vect& origin_of_movement, vect& tomove)
+void nucleator::move_nuc(const vect& origin_of_movement, const vect& tomove)
 {
 	/// updates the vectors for moving and rotating the nucleator
 
