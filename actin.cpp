@@ -2425,6 +2425,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 		    rot = *point;
 
+            nuc_to_world_rot.rotate(rot);
+
             //camera_rotation.rotate(rot);        // rotates for the symmetry breaking direction
             //axisrotation.rotate(rot);           // and the projection
 
@@ -2443,7 +2445,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		    y += cagemovey;
 
 
-            const double intensitysum = 10.0;
+            //const double intensitysum = 10.0;
 
             for (int i  = - CAGE_POINT_EXTENT * BMP_AA_FACTOR; 
                      i !=   CAGE_POINT_EXTENT * BMP_AA_FACTOR + 1; ++i)
@@ -2460,7 +2462,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
                     double dist = calcdist(xfractpxl + (double) i, yfractpxl + (double) j);
 
-                    double intensity = (10.0/intensitysum) * exp( - 3.0 * dist * dist / 
+                    double intensity = (fabs(rot.x - RADIUS) / ( 2.0 * RADIUS ) )* exp( - 3.0 * dist * dist / 
                                  (double) (BMP_AA_FACTOR * CAGE_POINT_EXTENT));
                     
 	                imageR[x+i][y+j] = mymin(imageR[x+i][y+j] + intensity , 1.0);
@@ -2909,34 +2911,20 @@ void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl
 
 
 void actin::squash(const double & thickness)
-{   // todo: check and fix this
-
+{  
 	// squash with 'coverslip'
 
-    vect rotpos;
     const double halfthickness = thickness/2.0;
 
 	for(vector <nodes>::iterator	i_node  = node.begin(); 
 									i_node != node.begin() + highestnodecount;
 							      ++i_node)
     {
-        rotpos = *i_node;
-
-        nuc_to_world_frame(rotpos);
-
-        if      (rotpos.x >  halfthickness)  // above
-			     rotpos.x =  halfthickness; 
-        else if (rotpos.x < -halfthickness)  // below
-			     rotpos.x = -halfthickness;
+        if (i_node->x >  halfthickness)  // above
+            i_node->x =  halfthickness; 
         else 
-            continue;                   // within coverslip, skip
-        
-        world_to_nuc_frame(rotpos);
-
-        i_node->x = rotpos.x;
-        i_node->y = rotpos.y;
-        i_node->z = rotpos.z;
-
+        if (i_node->x < -halfthickness)  // below
+			i_node->x = -halfthickness;
 	}
 
 	return;
@@ -2951,14 +2939,9 @@ void actin::sortnodesbygridpoint(void)
 
 //	nodes* nodeptr, *startnodeptr;
 
-    int i;
-	int tn;
-	size_t minsize,threadsize;
 
-	for (i=lowestnodetoupdate; i != highestnodecount; ++i)
-	{
-		donenode[i] = false;
-	}
+    fill(donenode.begin()+lowestnodetoupdate, donenode.begin()+highestnodecount, false);
+
 
     int threadnum;
 
@@ -2970,7 +2953,7 @@ void actin::sortnodesbygridpoint(void)
     threadnum = 0;
 
 
-	for (i=lowestnodetoupdate; i != highestnodecount; ++i)
+	for (int i=lowestnodetoupdate; i != highestnodecount; ++i)
 	{	// collect the nodes in gridpoint order...
 
 		if ((donenode[i]) || (!node[i].polymer))
@@ -2994,9 +2977,10 @@ void actin::sortnodesbygridpoint(void)
 
 		// find smallest thread queue and put next one in there
 
+	    size_t minsize,threadsize;
         minsize = MAXNODES;
 
-        for (tn = 0; tn != NUM_THREAD_DATA_CHUNKS; ++tn)
+        for (int tn = 0; tn != NUM_THREAD_DATA_CHUNKS; ++tn)
         {
             threadsize = nodes_by_thread[tn].size();
             if (threadsize < minsize)
