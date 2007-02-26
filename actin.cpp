@@ -1952,27 +1952,23 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     //    projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
     
 
-    // create vector with rotated node positions
+    // create copy of the node positions and rotate
 
     vector <vect> rotatednodepositions;
     rotatednodepositions.resize(highestnodecount);
+    rotatednodepositions.assign(node.begin(), node.begin()+highestnodecount);
 
-    for(int i=0; i != highestnodecount; ++i)
+	for(vector<vect>::iterator i_node  = rotatednodepositions.begin(); 
+						       i_node != rotatednodepositions.end();
+						     ++i_node)
     {
-        rotatednodepositions[i] = node[i];
-        projection_rotation.rotate(rotatednodepositions[i]);
-	}
+        projection_rotation.rotate(*i_node);
+    }
 
 
-	double minx, miny, minz;
-	double maxx, maxy, maxz; 
 
-	int beadmaxx, beadmaxy;
-	int beadminx, beadminy;
 	
 	int x,y;
-
-
 
 	// precalculate gaussian for psf
 
@@ -2021,28 +2017,18 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         fill(imageB[x].begin(),imageB[x].end(),0.0);
 	}
 
+	// find extents of network
 
-	// determine size
+    double minx, miny, minz;
+	double maxx, maxy, maxz; 
 
-	minx = miny = minz = 0;
-	maxx = maxy = maxz = 0;
-
-    double meanx = 0.0, meany = 0.0, meanz = 0.0;
-
-    int countnodes = 0;
-
-	// find extents of network and mean position
+    minx = miny = minz = 0.0;
+	maxx = maxy = maxz = 0.0;
 
     for(int i=0; i != highestnodecount; ++i)
     {
 		if ((node[i].polymer) && (!node[i].listoflinks.empty()))
 		{
-            //meanx += rotatednodepositions[i].x;
-            //meany += rotatednodepositions[i].y;
-            //meanz += rotatednodepositions[i].z;
-
-            countnodes++;
-
 			if (minx > rotatednodepositions[i].x) minx = rotatednodepositions[i].x;
 			if (miny > rotatednodepositions[i].y) miny = rotatednodepositions[i].y;
 			if (minz > rotatednodepositions[i].z) minz = rotatednodepositions[i].z;
@@ -2053,21 +2039,27 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		}
 	}
 
-    //meanx /= (double) count + 100; // + 100 buffers the instability when # nodes is v. small
-    //meany /= (double) count + 100;
-    //meanz /= (double) count + 100;
+    // find the nucleator position, rotated into this view
 
-    vect nucposn = - ptheactin->p_nuc->position;
+    vect nucposn = ptheactin->p_nuc->position;
     projection_rotation.rotate(nucposn); 
 
-    if (BMP_FIX_BEAD_MOVEMENT)
-    {
-        meanx = -nucposn.x;
-        meany = -nucposn.y;
-        meanz = -nucposn.z;
-    }
+    vect origin;    // origin is where the bitmap should put the centre
+                    // normally 0,0,0 but by putting it at the nucleator position
+                    // we make the nuceator stationary
 
-    // determine offset (if any) needed to keep bead in picture
+    if (BMP_FIX_BEAD_MOVEMENT)
+        origin = nucposn;
+    else
+        origin.zero();
+
+    // determine offset (movex, movey) needed to keep bead in picture
+
+    int movex = 0;
+	int movey = 0;
+    
+    int beadmaxx, beadmaxy;
+	int beadminx, beadminy;
 
 	double keep_within_border;
 
@@ -2077,25 +2069,24 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		 keep_within_border = CAPSULE_HALF_LINEAR + ( 2 * RADIUS );
 
 
-	beadmaxx = pixels(   keep_within_border - nucposn.y ) + bmpcenterx;
-	beadmaxy = pixels(   keep_within_border - nucposn.z ) + bmpcentery;
-	beadminx = pixels( - keep_within_border - nucposn.y ) + bmpcenterx;
-	beadminy = pixels( - keep_within_border - nucposn.z ) + bmpcentery;
+	beadmaxx = pixels(   keep_within_border - origin.y + nucposn.y) + bmpcenterx;
+	beadmaxy = pixels(   keep_within_border - origin.z + nucposn.z) + bmpcentery;
 
-	int movex = 0;
-	int movey = 0;
+	beadminx = pixels( - keep_within_border - origin.y + nucposn.y) + bmpcenterx;
+	beadminy = pixels( - keep_within_border - origin.z + nucposn.z) + bmpcentery;	
 
 	if (beadmaxx > BMP_WIDTH)
-		movex =- (beadmaxx - BMP_WIDTH);
+		movex = BMP_WIDTH - beadmaxx;
 
 	if (beadmaxy > BMP_HEIGHT)
-		movey =- (beadmaxy - BMP_HEIGHT);
+		movey = BMP_HEIGHT - beadmaxy;
 
 	if (beadminx < 0)
-		movex =- beadminx;
+		movex = -beadminx;
 
 	if (beadminy < 0)
-		movey =- beadminy;
+		movey = -beadminy;
+
    
 
     if ((stationary_node_number != 0) && (stationary_node_number < highestnodecount))
@@ -2115,7 +2106,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 	vect rot;
 	double mult = 0;
-    vect origposn;
+    vect originalpos;
 
     int    SPECKLEGRIDPERIODiter = (int) (SPECKLEGRIDPERIOD    / DELTA_T);
     int SPECKLEGRIDTIMEWIDTHiter = (int) (SPECKLEGRIDTIMEWIDTH / DELTA_T);
@@ -2142,11 +2133,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 // find position of node on original surface
                 // and rotate into observation frame, (without the bead rotation of course)
                 // to define thickness for speckle slice
-                origposn = node[i].nucleator_stuck_position;
-                camera_rotation.rotate(origposn);  
-                axisrotation.rotate(origposn);  
+                originalpos = node[i].nucleator_stuck_position;
+                camera_rotation.rotate(originalpos);  
+                axisrotation.rotate(originalpos);  
                 
-                if (fabs(origposn.x) * 2 > RADIUS )  // if outside RADIUS/2 then black
+                if (fabs(originalpos.x) * 2 > RADIUS )  // if outside RADIUS/2 then black
                 {
                     mult = 0;
                 }
@@ -2158,7 +2149,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                     }
                     else
                     {
-                        //if ( ((int)(10 * 360 * (atan2(origposn.y,origposn.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
+                        //if ( ((int)(10 * 360 * (atan2(originalpos.y,originalpos.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
                         //      < (10 * 360 * 2 * PI * (SPECKLEGRIDSTRIPEWIDTH/360)))
 
                         double segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position,proj); 
@@ -2182,8 +2173,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         }
 
 
-        x = pixels(rotatednodepositions[i].y - meany) + bmpcenterx;                      
-		y = pixels(rotatednodepositions[i].z - meanz) + bmpcentery;
+        x = pixels(rotatednodepositions[i].y - origin.y) + bmpcenterx;                      
+		y = pixels(rotatednodepositions[i].z - origin.z) + bmpcentery;
 
 
 #ifdef BMPS_USING_LINKS
@@ -2198,8 +2189,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         double posy = (rotatednodepositions[i].y + rotatednodepositions[link_i->linkednodenumber].y) / 2.0;
         double posz = (rotatednodepositions[i].z + rotatednodepositions[link_i->linkednodenumber].z) / 2.0;
 
-        x = pixels(posy - meany) + bmpcenterx;                      
-		y = pixels(posz - meanz) + bmpcentery;
+        x = pixels(posy - origin.y) + bmpcenterx;                      
+		y = pixels(posz - origin.z) + bmpcentery;
 
 
 #endif 
@@ -2399,7 +2390,6 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     if (!writefile)
         return;
 
-    //double cagedispx = meanx;
 	double cagedispy = nucposn.y;
 	double cagedispz = nucposn.z;
 	int cagemovex = movex;
@@ -2432,8 +2422,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
             projection_rotation.rotate(rot);
 
-		    double dblx = dbl_pixels(rot.y - cagedispy) + (double) bmpcenterx;
-		    double dbly = dbl_pixels(rot.z - cagedispz) + (double) bmpcentery;
+		    double dblx = dbl_pixels(rot.y + cagedispy) + (double) bmpcenterx;
+		    double dbly = dbl_pixels(rot.z + cagedispz) + (double) bmpcentery;
 
             x = (int) (dblx + 0.5);
             y = (int) (dbly + 0.5);
@@ -2916,7 +2906,9 @@ void actin::squash(const double & thickness)
 
     const double halfthickness = thickness/2.0;
 
-	for(vector <nodes>::iterator	i_node  = node.begin(); 
+    // squash the network:
+
+	for(vector <nodes>::iterator	i_node  = node.begin() + lowestnodetoupdate; 
 									i_node != node.begin() + highestnodecount;
 							      ++i_node)
     {
@@ -2926,6 +2918,15 @@ void actin::squash(const double & thickness)
         if (i_node->x < -halfthickness)  // below
 			i_node->x = -halfthickness;
 	}
+
+    // make sure the nucleator is in bounds, too
+    // todo: do the capsule shape, too
+
+    if (p_nuc->position.x >  halfthickness - RADIUS)
+        p_nuc->position.x =  halfthickness - RADIUS;
+
+    if (p_nuc->position.x < - halfthickness + RADIUS)
+        p_nuc->position.x = - halfthickness + RADIUS;
 
 	return;
 }
@@ -3088,7 +3089,7 @@ void actin::compressfilesdowork(const int & filenum)
 
 int actin::find_center(vect &center)
 {
-	center = - p_nuc->position;
+	center = p_nuc->position;
 
 	return 0;	  
 }
