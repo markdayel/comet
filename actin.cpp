@@ -2452,7 +2452,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
                     double dist = calcdist(xfractpxl + (double) i, yfractpxl + (double) j);
 
-                    double intensity = (fabs(rot.x - RADIUS) / ( 2.0 * RADIUS ) )* exp( - 3.0 * dist * dist / 
+                    double intensity = 0.8 * (fabs(rot.x - RADIUS) / ( 2.0 * RADIUS ) )* exp( - 3.0 * dist * dist / 
                                  (double) (BMP_AA_FACTOR * CAGE_POINT_EXTENT));
                     
 	                imageR[x+i][y+j] = mymin(imageR[x+i][y+j] + intensity , 1.0);

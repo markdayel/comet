@@ -581,6 +581,22 @@ void CometVtkVis::addNucleator()
 
 void CometVtkVis::addCapsuleNucleator()
 {
+    static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
+
+    // the capsule is oriented along z in the nuc frame of ref:
+
+    vect bodyposn(0,0,0);
+    vect cap1posn(0,0, CAPSULE_HALF_LINEAR);
+    vect cap2posn(0,0,-CAPSULE_HALF_LINEAR);
+
+    ptheactin->nuc_to_world_frame(bodyposn);
+    ptheactin->nuc_to_world_frame(cap1posn);
+    ptheactin->nuc_to_world_frame(cap2posn);
+
+    bodyposn *= voxelscalefactor;
+    cap1posn *= voxelscalefactor;
+    cap2posn *= voxelscalefactor;
+
     // -- Sources
     // -- endcap source
     // create top sphere geometry
@@ -609,7 +625,7 @@ void CometVtkVis::addCapsuleNucleator()
     // -- Actors
     // rotate the nucleator sections
     double nrotation[3];
-    ptheactin->nuc_to_world_rot.getangles(nrotation[0], 
+    ptheactin->world_to_nuc_rot.getangles(nrotation[0], 
 						 nrotation[1], 
 						 nrotation[2]);
     nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
@@ -621,13 +637,14 @@ void CometVtkVis::addCapsuleNucleator()
     vtkActor *endcap1_actor = vtkActor::New();
     endcap1_actor->SetMapper(endcap_mapper);
     VTK_FLOAT_PRECISION centre[3];
-    centre[0] = 0;
-    centre[1] = 0;
-    centre[2] = +capsule_length_pixels;
+    centre[0] = cap1posn.x;
+    centre[1] = cap1posn.y;
+    centre[2] = cap1posn.z;
+
     endcap1_actor->SetOrientation( nrotation[0],
 				   nrotation[1],
 				   nrotation[2]);
-    ptheactin->world_to_nuc_rot.rotate( centre ); //[0],centre[1],centre[2]);
+
     endcap1_actor->SetPosition( centre );
     endcap1_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     endcap1_actor->GetProperty()->SetOpacity(nuc_opacity);
@@ -635,14 +652,11 @@ void CometVtkVis::addCapsuleNucleator()
     // - lower endcap
     vtkActor *endcap2_actor = vtkActor::New();
     endcap2_actor->SetMapper(endcap_mapper);
-    centre[0] = 0;
-    centre[1] = 0;
-    centre[2] = -capsule_length_pixels;
-    // endcap2_actor->RotateX( 180 );
-    endcap2_actor->SetOrientation( nrotation[0] + 180,
-				   nrotation[1],
-				   nrotation[2]);
-    ptheactin->world_to_nuc_rot.rotate( centre ); //[0],centre[1],centre[2]);
+    centre[0] = cap2posn.x;
+    centre[1] = cap2posn.y;
+    centre[2] = cap2posn.z;
+    endcap2_actor->SetOrientation( nrotation[0] + 180, nrotation[1], nrotation[2]);
+
     endcap2_actor->SetPosition( centre );
     endcap2_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     endcap2_actor->GetProperty()->SetOpacity(nuc_opacity);
@@ -652,13 +666,12 @@ void CometVtkVis::addCapsuleNucleator()
     // - body
     vtkActor *body_actor = vtkActor::New();
     body_actor->SetMapper(body_mapper);
-    centre[0] = 0;
-    centre[1] = 0;
-    centre[2] = 0;
+    centre[0] = bodyposn.x;
+    centre[1] = bodyposn.y;
+    centre[2] = bodyposn.z;
     body_actor->SetPosition( centre );
-    body_actor->SetOrientation( nrotation[0] + 90,
-				nrotation[1],
-				nrotation[2]);
+    body_actor->SetOrientation( nrotation[0] + 90, nrotation[1], nrotation[2]);
+
     body_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     body_actor->GetProperty()->SetOpacity(nuc_opacity);
     body_mapper->Delete();
@@ -676,67 +689,60 @@ void CometVtkVis::addCapsuleNucleator()
 
 void CometVtkVis::addSphericalNucleator()
 {   
-    
+    static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
 
-    double nx, ny, nz;
+    //double nucposn.x, nucposn.y, nucposn.z;
+    vect nucposn = ptheactin->p_nuc->position * voxelscalefactor;
+
     
     // temp: reset center:
-	if (VTK_MOVE_WITH_BEAD)
-	{
-		nx = ny = nz = 0.0;
 
-	}
-    else
-    {
-		nx = -ptheactin->p_nuc->position.x; 
-		ny = -ptheactin->p_nuc->position.y; 
-		nz = -ptheactin->p_nuc->position.z; 
-	}
+
 	
 
-    ptheactin->nuc_to_world_rot.rotate(nx, ny, nz);
-    vtk_cam_rot.rotate(nx, ny, nz); 
+    //ptheactin->nuc_to_world_rot.rotate(nucposn.x, nucposn.y, nucposn.z);
+    //vtk_cam_rot.rotate(nucposn.x, nucposn.y, nucposn.z); 
 
     // stops bead 
-    double keep_within_border;
-    if( ptheactin->p_nuc->geometry == nucleator::sphere )
-	keep_within_border = 2*RADIUS;
-    else
-	keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
+ //   double keep_within_border;
+ //   if( ptheactin->p_nuc->geometry == nucleator::sphere )
+	//keep_within_border = 2*RADIUS;
+ //   else
+	//keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
 
-    int beadminx = int(ptheactin->pixels(-keep_within_border - nx)/voxel_scale) + ni/2 + 1;
-    int beadminy = int(ptheactin->pixels(-keep_within_border - ny)/voxel_scale) + nj/2 + 1; 
-    int beadminz = int(ptheactin->pixels(-keep_within_border - nz)/voxel_scale) + nk/2 + 1; 
-    int beadmaxx = int(ptheactin->pixels( keep_within_border - nx)/voxel_scale) + ni/2 + 1; 
-    int beadmaxy = int(ptheactin->pixels( keep_within_border - ny)/voxel_scale) + nj/2 + 1; 
-    int beadmaxz = int(ptheactin->pixels( keep_within_border - nz)/voxel_scale) + nk/2 + 1; 
-    
-    int movex = 0;
-    int movey = 0;
-    int movez = 0;
+ //   int beadminucposn.x = int(ptheactin->pixels(-keep_within_border - nucposn.x)/voxel_scale) + ni/2 + 1;
+ //   int beadminucposn.y = int(ptheactin->pixels(-keep_within_border - nucposn.y)/voxel_scale) + nj/2 + 1; 
+ //   int beadminucposn.z = int(ptheactin->pixels(-keep_within_border - nucposn.z)/voxel_scale) + nk/2 + 1; 
+ //   int beadmaxx = int(ptheactin->pixels( keep_within_border - nucposn.x)/voxel_scale) + ni/2 + 1; 
+ //   int beadmaxy = int(ptheactin->pixels( keep_within_border - nucposn.y)/voxel_scale) + nj/2 + 1; 
+ //   int beadmaxz = int(ptheactin->pixels( keep_within_border - nucposn.z)/voxel_scale) + nk/2 + 1; 
+ //   
+ //   int movex = 0;
+ //   int movey = 0;
+ //   int movez = 0;
 
-    if(beadminx < 0)
-	    movex = -beadminx;
-    if(beadminy < 0)
-	    movey = -beadminy;
-    if(beadminz < 0)
-	    movez = -beadminz;    
+ //   if(beadminucposn.x < 0)
+	//    movex = -beadminucposn.x;
+ //   if(beadminucposn.y < 0)
+	//    movey = -beadminucposn.y;
+ //   if(beadminucposn.z < 0)
+	//    movez = -beadminucposn.z;    
 
-    if(beadmaxx > ni)
-	    movex = -(beadmaxx - ni);
-    if(beadmaxy > nj)
-	    movey = -(beadmaxy - nj);
-    if(beadmaxz > nk)
-	    movez = -(beadmaxz - nk);
-    
-    nx = ptheactin->dbl_pixels(-nx)/voxel_scale; 
-    ny = ptheactin->dbl_pixels(-ny)/voxel_scale; 
-    nz = ptheactin->dbl_pixels(-nz)/voxel_scale;
-    
-    // displace to bring nucleator back in bounds
-    nx += movex;
-    ny += movey;
-    nz += movez;
+ //   if(beadmaxx > ni)
+	//    movex = -(beadmaxx - ni);
+ //   if(beadmaxy > nj)
+	//    movey = -(beadmaxy - nj);
+ //   if(beadmaxz > nk)
+	//    movez = -(beadmaxz - nk);
+ //   
+ //   nucposn.x = ptheactin->dbl_pixels(-nucposn.x)/voxel_scale; 
+ //   nucposn.y = ptheactin->dbl_pixels(-nucposn.y)/voxel_scale; 
+ //   nucposn.z = ptheactin->dbl_pixels(-nucposn.z)/voxel_scale;
+ //   
+ //   // displace to bring nucleator back in bounds
+ //   nucposn.x += movex;
+ //   nucposn.y += movey;
+ //   nucposn.z += movez;
 
 
     //map->SetResolveCoincidentTopologyToPolygonOffset()
@@ -772,7 +778,7 @@ void CometVtkVis::addSphericalNucleator()
 
     vtkActor *nuc_actor = vtkActor::New();
 
-    nuc_actor->SetPosition(nx, ny, nz);
+    nuc_actor->SetPosition(nucposn.x, nucposn.y, nucposn.z);
     nuc_actor->SetOrientation( nrotation[0] + 180,
 				   nrotation[1],
 				   nrotation[2]);
@@ -1328,14 +1334,16 @@ void CometVtkVis::addNodes()
 
 bool CometVtkVis::convert_to_vtkcoord(VTK_FLOAT_PRECISION &x, VTK_FLOAT_PRECISION &y, VTK_FLOAT_PRECISION &z)
 {
-    ptheactin->nuc_to_world_rot.rotate(x, y, z); 
-    vtk_cam_rot.rotate(x, y, z); // bring rip to y-axis
+    static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
+
+    //ptheactin->nuc_to_world_rot.rotate(x, y, z); 
+    //vtk_cam_rot.rotate(x, y, z); // bring rip to y-axis
 
     bool infocus = !(OptsSkipOutOfFocusPoints && fabs(x) > FOCALDEPTH);
 
-    x = ptheactin->dbl_pixels(x - meanx) / voxel_scale + movex; 
-    y = ptheactin->dbl_pixels(y - meany) / voxel_scale + movey;
-    z = ptheactin->dbl_pixels(z - meanz) / voxel_scale + movez;
+    x *= voxelscalefactor; 
+    y *= voxelscalefactor;
+    z *= voxelscalefactor;
 
     return infocus;
 }
@@ -1448,7 +1456,7 @@ void CometVtkVis::addLinks()
 
   double force;
 
-  bool firstpointinfocus, secondpointinfocus;
+  bool firstpointinfocus, secondpointinfocus; // used to reject links if both points are out of focal planes
   
   for(int i=0; i != ptheactin->highestnodecount; i++) 
   {      
@@ -1458,13 +1466,8 @@ void CometVtkVis::addLinks()
     n_pt[1] = ptheactin->node[i].y;
     n_pt[2] = ptheactin->node[i].z;		
     
-    //if (!
-    firstpointinfocus = convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]);//)
-        //continue;  // out of focus, so skip
-
-
-    
-    
+    firstpointinfocus = convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]);
+ 
     if(!ptheactin->node[i].listoflinks.empty()) 
     {
       // nodes thisnode = ptheactin->node[i];
@@ -1486,7 +1489,7 @@ void CometVtkVis::addLinks()
         secondpointinfocus = convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
 
         if (!firstpointinfocus && !secondpointinfocus)
-            continue;
+            continue;  // both points out of focus, so skip link
 
         vect linkvec = nodeposvec - ptheactin->node[link_i->linkednodenumber];//*(link_i->linkednodeptr) ;
 
@@ -1550,7 +1553,10 @@ void CometVtkVis::addLinks()
 
      if (ptheactin->node[i].stucktonucleator)
      {
-        vect displacement = ptheactin->node[i] - ptheactin->node[i].nucleator_stuck_position;
+        vect stuck_pos_world_frame = ptheactin->node[i].nucleator_stuck_position;;
+        ptheactin->nuc_to_world_frame(stuck_pos_world_frame);
+
+        vect displacement = ptheactin->node[i] - stuck_pos_world_frame;
         double distance = displacement.length();
 
         force = NUC_LINK_FORCE * distance;
@@ -1566,9 +1572,9 @@ void CometVtkVis::addLinks()
         //col.setcol(y);
 
         // create line for the link
-        l_pt[0] = ptheactin->node[i].nucleator_stuck_position.x;
-        l_pt[1] = ptheactin->node[i].nucleator_stuck_position.y;
-        l_pt[2] = ptheactin->node[i].nucleator_stuck_position.z;
+        l_pt[0] = stuck_pos_world_frame.x;
+        l_pt[1] = stuck_pos_world_frame.y;
+        l_pt[2] = stuck_pos_world_frame.z;
 
         convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
 
@@ -1625,7 +1631,7 @@ void CometVtkVis::SetFocalDepthPlanes(vtkPolyDataMapper *map)
   map->RemoveAllClippingPlanes();
 
   vtkPlane* newplane = vtkPlane::New();
-  newplane->SetOrigin( focdepposx,0,0 );
+  newplane->SetOrigin(  focdepposx,0,0 );
   newplane->SetNormal( -1,0,0 );
   map->AddClippingPlane( newplane );
   newplane->Delete();
@@ -1724,10 +1730,20 @@ void CometVtkVis::addLight()
 
 void CometVtkVis::setProjection()
 {
-   // renderer->ResetCamera();
+    static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
+    vect origin;
 
+    if (VTK_MOVE_WITH_BEAD)
+    {
+		origin = ptheactin->p_nuc->position * voxelscalefactor; 
+	} else
+    {
+		origin.zero();
+	}
 
-  renderer->GetActiveCamera()->SetFocalPoint(0, 0, 0);
+    // renderer->ResetCamera();
+
+    renderer->GetActiveCamera()->SetFocalPoint(origin.x, origin.y, origin.z);
   
     renderer->GetActiveCamera()->ParallelProjectionOn(); // ParallelProjectionOn();
     renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
@@ -1735,37 +1751,51 @@ void CometVtkVis::setProjection()
     // should scale properly here to a value linked to the render setup
     renderer->GetActiveCamera()->SetParallelScale(p_scale);
     //renderer->ResetCamera();
-
   
-    if(OptsRenderProjection==X){
-      // x
-      vtk_cam_rot = ptheactin->camera_rotation;
-      renderer->GetActiveCamera()->SetPosition(-radius_pixels*OptsCameraDistMult, 0, 0);
-	  //renderer->GetActiveCamera()->SetPosition(-2, 0, 0);
-      renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
-    } else if(OptsRenderProjection==Y){
-      // y
-      vtk_cam_rot = ptheactin->camera_rotation;
-      renderer->GetActiveCamera()->SetPosition(0, radius_pixels*OptsCameraDistMult, 0);
-      renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
-    } else if(OptsRenderProjection==Z){
-      // z
-      vtk_cam_rot = ptheactin->camera_rotation;
-      renderer->GetActiveCamera()->SetPosition(0, 0, -radius_pixels*OptsCameraDistMult);
-      renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
-    } else if(OptsRenderProjection==RIP){
+    
+
+
+    if (OptsRenderProjection == X )
+    {
+        // x
+        vtk_cam_rot = ptheactin->camera_rotation;
+        
+        renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+
+    } else if (  OptsRenderProjection == Y )
+    {
+        // y
+        vtk_cam_rot = ptheactin->camera_rotation;
+        vtk_cam_rot.rotatematrix(0,0,PI/2);
+
+        renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+
+    } else if (OptsRenderProjection == Z )
+    {
+        // z
+        vtk_cam_rot = ptheactin->camera_rotation;
+        vtk_cam_rot.rotatematrix(0,PI/2,0);
+
+        renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
+
+    } else if ( OptsRenderProjection == RIP )
+    {
+        vtk_cam_rot = ptheactin->camera_rotation2;	  // note using different rotation matrix!
+        vtk_cam_rot.rotatematrix(0,-50*(PI/180),0); // angle of view
+        
+        renderer->GetActiveCamera()->SetViewUp(-1, 0, 0);
       
-      vtk_cam_rot = ptheactin->camera_rotation2;	  // note using different rotation matrix!
-      // rip
-      //cout << "  projection: rip" << endl;
-      renderer->GetActiveCamera()->SetPosition(radius_pixels*OptsCameraDistMult/2, 
-					       0, 
-							-radius_pixels*OptsCameraDistMult);
-      renderer->GetActiveCamera()->SetViewUp(1, 0, 0);
-      
-    } else {
+    } else 
+    {
       cout << "!ERROR: unknown projection:" << OptsRenderProjection << endl;
     }
+
+    // set position of the camera relative to the origin
+    vect camera_posn_vect(radius_pixels*OptsCameraDistMult,0,0);
+    vtk_cam_rot.rotate(camera_posn_vect);
+    camera_posn_vect += origin;
+
+    renderer->GetActiveCamera()->SetPosition(camera_posn_vect.x,camera_posn_vect.y,camera_posn_vect.z);
 
     //renderer->ResetCamera();
 

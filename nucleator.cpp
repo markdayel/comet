@@ -515,7 +515,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 	    (fabs(node_disp.y) > 0.2*RADIUS) ||
 	    (fabs(node_disp.z) > 0.2*RADIUS))
     {
-		cout << endl;
+		cout << setprecision(3) << endl;
 		cout << "node " << node_world.nodenum << " nucleus ejection too great. Radius:" << oldpos.length() <<  endl;
 	    cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
 	    cout << "new (x,y,z): " <<  node_world.pos_in_nuc_frame.x << ", " << node_world.pos_in_nuc_frame.y << ", " << node_world.pos_in_nuc_frame.z <<  endl;
