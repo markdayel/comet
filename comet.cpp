@@ -2012,18 +2012,7 @@ srand( rand_num_seed );
 		<< setprecision(1) << ((endtime-starttime) / 3600) << "h " 
 		<< ((endtime-starttime) / 60) % 60 << "m " 
 		<< ((endtime-starttime) % 60) << "s " << endl;
- 
-    // allow imagemagick to catch up before calling actin destructor and 
-    // deleting the temp bitmap files
-    if (!ABORT)
-    {
-        cout << "Pausing for background jobs to complete" << endl;
-#ifdef _WIN32
-        Sleep(10000);
-#else
-        usleep(10000);
-#endif
-    }
+
           
 	
 	exit(EXIT_SUCCESS);
@@ -2066,7 +2055,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 
 #ifndef _WIN32
 	    char command1[1024];
-        sprintf(command1, "%s -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
+        sprintf(command1, "%s -d -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
         system(command1);
 
         ifstrm.open( tmpdatafile );

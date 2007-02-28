@@ -345,22 +345,9 @@ actin::~actin(void)
 
 	char command1[1024];
 
-	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_x );
-	system(command1);
-
-	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_y );
-	system(command1);
-
-	sprintf(command1, "rm -f %s 2>/dev/null", temp_BMP_filename_z );
-	system(command1);
-
-    // we can't clear the temp directory, because background imagemagick processes could still be using it
-    // maybe put a wait loop here later?
-    //sprintf(command1, "rm %s/* ", TEMPDIR );
-	//system(command1);
-    
-
-	sprintf(command1, "rmdir %s", TEMPDIR);
+    // start a background process to clear the temp directory after a delay
+    // (delay required because background imagemagick processes may still be accessing the bitmaps)
+	sprintf(command1, "(sleep 120 ; rm %s*.bmp %s*.png %s*.txt ; rmdir %s ) &", TEMPDIR,TEMPDIR,TEMPDIR,TEMPDIR);  
 	system(command1);
 
     system("stty sane");   // fix for something that messes the terminal up (kbhit?)
@@ -524,16 +511,16 @@ int actin::saveinfo()
 	cout << "Final existant nodes: " << existantnodes << endl;
 
     opruninfo << setprecision(2);
-    opruninfo << "x bounds: " << setw(5) << minx << " to " << setw(5) << maxx << endl;
-    opruninfo << "y bounds: " << setw(5) << miny << " to " << setw(5) << maxy << endl;
-    opruninfo << "z bounds: " << setw(5) << minz << " to " << setw(5) << maxz << endl;
+    opruninfo << "x bounds: " << setw(6) << minx << " to " << setw(5) << maxx << endl;
+    opruninfo << "y bounds: " << setw(6) << miny << " to " << setw(5) << maxy << endl;
+    opruninfo << "z bounds: " << setw(6) << minz << " to " << setw(5) << maxz << endl;
 	
     cout << "Gridrange: +/- " << GRIDBOUNDS << " uM" << endl;
     
     cout << setprecision(2);
-    cout << "x bounds: " << setw(5) << minx << " to " << setw(5) << maxx << endl;
-    cout << "y bounds: " << setw(5) << miny << " to " << setw(5) << maxy << endl;
-    cout << "z bounds: " << setw(5) << minz << " to " << setw(5) << maxz << endl;
+    cout << "x bounds: " << setw(6) << minx << " to " << setw(5) << maxx << endl;
+    cout << "y bounds: " << setw(6) << miny << " to " << setw(5) << maxy << endl;
+    cout << "z bounds: " << setw(6) << minz << " to " << setw(5) << maxz << endl;
 
 	return 0;
 }

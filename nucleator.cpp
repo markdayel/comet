@@ -53,9 +53,9 @@ nucleator::nucleator(shape set_geometry)//, actin *actinptr)
             movability = 0.25 / (2.5 * NUCLEATOR_INERTIA);
         }
 
-		momentofinertia.x = 1000 * MOFI;  // mark:  todo: calculate these numbers
-		momentofinertia.y = 1000 * MOFI;
-		momentofinertia.z = 1000 * MOFI;
+		momentofinertia.x = 1000 * RADIUS * MOFI;  // mark:  todo: calculate these numbers
+		momentofinertia.y = 1000 * RADIUS * MOFI;
+		momentofinertia.z = 1000 * RADIUS * MOFI;
 	}
 	else
 	{
@@ -71,9 +71,9 @@ nucleator::nucleator(shape set_geometry)//, actin *actinptr)
         }
         
 
-	    momentofinertia.x = 1000 * CAPSULE_HALF_LINEAR * MOFI;  // mark:  todo: calculate these numbers
-		momentofinertia.y = 1000 * CAPSULE_HALF_LINEAR * MOFI;
-		momentofinertia.z = 1000 * MOFI;
+	    momentofinertia.x = 1000 * RADIUS * CAPSULE_HALF_LINEAR * MOFI;  // mark:  todo: calculate these numbers
+		momentofinertia.y = 1000 * RADIUS * CAPSULE_HALF_LINEAR * MOFI;
+		momentofinertia.z = 1000 * RADIUS * MOFI;
 	}
 
 
