@@ -801,7 +801,7 @@ void actin::testforces_select_nodes(const double& testdist, const short int &set
         // make 2d versions of unit vector
 
         vect tempunitvector = i_node->unit_vec_posn;
-        camera_rotation.rotate(tempunitvector);
+        sym_break_rotation_to_xy_plane.rotate(tempunitvector);
 
         vect unitvecno_x = tempunitvector;
         unitvecno_x.x = 0;
@@ -1856,8 +1856,8 @@ void actin::set_nodes_to_track(const projection & proj)
     // projection_rotation gets us from the bead 
     // frame-of-ref to the bitmap projection frame-of-ref
     projection_rotation.rotatematrix(axisrotation);           // rotates for the projection axis 
-    projection_rotation.rotatematrix(camera_rotation2);       // rotates for the symmetry breaking direction
-                                                              // using camera_rotation2 so we can tell the furthest node back
+    projection_rotation.rotatematrix(sym_break_rotation_to_zaxis);       // rotates for the symmetry breaking direction
+                                                              // using sym_break_rotation_to_zaxis so we can tell the furthest node back
                                                               // from the sym break direction
     
     //if (!BMP_FIX_BEAD_ROTATION)
@@ -1946,7 +1946,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     // projection_rotation gets us from the bead 
     // frame-of-ref to the bitmap projection frame-of-ref
     projection_rotation.rotatematrix(axisrotation);           // rotates for the projection axis 
-    projection_rotation.rotatematrix(camera_rotation);        // rotates for the symmetry breaking direction
+    projection_rotation.rotatematrix(sym_break_rotation_to_xy_plane);        // rotates for the symmetry breaking direction
     
     //if (!BMP_FIX_BEAD_ROTATION)
     //    projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
@@ -2134,7 +2134,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 // and rotate into observation frame, (without the bead rotation of course)
                 // to define thickness for speckle slice
                 originalpos = node[i].nucleator_stuck_position;
-                camera_rotation.rotate(originalpos);  
+                sym_break_rotation_to_xy_plane.rotate(originalpos);  
                 axisrotation.rotate(originalpos);  
                 
                 if (fabs(originalpos.x) * 2 > RADIUS )  // if outside RADIUS/2 then black
@@ -2417,7 +2417,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
             nuc_to_world_rot.rotate(rot);
 
-            //camera_rotation.rotate(rot);        // rotates for the symmetry breaking direction
+            //sym_break_rotation_to_xy_plane.rotate(rot);        // rotates for the symmetry breaking direction
             //axisrotation.rotate(rot);           // and the projection
 
             projection_rotation.rotate(rot);
@@ -3117,8 +3117,8 @@ int actin::save_data(ofstream &ofstrm)
 	   << linksbroken  << " " 
 	   << linksformed << " "
        << world_to_nuc_rot << " "
-	   << camera_rotation << " "
-	   << camera_rotation2 << endl;
+	   << sym_break_rotation_to_xy_plane << " "
+	   << sym_break_rotation_to_zaxis << endl;
 
     
     
@@ -3172,8 +3172,8 @@ bool actin::load_data(ifstream &ifstr)
 	  >> linksbroken      
 	  >> linksformed      
 	  >> world_to_nuc_rot   
-	  >> camera_rotation  
-	  >> camera_rotation2;
+	  >> sym_break_rotation_to_xy_plane  
+	  >> sym_break_rotation_to_zaxis;
 
     nuc_to_world_rot = world_to_nuc_rot.inverse();
 
@@ -3291,6 +3291,8 @@ void actin::setdontupdates(void)
 
 void actin::set_sym_break_axes(void)
 {
+    
+
 	vect tmp_nodepos;
 	//vect CofM;
 	vect sym_break_direction;
@@ -3303,30 +3305,33 @@ void actin::set_sym_break_axes(void)
 	double x_angle = 0, y_angle = 0; 
 
     if (p_nuc->geometry==nucleator::sphere)
-    {   // only rotate by x and y if sphere
+    {   // only rotate by x and y if sphere, otherwise just by 90 degrees in z axis (after z rot calc)
 
-	    find_center(sym_break_direction);  // which way did the bead go?
+    find_center(sym_break_direction);  // which way did the bead go?
 
-	    x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
+    x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
 
-	    tmp_rotation.rotatematrix(x_angle, 0 , 0);
-	    tmp_rotation.rotate(sym_break_direction);
+    tmp_rotation.rotatematrix(x_angle, 0 , 0);
+    tmp_rotation.rotate(sym_break_direction);
 
-	    tmp_rotation.settoidentity();
+    tmp_rotation.settoidentity();
 
-	    y_angle = -atan2(sym_break_direction.x,sym_break_direction.z);
+    y_angle = -atan2(sym_break_direction.x,sym_break_direction.z);
 
-	    tmp_rotation.rotatematrix(0, y_angle , 0); // now pointing upwards
-	    tmp_rotation.rotate(sym_break_direction);
+    tmp_rotation.rotatematrix(0, y_angle , 0); // now pointing upwards
+    tmp_rotation.rotate(sym_break_direction);
 
-        // construct x & y rotation matrix
+    // construct x & y rotation matrix
 
-	    tmp_rotation.settoidentity();
+    tmp_rotation.settoidentity();
 
-	    tmp_rotation.rotatematrix(y_angle , yaxis);
-	    tmp_rotation.rotatematrix(x_angle , xaxis);
+    tmp_rotation.rotatematrix(y_angle , yaxis);
+    tmp_rotation.rotatematrix(x_angle , xaxis);
 
     }
+
+    
+
 
 
 	// we now have tmp_rotation which will transform the bead direction to be along the z axis
@@ -3337,7 +3342,7 @@ void actin::set_sym_break_axes(void)
 	maxchi = 0;
 	maxchiangle = 0;
 
-	for(theta = -PI; theta < PI; theta+=PI/180)
+	for(theta = -PI; theta < PI; theta+=PI/360)    // PI/360 i.e. 0.5 degree intervals
 	{
 		chi = 0;
 
@@ -3350,7 +3355,7 @@ void actin::set_sym_break_axes(void)
 				continue;
 
 			tmp_nodepos = node[i];
-			tmp_rotation.rotate(tmp_nodepos);  // rotate points to bring in line with sym break dir'n
+			tmp_rotation.rotate(tmp_nodepos);   // rotate points to bring in line with sym break dir'n
 			tmp_rotation2.rotate(tmp_nodepos);	// rotate z
 
 			// only look at front of bead (i.e. new z<0, in direction of movement)
@@ -3371,47 +3376,54 @@ void actin::set_sym_break_axes(void)
 
     if (p_nuc->geometry==nucleator::capsule)
     {
-        maxchiangle += PI/4;
+        maxchiangle += PI/4;   // rotate into x/y plane for capsule
     }
+
+    
+
 
 	// now have all the angles
 	// need to assemble them in the right (reverse) order z,y,x
 	// to get the rotation matrix
 
-	// camera_rotation includes a pre-rotation with the old x angle
+	// sym_break_rotation_to_xy_plane includes a pre-rotation with the old x angle
 	// to prevent it moving always onto the z-axis
-	// camera_rotation2 does not have this
+	// sym_break_rotation_to_zaxis does not have this
 
-	camera_rotation.settoidentity();
+	sym_break_rotation_to_xy_plane.settoidentity();
 
 
     if (SYM_BREAK_TO_RIGHT)
     {
-        camera_rotation.rotatematrix(PI/2,xaxis); // rotate so that always breaks to the right
+        sym_break_rotation_to_xy_plane.rotatematrix(PI/2,xaxis); // rotate so that always breaks to the right
 
     } else // restore the component of the sym break in the yz plane
     {
-        camera_rotation.rotatematrix(-x_angle, xaxis);
+        sym_break_rotation_to_xy_plane.rotatematrix(-x_angle, xaxis);
     }
 
-	camera_rotation.rotatematrix(maxchiangle, zaxis);
-	camera_rotation.rotatematrix(y_angle, yaxis);
-	camera_rotation.rotatematrix(x_angle, xaxis);
+	sym_break_rotation_to_xy_plane.rotatematrix(maxchiangle, zaxis);
+	sym_break_rotation_to_xy_plane.rotatematrix(y_angle, yaxis);
+	sym_break_rotation_to_xy_plane.rotatematrix(x_angle, xaxis);
 
 
 
-	camera_rotation2.settoidentity();
+	sym_break_rotation_to_zaxis.settoidentity();
 
-	camera_rotation2.rotatematrix(maxchiangle, zaxis);
-	camera_rotation2.rotatematrix(y_angle, yaxis);
-	camera_rotation2.rotatematrix(x_angle, xaxis);
+	sym_break_rotation_to_zaxis.rotatematrix(maxchiangle, zaxis);
+	sym_break_rotation_to_zaxis.rotatematrix(y_angle, yaxis);
+	sym_break_rotation_to_zaxis.rotatematrix(x_angle, xaxis);
 
 
-    reverse_camera_rotation = camera_rotation.inverse();
 
-	cout << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << "," << y_angle*180/PI << "," << maxchiangle*180/PI << endl;
+    //reverse_sym_break_rotation_to_xy_plane = sym_break_rotation_to_xy_plane.inverse();
+
+	cout << setprecision(1) << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << "," << y_angle*180/PI << "," << maxchiangle*180/PI << endl;
 
 	symbreakiter = iteration_num;
+
+
+    
 
 }
 
@@ -3423,8 +3435,8 @@ void actin::save_sym_break_axes(void)
 	{ cout << "Unable to open file 'sym_break_axis.txt' for output"; return;}
 
 	opsymbreak  << symbreakiter << endl
-				<< camera_rotation << endl
-				<< camera_rotation2 << endl;
+				<< sym_break_rotation_to_xy_plane << endl
+				<< sym_break_rotation_to_zaxis << endl;
 
 	opsymbreak.close();
 
@@ -3444,12 +3456,12 @@ bool actin::load_sym_break_axes(void)
 	else
 	{
 		ipsymbreak  >> symbreakiter 
-					>> camera_rotation
-					>> camera_rotation2;
+					>> sym_break_rotation_to_xy_plane
+					>> sym_break_rotation_to_zaxis;
 
 		ipsymbreak.close();  
         
-        reverse_camera_rotation = camera_rotation.inverse();
+        //reverse_sym_break_rotation_to_xy_plane = sym_break_rotation_to_xy_plane.inverse();
         
         return true;
 	}

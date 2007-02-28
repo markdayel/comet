@@ -1758,14 +1758,14 @@ void CometVtkVis::setProjection()
     if (OptsRenderProjection == X )
     {
         // x
-        vtk_cam_rot = ptheactin->camera_rotation;
+        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane;
         
         renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
 
     } else if (  OptsRenderProjection == Y )
     {
         // y
-        vtk_cam_rot = ptheactin->camera_rotation;
+        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane;
         vtk_cam_rot.rotatematrix(0,0,PI/2);
 
         renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
@@ -1773,14 +1773,14 @@ void CometVtkVis::setProjection()
     } else if (OptsRenderProjection == Z )
     {
         // z
-        vtk_cam_rot = ptheactin->camera_rotation;
+        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane;
         vtk_cam_rot.rotatematrix(0,PI/2,0);
 
         renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
 
     } else if ( OptsRenderProjection == RIP )
     {
-        vtk_cam_rot = ptheactin->camera_rotation2;	  // note using different rotation matrix!
+        vtk_cam_rot = ptheactin->sym_break_rotation_to_zaxis;	  // note using different rotation matrix!
         vtk_cam_rot.rotatematrix(0,-50*(PI/180),0); // angle of view
         
         renderer->GetActiveCamera()->SetViewUp(-1, 0, 0);

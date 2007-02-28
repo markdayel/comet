@@ -51,7 +51,7 @@ bool NUCLEATOR_FORCES = true;
 double GAUSSFWHM =  0.266;
 
 int BMP_WIDTH  = 800;
-int BMP_HEIGHT = 600;
+int BMP_HEIGHT = 592; // divisible by 16 for movie compression
 int BMP_AA_FACTOR = 1;
 
 int VTK_WIDTH  = 1024;
@@ -2058,7 +2058,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
     ifstrm.open( filename.c_str() );
 
     bool usingtmpdatafile = false;
-
+    
     if (!ifstrm)
     {
         // uncompressed file open failed, so try decompressing the compressed file to a temp file and opening that
@@ -2546,7 +2546,7 @@ void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
 
 		theactin.load_sym_break_axes();   // overwrite rotation matrixes
 
-		// cout << theactin.camera_rotation;
+		// cout << theactin.sym_break_rotation_to_xy_plane;
 					
 		nuc_object.segs.addallnodes();  // put node data into segment bins
 

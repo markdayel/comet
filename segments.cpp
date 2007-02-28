@@ -393,7 +393,7 @@ void segments::getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdi
 
 	rot_pos = node;
 
-	//ptheactin->camera_rotation.rotate(rot_pos); 
+	//ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_pos); 
 	
 	if (p_nuc->geometry == nucleator::sphere)
 	{	// sphere
@@ -464,9 +464,9 @@ void segments::addnode(const nodes& node)
 	
 	vect xfacvec, yfacvec, zfacvec;
 
-	ptheactin->camera_rotation.rotate(rot_pos); 
-	ptheactin->camera_rotation.rotate(rot_unit); 
-	ptheactin->camera_rotation.rotate(rot_nuc_link_force);
+	ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_pos); 
+	ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_unit); 
+	ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_nuc_link_force);
 
     // there is an annoying rounding error problem for 
     // capsule when fabs(rot_pos.z) == CAPSULE_HALF_LINEAR
@@ -996,7 +996,7 @@ void segments::savereport(const int& filenum) const
 
                 // rotate *after* determining radius
 
-                //ptheactin->camera_rotation.rotate(x,y,z);
+                //ptheactin->sym_break_rotation_to_xy_plane.rotate(x,y,z);
 
 // Axis,segment,distseg,x,y,z,Radius,numnodes,area,capsuleside,RepForceRadial,RepForceTrans,RepDisplRadial,RepDisplTrans,LinkForceRadial,LinkForceTrans" << endl;
 
@@ -1233,7 +1233,7 @@ void segments::getsegmentposition(double& x, double& y, double& z, const int & s
 //					dummynode.y = ptheactin->unpixels(pix_y - offsety);
 //				}
 //				
-//				//ptheactin->reverse_camera_rotation.rotate(dummynode); 
+//				//ptheactin->reverse_sym_break_rotation_to_xy_plane.rotate(dummynode); 
 //		
 //				dummynode.setunitvec();
 //
@@ -1309,7 +1309,7 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 				dummynode.y = ptheactin->unpixels(pix_y - offsety);
 			}
 			
-			//ptheactin->reverse_camera_rotation.rotate(dummynode); 
+			//ptheactin->reverse_sym_break_rotation_to_xy_plane.rotate(dummynode); 
 	
 			dummynode.setunitvec();
 

@@ -136,8 +136,8 @@ public:
 
     bool BMP_intensity_scaling;
 
-	rotationmatrix world_to_nuc_rot, camera_rotation, camera_rotation2,
-			reverse_camera_rotation;
+	rotationmatrix world_to_nuc_rot, sym_break_rotation_to_xy_plane, sym_break_rotation_to_zaxis;
+
 
 	static rotationmatrix torque_rotate;
 	//static vect nuc_disp;
