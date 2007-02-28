@@ -3382,7 +3382,7 @@ void actin::set_sym_break_axes(void)
 
     if (SYM_BREAK_TO_RIGHT)
     {
-        sym_break_rotation_to_xy_plane.rotatematrix(PI/2,xaxis); // rotate so that always breaks to the right
+        sym_break_rotation_to_xy_plane.rotatematrix(-PI/2,xaxis); // rotate so that always breaks to the right
 
     } else // restore the component of the sym break in the yz plane
     {

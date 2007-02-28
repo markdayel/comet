@@ -77,7 +77,7 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 
 #ifdef USEBZIP2
  #define COMPRESSCOMMAND "bzip2 -9 -f"
- #define DECOMPRESSCOMMAND "bunzip2"
+ #define DECOMPRESSCOMMAND "bzip2 -d"
  #define COMPRESSEDEXTENSION ".bz2"
 #else
  #define COMPRESSCOMMAND "gzip -9 -f"                                     

@@ -2052,10 +2052,11 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
     {
         // uncompressed file open failed, so try decompressing the compressed file to a temp file and opening that
         ifstrm.close();
-
+        ifstrm.clear();
 #ifndef _WIN32
 	    char command1[1024];
-        sprintf(command1, "%s -d -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
+        sprintf(command1, "%s -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
+        cout << command1 << endl;
         system(command1);
 
         ifstrm.open( tmpdatafile );
