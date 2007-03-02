@@ -17,6 +17,8 @@
 #ifdef LINK_VTK
 
 
+#define NUCTEXTUREJPEG1 "nuctex.jpg"
+#define NUCTEXTUREJPEG2 "~/comet/nuctex.jpg"
 
 #ifndef NOKBHIT
 #ifndef _WIN32
@@ -156,6 +158,11 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
 
     setOptions();
 
+    // kludge for os x rendering
+#ifdef __APPLE__ 
+    VTK_AA_FACTOR = 1;
+#endif
+
     // this is *.99 so that links on the surface don't look like they go inside the sphere
     radius_pixels = ptheactin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
     capsule_length_pixels = ptheactin->dbl_pixels(CAPSULE_HALF_LINEAR)/voxel_scale;
@@ -196,19 +203,28 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     {
         render_win->SetAAFrames(5);
     }
-    
+#ifndef __APPLE__    
     if(OptsInteractive || VIEW_VTK)	 // only create window if we're actually using vtk
     {
+        
+        iren = vtkRenderWindowInteractor::New();
+        iren->SetRenderWindow(render_win);
+        iren->Initialize();   
+    } else
+    {
+
+        render_win->OffScreenRenderingOn();
+
+        // increase quality for non-interactive?
+    }
+#else
+
+        // for OS X force using 'interactive' window to do the rendering
+        render_win->OffScreenRenderingOff();
         iren = vtkRenderWindowInteractor::New();
         iren->SetRenderWindow(render_win);
         iren->Initialize();
-            
-    } else
-    {
-        render_win->OffScreenRenderingOn();
-        // increase quality for non-interactive?
-    }
-
+#endif
     
     // write the colourmap file
     // this is kind of slow, so only write if doesn't already exist
@@ -272,14 +288,48 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
         system(command1);
     }
 
-#if VTK_MAJOR_VERSION > 4	
+    texturereadOK = false;
 
-	    // ML REVISIT: check file exists
-	    // I have hardcoded location and filename here, make selectable
-	    // --
-	    // read texture image
-	    tx_reader = vtkJPEGReader::New();
-	    tx_reader->SetFileName("nuctex.jpg");
+#if VTK_MAJOR_VERSION > 4	
+    
+    if (OptsUseNucTextureMap)
+    {
+        ifstream texturefile1(NUCTEXTUREJPEG1, ios::in);
+        ifstream texturefile2(NUCTEXTUREJPEG2, ios::in);   
+        
+        if (texturefile1)
+        {
+            texturefile1.close();
+
+	        // read texture image
+	        tx_reader = vtkJPEGReader::New();
+	        cout << "Reading texture file '"<< NUCTEXTUREJPEG1 << "'...";
+            cout.flush();
+            tx_reader->SetFileName(NUCTEXTUREJPEG1);
+            cout << " done." << endl;
+            cout.flush();
+            texturereadOK = true; // todo: how to test if vtk read the jpeg properly?
+        }
+        else if (texturefile2)
+        {
+            texturefile2.close();
+
+            // read texture image
+	        tx_reader = vtkJPEGReader::New();
+	        cout << "Reading texture file '"<< NUCTEXTUREJPEG2 << "'...";
+            cout.flush();
+            tx_reader->SetFileName(NUCTEXTUREJPEG2);
+            cout << " done." << endl;
+            cout.flush();
+            texturereadOK = true;
+        }
+        else
+        {
+            texturereadOK = false;
+            cerr << "Can't read texture file '"<< NUCTEXTUREJPEG1 << "' or '" << NUCTEXTUREJPEG2 << "'" << endl;
+        }
+    }
+
 
 #endif
  
@@ -301,7 +351,8 @@ CometVtkVis::~CometVtkVis()
     }
 
 #if VTK_MAJOR_VERSION > 4
-    tx_reader->Delete();
+    if (texturereadOK)
+        tx_reader->Delete();
 #endif
     // remove the scalebar png file
 
@@ -326,13 +377,13 @@ void CometVtkVis::RestartRenderWindow()
 
 }
 
-void CometVtkVis::buildVTK(int framenumber)
+void CometVtkVis::buildVTK(int framenumber, vect & cameraposition)
 {
     
     renderer = vtkRenderer::New();
 	renderer->SetBackground(0, 0, 0);
 
-    setProjection();  // also sets the rotation of the objects, so comes before actors:
+    setProjection(cameraposition);  // also sets the rotation of the objects, so comes before actors:
 	renderer->ResetCameraClippingRange();
 
     // add objects to renderer
@@ -347,7 +398,7 @@ void CometVtkVis::buildVTK(int framenumber)
   
     if(OptsVolumeRenderNodes)
 	    addGuassianNodeVolume(false);        
-    
+                        
     if(OptsIsoRenderNodes)
 	    addGuassianNodeVolume(true);
     
@@ -358,13 +409,13 @@ void CometVtkVis::buildVTK(int framenumber)
     // addVoxelBound(renderer);
 
     addLight();
-
-    
     
 	render_win->AddRenderer(renderer);
 	renderer->Delete();
 	 
-    
+    cout << "Rendering..." << endl;
+    cout.flush();
+
     // -- rendering
     if(OptsInteractive) 
     {
@@ -374,7 +425,11 @@ void CometVtkVis::buildVTK(int framenumber)
     } 
     else 
     {
+#ifndef __APPLE__
         render_win->Render();
+#else
+        iren->Render();
+#endif
         saveImage(framenumber);
         //saveVRML(framenumber);
     }
@@ -795,20 +850,13 @@ void CometVtkVis::addSphericalNucleator()
     SetFocalDepthPlanes(mapper);
 
 
-    if((OptsUseNucTextureMap) && (VTK_MAJOR_VERSION > 4)) 
+    if((OptsUseNucTextureMap) && (VTK_MAJOR_VERSION > 4) && texturereadOK) 
     {
       // texture commands not in VTK 4 or below, so skip:
  #if VTK_MAJOR_VERSION > 4	
         
         // add texture map to the nucleator,
 	    // see vtk example: 'GenerateTextureCoords.tcl'
-	    //
-	    // ML REVISIT: check file exists
-	    // I have hardcoded location and filename here, make selectable
-	    // --
-	    // read texture image
-	    //*tx_reader = vtkJPEGReader::New();
-	    //tx_reader->SetFileName("nuctex.jpg");
 
 	    // create texturemap to sphere
 	    vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
@@ -825,10 +873,9 @@ void CometVtkVis::addSphericalNucleator()
 
 	    // set the mapper
 	    mapper->SetInputConnection( tx_xfm->GetOutputPort() );
-
-    	
+ 	
 	    // clear up
-	    //tx_reader->Delete();
+
 	    tx_mapper->Delete();
 	    tx_xfm->Delete();
 	    tx->Delete();
@@ -1468,7 +1515,7 @@ void CometVtkVis::addLinks()
     
     firstpointinfocus = convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]);
  
-    if(!ptheactin->node[i].listoflinks.empty()) 
+    if(!ptheactin->node[i].listoflinks.empty() && !VTK_NUC_LINKS_ONLY) 
     {
       // nodes thisnode = ptheactin->node[i];
       
@@ -1577,6 +1624,18 @@ void CometVtkVis::addLinks()
         l_pt[2] = stuck_pos_world_frame.z;
 
         convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
+
+        if (VTK_NUC_LINKS_ONLY)
+        {   // if monitoring attachment only, amplify the length
+            vect linkendpos = stuck_pos_world_frame + displacement * 20;
+
+            n_pt[0] = linkendpos.x;
+            n_pt[1] = linkendpos.y;
+            n_pt[2] = linkendpos.z;
+
+            convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]);
+
+        }
 
         vtkIdType linept_ids[2];	
         linept_ids[0] = linepts->InsertNextPoint( n_pt );
@@ -1730,22 +1789,29 @@ void CometVtkVis::addLight()
 
 void CometVtkVis::setProjection()
 {
+    vect origin(0,0,0);
+    setProjection(origin);
+}
+
+void CometVtkVis::setProjection(vect & cameraposition)
+{
     static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
-    vect origin;
+    vect camerapos;
+    vect focalpoint = ptheactin->p_nuc->position * voxelscalefactor;
 
     if (VTK_MOVE_WITH_BEAD)
     {
-		origin = ptheactin->p_nuc->position * voxelscalefactor; 
+		camerapos = ptheactin->p_nuc->position * voxelscalefactor; 
 	} else
     {
-		origin.zero();
+		camerapos = cameraposition * voxelscalefactor;
 	}
 
     // renderer->ResetCamera();
 
-    renderer->GetActiveCamera()->SetFocalPoint(origin.x, origin.y, origin.z);
+    renderer->GetActiveCamera()->SetFocalPoint(focalpoint.x, focalpoint.y, focalpoint.z);
   
-    renderer->GetActiveCamera()->ParallelProjectionOn(); // ParallelProjectionOn();
+    renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
     renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
     // FIXME: ML
     // should scale properly here to a value linked to the render setup
@@ -1753,7 +1819,7 @@ void CometVtkVis::setProjection()
     //renderer->ResetCamera();
   
     
-
+    // this sets where camera is relative to the bead
 
     if (OptsRenderProjection == X )
     {
@@ -1792,8 +1858,9 @@ void CometVtkVis::setProjection()
 
     // set position of the camera relative to the origin
     vect camera_posn_vect(radius_pixels*OptsCameraDistMult,0,0);
+
     vtk_cam_rot.rotate(camera_posn_vect);
-    camera_posn_vect += origin;
+    camera_posn_vect += camerapos;
 
     renderer->GetActiveCamera()->SetPosition(camera_posn_vect.x,camera_posn_vect.y,camera_posn_vect.z);
 

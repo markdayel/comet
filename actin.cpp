@@ -347,10 +347,10 @@ actin::~actin(void)
 
     // start a background process to clear the temp directory after a delay
     // (delay required because background imagemagick processes may still be accessing the bitmaps)
-	sprintf(command1, "(sleep 120 ; rm %s*.bmp %s*.png %s*.txt ; rmdir %s ) &", TEMPDIR,TEMPDIR,TEMPDIR,TEMPDIR);  
+	sprintf(command1, "(sleep 120 ; rm %s*.bmp %s*.png %s*.txt 2>/dev/null ; rmdir %s ) &", TEMPDIR,TEMPDIR,TEMPDIR,TEMPDIR);  
 	system(command1);
 
-    system("stty sane");   // fix for something that messes the terminal up (kbhit?)
+    system("stty sane 2>/dev/null");   // fix for something that messes the terminal up (kbhit?)  pipe error to /dev/null in case running in background
 }
 
 
@@ -2421,6 +2421,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		    x += cagemovex;  // displace to bring bead back in bounds
 		    y += cagemovey;
 
+            const double point_intensity = 0.1 + 0.7 * ( fabs( rot.x - RADIUS ) / ( 2.0 * RADIUS ) );
 
             //const double intensitysum = 10.0;
 
@@ -2439,7 +2440,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
                     double dist = calcdist(xfractpxl + (double) i, yfractpxl + (double) j);
 
-                    double intensity = 0.8 * (fabs(rot.x - RADIUS) / ( 2.0 * RADIUS ) )* exp( - 3.0 * dist * dist / 
+                    double intensity = point_intensity * exp( - 3.0 * dist * dist / 
                                  (double) (BMP_AA_FACTOR * CAGE_POINT_EXTENT));
                     
 	                imageR[x+i][y+j] = mymin(imageR[x+i][y+j] + intensity , 1.0);
@@ -2653,10 +2654,10 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     else 
     {
 		sprintf(command1,
-		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%iuM' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s%s_proj_%05i.%s", 
+		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%ium' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s%s_proj_%05i.%s", 
         IMAGEMAGICKCONVERT, temp_BMP_filename, BMP_COMPRESSION, 
-            20 * BMP_AA_FACTOR, 5 * BMP_AA_FACTOR, 595 * BMP_AA_FACTOR, scalebarmicrons, 
-            5 * BMP_AA_FACTOR, 576 * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  573 * BMP_AA_FACTOR,
+            20 * BMP_AA_FACTOR, 5 * BMP_AA_FACTOR, (BMP_HEIGHT - 5) * BMP_AA_FACTOR, scalebarmicrons, 
+            5 * BMP_AA_FACTOR, (BMP_HEIGHT - 24) * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  (BMP_HEIGHT - 27) * BMP_AA_FACTOR,
             5 * BMP_AA_FACTOR, 20 * BMP_AA_FACTOR,  // first line of text
             projletter, 
             5 * BMP_AA_FACTOR, ( 20 + 25 )* BMP_AA_FACTOR , 
@@ -2910,10 +2911,16 @@ void actin::squash(const double & thickness)
     // todo: do the capsule shape, too
 
     if (p_nuc->position.x >  halfthickness - RADIUS)
+    {
         p_nuc->position.x =  halfthickness - RADIUS;
+        cout << "Warning - Nucleator has hit the coverslip" << endl;
+    }
 
     if (p_nuc->position.x < - halfthickness + RADIUS)
+    {
         p_nuc->position.x = - halfthickness + RADIUS;
+        cout << "Warning - Nucleator has hit the coverslip" << endl;
+    }
 
 	return;
 }

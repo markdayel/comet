@@ -87,6 +87,8 @@ class CometVtkVis {
   bool VTK_HIGHQUAL;
 
   bool OptVIEW_VTK;
+
+  bool texturereadOK;
   
   bool getBoolOpt(const std::string &value);
   OptProjectionType getProjectionOpt(const std::string &value);
@@ -101,7 +103,7 @@ class CometVtkVis {
 
   void set_mean_posns();
 
-  void buildVTK(int framenumber);
+  void buildVTK(int framenumber, vect & cameraposition);
 
   void RestartRenderWindow();
   void addNucleator();
@@ -125,6 +127,7 @@ class CometVtkVis {
   void reportOptions();
   void createGaussianVoxelRepresentation(vtkStructuredPoints *vx);
   void setProjection();
+  void setProjection(vect & cameraposition);
   void fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx);// ,double vd, double* min);
   void saveImage(int framenumber);
   void renderProjections(vtkRenderWindow *render_win, string base_filename);

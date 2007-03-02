@@ -58,6 +58,8 @@ int VTK_WIDTH  = 1024;
 int VTK_HEIGHT = 768;
 int VTK_AA_FACTOR = 1;
 
+bool VTK_NUC_LINKS_ONLY = false;
+
 double VTK_LINK_COLOUR_GAMMA = 1.8;
 bool VTK_MOVE_WITH_BEAD = true;
 double VTK_MIN_PLOT_LINK_FORCE_PCT = 0.0;
@@ -342,7 +344,8 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale);
 int save_data(actin &theactin, int iteration);
 string get_datafilename(const int iteration);
 void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations, const int& lastframedone);
-void postprocess(nucleator& nuc_object, actin &theactin, vector<int> &postprocess_iterations, char* argv[]);
+void postprocess(nucleator& nuc_object, actin &theactin, 
+		 vector<int> &postprocess_iterations, char* argv[], const vector<vect> & nodeposns);
 void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
 // keyboard monitoring function
@@ -691,7 +694,10 @@ int main(int argc, char* argv[])
 			{ss >> VTK_WIDTH;}
 
 		else if (tag == "VTK_HEIGHT")	  
-			{ss >> VTK_HEIGHT;}         
+			{ss >> VTK_HEIGHT;}
+
+        else if (tag == "VTK_NUC_LINKS_ONLY") 
+			{ss >> buff2; if (buff2=="TRUE") VTK_NUC_LINKS_ONLY = true; else VTK_NUC_LINKS_ONLY = false;}
 
         else if (tag == "SYM_BREAK_TO_RIGHT") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
@@ -726,8 +732,8 @@ int main(int argc, char* argv[])
 		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
 			{ss >> buff2; if (buff2=="TRUE") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false;}
 
-        else if (tag == "POST_PROC_ORDER") 
-			{ss >> POST_PROC_ORDER;}
+        //else if (tag == "POST_PROC_ORDER") 
+		//	{ss >> POST_PROC_ORDER;}
 
 		else if (tag == "POST_BMP") 
 			{ss >> buff2; if (buff2=="TRUE") POST_BMP = true; else POST_BMP = false;}   
@@ -1360,7 +1366,7 @@ int main(int argc, char* argv[])
 	// Breakout if we are post processing
 	if( !postprocess_iterations.empty() )
 	{
-		postprocess(nuc_object, theactin, postprocess_iterations,  argv );
+		postprocess(nuc_object, theactin, postprocess_iterations,  argv , posn);
 	    exit(EXIT_SUCCESS); // FIXME: early finish, move to two fcns (ML)
 	}
 
@@ -1543,16 +1549,8 @@ int main(int argc, char* argv[])
 							cout.flush();
 							cout << endl;
 					        
-
-							if (X_BMP)
-                            {
-                                sprintf(command1, "~/bin/ffmpeg -v 1 -b 1800000  -y -i bitmaps//x_proj_%%05d.%s -vcodec mpeg4 x_proj.mov", BMP_OUTPUT_FILETYPE.c_str());
-                                system(command1);
-                            }
-							//if (Y_BMP)
-							//	system("~/bin/ffmpeg -v 1 -b 1800000  -y -i bitmaps//y_proj_%05d.jpeg -vcodec mpeg4 y_proj.mov");
-							//if (Z_BMP)
-							//	system("~/bin/ffmpeg -v 1 -b 1800000  -y -i bitmaps//z_proj_%05d.jpeg -vcodec mpeg4 z_proj.mov");
+                            sprintf(command1, "movhere"); // call movie writing script
+                            system(command1);
 							
 							cout << endl;
 						}
@@ -1850,39 +1848,6 @@ srand( rand_num_seed );
                 }
             }
 
-            //int SYMBREAKSEARCHWINDOWHALFWIDTH = 3; // look over double this width to find max speed
-            //for (int frame = 1; frame != TOT_FRAMES+1; ++frame)
-            //{
-            //    if ((frame > SYMBREAKSEARCHWINDOWHALFWIDTH * 2) && (frame <= filenum))
-            //    {   // we need length separate from the vectors because the mag is not just sum of delta lengths of the vectors,
-            //        // but the sum of the lengths i.e. it's negative if it's slowing down
-            //        vect deltav;
-            //        deltav.zero();
-            //        double deltavmag = 0.0;
-
-            //        for (int fr = frame - SYMBREAKSEARCHWINDOWHALFWIDTH * 2; fr <= frame; ++fr)
-            //        {  // find delta v over range
-            //            deltavmag += velocities[fr].length() - velocities[fr-1].length();
-            //            deltav    += velocities[fr]          - velocities[fr-1];
-            //        }
-
-            //        deltavmag *= 1.0/(SYMBREAKSEARCHWINDOWHALFWIDTH * 2); // rescale by window width
-            //        deltav    *= 1.0/(SYMBREAKSEARCHWINDOWHALFWIDTH * 2);
-
-            //        //vect vel = (posn[frame] - posn[frame - SYMBREAKSEARCHWINDOWHALFWIDTH * 2]) * ( (double) SYMBREAKSEARCHWINDOWHALFWIDTH / (DELTA_T * InterRecordIterations)) ;
-            //        
-            //        //cout << "Frame " << frame << setprecision(4) << " deltav: " << deltavmag << " " << endl ;
-            //        if (deltavmag > maxvelmovedmag)
-            //        {     
-            //            maxvelmovedmag = deltavmag;
-            //            maxvelmoved = deltav;
-            //            framemaxvelmoved = frame - SYMBREAKSEARCHWINDOWHALFWIDTH; 
-            //            //cout << setprecision(4) << "Max vel set to: " << maxvelmoved ;
-            //            //cout << " At frame: "<< frame << endl;
-            //        }
-            //        
-            //    }                 
-            //}
 
             // write symmetry break time (and direction) to file
 
@@ -1976,8 +1941,9 @@ srand( rand_num_seed );
                 break;
             }
 
+            vect origin(0,0,0);
             if (VIEW_VTK)
-                vtkvis.buildVTK(filenum);
+                vtkvis.buildVTK(filenum, origin);
 
             theactin.setdontupdates();
 
@@ -2056,7 +2022,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 #ifndef _WIN32
 	    char command1[1024];
         sprintf(command1, "%s -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
-        cout << command1 << endl;
+        //cout << command1 << endl;
         system(command1);
 
         ifstrm.open( tmpdatafile );
@@ -2190,57 +2156,64 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
     char* tokch = (char*) malloc(sizeof(char) * ( strlen(iterdesc)+1 ));
     strcpy(tokch, iterdesc);
     char* chptr = strtok(tokch, alldelim);
-    while(chptr != NULL) {
-	// ensure ints, no rubbish
-	if(strspn(chptr, numbers) != strlen(chptr))
-	{
-	    cout << "Post processing iteration description not recognised (must be +ve int): "
-		 << chptr << endl;
-	    exit(EXIT_FAILURE);
-	}
-	postprocess_iterations.push_back( atoi(chptr) );
-	chptr = strtok(NULL, alldelim);
+    while(chptr != NULL) 
+    {
+	    // ensure ints, no rubbish
+	    if(strspn(chptr, numbers) != strlen(chptr))
+	    {
+	        cout << "Post processing iteration description not recognised (must be +ve int): "
+		     << chptr << endl;
+	        exit(EXIT_FAILURE);
+	    }
+	    postprocess_iterations.push_back( atoi(chptr) );
+	    chptr = strtok(NULL, alldelim);
     }
     free(tokch);
-    
+        
     // build the range if needed
-    if(strcspn(iterdesc, rangedelim) != strlen(iterdesc) ){
-	// : range
-	int start = 0, step = 0, end = 0;
-	if(postprocess_iterations.size() == 1) {
-	  cerr << "ERROR: too few values in range request (2 min):" 
-	       << iterdesc << endl;
-	  exit(EXIT_FAILURE);
-	} else if(postprocess_iterations.size() == 2) {
-	  start = postprocess_iterations[0] * InterRecordIterations;
-	  step = InterRecordIterations;
-	  end = postprocess_iterations[1] * InterRecordIterations;
-	} else if(postprocess_iterations.size() == 3) {
-	  start = postprocess_iterations[0] * InterRecordIterations;
-	  step = postprocess_iterations[1] * InterRecordIterations;
-	  end = postprocess_iterations[2] * InterRecordIterations;	    
-	} else if(postprocess_iterations.size() > 3) {
-	  cerr << "ERROR: too many values in range request (3 max):" 
-	       << iterdesc << endl;
-	  exit(EXIT_FAILURE);
-	}
-
-    if (start == 0)
-        start = InterRecordIterations;
-
-    if (step == 0)
-        step = InterRecordIterations;
-
-    if (end == 0) // if user set last frame to 0, use the last one found from the nodesupdate file
+    if(strcspn(iterdesc, rangedelim) != strlen(iterdesc) )
     {
-        end = lastframedone * InterRecordIterations;
-    }
+        // : range
+        int start = 0, step = 0, end = 0;
+        if(postprocess_iterations.size() == 1) 
+        {
+          cerr << "ERROR: too few values in range request (2 min):" 
+               << iterdesc << endl;
+          exit(EXIT_FAILURE);
+        } else if(postprocess_iterations.size() == 2) 
+        {
+          start = postprocess_iterations[0] * InterRecordIterations;
+          step = InterRecordIterations;
+          end = postprocess_iterations[1] * InterRecordIterations;
+        } else if(postprocess_iterations.size() == 3) 
+        {
+          start = postprocess_iterations[0] * InterRecordIterations;
+          step = postprocess_iterations[1] * InterRecordIterations;
+          end = postprocess_iterations[2] * InterRecordIterations;	    
+        } else if(postprocess_iterations.size() > 3) 
+        {
+          cerr << "ERROR: too many values in range request (3 max):" 
+               << iterdesc << endl;
+          exit(EXIT_FAILURE);
+        }
 
-	postprocess_iterations.resize(0);
-	//postprocess_iterations.clear();
-	for(int i= start; i<=end; i+=step){
-	    postprocess_iterations.push_back(i);
-	}
+        if (start == 0)
+            start = InterRecordIterations;
+
+        if (step == 0)
+            step = InterRecordIterations;
+
+        if (end == 0) // if user set last frame to 0, use the last one found from the nodesupdate file
+        {
+            end = lastframedone * InterRecordIterations;
+        }
+
+        postprocess_iterations.resize(0);
+        //postprocess_iterations.clear();
+        for(int i= start; i<=end; i+=step)
+        {
+            postprocess_iterations.push_back(i);
+        }
     } 
 }
 
@@ -2269,8 +2242,55 @@ void post_stats(actin &, const int filenum)
 // the frame counting is seperated, but consider unifying 
 // this once we are happy with how it all works.
 void postprocess(nucleator& nuc_object, actin &theactin, 
-		 vector<int> &postprocess_iterations, char* argv[])
+		 vector<int> &postprocess_iterations, char* argv[], const vector<vect> & nodeposns)
 {
+    // load the sym break info
+
+    int framemaxvelmoved = 0;
+    vect maxvelmoved;
+    
+    int iter = *(postprocess_iterations.end()-1);  // default to last frame if we can't find sym break time
+
+    ifstream ipsymbreaktime("symbreaktime.txt");
+    if (!ipsymbreaktime) 
+    { 
+        cout << "Unable to open file symbreaktime.txt for input";
+    }
+    else
+    {
+        string buff;
+        
+        ipsymbreaktime >> buff >> buff >> buff >> buff;
+        ipsymbreaktime >> framemaxvelmoved >> buff >> maxvelmoved;
+        ipsymbreaktime.close();
+
+        iter =  framemaxvelmoved * InterRecordIterations;
+    }
+    
+    const int maxframe = (int) nodeposns.size() - 1;
+
+    // calculate camera movement
+
+    vector<vect> camerapos(maxframe + 1);
+    vect cameravel;
+    cameravel.zero();
+
+    double accelwidth = 100; // how many frames to accelerate over
+    vect meanvel = nodeposns[maxframe] / (maxframe - framemaxvelmoved - (int)accelwidth) ;
+
+    for (int i = 1; i <= maxframe; ++i)
+    {
+        camerapos[i] = camerapos[i-1] + cameravel;
+        //cout << cameravel.length() << endl;
+
+        if ( ( i < framemaxvelmoved ) || ( i > framemaxvelmoved + accelwidth ) )
+            continue;  // skip if symmetry not broken yet and linear movement after 2*sym break
+
+        cameravel = meanvel * 1.0 / ( 1.0 + exp( - 6.0 * ( ((double)(i - framemaxvelmoved) - accelwidth ) / accelwidth )));
+    }
+
+
+
 	if (POST_PROCESS4CPU)
 	{
 		int threads = 4;
@@ -2311,30 +2331,6 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         theactin.node_tracks[xaxis].resize(0);
         theactin.node_tracks[yaxis].resize(0);
         theactin.node_tracks[zaxis].resize(0);
-
-        // load the *last* image to set bmp calib
-        int framemaxvelmoved;
-        vect maxvelmoved;
-        
-        int iter = *(postprocess_iterations.end()-1);  // default to last frame if we can't find sym break time
-
-        ifstream ipsymbreaktime("symbreaktime.txt");
-        if (!ipsymbreaktime) 
-	    { 
-            cout << "Unable to open file symbreaktime.txt for input";
-        }
-        else
-        {
-            string buff;
-            
-            ipsymbreaktime >> buff >> buff >> buff >> buff;
-            ipsymbreaktime >> framemaxvelmoved >> buff >> maxvelmoved;
-            ipsymbreaktime.close();
-
-            iter =  framemaxvelmoved * InterRecordIterations;
-        }
-
-        
 
 
         if (POST_BMP) // if we're doing the bitmaps, need to scale the intensities and segments
@@ -2385,7 +2381,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         vector<int>::iterator end = postprocess_iterations.end();
 
         if (POST_PROC_ORDER == -1)
-        {
+        {   // if going backwards, reverse the start and end
             start = postprocess_iterations.end();
             end = postprocess_iterations.begin();
         }
@@ -2393,12 +2389,6 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         for(vector<int>::iterator iteration  = start; 
 		                          iteration != end;
                                   iteration += POST_PROC_ORDER)
-		//for(vector<int>::reverse_iterator iteration  = postprocess_iterations.rbegin(); 
-		//                                  iteration != postprocess_iterations.rend();
-        //                                  iteration += order)
-		//for(vector<int>::iterator iteration  = postprocess_iterations.begin(); 
-		//						  iteration != postprocess_iterations.end();
-		//						++iteration)
 		{
 
 		    filenum = (int)(*iteration/InterRecordIterations);
@@ -2476,7 +2466,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 			    //cout << "- visualisation: " << filenum << endl;
                 //unsigned int nowtime = (unsigned) clock();
 
-			    vtkvis.buildVTK(filenum);
+			    vtkvis.buildVTK(filenum, camerapos[filenum]);
                 
                 //vtkvis.RestartRenderWindow(); // see if this gets rid of memory leak, slowdown etc.  this segfaults
 

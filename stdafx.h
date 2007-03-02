@@ -312,6 +312,7 @@ extern int VTK_HEIGHT;
 extern int VTK_AA_FACTOR;
 extern int BMP_AA_FACTOR;
 
+extern bool VTK_NUC_LINKS_ONLY;
 extern double VTK_LINK_COLOUR_GAMMA;
 extern bool VTK_MOVE_WITH_BEAD;
 extern double VTK_VIEWANGLE;

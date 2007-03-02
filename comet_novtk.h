@@ -14,6 +14,7 @@
 
 #include "stdafx.h"
 
+#include "vect.h"
 // DUMMY Header file for systems not linking to vtk
 
 class CometVtkVis {
@@ -21,7 +22,7 @@ class CometVtkVis {
   CometVtkVis(bool) {};
   ~CometVtkVis() {};
   
-  void buildVTK(int);
+  void buildVTK(int, vect&);
 };
 
 void CometVtkVis::buildVTK(int) 
