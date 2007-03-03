@@ -2275,6 +2275,8 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         iter =  framemaxvelmoved * InterRecordIterations;
     }
     
+    cout << "Sym break at frame " << framemaxvelmoved << endl;
+
     const int maxframe = (int) nodeposns.size() - 1;
 
     // calculate camera movement
@@ -2285,7 +2287,10 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     cameravel.zero();
 
     int accelwidth = 100; // how many frames to accelerate over
-    int maxaccelframe = framemaxvelmoved;
+    int maxaccelframe = (int) (framemaxvelmoved * 1.25);
+
+    cout << "Max camera acceleration will be at frame " << maxaccelframe << endl;
+
     vect meanvel = nodeposns[maxframe] / (double)(maxframe - framemaxvelmoved) ;
 
     for (int i = 1; i <= maxframe; ++i)

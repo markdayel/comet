@@ -687,15 +687,14 @@ void actin::iterate()  // this is the main iteration loop call
     {   // must wait for threads to finish before updating node positions
         thread_queue.complete_queued_tasks();
     }
+    
+    if (USE_BROWNIAN_FORCES)
+        addbrownianforces();
 
     applyforces();              // move the nodes and update the grid     (I just moved this from above the squash() function)
 	
     if (!TEST_SQUASH)
-        nucleator_node_interactions();	    // do forcable node ejection
-
-    if (USE_BROWNIAN_FORCES)
-        addbrownianforces();
-	
+        nucleator_node_interactions();	    // do forcable node ejection	
 	
     if (COVERSLIPGAP > 2 * RADIUS)   // skip if less than diameter (so set to 0 to disable) 
 	    squash(COVERSLIPGAP);	 
@@ -1296,6 +1295,38 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
             sameGPnodenum = p_sameGPnode->nodenum;
     	    
+            // do coverslip repulsion if necessary
+            if (COVERSLIPGAP > 2*RADIUS)
+            {
+
+                if (p_sameGPnode->x >   COVERSLIPGAP - NODE_REPULSIVE_RANGE)
+                {
+                    recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
+
+                    if ( recipdist < (1.0/0.05) )
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                    else
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+
+                    p_sameGPnode->rep_force_vec.x -= 2*rep_force_mag ;
+                }
+
+                if (p_sameGPnode->x < - COVERSLIPGAP + NODE_REPULSIVE_RANGE)
+                {
+                    recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
+
+                    if ( recipdist < (1.0/0.05) )
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                    else
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+
+                    p_sameGPnode->rep_force_vec.x += 2*rep_force_mag ;
+                }
+
+                
+
+            }
+
 	        if (donenode[sameGPnodenum])
 		      continue;  // skip if done
     	    
@@ -1320,6 +1351,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 			                if ( p_sameGPnode == p_nearnode)
 				                continue;  // skip if self
 
+                            
 
 			                disp = *p_nearnode - nodeposvec;   // relative position of node
 			                
@@ -1340,7 +1372,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
                                 // n.b. if you change this function, also change the energy function below to be the integral
 
-                                if (recipdist < (1.0/0.05) )
+                               if (recipdist < (1.0/0.05) )
                                    rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                                else
                                    rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
