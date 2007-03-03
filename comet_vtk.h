@@ -103,7 +103,7 @@ class CometVtkVis {
 
   void set_mean_posns();
 
-  void buildVTK(int framenumber, vect & cameraposition);
+  void buildVTK(int framenumber, vect & cameraposition, vect & cameratarget);
 
   void RestartRenderWindow();
   void addNucleator();
@@ -127,7 +127,7 @@ class CometVtkVis {
   void reportOptions();
   void createGaussianVoxelRepresentation(vtkStructuredPoints *vx);
   void setProjection();
-  void setProjection(vect & cameraposition);
+  void setProjection(vect & cameraposition,vect & cameratarget);
   void fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx);// ,double vd, double* min);
   void saveImage(int framenumber);
   void renderProjections(vtkRenderWindow *render_win, string base_filename);

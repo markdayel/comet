@@ -1678,6 +1678,14 @@ srand( rand_num_seed );
 			if ( !WRITE_BMPS_PRE_SYMBREAK && 
 				 !finished_writing_sym_bitmaps)
 				cout << "*";
+            else
+                cout << " ";
+
+            if ( ptheactin->nuc_struck_coverslip)
+				cout << "H";
+            else
+                cout << " ";
+            
             
             theactin.opruninfo << endl;
             theactin.opruninfo.flush();
@@ -1943,7 +1951,7 @@ srand( rand_num_seed );
 
             vect origin(0,0,0);
             if (VIEW_VTK)
-                vtkvis.buildVTK(filenum, origin);
+                vtkvis.buildVTK(filenum, origin, origin);
 
             theactin.setdontupdates();
 
@@ -2272,21 +2280,21 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     // calculate camera movement
 
     vector<vect> camerapos(maxframe + 1);
+    vector<vect> cameratarget(maxframe + 1);
     vect cameravel;
     cameravel.zero();
 
-    double accelwidth = 100; // how many frames to accelerate over
-    vect meanvel = nodeposns[maxframe] / (maxframe - framemaxvelmoved - (int)accelwidth) ;
+    int accelwidth = 100; // how many frames to accelerate over
+    int maxaccelframe = framemaxvelmoved;
+    vect meanvel = nodeposns[maxframe] / (double)(maxframe - framemaxvelmoved) ;
 
     for (int i = 1; i <= maxframe; ++i)
     {
-        camerapos[i] = camerapos[i-1] + cameravel;
+        camerapos[i]    = camerapos[i-1] + cameravel;
+        cameratarget[i] = camerapos[i];
         //cout << cameravel.length() << endl;
 
-        if ( ( i < framemaxvelmoved ) || ( i > framemaxvelmoved + accelwidth ) )
-            continue;  // skip if symmetry not broken yet and linear movement after 2*sym break
-
-        cameravel = meanvel * 1.0 / ( 1.0 + exp( - 6.0 * ( ((double)(i - framemaxvelmoved) - accelwidth ) / accelwidth )));
+        cameravel = meanvel * 1.0 / ( 1.0 + exp( - 6.0 * (  2 * (double)(i - maxaccelframe) / (double)accelwidth) ));
     }
 
 
@@ -2466,7 +2474,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 			    //cout << "- visualisation: " << filenum << endl;
                 //unsigned int nowtime = (unsigned) clock();
 
-			    vtkvis.buildVTK(filenum, camerapos[filenum]);
+			    vtkvis.buildVTK(filenum, camerapos[filenum], cameratarget[filenum]);
                 
                 //vtkvis.RestartRenderWindow(); // see if this gets rid of memory leak, slowdown etc.  this segfaults
 

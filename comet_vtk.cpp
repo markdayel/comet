@@ -203,7 +203,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     {
         render_win->SetAAFrames(5);
     }
-#ifndef __APPLE__    
+
+    
     if(OptsInteractive || VIEW_VTK)	 // only create window if we're actually using vtk
     {
         
@@ -217,14 +218,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
 
         // increase quality for non-interactive?
     }
-#else
 
-        // for OS X force using 'interactive' window to do the rendering
-        render_win->OffScreenRenderingOff();
-        iren = vtkRenderWindowInteractor::New();
-        iren->SetRenderWindow(render_win);
-        iren->Initialize();
-#endif
     
     // write the colourmap file
     // this is kind of slow, so only write if doesn't already exist
@@ -377,13 +371,13 @@ void CometVtkVis::RestartRenderWindow()
 
 }
 
-void CometVtkVis::buildVTK(int framenumber, vect & cameraposition)
+void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & cameratarget)
 {
     
     renderer = vtkRenderer::New();
 	renderer->SetBackground(0, 0, 0);
 
-    setProjection(cameraposition);  // also sets the rotation of the objects, so comes before actors:
+    setProjection(cameraposition,cameratarget);  // also sets the rotation of the objects, so comes before actors:
 	renderer->ResetCameraClippingRange();
 
     // add objects to renderer
@@ -1658,9 +1652,9 @@ void CometVtkVis::addLinks()
   linedata->SetPoints(linepts);
   linepts->Delete();
   linedata->SetLines(cellarray);
+  
   cellarray->Delete();
   linedata->GetCellData()->SetScalars(cellscalars);
-  
   // mapper
   vtkPolyDataMapper *map = vtkPolyDataMapper::New();
   
@@ -1668,6 +1662,7 @@ void CometVtkVis::addLinks()
  
   map->SetLookupTable( lut );
   map->SetInput( linedata );
+
   linedata->Delete();
   // actor
   vtkActor *lines_actor = vtkActor::New();
@@ -1685,19 +1680,25 @@ void CometVtkVis::SetFocalDepthPlanes(vtkPolyDataMapper *map)
 {    // sets the mapper clipping planes to reject data outside of distance of FOCALDEPTH
      // above and below the nucleator (in x direction)
   
-  VTK_FLOAT_PRECISION focdepposx = ptheactin->dbl_pixels(FOCALDEPTH - meanx) / voxel_scale + movex ;
+  double focdepposx = ptheactin->dbl_pixels(FOCALDEPTH) / voxel_scale;
+
+  vect planenormal(-1,0,0);
+  vect planeorigin(focdepposx,0,0);
+
+  ptheactin->sym_break_rotation_to_xy_plane.rotate(planenormal);
+  ptheactin->sym_break_rotation_to_xy_plane.rotate(planeorigin);
 
   map->RemoveAllClippingPlanes();
 
   vtkPlane* newplane = vtkPlane::New();
-  newplane->SetOrigin(  focdepposx,0,0 );
-  newplane->SetNormal( -1,0,0 );
+  newplane->SetOrigin(  planeorigin.x, planeorigin.y, planeorigin.z );
+  newplane->SetNormal(  planenormal.x, planenormal.y, planenormal.z );
   map->AddClippingPlane( newplane );
   newplane->Delete();
 
   vtkPlane* newplane2 = vtkPlane::New();
-  newplane2->SetOrigin( -focdepposx,0,0 );
-  newplane2->SetNormal( 1,0,0 );
+  newplane2->SetOrigin( -planeorigin.x,-planeorigin.y,-planeorigin.z );
+  newplane2->SetNormal( -planenormal.x,-planenormal.y,-planenormal.z );
   map->AddClippingPlane( newplane2 );
   newplane2->Delete();
 }
@@ -1790,22 +1791,26 @@ void CometVtkVis::addLight()
 void CometVtkVis::setProjection()
 {
     vect origin(0,0,0);
-    setProjection(origin);
+    setProjection(origin,origin);
 }
 
-void CometVtkVis::setProjection(vect & cameraposition)
+void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
 {
     static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
     vect camerapos;
-    vect focalpoint = ptheactin->p_nuc->position * voxelscalefactor;
+    vect focalpoint; 
 
     if (VTK_MOVE_WITH_BEAD)
     {
-		camerapos = ptheactin->p_nuc->position * voxelscalefactor; 
+		camerapos  = ptheactin->p_nuc->position * voxelscalefactor;
+        focalpoint = ptheactin->p_nuc->position * voxelscalefactor; 
 	} else
     {
-		camerapos = cameraposition * voxelscalefactor;
+		camerapos  = cameraposition * voxelscalefactor;
+        focalpoint = cameratarget   * voxelscalefactor;
 	}
+
+    
 
     // renderer->ResetCamera();
 

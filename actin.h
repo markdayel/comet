@@ -254,6 +254,8 @@ public:
     vect testdirection;     // defines the direction of the test surface
     double testangle;       // defines the arc
 
+    bool nuc_struck_coverslip;
+
     void testforces_setup();
     void testforces_set_initial_surfaces();
     void testforces_cutlinks();   

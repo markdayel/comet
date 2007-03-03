@@ -236,6 +236,8 @@ actin::actin(void)
 
 	currentlyusingthreads = false;
 
+    nuc_struck_coverslip = false;
+
 	//debug:
 
 	//num_rotate = 0;
@@ -686,14 +688,15 @@ void actin::iterate()  // this is the main iteration loop call
         thread_queue.complete_queued_tasks();
     }
 
-	if (!TEST_SQUASH)
+    applyforces();              // move the nodes and update the grid     (I just moved this from above the squash() function)
+	
+    if (!TEST_SQUASH)
         nucleator_node_interactions();	    // do forcable node ejection
 
     if (USE_BROWNIAN_FORCES)
         addbrownianforces();
 	
-	applyforces();              // move the nodes and update the grid
-
+	
     if (COVERSLIPGAP > 2 * RADIUS)   // skip if less than diameter (so set to 0 to disable) 
 	    squash(COVERSLIPGAP);	 
 
@@ -2894,6 +2897,8 @@ void actin::squash(const double & thickness)
 
     const double halfthickness = thickness/2.0;
 
+    nuc_struck_coverslip = false;
+
     // squash the network:
 
 	for(vector <nodes>::iterator	i_node  = node.begin() + lowestnodetoupdate; 
@@ -2913,13 +2918,15 @@ void actin::squash(const double & thickness)
     if (p_nuc->position.x >  halfthickness - RADIUS)
     {
         p_nuc->position.x =  halfthickness - RADIUS;
-        cout << "Warning - Nucleator has hit the coverslip" << endl;
+        //cout << "Warning - Nucleator has hit the coverslip" << endl;
+        nuc_struck_coverslip = true;
     }
 
     if (p_nuc->position.x < - halfthickness + RADIUS)
     {
         p_nuc->position.x = - halfthickness + RADIUS;
-        cout << "Warning - Nucleator has hit the coverslip" << endl;
+        //cout << "Warning - Nucleator has hit the coverslip" << endl;
+        nuc_struck_coverslip = true;
     }
 
 	return;
@@ -3412,7 +3419,7 @@ void actin::set_sym_break_axes(void)
 
     //reverse_sym_break_rotation_to_xy_plane = sym_break_rotation_to_xy_plane.inverse();
 
-	cout << setprecision(1) << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << "," << y_angle*180/PI << "," << maxchiangle*180/PI << endl;
+	cout << setprecision(1) << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << ", " << y_angle*180/PI << ", " << maxchiangle*180/PI << endl;
 
 	symbreakiter = iteration_num;
 
