@@ -1313,7 +1313,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
                 if (p_sameGPnode->x < - COVERSLIPGAP + NODE_REPULSIVE_RANGE)
                 {
-                    recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
+                    recipdist = 1.0 / ( - p_sameGPnode->x - COVERSLIPGAP );
 
                     if ( recipdist < (1.0/0.05) )
                        rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
@@ -3342,6 +3342,10 @@ void actin::set_sym_break_axes(void)
 
     find_center(sym_break_direction);  // which way did the bead go?
 
+    if (COVERSLIPGAP < 2*RADIUS) // if we're using coverslip, flatten direction to xy plane
+        sym_break_direction.z=0.0;
+
+
     x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
 
     tmp_rotation.rotatematrix(x_angle, 0 , 0);
@@ -3368,6 +3372,7 @@ void actin::set_sym_break_axes(void)
 
 
 	// we now have tmp_rotation which will transform the bead direction to be along the z axis
+    // to align the break itself, we 
 	// need to determine the z rotation by the principlal axis
 
 	double theta, chi, maxchi, maxchiangle;

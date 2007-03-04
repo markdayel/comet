@@ -1682,22 +1682,28 @@ void CometVtkVis::SetFocalDepthPlanes(vtkPolyDataMapper *map)
   
   double focdepposx = ptheactin->dbl_pixels(FOCALDEPTH) / voxel_scale;
 
+  // the planes are focdepposx above and below the nucleator
+  vect nucpos = ptheactin->p_nuc->position;
+  vect planeorigin1( nucpos.x + focdepposx, 0, 0);
+  vect planeorigin2( nucpos.x - focdepposx, 0, 0);
+
+  // the planses are parallel to the symmetry breaking direction
   vect planenormal(-1,0,0);
-  vect planeorigin(focdepposx,0,0);
 
   ptheactin->sym_break_rotation_to_xy_plane.rotate(planenormal);
-  ptheactin->sym_break_rotation_to_xy_plane.rotate(planeorigin);
+  ptheactin->sym_break_rotation_to_xy_plane.rotate(planeorigin1);
+  ptheactin->sym_break_rotation_to_xy_plane.rotate(planeorigin2);
 
   map->RemoveAllClippingPlanes();
 
   vtkPlane* newplane = vtkPlane::New();
-  newplane->SetOrigin(  planeorigin.x, planeorigin.y, planeorigin.z );
+  newplane->SetOrigin(  planeorigin1.x, planeorigin1.y, planeorigin1.z );
   newplane->SetNormal(  planenormal.x, planenormal.y, planenormal.z );
   map->AddClippingPlane( newplane );
   newplane->Delete();
 
   vtkPlane* newplane2 = vtkPlane::New();
-  newplane2->SetOrigin( -planeorigin.x,-planeorigin.y,-planeorigin.z );
+  newplane2->SetOrigin(  planeorigin2.x, planeorigin2.y, planeorigin2.z );
   newplane2->SetNormal( -planenormal.x,-planenormal.y,-planenormal.z );
   map->AddClippingPlane( newplane2 );
   newplane2->Delete();
@@ -1816,7 +1822,7 @@ void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
 
     renderer->GetActiveCamera()->SetFocalPoint(focalpoint.x, focalpoint.y, focalpoint.z);
   
-    renderer->GetActiveCamera()->ParallelProjectionOff(); // ParallelProjectionOn();
+    renderer->GetActiveCamera()->ParallelProjectionOn(); // ParallelProjectionOn();
     renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
     // FIXME: ML
     // should scale properly here to a value linked to the render setup
