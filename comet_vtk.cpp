@@ -1680,31 +1680,28 @@ void CometVtkVis::SetFocalDepthPlanes(vtkPolyDataMapper *map)
 {    // sets the mapper clipping planes to reject data outside of distance of FOCALDEPTH
      // above and below the nucleator (in x direction)
   
-  double focdepposx = ptheactin->dbl_pixels(FOCALDEPTH) / voxel_scale;
+  static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
 
-  // the planes are focdepposx above and below the nucleator
-  vect nucpos = ptheactin->p_nuc->position;
-  vect planeorigin1( nucpos.x + focdepposx, 0, 0);
-  vect planeorigin2( nucpos.x - focdepposx, 0, 0);
+  vect focdepposvec(-FOCALDEPTH*voxelscalefactor,0,0);
 
-  // the planses are parallel to the symmetry breaking direction
-  vect planenormal(-1,0,0);
+  //// the planes are focdepposx above and below the nucleator
+  vect nucpos=ptheactin->p_nuc->position * voxelscalefactor; 
 
-  ptheactin->sym_break_rotation_to_xy_plane.rotate(planenormal);
-  ptheactin->sym_break_rotation_to_xy_plane.rotate(planeorigin1);
-  ptheactin->sym_break_rotation_to_xy_plane.rotate(planeorigin2);
+  vect planeorigin1 = nucpos + focdepposvec;
+  vect planeorigin2 = nucpos - focdepposvec;
+
 
   map->RemoveAllClippingPlanes();
 
   vtkPlane* newplane = vtkPlane::New();
   newplane->SetOrigin(  planeorigin1.x, planeorigin1.y, planeorigin1.z );
-  newplane->SetNormal(  planenormal.x, planenormal.y, planenormal.z );
+  newplane->SetNormal( -focdepposvec.x,-focdepposvec.y,-focdepposvec.z );
   map->AddClippingPlane( newplane );
   newplane->Delete();
 
   vtkPlane* newplane2 = vtkPlane::New();
   newplane2->SetOrigin(  planeorigin2.x, planeorigin2.y, planeorigin2.z );
-  newplane2->SetNormal( -planenormal.x,-planenormal.y,-planenormal.z );
+  newplane2->SetNormal(  focdepposvec.x, focdepposvec.y, focdepposvec.z );
   map->AddClippingPlane( newplane2 );
   newplane2->Delete();
 }
