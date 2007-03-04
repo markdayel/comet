@@ -1497,7 +1497,7 @@ void CometVtkVis::addLinks()
 
   double force;
 
-  bool firstpointinfocus, secondpointinfocus; // used to reject links if both points are out of focal planes
+  //bool firstpointinfocus, secondpointinfocus; // used to reject links if both points are out of focal planes
   
   for(int i=0; i != ptheactin->highestnodecount; i++) 
   {      
@@ -1507,7 +1507,8 @@ void CometVtkVis::addLinks()
     n_pt[1] = ptheactin->node[i].y;
     n_pt[2] = ptheactin->node[i].z;		
     
-    firstpointinfocus = convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]);
+    //firstpointinfocus = 
+    convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]);
  
     if(!ptheactin->node[i].listoflinks.empty() && !VTK_NUC_LINKS_ONLY) 
     {
@@ -1527,10 +1528,11 @@ void CometVtkVis::addLinks()
         l_pt[1] = link_i->linkednodeptr->y;
         l_pt[2] = link_i->linkednodeptr->z;
 
-        secondpointinfocus = convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
+        //secondpointinfocus = 
+        convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
 
-        if (!firstpointinfocus && !secondpointinfocus)
-            continue;  // both points out of focus, so skip link
+        //if (!firstpointinfocus && !secondpointinfocus)
+        //    continue;  // both points out of focus, so skip link
 
         vect linkvec = nodeposvec - ptheactin->node[link_i->linkednodenumber];//*(link_i->linkednodeptr) ;
 
@@ -1683,6 +1685,8 @@ void CometVtkVis::SetFocalDepthPlanes(vtkPolyDataMapper *map)
   static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
 
   vect focdepposvec(-FOCALDEPTH*voxelscalefactor,0,0);
+
+  ptheactin->sym_break_rotation_to_xy_plane.rotate(focdepposvec);
 
   //// the planes are focdepposx above and below the nucleator
   vect nucpos=ptheactin->p_nuc->position * voxelscalefactor; 
