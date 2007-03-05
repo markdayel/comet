@@ -196,6 +196,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     
     //render_win->PointSmoothingOn();
 
+
+    // smoothing seems to cause lines on sphere for some reason
     //if (!OptsRenderNodes)   // smoothing is too slow if rendering the nodes
     //   render_win->PolygonSmoothingOn();   // seem to need this else rendering artifact on sphere
     
@@ -381,15 +383,17 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
 	renderer->ResetCameraClippingRange();
 
     // add objects to renderer
-    if(OptsRenderNucleator)
-	    addNucleator();
+    
   
     if(OptsRenderNodes)
 	    addNodes();
   
     if(OptsRenderLinks)        
 	    addLinks();
-  
+
+    if(OptsRenderNucleator)
+	    addNucleator();
+
     if(OptsVolumeRenderNodes)
 	    addGuassianNodeVolume(false);        
                         
@@ -404,6 +408,8 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
 
     addLight();
     
+    //renderer->GetActiveCamera()->ViewingRaysModified();
+
 	render_win->AddRenderer(renderer);
 	renderer->Delete();
 	 
@@ -1875,7 +1881,6 @@ void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
     camera_posn_vect += camerapos;
 
     renderer->GetActiveCamera()->SetPosition(camera_posn_vect.x,camera_posn_vect.y,camera_posn_vect.z);
-
     //renderer->ResetCamera();
 
 }

@@ -40,15 +40,39 @@ int Colour::setcol(const double & magnitude)
 	//b =  mymin(  mymax( 4*mag     - 3, 0 ), 1 );
 
 	// rainbow colormap, 0 = black
-	r = mymin( mymax( -2 * fabs( mag - 1   ) + 1.3  ,0) ,1);
-	g = mymin( mymax( -2 * fabs( mag - 0.55) + 1.05 ,0) ,1);
-	//b = mymin( mymax( -5 * fabs( mag - 0.25) + 1.2  ,0) ,1);
-    b = mymin( mymax( -2 * fabs( mag - 0.25) + 1.2  ,0) ,1);
+//	r = mymin( mymax( -2 * fabs( mag - 1   ) + 1.3  ,0) ,1);
+//	g = mymin( mymax( -2 * fabs( mag - 0.55) + 1.05 ,0) ,1);
+	////b = mymin( mymax( -5 * fabs( mag - 0.25) + 1.2  ,0) ,1);
+//    b = mymin( mymax( -2 * fabs( mag - 0.25) + 1.2  ,0) ,1);
 
 	// hls, sort of
 	//r =   mymin(  mymax( (4*    (mag-0.25) ) , 0 ), 1 );
 	//b =   mymin(  mymax( (4*    (0.75-mag) ) , 0 ), 1 );
 	//g =   mymin(  mymax( (4*fabs(mag-0.5)-1) , 0 ), 1 );
+
+    //r = mymin( mymax( -2 * abs( mag - 1   ) + 1.3  ,0) ,1);
+    //g = mymin( mymax( -2 * abs( mag - 0.4) + 1.15 ,0) ,1);
+    //b = mymin( mymax( -2 * abs( mag - 0.05) + 1.2  ,0) ,1);
+
+    
+
+//r = mymin( mymax( -1.8* fabs( mag - 1   ) + 1.3  ,0) ,1);
+//g = mymin( mymax( -2.6 * fabs( mag - 0.58) + 1.05 ,0) ,1);
+
+//b = mymin( mymax( -3 * fabs( mag - 0.25) + 1.2  ,0) ,1);
+
+
+    r = mymin( mymax( -1.8* fabs( mag - 1   ) + 1.3  ,0) ,1);
+if (mag < 0.58) 
+    g = mymin( mymax( -2.0 * fabs( mag - 0.58) + 1.05 ,0) ,1);
+else
+    g = mymin( mymax( -2.6 * fabs( mag - 0.58) + 1.05 ,0) ,1);
+
+if (mag < 0.25) 
+    b = mymin( mymax( -2.5 * fabs( mag - 0.25) + 1.2  ,0) ,1);
+else
+    b = mymin( mymax( -3 * fabs( mag - 0.25) + 1.2  ,0) ,1);
+
 
 	R = (unsigned char) (r*255);
 	G = (unsigned char) (g*255);
