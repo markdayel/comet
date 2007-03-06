@@ -60,7 +60,7 @@ int VTK_AA_FACTOR = 1;
 
 bool VTK_NUC_LINKS_ONLY = false;
 
-double VTK_LINK_COLOUR_GAMMA = 1.8;
+double COLOUR_GAMMA = 1.8;
 bool VTK_MOVE_WITH_BEAD = true;
 double VTK_MIN_PLOT_LINK_FORCE_PCT = 0.0;
 
@@ -653,6 +653,8 @@ int main(int argc, char* argv[])
 
 		ss >> tag >> std::ws;
 
+        bool commandrecognized = true; // workaround for visual c++ compiler bug
+
 		if (tag.size() == 0 || tag[0] == '#')
 			// skip empty line or comment
             continue;
@@ -717,8 +719,8 @@ int main(int argc, char* argv[])
         else if (tag == "BMP_AA_FACTOR")	  
 			{ss >> BMP_AA_FACTOR;}
 
-		else if (tag == "VTK_LINK_COLOUR_GAMMA")	  
-			{ss >> VTK_LINK_COLOUR_GAMMA;}
+		else if (tag == "COLOUR_GAMMA")	  
+			{ss >> COLOUR_GAMMA;}
 
 		else if (tag == "VTK_VIEWANGLE")	  
 			{ss >> VTK_VIEWANGLE;}
@@ -798,236 +800,246 @@ int main(int argc, char* argv[])
 		else if (tag == "XLINK_NODE_RANGE") 
 			{ss >> XLINK_NODE_RANGE;} 
 
-		else if (tag == "SEGMENT_BINS") 
-			{ss >> buff2; if(buff2=="TRUE") SEGMENT_BINS = true; else SEGMENT_BINS = false;}
+        else
+            commandrecognized = false;
 
-		else if (tag == "DRAW_CAGE")
-			{ss >> buff2; if(buff2=="TRUE") DRAW_CAGE = true; else DRAW_CAGE = false;}
+        if (!commandrecognized)
+        {   
+            commandrecognized = true;
+		    if (tag == "SEGMENT_BINS") 
+			    {ss >> buff2; if(buff2=="TRUE") SEGMENT_BINS = true; else SEGMENT_BINS = false;}
 
-		else if (tag == "P_XLINK") 
-			{ss >> P_XLINK;}
+		    else if (tag == "DRAW_CAGE")
+			    {ss >> buff2; if(buff2=="TRUE") DRAW_CAGE = true; else DRAW_CAGE = false;}
 
-        else if (tag == "VARY_P_XLINK")
-			{ss >> buff2; if(buff2=="TRUE") VARY_P_XLINK = true; else VARY_P_XLINK = false;}
+		    else if (tag == "P_XLINK") 
+			    {ss >> P_XLINK;}
 
-		else if (tag == "NUC_LINK_FORCE")    
-			{ss >> NUC_LINK_FORCE;}
+            else if (tag == "VARY_P_XLINK")
+			    {ss >> buff2; if(buff2=="TRUE") VARY_P_XLINK = true; else VARY_P_XLINK = false;}
 
-		else if (tag == "NUC_LINK_BREAKAGE_FORCE") 
-			{ss >> NUC_LINK_BREAKAGE_FORCE;}
+		    else if (tag == "NUC_LINK_FORCE")    
+			    {ss >> NUC_LINK_FORCE;}
 
-        else if (tag == "NUC_LINK_BREAKAGE_DIST")   // note must be called after NUC_LINK_FORCE
-			{ss >> tempdbl; NUC_LINK_BREAKAGE_FORCE = NUC_LINK_FORCE * tempdbl; }
+		    else if (tag == "NUC_LINK_BREAKAGE_FORCE") 
+			    {ss >> NUC_LINK_BREAKAGE_FORCE;}
 
-		else if (tag == "LINK_BREAKAGE_FORCE") 
-			{ss >> LINK_BREAKAGE_FORCE;}
+            else if (tag == "NUC_LINK_BREAKAGE_DIST")   // note must be called after NUC_LINK_FORCE
+			    {ss >> tempdbl; NUC_LINK_BREAKAGE_FORCE = NUC_LINK_FORCE * tempdbl; }
 
-		else if (tag == "LINK_BREAKAGE_STRAIN") 
-			{ss >> LINK_BREAKAGE_STRAIN;}
+		    else if (tag == "LINK_BREAKAGE_FORCE") 
+			    {ss >> LINK_BREAKAGE_FORCE;}
 
-		else if (tag == "LINK_POWER_SCALE") 
-			{ss >> LINK_POWER_SCALE;}
+		    else if (tag == "LINK_BREAKAGE_STRAIN") 
+			    {ss >> LINK_BREAKAGE_STRAIN;}
 
-		else if (tag == "LINK_FORCE") 
-			{ss >> LINK_FORCE;}	
+		    else if (tag == "LINK_POWER_SCALE") 
+			    {ss >> LINK_POWER_SCALE;}
 
-		else if (tag == "MAX_POLYMERISATION_PRESSURE") 
-			{ss >> MAX_POLYMERISATION_PRESSURE;}
+		    else if (tag == "LINK_FORCE") 
+			    {ss >> LINK_FORCE;}	
+
+		    else if (tag == "MAX_POLYMERISATION_PRESSURE") 
+			    {ss >> MAX_POLYMERISATION_PRESSURE;}
+            
+		    else if (tag == "STICK_TO_NUCLEATOR") 
+			    {ss >> buff2; if(buff2=="TRUE") STICK_TO_NUCLEATOR = true; else STICK_TO_NUCLEATOR = false;}
+
+		    else if (tag == "RESTICK_TO_NUCLEATOR") 
+			    {ss >> buff2; if(buff2=="TRUE") RESTICK_TO_NUCLEATOR = true; else RESTICK_TO_NUCLEATOR = false;}
+    		
+		    else if (tag == "USETHREAD_COLLISION") 
+			    {ss >> buff2; if(buff2=="TRUE") USETHREAD_COLLISION = true; else USETHREAD_COLLISION = false;}
+    		
+		    else if (tag == "USETHREAD_LINKFORCES") 
+			    {ss >> buff2; if(buff2=="TRUE") USETHREAD_LINKFORCES = true; else USETHREAD_LINKFORCES = false;}
+    		
+		    else if (tag == "USETHREAD_APPLYFORCES") 
+			    {ss >> buff2; if(buff2=="TRUE") USETHREAD_APPLYFORCES = true; else USETHREAD_APPLYFORCES = false;} 
+        	
+		    else if (tag == "USE_BREAKAGE_VISCOSITY") 
+			    {ss >> buff2; if(buff2=="TRUE") USE_BREAKAGE_VISCOSITY = true; else USE_BREAKAGE_VISCOSITY = false;} 
+
+            else if (tag == "BREAKAGE_VISCOSITY_THRESHOLD") 
+			    {ss >> BREAKAGE_VISCOSITY_THRESHOLD;}
+    		
+		    else if (tag == "P_NUC")      
+			    {ss >> P_NUC;}
+
+		    else if (tag == "POLY_FEEDBACK") 
+			    {ss >> buff2; if(buff2=="TRUE") POLY_FEEDBACK = true; else POLY_FEEDBACK = false;} 
+    		
+		    else if (tag == "POLY_FEEDBACK_DIST") 
+			    {ss >> POLY_FEEDBACK_DIST;}
+
+            else if (tag == "POLY_FEEDBACK_MIN_PROB") 
+			    {ss >> POLY_FEEDBACK_MIN_PROB;}
+
+            else if (tag == "POLY_FEEDBACK_FACTOR") 
+			    {ss >> POLY_FEEDBACK_FACTOR;}
+
+		    else if (tag == "VISCOSITY")    
+			    {ss >> buff2; if(buff2=="TRUE") VISCOSITY = true; else VISCOSITY = false;} 
+    		
+		    else if (tag == "VISCOSITY_FACTOR") 
+			    {ss >> VISCOSITY_FACTOR;} 
+
+		    else if (tag == "VISCOSITY_EDGE_FACTOR") 
+			    {ss >> VISCOSITY_EDGE_FACTOR;}
+
+		    else if (tag == "VISC_DIST") 
+			    {ss >> VISC_DIST;}    
+
+            else if (tag == "BROWNIANFORCESCALE") 
+			    {ss >> BROWNIANFORCESCALE;}
+
+            else if (tag == "USE_BROWNIAN_FORCES") 
+			    {ss >> buff2; if(buff2=="TRUE") USE_BROWNIAN_FORCES = true; else USE_BROWNIAN_FORCES = false;}
+
+		    else if (tag == "NON_VISC_WEIGHTING") 
+			    {ss >> NON_VISC_WEIGHTING;}		 
+
+		    else if (tag == "MAX_VISC_WEIGHTING") 
+			    {ss >> MAX_VISC_WEIGHTING;}
+            
+		    else if (tag == "IMPOSED_NUC_ROT_SPEED")  
+			    {ss >> IMPOSED_NUC_ROT_SPEED;} 
+
+		    else if (tag == "IMPOSED_NUC_ROT") 
+			    {ss >> buff2; if(buff2=="TRUE") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false;}
+
+            else if (tag == "TEST_SQUASH") 
+			    {ss >> buff2; if(buff2=="TRUE") TEST_SQUASH = true; else TEST_SQUASH = false;}
+
+            else if (tag == "TEST_FORCE_INITIAL_MAG")  
+			    {ss >> TEST_FORCE_INITIAL_MAG;}
+
+            else if (tag == "TEST_FORCE_INCREMENT")  
+			    {ss >> TEST_FORCE_INCREMENT;}
+
+            else if (tag == "TEST_DIST_EQUIL")  
+			    {ss >> TEST_DIST_EQUIL;}
+
+		    else if (tag == "WRITE_BMPS_PRE_SYMBREAK") 
+			    {ss >> buff2; if(buff2=="TRUE") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false;}
+
+		    else if (tag == "RADIUS") 
+			    {ss >> RADIUS;} 
+    		
+		    else if (tag == "CAPSULE_HALF_LINEAR") 
+			    {ss >> CAPSULE_HALF_LINEAR;} 
+    		
+		    else if (tag == "MAX_LINKS_PER_NEW_NODE") 
+			    {ss >> MAX_LINKS_PER_NEW_NODE;}
+
+            else if (tag == "MAX_LINK_ATTEMPTS") 
+			    {ss >> MAX_LINK_ATTEMPTS;}
+    		
+		    else if (tag == "NODE_REPULSIVE_MAG") 
+			    {ss >> NODE_REPULSIVE_MAG;}
+    		
+		    else if (tag == "NODE_REPULSIVE_POWER") 
+			    {ss >> NODE_REPULSIVE_POWER;}
+    		
+		    else if (tag == "NODE_REPULSIVE_RANGE") 
+			    {ss >> NODE_REPULSIVE_RANGE;}
+    		
+		    else if (tag == "ASYMMETRIC_NUCLEATION") 
+			    {ss >> ASYMMETRIC_NUCLEATION;} 
+    		
+		    else if (tag == "RADIAL_SEGMENTS") 
+			    {ss >> RADIAL_SEGMENTS;} 
+    		
+		    else if (tag == "XLINK_NEAREST") 
+			    {ss >> XLINK_NEAREST;} 
+    		
+		    else if (tag == "VIEW_HEIGHT") 
+			    {ss >> VIEW_HEIGHT;} 
+    		
+		    //else if (tag == "NODES_TO_UPDATE") 
+		    //	{ss >> NODES_TO_UPDATE;} 
+    		
+		    else if (tag == "DISTANCE_TO_UPDATE") 
+			    {ss >> DISTANCE_TO_UPDATE;} 
+    		
+		    else if (tag == "GAUSSFWHM") 
+			    {ss >> GAUSSFWHM;}         
+    #ifdef BMP_USE_FOCAL_DEPTH
+            else if (tag == "FOCALDEPTH") 
+			    {ss >> FOCALDEPTH;}         
+    #endif
+            else if (tag == "BMP_INTENSITY_OFFSET") 
+			    {ss >> BMP_INTENSITY_OFFSET;}
+    		
+		    else if (tag == "SPECKLE") 
+			    {ss >> buff2;if(buff2=="TRUE") SPECKLE = true;else SPECKLE = false;}
+
+            else if (tag == "COL_NODE_BY_STRAIN") 
+			    {ss >> buff2;if(buff2=="TRUE") COL_NODE_BY_STRAIN = true;else COL_NODE_BY_STRAIN = false;}
+
+            else if (tag == "COL_LINK_BY_DIRN") 
+			    {ss >> buff2;if(buff2=="TRUE") COL_LINK_BY_DIRN = true;else COL_LINK_BY_DIRN = false;}
+
+            else if (tag == "COL_INDIVIDUAL_NODES") 
+			    {ss >> buff2;if(buff2=="TRUE") COL_INDIVIDUAL_NODES = true;else COL_INDIVIDUAL_NODES = false;}
+
+            else if (tag == "PLOTFORCES")         
+			    {ss >> buff2;if(buff2=="TRUE") PLOTFORCES = true;else PLOTFORCES = false;}
+    		
+		    else if (tag == "SPECKLE_FACTOR") 
+			    {ss >> SPECKLE_FACTOR;}
+
+            else if (tag == "SPECKLEGRID") 
+			    {ss >> buff2;if(buff2=="TRUE") SPECKLEGRID = true;else SPECKLEGRID = false;}
+
+    	    else if (tag == "SPECKLEGRIDPERIOD") 
+		        {ss >> SPECKLEGRIDPERIOD;}
+
+    	    else if (tag == "SPECKLEGRIDTIMEWIDTH") 
+		        {ss >> SPECKLEGRIDTIMEWIDTH;}
+
+            else if (tag == "SPECKLEGRIDSTRIPEWIDTH") 
+		        {ss >> SPECKLEGRIDSTRIPEWIDTH;}
+
+		    else if (tag == "INIT_R_GAIN") 
+			    {ss >> INIT_R_GAIN;} 
+    		
+		    else if (tag == "INIT_G_GAIN") 
+			    {ss >> INIT_G_GAIN;} 
+    		
+		    else if (tag == "INIT_B_GAIN") 
+			    {ss >> INIT_B_GAIN;} 
+    		
+		    else if (tag == "ROTATION") 
+			    {ss >> buff2;if(buff2=="TRUE") ROTATION = true; else ROTATION = false;} 
+    		
+		    else if (tag == "MOFI") 
+			    {ss >> MOFI;} 
+    		
+		    else if (tag == "NO_IMAGE_TEXT") 
+			    {ss >> buff2;if(buff2=="TRUE") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false;} 
+    		
+		    else if (tag == "BMP_COMPRESSION") 
+			    {ss >> BMP_COMPRESSION;	if (BMP_COMPRESSION > 100) BMP_COMPRESSION = 100; else if (BMP_COMPRESSION < 0)	BMP_COMPRESSION = 0;} 
+    		
+		    else if (tag == "BMP_OUTPUT_FILETYPE") 
+			    {ss >> buff2; istringstream ss3(strtolower(buff2)); ss3 >> BMP_OUTPUT_FILETYPE;} 
+    		
+		    else if (tag == "SHAPE") 
+			    {ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere;}
+
+            else if (tag == "CLUSTER") 
+			    {ss >> buff2;if(buff2=="TRUE") CLUSTER = true; else CLUSTER = false;}
+
+		    else if (tag.find("VIS") == 0)
+		    {
+			    // VTK stuff, ignore for now---perhaps put VTK stuff in here?
+		    }
+        else
+            commandrecognized = false;
+        }
         
-		else if (tag == "STICK_TO_NUCLEATOR") 
-			{ss >> buff2; if(buff2=="TRUE") STICK_TO_NUCLEATOR = true; else STICK_TO_NUCLEATOR = false;}
-
-		else if (tag == "RESTICK_TO_NUCLEATOR") 
-			{ss >> buff2; if(buff2=="TRUE") RESTICK_TO_NUCLEATOR = true; else RESTICK_TO_NUCLEATOR = false;}
-		
-		else if (tag == "USETHREAD_COLLISION") 
-			{ss >> buff2; if(buff2=="TRUE") USETHREAD_COLLISION = true; else USETHREAD_COLLISION = false;}
-		
-		else if (tag == "USETHREAD_LINKFORCES") 
-			{ss >> buff2; if(buff2=="TRUE") USETHREAD_LINKFORCES = true; else USETHREAD_LINKFORCES = false;}
-		
-		else if (tag == "USETHREAD_APPLYFORCES") 
-			{ss >> buff2; if(buff2=="TRUE") USETHREAD_APPLYFORCES = true; else USETHREAD_APPLYFORCES = false;} 
-    	
-		else if (tag == "USE_BREAKAGE_VISCOSITY") 
-			{ss >> buff2; if(buff2=="TRUE") USE_BREAKAGE_VISCOSITY = true; else USE_BREAKAGE_VISCOSITY = false;} 
-
-        else if (tag == "BREAKAGE_VISCOSITY_THRESHOLD") 
-			{ss >> BREAKAGE_VISCOSITY_THRESHOLD;}
-		
-		else if (tag == "P_NUC")      
-			{ss >> P_NUC;}
-
-		else if (tag == "POLY_FEEDBACK") 
-			{ss >> buff2; if(buff2=="TRUE") POLY_FEEDBACK = true; else POLY_FEEDBACK = false;} 
-		
-		else if (tag == "POLY_FEEDBACK_DIST") 
-			{ss >> POLY_FEEDBACK_DIST;}
-
-        else if (tag == "POLY_FEEDBACK_MIN_PROB") 
-			{ss >> POLY_FEEDBACK_MIN_PROB;}
-
-        else if (tag == "POLY_FEEDBACK_FACTOR") 
-			{ss >> POLY_FEEDBACK_FACTOR;}
-
-		else if (tag == "VISCOSITY")    
-			{ss >> buff2; if(buff2=="TRUE") VISCOSITY = true; else VISCOSITY = false;} 
-		
-		else if (tag == "VISCOSITY_FACTOR") 
-			{ss >> VISCOSITY_FACTOR;} 
-
-		else if (tag == "VISCOSITY_EDGE_FACTOR") 
-			{ss >> VISCOSITY_EDGE_FACTOR;}
-
-		else if (tag == "VISC_DIST") 
-			{ss >> VISC_DIST;}    
-
-        else if (tag == "BROWNIANFORCESCALE") 
-			{ss >> BROWNIANFORCESCALE;}
-
-        else if (tag == "USE_BROWNIAN_FORCES") 
-			{ss >> buff2; if(buff2=="TRUE") USE_BROWNIAN_FORCES = true; else USE_BROWNIAN_FORCES = false;}
-
-		else if (tag == "NON_VISC_WEIGHTING") 
-			{ss >> NON_VISC_WEIGHTING;}		 
-
-		else if (tag == "MAX_VISC_WEIGHTING") 
-			{ss >> MAX_VISC_WEIGHTING;}
-        
-		else if (tag == "IMPOSED_NUC_ROT_SPEED")  
-			{ss >> IMPOSED_NUC_ROT_SPEED;} 
-
-		else if (tag == "IMPOSED_NUC_ROT") 
-			{ss >> buff2; if(buff2=="TRUE") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false;}
-
-        else if (tag == "TEST_SQUASH") 
-			{ss >> buff2; if(buff2=="TRUE") TEST_SQUASH = true; else TEST_SQUASH = false;}
-
-        else if (tag == "TEST_FORCE_INITIAL_MAG")  
-			{ss >> TEST_FORCE_INITIAL_MAG;}
-
-        else if (tag == "TEST_FORCE_INCREMENT")  
-			{ss >> TEST_FORCE_INCREMENT;}
-
-        else if (tag == "TEST_DIST_EQUIL")  
-			{ss >> TEST_DIST_EQUIL;}
-
-		else if (tag == "WRITE_BMPS_PRE_SYMBREAK") 
-			{ss >> buff2; if(buff2=="TRUE") WRITE_BMPS_PRE_SYMBREAK = true; else WRITE_BMPS_PRE_SYMBREAK = false;}
-
-		else if (tag == "RADIUS") 
-			{ss >> RADIUS;} 
-		
-		else if (tag == "CAPSULE_HALF_LINEAR") 
-			{ss >> CAPSULE_HALF_LINEAR;} 
-		
-		else if (tag == "MAX_LINKS_PER_NEW_NODE") 
-			{ss >> MAX_LINKS_PER_NEW_NODE;}
-
-        else if (tag == "MAX_LINK_ATTEMPTS") 
-			{ss >> MAX_LINK_ATTEMPTS;}
-		
-		else if (tag == "NODE_REPULSIVE_MAG") 
-			{ss >> NODE_REPULSIVE_MAG;}
-		
-		else if (tag == "NODE_REPULSIVE_POWER") 
-			{ss >> NODE_REPULSIVE_POWER;}
-		
-		else if (tag == "NODE_REPULSIVE_RANGE") 
-			{ss >> NODE_REPULSIVE_RANGE;}
-		
-		else if (tag == "ASYMMETRIC_NUCLEATION") 
-			{ss >> ASYMMETRIC_NUCLEATION;} 
-		
-		else if (tag == "RADIAL_SEGMENTS") 
-			{ss >> RADIAL_SEGMENTS;} 
-		
-		else if (tag == "XLINK_NEAREST") 
-			{ss >> XLINK_NEAREST;} 
-		
-		else if (tag == "VIEW_HEIGHT") 
-			{ss >> VIEW_HEIGHT;} 
-		
-		//else if (tag == "NODES_TO_UPDATE") 
-		//	{ss >> NODES_TO_UPDATE;} 
-		
-		else if (tag == "DISTANCE_TO_UPDATE") 
-			{ss >> DISTANCE_TO_UPDATE;} 
-		
-		else if (tag == "GAUSSFWHM") 
-			{ss >> GAUSSFWHM;}         
-#ifdef BMP_USE_FOCAL_DEPTH
-        else if (tag == "FOCALDEPTH") 
-			{ss >> FOCALDEPTH;}         
-#endif
-        else if (tag == "BMP_INTENSITY_OFFSET") 
-			{ss >> BMP_INTENSITY_OFFSET;}
-		
-		else if (tag == "SPECKLE") 
-			{ss >> buff2;if(buff2=="TRUE") SPECKLE = true;else SPECKLE = false;}
-
-        else if (tag == "COL_NODE_BY_STRAIN") 
-			{ss >> buff2;if(buff2=="TRUE") COL_NODE_BY_STRAIN = true;else COL_NODE_BY_STRAIN = false;}
-
-        else if (tag == "COL_LINK_BY_DIRN") 
-			{ss >> buff2;if(buff2=="TRUE") COL_LINK_BY_DIRN = true;else COL_LINK_BY_DIRN = false;}
-
-        else if (tag == "COL_INDIVIDUAL_NODES") 
-			{ss >> buff2;if(buff2=="TRUE") COL_INDIVIDUAL_NODES = true;else COL_INDIVIDUAL_NODES = false;}
-
-        else if (tag == "PLOTFORCES")         
-			{ss >> buff2;if(buff2=="TRUE") PLOTFORCES = true;else PLOTFORCES = false;}
-		
-		else if (tag == "SPECKLE_FACTOR") 
-			{ss >> SPECKLE_FACTOR;}
-
-        else if (tag == "SPECKLEGRID") 
-			{ss >> buff2;if(buff2=="TRUE") SPECKLEGRID = true;else SPECKLEGRID = false;}
-
-    	else if (tag == "SPECKLEGRIDPERIOD") 
-		    {ss >> SPECKLEGRIDPERIOD;}
-
-    	else if (tag == "SPECKLEGRIDTIMEWIDTH") 
-		    {ss >> SPECKLEGRIDTIMEWIDTH;}
-
-        else if (tag == "SPECKLEGRIDSTRIPEWIDTH") 
-		    {ss >> SPECKLEGRIDSTRIPEWIDTH;}
-
-		else if (tag == "INIT_R_GAIN") 
-			{ss >> INIT_R_GAIN;} 
-		
-		else if (tag == "INIT_G_GAIN") 
-			{ss >> INIT_G_GAIN;} 
-		
-		else if (tag == "INIT_B_GAIN") 
-			{ss >> INIT_B_GAIN;} 
-		
-		else if (tag == "ROTATION") 
-			{ss >> buff2;if(buff2=="TRUE") ROTATION = true; else ROTATION = false;} 
-		
-		else if (tag == "MOFI") 
-			{ss >> MOFI;} 
-		
-		else if (tag == "NO_IMAGE_TEXT") 
-			{ss >> buff2;if(buff2=="TRUE") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false;} 
-		
-		else if (tag == "BMP_COMPRESSION") 
-			{ss >> BMP_COMPRESSION;	if (BMP_COMPRESSION > 100) BMP_COMPRESSION = 100; else if (BMP_COMPRESSION < 0)	BMP_COMPRESSION = 0;} 
-		
-		else if (tag == "BMP_OUTPUT_FILETYPE") 
-			{ss >> buff2; istringstream ss3(strtolower(buff2)); ss3 >> BMP_OUTPUT_FILETYPE;} 
-		
-		else if (tag == "SHAPE") 
-			{ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere;}
-
-        else if (tag == "CLUSTER") 
-			{ss >> buff2;if(buff2=="TRUE") CLUSTER = true; else CLUSTER = false;}
-
-		else if (tag.find("VIS") == 0)
-		{
-			// VTK stuff, ignore for now---perhaps put VTK stuff in here?
-		}
-		else
+        if (!commandrecognized)
 		{
 			unrecognisedlines += buffer;
 			unrecognisedlines += "\n";

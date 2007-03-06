@@ -34,6 +34,7 @@ int Colour::setcol(const double & magnitude)
 	
 	mag = mymax(0, mymin( 1, magnitude )); // make sure it's between 0 and 1
 
+
 	// hot colormap
 	//r =  mymin(  mymax( 8*mag / 3    , 0 ), 1 );
 	//g =  mymin(  mymax( 8*mag / 3 - 1, 0 ), 1 );
@@ -73,6 +74,11 @@ if (mag < 0.25)
 else
     b = mymin( mymax( -3 * fabs( mag - 0.25) + 1.2  ,0) ,1);
 
+
+// gamma adjustment --- note this is applied both to the data and the scale bar, so we don't misrepresent anything
+    r = pow( r , 1 / COLOUR_GAMMA);
+    g = pow( g , 1 / COLOUR_GAMMA);
+    b = pow( b , 1 / COLOUR_GAMMA);
 
 	R = (unsigned char) (r*255);
 	G = (unsigned char) (g*255);

@@ -32,7 +32,7 @@ removed without prior written permission from the author.
 // vector seems quite a bit faster
 //#define NODEGRIDTYPELIST 1
 
-//#define BMPS_USING_LINKS 1
+#define BMPS_USING_LINKS 1
 
 #define NO_CALC_STATS 1 // calculating stats slows things considerably (prolly because of trig functions,
                         // but is required if we want force/energy graphs)
@@ -313,7 +313,7 @@ extern int VTK_AA_FACTOR;
 extern int BMP_AA_FACTOR;
 
 extern bool VTK_NUC_LINKS_ONLY;
-extern double VTK_LINK_COLOUR_GAMMA;
+extern double COLOUR_GAMMA;
 extern bool VTK_MOVE_WITH_BEAD;
 extern double VTK_VIEWANGLE;
 

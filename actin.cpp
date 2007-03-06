@@ -2263,7 +2263,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             else          
                 mult = value;
 
-	        //w = pow( w , 1/VTK_LINK_COLOUR_GAMMA);	    
+	        //w = pow( w , 1/COLOUR_GAMMA);	    
 	        //w = w*0.9+0.1;
             
             //nodecol.setcol(w);        
@@ -3372,7 +3372,7 @@ void actin::set_sym_break_axes(void)
 
 
 	// we now have tmp_rotation which will transform the bead direction to be along the z axis
-    // to align the break itself, we 
+    // to align the break, we 
 	// need to determine the z rotation by the principlal axis
 
 	double theta, chi, maxchi, maxchiangle;

@@ -561,7 +561,7 @@ void CometVtkVis::saveImage(int framenumber)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -resize %f%% -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s %s ; rm %s ) &",
+            "(%s -compose Dst_Over -composite -quality %i -resize %f%% -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s %s ; rm %s ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,   
             5 , ( 25 ),
             framenumber,
@@ -574,7 +574,7 @@ void CometVtkVis::saveImage(int framenumber)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose Dst_Over -composite -gamma 1.3 -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s %s ; rm %s ) &",
+            "(%s -compose Dst_Over -composite -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s %s ; rm %s ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION,
             5 , ( 25 ) ,
             framenumber,
@@ -1449,10 +1449,12 @@ void CometVtkVis::addLinks()
   
   set_mean_posns();
   
+  const int numcol = 256;
+
   // only used for strain coloring
   vtkLookupTable *lut = vtkLookupTable::New();
+  lut->SetNumberOfTableValues(numcol);
   lut->SetRange(0.7, 1.0);
-  lut->SetNumberOfColors(100);
   lut->Build();
   // ML REVISIT, crude linear ramp, 
   // do this better way to do this via vtkLut calls
@@ -1463,9 +1465,9 @@ void CometVtkVis::addLinks()
   
   if(OptsShadeLinks)
   {
-      for(int i=0; i<100; i++) 
+      for(int i=0; i<numcol; i++) 
       {
-        col.setcol((double)i/100.0);
+        col.setcol((double)i/(double)(numcol-1));
         
         rgba[0] = col.r;
         rgba[1] = col.g;
@@ -1481,7 +1483,7 @@ void CometVtkVis::addLinks()
     rgba[2] = 0.75;
     rgba[3] = 1.0;
 
-    for(int i=0; i<100; i++) 
+    for(int i=0; i<numcol; i++) 
     {	
         lut->SetTableValue(i, rgba);
     }
@@ -1574,7 +1576,7 @@ void CometVtkVis::addLinks()
         if ( magcol < 0.0 ) magcol = 0.0;
         if ( magcol > 1.0 ) magcol = 1.0;
 
-        magcol = pow( magcol , 1 / VTK_LINK_COLOUR_GAMMA);	    
+            
         magcol = magcol * 0.9 + 0.1; // prevent zeros because colorscheme makes them black
         //col.setcol(magcol);
 
@@ -1616,7 +1618,7 @@ void CometVtkVis::addLinks()
         if ( magcol * 100.0 < VTK_MIN_PLOT_LINK_FORCE_PCT) // only plot ones with this force or greater
             continue;
 
-        magcol = pow( magcol , 1 / VTK_LINK_COLOUR_GAMMA);	    
+        //magcol = pow( magcol , 1 / COLOUR_GAMMA);	    
         magcol = magcol * 0.9 + 0.1; // prevent zeros because colorscheme makes them black
         //col.setcol(y);
 
