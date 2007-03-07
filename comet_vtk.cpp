@@ -155,6 +155,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     VTK_HIGHQUAL = false;
 
     OptsCameraDistMult = 7;
+    VIS_LINETHICKNESS = 1.0;
 
     setOptions();
 
@@ -556,17 +557,29 @@ void CometVtkVis::saveImage(int framenumber)
     imagewriter->Delete();
 
     rwin_to_image->Delete();
-                                         
+    
+    char textstring[1024];
+    
+    if (NO_IMAGE_TEXT)
+    {
+        *textstring=0;
+    }
+    else
+    {
+        sprintf(textstring, "-font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\"",
+            5 , ( 25 ),
+            framenumber,
+            5 , ( 50 ) ,
+            int(framenumber * InterRecordIterations * DELTA_T) );
+    }
+
     if (VTK_AA_FACTOR!=1)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose Dst_Over -composite -quality %i -resize %f%% -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s %s ; rm %s ) &",
-            IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR,   
-            5 , ( 25 ),
-            framenumber,
-            5 , ( 50 ) ,
-            int(framenumber * InterRecordIterations * DELTA_T), VTK_colmap_filename, tmpfilename, filename, tmpfilename);
+            "(%s -compose Dst_Over -composite -quality %i -resize %f%% %s %s %s %s ; rm %s ) &",
+            IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
+             VTK_colmap_filename, tmpfilename, filename, tmpfilename);
         //cout << command1 << endl;
         system(command1);
     }
@@ -574,12 +587,9 @@ void CometVtkVis::saveImage(int framenumber)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -compose Dst_Over -composite -quality %i -font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s %s ; rm %s ) &",
-            IMAGEMAGICKCONVERT, BMP_COMPRESSION,
-            5 , ( 25 ) ,
-            framenumber,
-            5 , ( 50 ) ,
-            int(framenumber * InterRecordIterations * DELTA_T), VTK_colmap_filename, tmpfilename, filename, tmpfilename);
+            "(%s -compose Dst_Over -composite -quality %i %s %s %s %s ; rm %s ) &",
+            IMAGEMAGICKCONVERT, BMP_COMPRESSION, textstring,
+            VTK_colmap_filename, tmpfilename, filename, tmpfilename);
         //cout << command1 << endl;
         system(command1);
     }
@@ -1676,6 +1686,10 @@ void CometVtkVis::addLinks()
   linedata->Delete();
   // actor
   vtkActor *lines_actor = vtkActor::New();
+  //lines_actor->GetProperty()->SetAmbient(2.0);
+  //lines_actor->GetProperty()->SetDiffuse(2.0);
+  //lines_actor->GetProperty()->SetSpecular(2.0);
+  lines_actor->GetProperty()->SetLineWidth(VIS_LINETHICKNESS);
   lines_actor->SetMapper(map);
   map->Delete();
   //render
@@ -2015,6 +2029,11 @@ void CometVtkVis::setOptions()
     if(tag == "VIS_CAMERADISTMULT") 
 	{
 	    ss >> OptsCameraDistMult;
+	    continue;
+	}
+    if(tag == "VIS_LINETHICKNESS") 
+	{
+	    ss >> VIS_LINETHICKNESS;
 	    continue;
 	}
     if(tag == "VIS_SKIPOUTOFFOCUS") 

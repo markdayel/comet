@@ -1908,6 +1908,16 @@ srand( rand_num_seed );
                 }
 			}
 
+            nuc_object.segs.addallnodes();  // put node data into segment bins
+
+            nuc_object.segs.savereport(filenum);
+            nuc_object.segs.saveSDreport(filenum);                
+	        nuc_object.segs.saveradialreport(filenum);
+            nuc_object.segs.saveradialaxisreport(filenum, 0);
+            nuc_object.segs.saveradialaxisreport(filenum, 1);
+            nuc_object.segs.saveradialaxisreport(filenum, 2);
+
+
 			if (theactin.brokensymmetry)
 			{	// only save bitmaps if symmetry broken, 
 				// 'cause we'll write the others later
@@ -1917,16 +1927,6 @@ srand( rand_num_seed );
 				// has finished (because we're sharing x,y,z temp bitmap files)
 				// bit this is probably impossible, since we're only calling this
 				// once symmetry broken, and by then things are very slow
-
-
-                nuc_object.segs.addallnodes();  // put node data into segment bins
-
-                nuc_object.segs.savereport(filenum);
-                nuc_object.segs.saveSDreport(filenum);                
-		        nuc_object.segs.saveradialreport(filenum);
-                nuc_object.segs.saveradialaxisreport(filenum, 0);
-                nuc_object.segs.saveradialaxisreport(filenum, 1);
-                nuc_object.segs.saveradialaxisreport(filenum, 2);
 
 				theactin.savebmp(filenum, xaxis, actin::runbg, true);
 				theactin.savebmp(filenum, yaxis, actin::runbg, true);

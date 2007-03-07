@@ -44,7 +44,7 @@ links_broken(0)
   	x = y = z = 0.0;
     link_force_vec.zero();
 	rep_force_vec.zero();
-    unit_vec_correct = false;
+    //unit_vec_correct = false;
 
 	nuc_repulsion_displacement_vec.zero();
 
@@ -76,7 +76,7 @@ links_broken(0)
     testnode = false;
     testsurface = 0;
     creation_iter_num = 0;
-    unit_vec_correct = false;
+    //unit_vec_correct = false;
 //    initial_repulsive_energy = -1.0; // start -ve before set
 
 	link_force_vec.zero();
@@ -156,7 +156,7 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
     //nucleator_stuck_position = *this;
 
 	harbinger = true;
-    unit_vec_correct = false;
+    //unit_vec_correct = false;
     setunitvec();
 
 	return true;       
@@ -205,7 +205,7 @@ int nodes::save_data(ofstream &ostr)
 
 bool nodes::load_data(ifstream &istrm) 
 {
-    unit_vec_correct = false;
+    //unit_vec_correct = false;
     Colour dummycol;
     // read in from the stream to our private data
     char ch;    
@@ -468,9 +468,9 @@ int nodes::savelinks(ofstream * outputstream)
 
     void nodes::setunitvec(void)
 	{	
-        if (unit_vec_correct)
-            return;
-        unit_vec_correct = true;  // prevent unnecessary recalculation if node not moved, etc.
+        //if (unit_vec_correct)
+        //    return;
+        //unit_vec_correct = true;  // prevent unnecessary recalculation if node not moved, etc.
 
         pos_in_nuc_frame=*this;
         ptheactin->world_to_nuc_frame(pos_in_nuc_frame);
@@ -485,7 +485,7 @@ int nodes::savelinks(ofstream * outputstream)
 		}
 		else
 		{	// capsule
-			if (fabs(z) < CAPSULE_HALF_LINEAR)
+			if (fabs(pos_in_nuc_frame.z) < CAPSULE_HALF_LINEAR)
 			{  // on cylinder, no z component
 
 				dist_from_surface = calcdist(pos_in_nuc_frame.x,pos_in_nuc_frame.y);   // not really dist_from_surface yet, need to subtract radius
@@ -500,7 +500,7 @@ int nodes::savelinks(ofstream * outputstream)
 
 				onseg = false;
 
-				if (z>0) // top
+				if (pos_in_nuc_frame.z>0) // top
 				{
 					vect offsetvec = pos_in_nuc_frame;
 					offsetvec.z -= CAPSULE_HALF_LINEAR;

@@ -85,6 +85,7 @@ class CometVtkVis {
   OptProjectionType OptsRenderProjection;
   bool OptsSkipOutOfFocusPoints;
   bool VTK_HIGHQUAL;
+  double VIS_LINETHICKNESS;
 
   bool OptVIEW_VTK;
 

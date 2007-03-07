@@ -114,12 +114,12 @@ public:
 
     vect posnoflastgridupdate;
 
-    bool unit_vec_correct;
+    //bool unit_vec_correct;
     vect pos_in_nuc_frame;
 
 	inline void applyforces() 
 	{	
-        unit_vec_correct = false;
+        //unit_vec_correct = false;
 
 	    if (VISCOSITY)
 	    {

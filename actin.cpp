@@ -512,17 +512,17 @@ int actin::saveinfo()
 	opruninfo << "Final existant nodes: " << existantnodes << endl;
 	cout << "Final existant nodes: " << existantnodes << endl;
 
-    opruninfo << setprecision(2);
-    opruninfo << "x bounds: " << setw(6) << minx << " to " << setw(5) << maxx << endl;
-    opruninfo << "y bounds: " << setw(6) << miny << " to " << setw(5) << maxy << endl;
-    opruninfo << "z bounds: " << setw(6) << minz << " to " << setw(5) << maxz << endl;
+    opruninfo << setprecision(1);
+    opruninfo << "x bounds: " << setw(5) << minx << " to " << setw(5) << maxx << endl;
+    opruninfo << "y bounds: " << setw(5) << miny << " to " << setw(5) << maxy << endl;
+    opruninfo << "z bounds: " << setw(5) << minz << " to " << setw(5) << maxz << endl;
 	
     cout << "Gridrange: +/- " << GRIDBOUNDS << " uM" << endl;
     
-    cout << setprecision(2);
-    cout << "x bounds: " << setw(6) << minx << " to " << setw(5) << maxx << endl;
-    cout << "y bounds: " << setw(6) << miny << " to " << setw(5) << maxy << endl;
-    cout << "z bounds: " << setw(6) << minz << " to " << setw(5) << maxz << endl;
+    cout << setprecision(1);
+    cout << "x bounds: " << setw(5) << minx << " to " << setw(5) << maxx << endl;
+    cout << "y bounds: " << setw(5) << miny << " to " << setw(5) << maxy << endl;
+    cout << "z bounds: " << setw(5) << minz << " to " << setw(5) << maxz << endl;
 
 	return 0;
 }
@@ -1047,8 +1047,8 @@ void actin::nucleator_node_interactions()
         {   
             if (p_nuc->collision(*i_node)) // (*i)->x,(*i)->y,(*i)->z)==0)  
 			    i_node->updategrid();  // ejected OK
-		    else
-			    i_node->depolymerize();  // not ejected OK, depolymerize
+		    //else
+			//    i_node->depolymerize();  // not ejected OK, depolymerize?  (no, this is worse than not doing it.---just report it)
         }
 
 		// do node-nucleator links:
@@ -3414,7 +3414,7 @@ void actin::set_sym_break_axes(void)
 
     if (p_nuc->geometry==nucleator::capsule)
     {
-        maxchiangle += PI/4;   // rotate into x/y plane for capsule
+        maxchiangle += PI/2;   // rotate into x/y plane for capsule
     }
 
     

@@ -32,7 +32,7 @@ removed without prior written permission from the author.
 // vector seems quite a bit faster
 //#define NODEGRIDTYPELIST 1
 
-#define BMPS_USING_LINKS 1
+//#define BMPS_USING_LINKS 1
 
 #define NO_CALC_STATS 1 // calculating stats slows things considerably (prolly because of trig functions,
                         // but is required if we want force/energy graphs)
