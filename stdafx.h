@@ -34,7 +34,7 @@ removed without prior written permission from the author.
 
 //#define BMPS_USING_LINKS 1
 
-#define NO_CALC_STATS 1 // calculating stats slows things considerably (prolly because of trig functions,
+//#define NO_CALC_STATS 1 // calculating stats slows things considerably (prolly because of trig functions,
                         // but is required if we want force/energy graphs)
 
 // #define NON_RANDOM 1   // keep nucleating from same places

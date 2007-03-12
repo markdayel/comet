@@ -2143,7 +2143,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     for(int i=0; i != highestnodecount; ++i)
     {
-		if (!node[i].polymer)
+       if (!node[i].polymer)
 			continue;
 
         // set speckle magnitude for this point

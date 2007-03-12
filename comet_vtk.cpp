@@ -151,6 +151,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     OptsUseNucTextureMap    = true;
     renderwin_npx = 0;
     renderwin_npy = 0;
+    VIS_PARALLELPROJECTION = true;
 
     VTK_HIGHQUAL = false;
 
@@ -1845,7 +1846,11 @@ void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
 
     renderer->GetActiveCamera()->SetFocalPoint(focalpoint.x, focalpoint.y, focalpoint.z);
   
-    renderer->GetActiveCamera()->ParallelProjectionOn(); // ParallelProjectionOn();
+    if (VIS_PARALLELPROJECTION)
+        renderer->GetActiveCamera()->ParallelProjectionOn(); // ParallelProjectionOn();
+    else
+        renderer->GetActiveCamera()->ParallelProjectionOff();
+
     renderer->GetActiveCamera()->SetViewAngle(VTK_VIEWANGLE);
     // FIXME: ML
     // should scale properly here to a value linked to the render setup
@@ -2041,7 +2046,13 @@ void CometVtkVis::setOptions()
 	    ss >> value;
 	    OptsSkipOutOfFocusPoints = getBoolOpt(value);
 	    continue;
-	}
+	} 
+    if(tag == "VIS_PARALLELPROJECTION") 
+        {
+	    ss >> value;
+	    VIS_PARALLELPROJECTION = getBoolOpt(value);
+	    continue;
+	} 
     if(tag == "VIS_USENUCTEXMAP") 
         {
 	    ss >> value;

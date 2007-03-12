@@ -956,8 +956,8 @@ int main(int argc, char* argv[])
 		    else if (tag == "VIEW_HEIGHT") 
 			    {ss >> VIEW_HEIGHT;} 
     		
-		    //else if (tag == "NODES_TO_UPDATE") 
-		    //	{ss >> NODES_TO_UPDATE;} 
+		    else if (tag == "NODES_TO_UPDATE") 
+		    	{ss >> NODES_TO_UPDATE;} 
     		
 		    else if (tag == "DISTANCE_TO_UPDATE") 
 			    {ss >> DISTANCE_TO_UPDATE;} 
@@ -2273,7 +2273,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
     ifstream ipsymbreaktime("symbreaktime.txt");
     if (!ipsymbreaktime) 
-    { 
+    {                           
         cout << "Unable to open file symbreaktime.txt for input";
     }
     else
@@ -2288,6 +2288,9 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     }
     
     cout << "Sym break at frame " << framemaxvelmoved << endl;
+
+
+
 
     const int maxframe = (int) nodeposns.size() - 1;
 
@@ -2314,6 +2317,27 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         cameravel = meanvel * 1.0 / ( 1.0 + exp( - 6.0 * (  2 * (double)(i - maxaccelframe) / (double)accelwidth) ));
     }
 
+
+    cout << "Loading frame " << (iter/InterRecordIterations) << " for scaling and to set sym break axis" << endl;
+
+    load_data(theactin, iter, false);
+
+    theactin.BMP_intensity_scaling = true;
+
+    theactin.savebmp(framemaxvelmoved, xaxis, actin::runfg, false); 
+    theactin.savebmp(framemaxvelmoved, yaxis, actin::runfg, false); 
+    theactin.savebmp(framemaxvelmoved, zaxis, actin::runfg, false);
+
+    cout << endl;
+
+    nuc_object.segs.addallnodes();                                  
+    nuc_object.segs.set_scale_factors();
+
+    ptheactin->set_sym_break_axes();
+    if (!POST_PROCESS4CPU)
+    {   // prevent race condition when doing the 4 cpu post process---the caller thread does the symmetry breaking save
+        ptheactin->save_sym_break_axes();
+    }
 
 
 	if (POST_PROCESS4CPU)
@@ -2357,26 +2381,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         theactin.node_tracks[yaxis].resize(0);
         theactin.node_tracks[zaxis].resize(0);
 
-
-        if (POST_BMP) // if we're doing the bitmaps, need to scale the intensities and segments
-        {
-
-            cout << "Loading frame " << (iter/InterRecordIterations) << " for scaling" << endl;
-
-            load_data(theactin, iter, false);
-
-            theactin.BMP_intensity_scaling = true;
-
-            theactin.savebmp(filenum, xaxis, actin::runfg, false); 
-		    theactin.savebmp(filenum, yaxis, actin::runfg, false); 
-		    theactin.savebmp(filenum, zaxis, actin::runfg, false);
-
-            cout << endl;
-
-            nuc_object.segs.addallnodes();                                  
-            nuc_object.segs.set_scale_factors();
-
-        }
+       
 
         if (BMP_TRACKS)
         {
