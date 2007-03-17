@@ -328,7 +328,8 @@ Nodes2d actin::linkremoveto;
 
 bool REWRITESYMBREAK = false;
 bool POST_PROCESS = false;
-bool POST_PROCESS4CPU = false;
+bool POST_PROCESSSINGLECPU = false;
+int POST_PROCESS_CPUS = 1;
 bool VIEW_VTK = false;
 
 int POST_PROC_ORDER = +1;  // +1 = forward, -1 = reverse;
@@ -394,8 +395,8 @@ int main(int argc, char* argv[])
 	    cerr << "Set numThreads to 1 to run in single threaded mode" << endl;
 	    cerr << "or to postprocess, specify files in terms of filenumber" 
 		 << endl << "./comet post 1:2:10" << endl
-         << "./comet post 0:0  <- use 0:0 to process all frames" << endl
-         << "./comet p4 0:0  <- use p4 to run 4 post-process threads simultaneously" << endl;
+         << "./comet post 0:0  <- use 0:0 to process all frames, multi thread if POST_PROCESS_CPUS > 1" << endl
+         << "./comet psingle 0:0  <- psingle means only one thread e.g. for interactive VTK" << endl;
 	    cerr << endl;
 
 	    exit(EXIT_FAILURE);
@@ -411,11 +412,17 @@ int main(int argc, char* argv[])
 		if (strcmp(argv[1], "post") == 0 )
 			POST_PROCESS = true;
 
-		if (strcmp(argv[1], "p4") == 0 )
+		if (strcmp(argv[1], "psingle") == 0 )
 		{
 			POST_PROCESS = true;
-			POST_PROCESS4CPU = true;
+			POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
 		}
+
+  //      if (strcmp(argv[1], "p2") == 0 )
+		//{
+		//	POST_PROCESS = true;
+		//	POST_PROCESS2CPU = true;
+		//}
 
 		if (strcmp(argv[2], "q") == 0 || strcmp(argv[2], "Q") == 0)
 			QUIET = true;
@@ -466,6 +473,12 @@ int main(int argc, char* argv[])
             (strcmp( hostname, "compute-0-15.local") == 0) )
     {
         CLUSTER=true;
+        POST_PROCESS_CPUS = 2;
+    }
+
+    if (    (strcmp( hostname, "medusa")       == 0) )
+    {
+        POST_PROCESS_CPUS = 4;
     }
 
 
@@ -734,8 +747,11 @@ int main(int argc, char* argv[])
 		else if (tag == "ALLOW_HARBINGERS_TO_MOVE") 
 			{ss >> buff2; if (buff2=="TRUE") ALLOW_HARBINGERS_TO_MOVE = true; else ALLOW_HARBINGERS_TO_MOVE = false;}
 
-        //else if (tag == "POST_PROC_ORDER") 
-		//	{ss >> POST_PROC_ORDER;}
+        else if (tag == "POST_PROC_ORDER") 
+			{ss >> POST_PROC_ORDER;}
+
+        else if (tag == "POST_PROCESS_CPUS") 
+			{ss >> POST_PROCESS_CPUS;}
 
 		else if (tag == "POST_BMP") 
 			{ss >> buff2; if (buff2=="TRUE") POST_BMP = true; else POST_BMP = false;}   
@@ -1104,6 +1120,8 @@ int main(int argc, char* argv[])
         NO_IMAGE_TEXT = true;  //remove image text for matrix display
         SYM_BREAK_TO_RIGHT = true;  // offset and fix break direction to right for matrix display
     }
+
+
 
 
     // calculate commonly used constants from parameters:
@@ -2334,33 +2352,45 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     nuc_object.segs.set_scale_factors();
 
     ptheactin->set_sym_break_axes();
-    if (!POST_PROCESS4CPU)
+
+    if (!POST_PROCESSSINGLECPU)
     {   // prevent race condition when doing the 4 cpu post process---the caller thread does the symmetry breaking save
         ptheactin->save_sym_break_axes();
     }
 
+    char command1[1024];
 
-	if (POST_PROCESS4CPU)
+	if (!POST_PROCESSSINGLECPU)
 	{
-		int threads = 4;
+
 		int firstframe =  *postprocess_iterations.begin()  / InterRecordIterations;
 		int lastframe  = *(postprocess_iterations.end()-1) / InterRecordIterations;
 
-		//lastframe = lastframe - (lastframe % 4);  // make # frames divisible by 4 for quicktime compat
+        if (lastframe - firstframe > POST_PROCESS_CPUS)
+        {  // only do multi thread if more than 1 to do
 
-		char command1[1024];
+		    //lastframe = lastframe - (lastframe % 4);  // make # frames divisible by 4 for quicktime compat
 
-		for (int i = 1; i != threads; ++i)
-		{
-			sprintf(command1, "%s post %i:%i:%i &", argv[0], firstframe + i, threads, lastframe);
-			system(command1);
-			//cout << command1 << endl;
-		}
+		    
 
-        // first one not background:
+		    for (int i = 1; i != POST_PROCESS_CPUS; ++i)
+		    {
+			    sprintf(command1, "%s psingle %i:%i:%i &", argv[0], firstframe + i, POST_PROCESS_CPUS, lastframe);
+			    system(command1);
+			    //cout << command1 << endl;
+		    }
 
-        sprintf(command1, "%s post %i:%i:%i", argv[0], firstframe , threads, lastframe);
-		system(command1);
+            // first one not background:
+
+            sprintf(command1, "%s psingle %i:%i:%i", argv[0], firstframe , POST_PROCESS_CPUS, lastframe);
+		    system(command1);
+        }
+        else
+        {
+            sprintf(command1, "%s psingle %i:%i", argv[0], firstframe , lastframe);
+		    system(command1);
+        }
+
 
 	} else
     {

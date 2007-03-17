@@ -287,6 +287,10 @@ public:
 
     void addbrownianforces();
 
+    double sym_break_x_angle,
+        sym_break_y_angle,
+        sym_break_z_angle;
+
     rotationmatrix nuc_to_world_rot;
 
 	inline int pixels(const double & coord) const

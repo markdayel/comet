@@ -238,6 +238,10 @@ actin::actin(void)
 
     nuc_struck_coverslip = false;
 
+    sym_break_x_angle = 0.0;
+    sym_break_y_angle = 0.0;
+    sym_break_z_angle = 0.0;
+
 	//debug:
 
 	//num_rotate = 0;
@@ -3334,8 +3338,10 @@ void actin::set_sym_break_axes(void)
 	rotationmatrix final_rotation;
 
     tmp_rotation.settoidentity();
-
-	double x_angle = 0, y_angle = 0; 
+ 
+    sym_break_x_angle = 0.0;
+    sym_break_y_angle = 0.0;
+    sym_break_z_angle = 0.0; 
 
     if (p_nuc->geometry==nucleator::sphere)
     {   // only rotate by x and y if sphere, otherwise just by 90 degrees in z axis (after z rot calc)
@@ -3346,24 +3352,24 @@ void actin::set_sym_break_axes(void)
         sym_break_direction.z=0.0;
 
 
-    x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
+    sym_break_x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
 
-    tmp_rotation.rotatematrix(x_angle, 0 , 0);
+    tmp_rotation.rotatematrix(sym_break_x_angle, 0 , 0);
     tmp_rotation.rotate(sym_break_direction);
 
     tmp_rotation.settoidentity();
 
-    y_angle = -atan2(sym_break_direction.x,sym_break_direction.z);
+    sym_break_y_angle = -atan2(sym_break_direction.x,sym_break_direction.z);
 
-    tmp_rotation.rotatematrix(0, y_angle , 0); // now pointing upwards
+    tmp_rotation.rotatematrix(0, sym_break_y_angle , 0); // now pointing upwards
     tmp_rotation.rotate(sym_break_direction);
 
     // construct x & y rotation matrix
 
     tmp_rotation.settoidentity();
 
-    tmp_rotation.rotatematrix(y_angle , yaxis);
-    tmp_rotation.rotatematrix(x_angle , xaxis);
+    tmp_rotation.rotatematrix(sym_break_y_angle , yaxis);
+    tmp_rotation.rotatematrix(sym_break_x_angle , xaxis);
 
     }
 
@@ -3375,10 +3381,10 @@ void actin::set_sym_break_axes(void)
     // to align the break, we 
 	// need to determine the z rotation by the principlal axis
 
-	double theta, chi, maxchi, maxchiangle;
+	double theta, chi, maxchi;
 
 	maxchi = 0;
-	maxchiangle = 0;
+	sym_break_z_angle = 0;
 
 	for(theta = -PI; theta < PI; theta+=PI/360)    // PI/360 i.e. 0.5 degree intervals
 	{
@@ -3407,14 +3413,14 @@ void actin::set_sym_break_axes(void)
 		if (chi > maxchi)
 		{
 			maxchi = chi;
-			maxchiangle = theta;
+			sym_break_z_angle = theta;
 		}
 
 	}
 
     if (p_nuc->geometry==nucleator::capsule)
     {
-        maxchiangle += PI/2;   // rotate into x/y plane for capsule
+        sym_break_z_angle += PI/2;   // rotate into x/y plane for capsule
     }
 
     
@@ -3437,26 +3443,26 @@ void actin::set_sym_break_axes(void)
 
     } else // restore the component of the sym break in the yz plane
     {
-        sym_break_rotation_to_xy_plane.rotatematrix(-x_angle, xaxis);
+        sym_break_rotation_to_xy_plane.rotatematrix(-sym_break_x_angle, xaxis);
     }
 
-	sym_break_rotation_to_xy_plane.rotatematrix(maxchiangle, zaxis);
-	sym_break_rotation_to_xy_plane.rotatematrix(y_angle, yaxis);
-	sym_break_rotation_to_xy_plane.rotatematrix(x_angle, xaxis);
+	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_z_angle, zaxis);
+	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_y_angle, yaxis);
+	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_x_angle, xaxis);
 
 
 
 	sym_break_rotation_to_zaxis.settoidentity();
 
-	sym_break_rotation_to_zaxis.rotatematrix(maxchiangle, zaxis);
-	sym_break_rotation_to_zaxis.rotatematrix(y_angle, yaxis);
-	sym_break_rotation_to_zaxis.rotatematrix(x_angle, xaxis);
+	sym_break_rotation_to_zaxis.rotatematrix(sym_break_z_angle, zaxis);
+	sym_break_rotation_to_zaxis.rotatematrix(sym_break_y_angle, yaxis);
+	sym_break_rotation_to_zaxis.rotatematrix(sym_break_x_angle, xaxis);
 
 
 
     //reverse_sym_break_rotation_to_xy_plane = sym_break_rotation_to_xy_plane.inverse();
 
-	cout << setprecision(1) << "Symmetry broken.  Camera rotation angles: " << x_angle*180/PI << ", " << y_angle*180/PI << ", " << maxchiangle*180/PI << endl;
+	cout << setprecision(1) << "Symmetry broken.  Camera rotation angles: " << sym_break_x_angle*180/PI << ", " << sym_break_y_angle*180/PI << ", " << sym_break_z_angle*180/PI << endl;
 
 	symbreakiter = iteration_num;
 
@@ -3474,7 +3480,8 @@ void actin::save_sym_break_axes(void)
 
 	opsymbreak  << symbreakiter << endl
 				<< sym_break_rotation_to_xy_plane << endl
-				<< sym_break_rotation_to_zaxis << endl;
+				<< sym_break_rotation_to_zaxis << endl
+                << sym_break_x_angle << " " << sym_break_y_angle << " " << sym_break_z_angle << endl;
 
 	opsymbreak.close();
 
@@ -3495,7 +3502,8 @@ bool actin::load_sym_break_axes(void)
 	{
 		ipsymbreak  >> symbreakiter 
 					>> sym_break_rotation_to_xy_plane
-					>> sym_break_rotation_to_zaxis;
+					>> sym_break_rotation_to_zaxis
+                    >> sym_break_x_angle >> sym_break_y_angle >> sym_break_z_angle ;
 
 		ipsymbreak.close();  
         
