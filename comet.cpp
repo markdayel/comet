@@ -347,7 +347,7 @@ string get_datafilename(const int iteration);
 void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations, const int& lastframedone);
 void postprocess(nucleator& nuc_object, actin &theactin, 
 		 vector<int> &postprocess_iterations, char* argv[], const vector<vect> & nodeposns);
-void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
+// void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
 // keyboard monitoring function
 
@@ -402,13 +402,11 @@ int main(int argc, char* argv[])
 	    exit(EXIT_FAILURE);
 	}
 
-    if (argc == 2) 
+    if (argc > 2) 
 	{
 		if (strcmp(argv[1], "sym") == 0 ) 
 			REWRITESYMBREAK = true;
-	}
-	else if (argc > 2)
-	{
+
 		if (strcmp(argv[1], "post") == 0 )
 			POST_PROCESS = true;
 
@@ -417,12 +415,6 @@ int main(int argc, char* argv[])
 			POST_PROCESS = true;
 			POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
 		}
-
-  //      if (strcmp(argv[1], "p2") == 0 )
-		//{
-		//	POST_PROCESS = true;
-		//	POST_PROCESS2CPU = true;
-		//}
 
 		if (strcmp(argv[2], "q") == 0 || strcmp(argv[2], "Q") == 0)
 			QUIET = true;
@@ -1238,7 +1230,7 @@ int main(int argc, char* argv[])
     vector<int> postprocess_iterations;
 	postprocess_iterations.resize(0);
 
-    if (POST_PROCESS)
+    if (POST_PROCESS || REWRITESYMBREAK)
     {
         cout << "Postprocessing iterations: ";
 	    get_postprocess_iterations(argv[2], postprocess_iterations, lastframedone);
@@ -1264,7 +1256,7 @@ int main(int argc, char* argv[])
     {  // new run, clear directories
 
 #ifndef NOKBHIT
-		if (!QUIET)
+		if (!QUIET) 
 		{        
 			cout << "Clear directories and start run(y/n)?";
 		    
@@ -1346,23 +1338,34 @@ int main(int argc, char* argv[])
 
     static nucleator nuc_object(NUCSHAPE);//, &theactin);
 
+    // formatting
+
+	cout.fill(' '); 
+	cout.setf(ios::fixed);
+	theactin.opruninfo.fill(' ');
+	theactin.opruninfo.setf(ios::fixed);
+
+
 	if (REWRITESYMBREAK)
 	{
-		rewrite_symbreak_bitmaps(nuc_object, theactin);   
-		exit(EXIT_SUCCESS);
+		//rewrite_symbreak_bitmaps(nuc_object, theactin);
+        POST_BMP = true;
+        POST_VTK = false;
+        POST_PROCESSSINGLECPU = true;
+        POST_REPORTS = true;
+        POST_PROC_ORDER = -1; // reverse order because we test presence of bitmap 1 to know we're done
+        
+		postprocess(nuc_object, theactin, postprocess_iterations,  argv , posn);
+        exit(EXIT_SUCCESS);
 	}
 
-	// write out parameters to screen and file
 
-	cout << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
-	cout << "Delta_t:                    " << DELTA_T << endl;
-
-	theactin.opruninfo.flush();
-
-	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
-	cout << "Frames every " << InterRecordIterations  
-		<< " iterations (" << TOT_FRAMES << " total)" << endl;
-
+    // Breakout if we are post processing
+	if (POST_PROCESS) // ( !postprocess_iterations.empty() )
+	{
+		postprocess(nuc_object, theactin, postprocess_iterations,  argv , posn);
+	    exit(EXIT_SUCCESS); // FIXME: early finish, move to two fcns (ML)
+	}
 	
 
 	unsigned int starttime, endtime, lasttime ,nowtime;//, lastitertime;
@@ -1374,12 +1377,7 @@ int main(int argc, char* argv[])
 	int lastlinksformed = 0;
 	int lastlinksbroken = 0;
 
-	// formatting
-
-	cout.fill(' '); 
-	cout.setf(ios::fixed);
-	theactin.opruninfo.fill(' ');
-	theactin.opruninfo.setf(ios::fixed);
+	
 
 	theactin.newnodescolour.setcol(0);
 
@@ -1388,17 +1386,18 @@ int main(int argc, char* argv[])
 	double x_angle, y_angle, z_angle, tot_rot;
 
 	vect last_center, center, delta_center;
-        
+       
     
+    // write out parameters to screen and file
 
+	cout << "Total simulation time:      " << TOTAL_SIMULATION_TIME << endl;
+	cout << "Delta_t:                    " << DELTA_T << endl;
 
+	theactin.opruninfo.flush();
 
-	// Breakout if we are post processing
-	if( !postprocess_iterations.empty() )
-	{
-		postprocess(nuc_object, theactin, postprocess_iterations,  argv , posn);
-	    exit(EXIT_SUCCESS); // FIXME: early finish, move to two fcns (ML)
-	}
+	cout << "Total iterations: " << TOTAL_ITERATIONS << endl;
+	cout << "Frames every " << InterRecordIterations  
+		<< " iterations (" << TOT_FRAMES << " total)" << endl;
 
 	// - - - - - - - - - - 
 	// main iteration loop
@@ -1826,8 +1825,8 @@ srand( rand_num_seed );
 					system(command1);
 				}
 
-				// call self with 'sym' argument to re-write the bitmaps
-				sprintf(command1, "%s sym 1>rewritesymbreak.txt 2>rewritesymbreak.err &", argv[0]);
+				// call self with 'sym' argument to re-write the bitmaps                                                       
+                sprintf(command1, "%s sym 1:%d 1>rewritesymbreak.txt 2>rewritesymbreak.err &", argv[0], filenum-1);
 				system(command1);
 
 			}  
@@ -2282,6 +2281,9 @@ void post_stats(actin &, const int filenum)
 void postprocess(nucleator& nuc_object, actin &theactin, 
 		 vector<int> &postprocess_iterations, char* argv[], const vector<vect> & nodeposns)
 {
+    if (postprocess_iterations.empty())
+        return; // skip if nothing to do
+
     // load the sym break info
 
     int framemaxvelmoved = 0;
@@ -2354,7 +2356,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     ptheactin->set_sym_break_axes();
 
     if (!POST_PROCESSSINGLECPU)
-    {   // prevent race condition when doing the 4 cpu post process---the caller thread does the symmetry breaking save
+    {   // prevent race condition when doing the mulit cpu post process---the caller thread does the symmetry breaking save
         ptheactin->save_sym_break_axes();
     }
 
@@ -2554,62 +2556,63 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 }
 
 
-void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
-{
-
-	int filenum;
-    theactin.load_sym_break_axes();
-
-	if (nuc_object.segs.load_scalefactors())
-    {
-        // if we're able to load the scale factors
-        // turn off the auto-scaling
-        theactin.BMP_intensity_scaling = false;
-    }
-
-    //cout << " InterRecordIterations " << InterRecordIterations
-	//	 << " theactin.symbreakiter " << theactin.symbreakiter << endl;
-
-    // go in reverse order, in case we're autoscaling
-
-
-    for(int i = theactin.symbreakiter - InterRecordIterations; i > 0; i-=InterRecordIterations)
-	{
-		filenum = (int)(i/InterRecordIterations);
-
-		//cout << "Post processing iteration " << *iteration << ": ";
-		cout << "Writing bitmaps for frame " << filenum << "/" 
-			 << (theactin.symbreakiter/InterRecordIterations)-1 << ": ";
-		cout.flush();
-
-		load_data(theactin, i, true);
-
-		theactin.load_sym_break_axes();   // overwrite rotation matrixes
-
-		// cout << theactin.sym_break_rotation_to_xy_plane;
-					
-		nuc_object.segs.addallnodes();  // put node data into segment bins
-
-        nuc_object.segs.savereport(filenum);
-        nuc_object.segs.saveSDreport(filenum);
-		nuc_object.segs.saveradialreport(filenum);
-        nuc_object.segs.saveradialaxisreport(filenum, 0);
-        nuc_object.segs.saveradialaxisreport(filenum, 1);
-        nuc_object.segs.saveradialaxisreport(filenum, 2);
-
-		// run them in foreground to slow things down
-		// so don't overload system with too many bg processes
-        // (do we want to change to conditional fg/bg, if not need y, z etc. as above)
-
-		theactin.savebmp(filenum, xaxis, actin::runfg, true);  // was bg
-		theactin.savebmp(filenum, yaxis, actin::runfg, true);	// was bg
-		theactin.savebmp(filenum, zaxis, actin::runfg, true);
-		
-		cout << "\r";
-		cout.flush();
-    }
-	cout << endl;
-}
+//void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
+//{   // no longer used---call made to postprocess() instead
+//
+//
+//	int filenum;
+//    theactin.load_sym_break_axes();
+//
+//	if (nuc_object.segs.load_scalefactors())
+//    {
+//        // if we're able to load the scale factors
+//        // turn off the auto-scaling
+//        theactin.BMP_intensity_scaling = false;
+//    }
+//
+//    //cout << " InterRecordIterations " << InterRecordIterations
+//	//	 << " theactin.symbreakiter " << theactin.symbreakiter << endl;
+//
+//    // go in reverse order, in case we're autoscaling
+//
+//
+//    for(int i = theactin.symbreakiter - InterRecordIterations; i > 0; i-=InterRecordIterations)
+//	{
+//		filenum = (int)(i/InterRecordIterations);
+//
+//		//cout << "Post processing iteration " << *iteration << ": ";
+//		cout << "Writing bitmaps for frame " << filenum << "/" 
+//			 << (theactin.symbreakiter/InterRecordIterations)-1 << ": ";
+//		cout.flush();
+//
+//		load_data(theactin, i, true);
+//
+//		theactin.load_sym_break_axes();   // overwrite rotation matrixes
+//
+//		// cout << theactin.sym_break_rotation_to_xy_plane;
+//					
+//		nuc_object.segs.addallnodes();  // put node data into segment bins
+//
+//        nuc_object.segs.savereport(filenum);
+//        nuc_object.segs.saveSDreport(filenum);
+//		nuc_object.segs.saveradialreport(filenum);
+//        nuc_object.segs.saveradialaxisreport(filenum, 0);
+//        nuc_object.segs.saveradialaxisreport(filenum, 1);
+//        nuc_object.segs.saveradialaxisreport(filenum, 2);
+//
+//		// run them in foreground to slow things down
+//		// so don't overload system with too many bg processes
+//        // (do we want to change to conditional fg/bg, if not need y, z etc. as above)
+//
+//		theactin.savebmp(filenum, xaxis, actin::runfg, true);  // was bg
+//		theactin.savebmp(filenum, yaxis, actin::runfg, true);	// was bg
+//		theactin.savebmp(filenum, zaxis, actin::runfg, true);
+//		
+//		cout << "\r";
+//		cout.flush();
+//    }
+//	cout << endl;
+//}
 
 
 

@@ -3348,7 +3348,7 @@ void actin::set_sym_break_axes(void)
 
     find_center(sym_break_direction);  // which way did the bead go?
 
-    if (COVERSLIPGAP < 2*RADIUS) // if we're using coverslip, flatten direction to xy plane
+    if (COVERSLIPGAP > 2*RADIUS) // if we're using coverslip, flatten direction to xy plane
         sym_break_direction.z=0.0;
 
 
@@ -3462,12 +3462,9 @@ void actin::set_sym_break_axes(void)
 
     //reverse_sym_break_rotation_to_xy_plane = sym_break_rotation_to_xy_plane.inverse();
 
-	cout << setprecision(1) << "Symmetry broken.  Camera rotation angles: " << sym_break_x_angle*180/PI << ", " << sym_break_y_angle*180/PI << ", " << sym_break_z_angle*180/PI << endl;
+	cout << setprecision(1) << "Camera rotation angles: " << sym_break_x_angle*180/PI << ", " << sym_break_y_angle*180/PI << ", " << sym_break_z_angle*180/PI << endl;
 
 	symbreakiter = iteration_num;
-
-
-    
 
 }
 
