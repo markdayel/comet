@@ -179,6 +179,7 @@ double TEST_DIST_EQUIL = 0.0001;
 
 bool WRITE_BMPS_PRE_SYMBREAK = false;
 bool SYM_BREAK_TO_RIGHT = false;
+bool SYM_IN_COVERSLIP_PLANE = false;
 
 bool QUIET = false;
 
@@ -329,7 +330,7 @@ Nodes2d actin::linkremoveto;
 bool REWRITESYMBREAK = false;
 bool POST_PROCESS = false;
 bool POST_PROCESSSINGLECPU = false;
-int POST_PROCESS_CPUS = 1;
+unsigned int POST_PROCESS_CPUS = 1;
 bool VIEW_VTK = false;
 
 int POST_PROC_ORDER = +1;  // +1 = forward, -1 = reverse;
@@ -709,7 +710,10 @@ int main(int argc, char* argv[])
         else if (tag == "SYM_BREAK_TO_RIGHT") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
 
-		else if (tag == "VTK_MOVE_WITH_BEAD") 
+        else if (tag == "SYM_IN_COVERSLIP_PLANE") 
+			{ss >> buff2; if (buff2=="TRUE") SYM_IN_COVERSLIP_PLANE = true; else SYM_IN_COVERSLIP_PLANE = false;}
+
+		else if (tag == "VTK_MOVE_WITH_BEAD")   
 			{ss >> buff2; if (buff2=="TRUE") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false;}
 
         else if (tag == "VTK_MIN_PLOT_LINK_FORCE_PCT") 
@@ -1062,7 +1066,8 @@ int main(int argc, char* argv[])
 
 		ss2 >> tag2 >> buff3 >> std::ws;
 
-		cout << setw(30) << tag2.c_str() << setw(7) << buff3.c_str() << endl;
+		if (!POST_PROCESSSINGLECPU)
+            cout << setw(30) << tag2.c_str() << setw(7) << buff3.c_str() << endl;
 
 	 }
 
@@ -1363,7 +1368,8 @@ int main(int argc, char* argv[])
     // Breakout if we are post processing
 	if (POST_PROCESS) // ( !postprocess_iterations.empty() )
 	{
-		postprocess(nuc_object, theactin, postprocess_iterations,  argv , posn);
+        postprocess(nuc_object, theactin, postprocess_iterations,  argv , posn);
+        
 	    exit(EXIT_SUCCESS); // FIXME: early finish, move to two fcns (ML)
 	}
 	
@@ -1663,6 +1669,7 @@ srand( rand_num_seed );
             if (!theactin.opinfo) 
 			{ cout << "Unable to open file " << infofilename << " for output"; }
 
+
 			theactin.opvelocityinfo 
 				<< (i*DELTA_T) << "," 
 				<< center.x << "," 
@@ -1766,8 +1773,14 @@ srand( rand_num_seed );
 				
 				theactin.brokensymmetry = true;
 
-				// set camera rotation for save  
-				theactin.set_sym_break_axes();
+                vect sym_break_direction = posn[filenum] - posn[filenum - 10];
+
+				// set camera rotation for save
+                if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 2*RADIUS))
+				    theactin.set_sym_break_axes(true,sym_break_direction);  // constrain to zy plane
+                else
+                    theactin.set_sym_break_axes(false,sym_break_direction);
+
 				theactin.save_sym_break_axes();
 
                 // calculate but don't write bitmaps to get scaling factors
@@ -2249,30 +2262,30 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
         //postprocess_iterations.clear();
         for(int i= start; i<=end; i+=step)
         {
-            postprocess_iterations.push_back(i);
+            postprocess_iterations.push_back(i);                          
         }
     } 
 }
 
 // STUB function, doesn't do anything, but fill implementation out here
 // 
-void post_stats(actin &, const int filenum)
-{
-  cout << "  saving statistics for " << filenum << endl;  
-
-  char nstats_filename[1024];
-  sprintf(nstats_filename , "%snodestats_%05i.txt", STATSDIR, filenum);
-  //ofstream nout;
-  //nout.open(nstats_filename);
-
-  char lstats_filename[1024];
-  sprintf(lstats_filename , "%slinkstats_%05i.txt", STATSDIR, filenum);
-  //ofstream lout;
-  //lout.open(lstats_filename);
-
-  // STUB for the function to get out statistics of current interest
-  // fill in calculations here
-}
+//void post_stats(actin &, const int filenum)
+//{
+//  cout << "  saving statistics for " << filenum << endl;  
+//
+//  char nstats_filename[1024];
+//  sprintf(nstats_filename , "%snodestats_%05i.txt", STATSDIR, filenum);
+//  //ofstream nout;
+//  //nout.open(nstats_filename);
+//
+//  char lstats_filename[1024];
+//  sprintf(lstats_filename , "%slinkstats_%05i.txt", STATSDIR, filenum);
+//  //ofstream lout;
+//  //lout.open(lstats_filename);
+//
+//  // STUB for the function to get out statistics of current interest
+//  // fill in calculations here
+//}
 
 // We may want to have a vtk postprocess as a seperate option?
 // otherwise I've lumped it with the bitmap processing here
@@ -2304,13 +2317,10 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         ipsymbreaktime >> framemaxvelmoved >> buff >> maxvelmoved;
         ipsymbreaktime.close();
 
-        iter =  framemaxvelmoved * InterRecordIterations;
+        iter = framemaxvelmoved * InterRecordIterations;
     }
     
     cout << "Sym break at frame " << framemaxvelmoved << endl;
-
-
-
 
     const int maxframe = (int) nodeposns.size() - 1;
 
@@ -2337,6 +2347,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         cameravel = meanvel * 1.0 / ( 1.0 + exp( - 6.0 * (  2 * (double)(i - maxaccelframe) / (double)accelwidth) ));
     }
 
+    //iter =  180 * InterRecordIterations;
 
     cout << "Loading frame " << (iter/InterRecordIterations) << " for scaling and to set sym break axis" << endl;
 
@@ -2353,7 +2364,12 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     nuc_object.segs.addallnodes();                                  
     nuc_object.segs.set_scale_factors();
 
-    ptheactin->set_sym_break_axes();
+    vect sym_break_direction = nodeposns[framemaxvelmoved + 10] - nodeposns[framemaxvelmoved - 10];
+
+    if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 2*RADIUS))
+	    ptheactin->set_sym_break_axes(true, sym_break_direction);  // constrain to zy plane
+    else
+        ptheactin->set_sym_break_axes(false,sym_break_direction);
 
     if (!POST_PROCESSSINGLECPU)
     {   // prevent race condition when doing the mulit cpu post process---the caller thread does the symmetry breaking save
@@ -2362,46 +2378,29 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
     char command1[1024];
 
-	if (!POST_PROCESSSINGLECPU)
-	{
+    if (!POST_PROCESSSINGLECPU && postprocess_iterations.size() > POST_PROCESS_CPUS)
+	{   // divide up tasks and spawn worker processes
 
 		int firstframe =  *postprocess_iterations.begin()  / InterRecordIterations;
 		int lastframe  = *(postprocess_iterations.end()-1) / InterRecordIterations;
 
-        if (lastframe - firstframe > POST_PROCESS_CPUS)
-        {  // only do multi thread if more than 1 to do
-
-		    //lastframe = lastframe - (lastframe % 4);  // make # frames divisible by 4 for quicktime compat
-
-		    
-
-		    for (int i = 1; i != POST_PROCESS_CPUS; ++i)
-		    {
-			    sprintf(command1, "%s psingle %i:%i:%i &", argv[0], firstframe + i, POST_PROCESS_CPUS, lastframe);
-			    system(command1);
-			    //cout << command1 << endl;
-		    }
-
-            // first one not background:
-
-            sprintf(command1, "%s psingle %i:%i:%i", argv[0], firstframe , POST_PROCESS_CPUS, lastframe);
+	    for (unsigned int i = 1; i != POST_PROCESS_CPUS; ++i)
+	    {
+		    sprintf(command1, "%s psingle %i:%i:%i &", argv[0], firstframe + i, POST_PROCESS_CPUS, lastframe);
 		    system(command1);
-        }
-        else
-        {
-            sprintf(command1, "%s psingle %i:%i", argv[0], firstframe , lastframe);
-		    system(command1);
-        }
+		    //cout << command1 << endl;
+	    }
 
+        // do first one in foreground:
 
+        sprintf(command1, "%s psingle %i:%i:%i", argv[0], firstframe , POST_PROCESS_CPUS, lastframe);
+	    system(command1);
+ 
 	} else
     {
 
 		int filenum;
 
-		// vtk
-		
-	    
 		cout << "Post processing " 
 		 << postprocess_iterations.size()
 		 <<  " data sets." << endl;
@@ -2412,8 +2411,6 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         theactin.node_tracks[xaxis].resize(0);
         theactin.node_tracks[yaxis].resize(0);
         theactin.node_tracks[zaxis].resize(0);
-
-       
 
         if (BMP_TRACKS)
         {
@@ -2436,6 +2433,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         // causing segfaults for some reason
         // workaround is to create the vtk object within the loop, so that
         // the destructor clears out and we recreate the object every time
+
         //CometVtkVis vtkvis(true); // should this be false? (i.e. no render window)
 
 
@@ -2536,11 +2534,11 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 		    }
 
-		    if (POST_STATS)
-		    {
+		    //if (POST_STATS)
+		    //{
 		      // cout << "- statistics: " << filenum << endl;
-		      post_stats(theactin, filenum);
-		    }
+		    //  post_stats(theactin, filenum);
+		    //}
     	}
 
 	}

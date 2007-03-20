@@ -66,8 +66,10 @@ actin::actin(void)
 //    testaverageposn.zero();
 //    lasttestaverageposn.zero();
     
-
-	opvelocityinfo << "time,x,y,z,vel" << endl;
+    if (!REWRITESYMBREAK && !POST_PROCESS)
+    {
+	    opvelocityinfo << "time,x,y,z,vel" << endl;
+    }
 
 	crosslinknodesdelay.resize(CROSSLINKDELAY);
 
@@ -84,11 +86,11 @@ actin::actin(void)
 	}
 
 	cout << "     GridExtent : +/-" << GRIDBOUNDS << " uM" << endl;
-	cout << " GridResolution : " << GRIDRES << " uM" << endl;
-	cout << "TotalGridpoints : " << (GRIDSIZE*GRIDSIZE*GRIDSIZE) << endl;
+	//cout << " GridResolution : " << GRIDRES << " uM" << endl;
+	//cout << "TotalGridpoints : " << (GRIDSIZE*GRIDSIZE*GRIDSIZE) << endl;
 
-	cout << "Zeroing Grid...";
-	cout.flush();
+	//cout << "Zeroing Grid...";
+	//cout.flush();
     
     	     
     #ifdef NODE_GRID_USE_ARRAYS
@@ -143,7 +145,7 @@ actin::actin(void)
 
     #endif
 
-	cout << "Done" << endl << endl;
+	//cout << "Done" << endl << endl;
 
 	speckle_array_size = 10000;
 	speckle_array.resize(speckle_array_size);
@@ -213,9 +215,9 @@ actin::actin(void)
 	//nodes_within_nucleator.reserve(10000);
 	linkformto.reserve(128);
 
-	cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
+	//cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
 
-	cout << "Memory for nodes: " << (node.size() * sizeof(node[0])/(1024*1024)) << " MB" << endl;
+	//cout << "Memory for nodes: " << (node.size() * sizeof(node[0])/(1024*1024)) << " MB" << endl;
 
 
 	//findnearbynodes_collision_setup(NODE_REPULSIVE_RANGE_GRIDSEARCH);  
@@ -3326,13 +3328,13 @@ void actin::setdontupdates(void)
 	}
 }
 
-void actin::set_sym_break_axes(void)
+void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direction)
 {
     
 
 	vect tmp_nodepos;
 	//vect CofM;
-	vect sym_break_direction;
+	//vect sym_break_direction;
 
 	rotationmatrix tmp_rotation, tmp_rotation2;	
 	rotationmatrix final_rotation;
@@ -3346,23 +3348,25 @@ void actin::set_sym_break_axes(void)
     if (p_nuc->geometry==nucleator::sphere)
     {   // only rotate by x and y if sphere, otherwise just by 90 degrees in z axis (after z rot calc)
 
-    find_center(sym_break_direction);  // which way did the bead go?
+    //find_center(sym_break_direction);  // which way did the bead go?
 
-    if (COVERSLIPGAP > 2*RADIUS) // if we're using coverslip, flatten direction to xy plane
-        sym_break_direction.z=0.0;
+     
+    //if (constrain_to_zy_plane) // if we're using coverslip, flatten direction to zy plane
+    //   sym_break_direction.x=0.0;
 
-
+    tmp_rotation.settoidentity();
     sym_break_x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
 
     tmp_rotation.rotatematrix(sym_break_x_angle, 0 , 0);
     tmp_rotation.rotate(sym_break_direction);
 
-    tmp_rotation.settoidentity();
 
     sym_break_y_angle = -atan2(sym_break_direction.x,sym_break_direction.z);
 
     tmp_rotation.rotatematrix(0, sym_break_y_angle , 0); // now pointing upwards
     tmp_rotation.rotate(sym_break_direction);
+
+
 
     // construct x & y rotation matrix
 
@@ -3399,8 +3403,14 @@ void actin::set_sym_break_axes(void)
 				continue;
 
 			tmp_nodepos = node[i];
+            
+            tmp_nodepos -= p_nuc->position;
+
 			tmp_rotation.rotate(tmp_nodepos);   // rotate points to bring in line with sym break dir'n
 			tmp_rotation2.rotate(tmp_nodepos);	// rotate z
+
+            tmp_nodepos = tmp_nodepos.unitvec();  // normalize so we don't weight further ones more
+
 
 			// only look at front of bead (i.e. new z<0, in direction of movement)
 			//if (tmp_nodepos.z<0)
@@ -3424,7 +3434,11 @@ void actin::set_sym_break_axes(void)
     }
 
     
-
+    if (constrain_to_zy_plane) // if we're using coverslip, flatten direction to zy plane
+    {
+        sym_break_z_angle=0.0;
+        sym_break_y_angle=0.0;
+    }
 
 	// now have all the angles
 	// need to assemble them in the right (reverse) order z,y,x
@@ -3450,7 +3464,7 @@ void actin::set_sym_break_axes(void)
 	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_y_angle, yaxis);
 	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_x_angle, xaxis);
 
-
+    
 
 	sym_break_rotation_to_zaxis.settoidentity();
 
@@ -3482,7 +3496,7 @@ void actin::save_sym_break_axes(void)
 
 	opsymbreak.close();
 
-	//cout << "'sym_break_axis.txt' file written" << endl;
+	cout << "'sym_break_axis.txt' file written" << endl;
 }
 
 bool actin::load_sym_break_axes(void)
