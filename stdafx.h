@@ -222,6 +222,9 @@ extern int NUM_THREAD_DATA_CHUNKS;
 extern bool COL_NODE_BY_STRAIN;
 extern bool COL_LINK_BY_DIRN;
 extern bool COL_INDIVIDUAL_NODES;
+extern double NODE_SCALE_GAMMA;
+extern bool COL_GREY_BGND;
+extern double COL_INDIVIDUAL_SCALE;
 
 //-- Threading
 extern TaskQueue thread_queue;

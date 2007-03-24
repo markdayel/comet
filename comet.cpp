@@ -112,6 +112,9 @@ bool BMP_FIX_BEAD_ROTATION = false;
 bool COL_NODE_BY_STRAIN = false;
 bool COL_LINK_BY_DIRN = false;
 bool COL_INDIVIDUAL_NODES = false;
+double NODE_SCALE_GAMMA = 1.0;
+bool COL_GREY_BGND = false;
+double COL_INDIVIDUAL_SCALE = 8000;
 
 double MOFI =  0.1;
 
@@ -366,20 +369,18 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 string strtoupper(string str)
 {
-   for(unsigned int i=0; i != str.length(); i++)
-   {
-      str[i] = toupper(str[i]);
-   }
-   return str;//return the converted string
+   for(unsigned int i=0; i != str.length(); i++) 
+       str[i] = toupper(str[i]);
+
+   return str;
 }
  
 string strtolower(string str)
 {
    for(unsigned int i=0; i != str.length(); i++)
-   {
       str[i] = tolower(str[i]);
-   }
-   return str;//return the converted string
+
+   return str;
 }
 
 // main 
@@ -396,8 +397,7 @@ int main(int argc, char* argv[])
 	    cerr << "Set numThreads to 1 to run in single threaded mode" << endl;
 	    cerr << "or to postprocess, specify files in terms of filenumber" 
 		 << endl << "./comet post 1:2:10" << endl
-         << "./comet post 0:0  <- use 0:0 to process all frames, multi thread if POST_PROCESS_CPUS > 1" << endl
-         << "./comet psingle 0:0  <- psingle means only one thread e.g. for interactive VTK" << endl;
+         << "./comet post 0:0  <- use 0:0 to process all frames, multi thread if POST_PROCESS_CPUS > 1" << endl;
 	    cerr << endl;
 
 	    exit(EXIT_FAILURE);
@@ -433,10 +433,6 @@ int main(int argc, char* argv[])
     sprintf(IMAGEMAGICKCONVERT,"convert");
     sprintf(IMAGEMAGICKMOGRIFY,"mogrify");
 
-
-
-    
-
 	char hostname[1024]="";
 
 #ifndef _WIN32
@@ -466,7 +462,7 @@ int main(int argc, char* argv[])
             (strcmp( hostname, "compute-0-15.local") == 0) )
     {
         CLUSTER=true;
-        POST_PROCESS_CPUS = 2;
+        POST_PROCESS_CPUS = 2;  // the cluster machines have 2 cpus
     }
 
     if (    (strcmp( hostname, "medusa")       == 0) )
@@ -487,11 +483,7 @@ int main(int argc, char* argv[])
 		if (strcmp( hostname, "guanine.ucsg.edu") == 0)
 		{
 			nicelevel = 0;
-		} else if (CLUSTER)
-        {
-            nicelevel = default_nice_level;
-        }
-		else
+		} else
 		{
 			nicelevel = default_nice_level;
         }
@@ -994,6 +986,15 @@ int main(int argc, char* argv[])
 
             else if (tag == "COL_INDIVIDUAL_NODES") 
 			    {ss >> buff2;if(buff2=="TRUE") COL_INDIVIDUAL_NODES = true;else COL_INDIVIDUAL_NODES = false;}
+            
+            else if (tag == "NODE_SCALE_GAMMA") 
+			    {ss >> NODE_SCALE_GAMMA;}
+
+            else if (tag == "COL_GREY_BGND") 
+			    {ss >> buff2;if(buff2=="TRUE") COL_GREY_BGND = true;else COL_GREY_BGND = false;}
+
+            else if (tag == "COL_INDIVIDUAL_SCALE") 
+			    {ss >> COL_INDIVIDUAL_SCALE;}
 
             else if (tag == "PLOTFORCES")         
 			    {ss >> buff2;if(buff2=="TRUE") PLOTFORCES = true;else PLOTFORCES = false;}
@@ -1204,7 +1205,7 @@ int main(int argc, char* argv[])
 
     int lastframedone = 0;
 
-    if ((RESTORE_FROM_FRAME != 0) || (POST_PROCESS))
+    if ((RESTORE_FROM_FRAME != 0) || POST_PROCESS || REWRITESYMBREAK)
     {   // if restoring or post-processing, 
         // restore the NODESUPDATE list
         // post-processing uses this to set lastframedone
@@ -1358,7 +1359,7 @@ int main(int argc, char* argv[])
         POST_VTK = false;
         POST_PROCESSSINGLECPU = true;
         POST_REPORTS = true;
-        POST_PROC_ORDER = -1; // reverse order because we test presence of bitmap 1 to know we're done
+        POST_PROC_ORDER = 1; // must go forward because we test presence of last bitmap to know we're done
         
 		postprocess(nuc_object, theactin, postprocess_iterations,  argv , posn);
         exit(EXIT_SUCCESS);
@@ -1814,18 +1815,18 @@ srand( rand_num_seed );
 				if (Z_BMP)
 				{
 					sprintf(last_symbreak_bmp_filename, "%sz_proj_%05i.%s",BITMAPDIR, 
-							1 ,BMP_OUTPUT_FILETYPE.c_str());
+							filenum-1 ,BMP_OUTPUT_FILETYPE.c_str());
 				}
 				else 
 				{
 					if (Y_BMP)
 					{
 						sprintf(last_symbreak_bmp_filename, "%sy_proj_%05i.%s",BITMAPDIR, 
-								1 ,BMP_OUTPUT_FILETYPE.c_str());
+								filenum-1 ,BMP_OUTPUT_FILETYPE.c_str());
 					} else
 					{
 						sprintf(last_symbreak_bmp_filename, "%sx_proj_%05i.%s",BITMAPDIR, 
-								1 ,BMP_OUTPUT_FILETYPE.c_str());
+								filenum-1 ,BMP_OUTPUT_FILETYPE.c_str());
 					}
 				}
 				

@@ -2233,10 +2233,14 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         //     cout << " " << x << "," << y ;
 
 #ifdef BMP_USE_FOCAL_DEPTH
-            mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
+        //mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
+        
+        if (fabs(rotatednodepositions[i].x) > FOCALDEPTH)
+            continue;
+
 #endif
 
-
+        mult = 1.0;
 
         if (COL_NODE_BY_STRAIN)
         {
@@ -2258,16 +2262,22 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 value = value * ( 1 - dirfactor );
 
 #else
-            double value = node[i].linkforce_transverse + node[i].linkforce_radial; 
+            double value = node[i].linkforce_transverse / COL_INDIVIDUAL_SCALE;
+            //double value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
 #endif
 
             //if (prob_to_bool(0.01))
             //    cout << " " << value;
 
             if (COL_INDIVIDUAL_NODES)
+            {
                 nodecol.setcol(value);
-            else          
+            }
+            else
+            {
                 mult = value;
+                   
+            }
 
 	        //w = pow( w , 1/COLOUR_GAMMA);	    
 	        //w = w*0.9+0.1;
@@ -2295,12 +2305,18 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                     if (!COL_INDIVIDUAL_NODES)
                     {
                     imageR[x+xg][y+yg] += 10 * mult * GaussMat[xg+xgmax][yg+ygmax];
-                    } 
-                    else
+                    }
+
+                    if (COL_GREY_BGND )
                     {
-                    imageR[x+xg][y+yg] += 10 * nodecol.r * GaussMat[xg+xgmax][yg+ygmax];
-                    imageG[x+xg][y+yg] += 10 * nodecol.g * GaussMat[xg+xgmax][yg+ygmax];
-                    imageB[x+xg][y+yg] += 10 * nodecol.b * GaussMat[xg+xgmax][yg+ygmax];
+                    imageG[x+xg][y+yg] += GaussMat[xg+xgmax][yg+ygmax];
+                    }
+                    
+                    if (COL_INDIVIDUAL_NODES)
+                    {
+                    imageR[x+xg][y+yg] += mult * 10 * nodecol.r * GaussMat[xg+xgmax][yg+ygmax];
+                    imageG[x+xg][y+yg] += mult * 10 * nodecol.g * GaussMat[xg+xgmax][yg+ygmax];
+                    imageB[x+xg][y+yg] += mult * 10 * nodecol.b * GaussMat[xg+xgmax][yg+ygmax];
                     }
                 }
                 else
@@ -2342,8 +2358,6 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 	}
 
-
-
     if (BMP_intensity_scaling)
     {
 
@@ -2360,15 +2374,35 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	    }
     }
 
-    const double Rscale = BMP_INTENSITY_SCALE / imageRmax[proj];
-    const double Gscale = BMP_INTENSITY_SCALE / imageGmax[proj];
-    const double Bscale = BMP_INTENSITY_SCALE / imageBmax[proj];
+    double Rscale = BMP_INTENSITY_SCALE / imageRmax[proj];
+    double Gscale = BMP_INTENSITY_SCALE / imageGmax[proj];
+    double Bscale = BMP_INTENSITY_SCALE / imageBmax[proj];
+
+    // scale
+    if ((COL_NODE_BY_STRAIN) && (!COL_INDIVIDUAL_NODES) && (fabs(1.0 - NODE_SCALE_GAMMA) > 0.001))
+    {
+    for (x = 0; x != BMP_WIDTH; ++x)
+	    {
+		    for (y = 0; y != BMP_HEIGHT; ++y)
+		    {
+                imageR[x][y] = pow( imageR[x][y] / imageRmax[proj] , 1.0 / NODE_SCALE_GAMMA);
+		    }
+	    }
+
+    Rscale = 1;
+    }
+
+    
+
+     
+
+    double minscale = mymin(mymin(Rscale,Gscale),Bscale);
 
     if (COL_NODE_BY_STRAIN)
     {   
         if (COL_INDIVIDUAL_NODES)
          { // scale RGB by same scale to keep colors
-            double minscale = mymin(mymin(Rscale,Gscale),Bscale);
+            
             for (x = 0; x != BMP_WIDTH; ++x)
             {
 	            for (y = 0; y != BMP_HEIGHT; ++y)
@@ -2385,15 +2419,25 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             for (x = 0; x != BMP_WIDTH; ++x)
             {
 	            for (y = 0; y != BMP_HEIGHT; ++y)
-	            {
+	            {   
+                    double colscale;
+                    
                     if (imageR[x][y] > 0.00001)
                     {
                         nodecol.setcol( imageR[x][y] * Rscale );
-                        double scale = mymin ( (imageR[x][y]* Rscale) / 0.6, 1.0);   // fade to black for bottom part
-		                imageR[x][y] = scale * nodecol.r;
-                        imageG[x][y] = scale * nodecol.g; 
-                        imageB[x][y] = scale * nodecol.b;
+                        colscale = mymin ( (imageR[x][y]* Rscale) / 0.6, 1.0);   // fade to black for bottom part
                     }
+                    else 
+                    {
+                        colscale = 0.0;
+                    }
+	                
+                    double greyscale = imageG[x][y] * Gscale ;
+
+                    imageR[x][y] = mymin( mymax( greyscale , colscale * nodecol.r), 1.0);
+                    imageG[x][y] = mymin( mymax( greyscale , colscale * nodecol.g), 1.0); 
+                    imageB[x][y] = mymin( mymax( greyscale , colscale * nodecol.b), 1.0);
+                    
 	            }
             }
         }
