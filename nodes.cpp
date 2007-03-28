@@ -478,7 +478,7 @@ int nodes::savelinks(ofstream * outputstream)
 		if (NUCSHAPE == nucleator::sphere)
 		{
             dist_from_surface = pos_in_nuc_frame.length();	 // not really dist_from_surface yet, need to subtract radius
-            unit_vec_posn = pos_in_nuc_frame * (1/dist_from_surface);  // set unit vector position
+            unit_vec_posn = pos_in_nuc_frame / dist_from_surface;  // set unit vector position
 			//nearest_surface_point = unit_vec_posn
 			dist_from_surface -= RADIUS;
 
@@ -489,7 +489,9 @@ int nodes::savelinks(ofstream * outputstream)
 			{  // on cylinder, no z component
 
 				dist_from_surface = calcdist(pos_in_nuc_frame.x,pos_in_nuc_frame.y);   // not really dist_from_surface yet, need to subtract radius
-				unit_vec_posn = vect(pos_in_nuc_frame.x/dist_from_surface, pos_in_nuc_frame.y/dist_from_surface, 0);
+				unit_vec_posn.x = pos_in_nuc_frame.x / dist_from_surface;
+                unit_vec_posn.y = pos_in_nuc_frame.y / dist_from_surface;
+                unit_vec_posn.z = 0.0;
 				dist_from_surface -= RADIUS;
 				//nearest_surface_point = unit_vec_posn + vect(0,0,z);
 				onseg = true;
@@ -507,7 +509,7 @@ int nodes::savelinks(ofstream * outputstream)
 
                     dist_from_surface = offsetvec.length();	// not really dist_from_surface yet, need to subtract radius
 
-                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector pos
+                    unit_vec_posn = offsetvec / dist_from_surface;  // set unit vector pos
 
 					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
 
@@ -521,7 +523,7 @@ int nodes::savelinks(ofstream * outputstream)
 
                     dist_from_surface = offsetvec.length();	 // not really dist_from_surface yet, need to subtract radius
 
-                    unit_vec_posn = offsetvec * (1/dist_from_surface);  // set unit vector pos
+                    unit_vec_posn = offsetvec / dist_from_surface;  // set unit vector pos
 
 					//nearest_surface_point = unit_vec_posn + vect(0,0,CAPSULE_HALF_LINEAR);
 

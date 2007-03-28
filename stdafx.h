@@ -43,8 +43,6 @@ removed without prior written permission from the author.
 //#define USE_SSE_APPROX_SQRT 1
 #endif
 
-#define BMP_USE_FOCAL_DEPTH 1
-
 //#define TIMERCPUTIME  // timers report cpu time instead of wall time
 
 // mersennetwister.h is causing bus error for some reason...
@@ -201,6 +199,7 @@ extern vector <MTRand> mers_rand;
 extern bool ALLOW_HARBINGERS_TO_MOVE;
 extern bool CAGE_ON_SIDE;
 extern bool SYM_BREAK_TO_RIGHT;
+extern bool BMP_CENTER_ON_LEFT;
 
 extern bool COMPRESSDATAFILES; 
 
@@ -224,7 +223,11 @@ extern bool COL_LINK_BY_DIRN;
 extern bool COL_INDIVIDUAL_NODES;
 extern double NODE_SCALE_GAMMA;
 extern bool COL_GREY_BGND;
+extern bool NO_BGND;
 extern double COL_INDIVIDUAL_SCALE;
+
+extern bool BMP_LINKS_BROKEN;
+
 
 //-- Threading
 extern TaskQueue thread_queue;
@@ -346,11 +349,16 @@ extern double NON_VISC_WEIGHTING;
 extern double GAUSSFWHM;
 extern double SPECKLE_FACTOR;
 extern bool   SPECKLE;
+extern bool SPECKLE_NO_ROTATE;
 
 extern bool SPECKLEGRID;
 extern double SPECKLEGRIDPERIOD;
 extern double SPECKLEGRIDTIMEWIDTH;
 extern double SPECKLEGRIDSTRIPEWIDTH;
+
+extern double FINPITCH;
+extern double FINWIDTHANGLE; 
+extern double FINRATIO;
 
 extern bool POLY_FEEDBACK;
 extern double POLY_FEEDBACK_DIST;

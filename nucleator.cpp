@@ -289,6 +289,29 @@ int nucleator::addnodescapsule(void)
 			if (ASYMMETRIC_NUCLEATION==8)  //  cap one side
 				if ( (fabs(z) < (CAPSULE_HALF_LINEAR)) || (z<0))
 					continue;
+            if (ASYMMETRIC_NUCLEATION==9)  /// no nucleation above z=0 , fin on one side :)
+            {
+                if (z<0) continue;
+
+                //double FINPITCH =  0.1; // 0.1  ; // turns per length
+                //double FINWIDTHANGLE = 30 * PI / 180; // the angular width of the 
+                //double FINRATIO = 0.1; // 0 to 1, ratio of fin to non-fin
+
+                double finangle = z * (FINPITCH * ( 2 * PI / 2 * CAPSULE_HALF_LINEAR ) );
+                bool finnoskip = prob_to_bool(FINRATIO);
+
+                if ( fabs( fmod((theta - finangle * PI / 180 ), 2*PI )) * 2 < FINWIDTHANGLE  )
+                {   // on the fin
+                    if (!finnoskip)
+                        continue;
+                }
+                else
+                {
+                    if (finnoskip)
+                       continue;
+                }
+
+            }
 		}
 
 
@@ -320,6 +343,7 @@ int nucleator::addnodescapsule(void)
         nodesadded++;
 
 	}
+
 	return nodesadded;
 }
 
@@ -444,7 +468,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 		    { 
 			    // on the cylinder
 
-			    r = calcdist(node_world.pos_in_nuc_frame.x,node_world.pos_in_nuc_frame.y);
+			    r = calcdist(node_world.pos_in_nuc_frame.x, node_world.pos_in_nuc_frame.y);
 
                 // note the nucleator_stuck_position is used to produce the patterned speckle
                 // tracks and should represent the last nucleator collision position
@@ -459,6 +483,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 				}
 
 			    scale = rad / r;
+
 			    node_world.pos_in_nuc_frame.x *= scale;
 			    node_world.pos_in_nuc_frame.y *= scale;
     			
@@ -485,7 +510,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
                     node_world.nucleator_stuck_position.x = node_world.pos_in_nuc_frame.x * (RADIUS/r);
 				    node_world.nucleator_stuck_position.y = node_world.pos_in_nuc_frame.y * (RADIUS/r);
 
-                    if (node_world.pos_in_nuc_frame.z<0)  // make into a sphere again
+                    if (node_world.pos_in_nuc_frame.z<0)  // undo make into sphere for stuck position
 					    node_world.nucleator_stuck_position.z = z2 * (RADIUS/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
 				    else
 					    node_world.nucleator_stuck_position.z = z2 * (RADIUS/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
@@ -497,9 +522,9 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 			    z2 *= scale;
 
 				if (node_world.pos_in_nuc_frame.z<0)
-				    node_world.pos_in_nuc_frame.z = z2 - (CAPSULE_HALF_LINEAR);
+				    node_world.pos_in_nuc_frame.z = z2 - CAPSULE_HALF_LINEAR;
 			    else
-				    node_world.pos_in_nuc_frame.z = z2 + (CAPSULE_HALF_LINEAR);
+				    node_world.pos_in_nuc_frame.z = z2 + CAPSULE_HALF_LINEAR;
     		
 			    node_world.nucleator_impacts += rad - r;
 		    }

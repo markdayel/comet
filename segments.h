@@ -55,7 +55,7 @@ public:
 
 	void getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const;
     void getsegmentnum(const vect& node, double& xseg, double& yseg, double& zseg) const;
-    double getsegmentnum(const vect& node, const projection &axis);
+    double getsegmentnum(const vect& node, const projection &axis) const;
 
 	void getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdist) const;
 

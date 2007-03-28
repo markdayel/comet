@@ -383,10 +383,12 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
 
     setProjection(cameraposition,cameratarget);  // also sets the rotation of the objects, so comes before actors:
 	renderer->ResetCameraClippingRange();
+    //renderer->ResetCameraClippingRange(FLT_MIN,FLT_MAX,FLT_MIN,FLT_MAX,FLT_MIN,FLT_MAX);
+    
 
     // add objects to renderer
     
-  
+             
     if(OptsRenderNodes)
 	    addNodes();
   

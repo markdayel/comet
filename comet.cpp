@@ -60,7 +60,7 @@ int VTK_AA_FACTOR = 1;
 
 bool VTK_NUC_LINKS_ONLY = false;
 
-double COLOUR_GAMMA = 1.8;
+double COLOUR_GAMMA = 1.6;
 bool VTK_MOVE_WITH_BEAD = true;
 double VTK_MIN_PLOT_LINK_FORCE_PCT = 0.0;
 
@@ -81,6 +81,7 @@ bool POST_VTK = false;
 bool POST_STATS = false;
 bool POST_REPORTS = false;
 bool BMP_TRACKS = false;
+bool BMP_LINKS_BROKEN = false;
 
 bool PLOTFORCES = true;
 
@@ -92,6 +93,8 @@ bool SPECKLEGRID = false;
 double SPECKLEGRIDPERIOD = 1.0;
 double SPECKLEGRIDTIMEWIDTH = 0.1;
 double SPECKLEGRIDSTRIPEWIDTH = 10.0;
+bool SPECKLE_NO_ROTATE = false;
+
 bool POLY_FEEDBACK = false;
 double POLY_FEEDBACK_DIST = 1.0;
 double POLY_FEEDBACK_MIN_PROB = 0.05;
@@ -114,6 +117,7 @@ bool COL_LINK_BY_DIRN = false;
 bool COL_INDIVIDUAL_NODES = false;
 double NODE_SCALE_GAMMA = 1.0;
 bool COL_GREY_BGND = false;
+bool NO_BGND = false;
 double COL_INDIVIDUAL_SCALE = 8000;
 
 double MOFI =  0.1;
@@ -182,7 +186,12 @@ double TEST_DIST_EQUIL = 0.0001;
 
 bool WRITE_BMPS_PRE_SYMBREAK = false;
 bool SYM_BREAK_TO_RIGHT = false;
+bool BMP_CENTER_ON_LEFT = false;
 bool SYM_IN_COVERSLIP_PLANE = false;
+
+double FINPITCH =  0.1; // 0.1  ; // turns per length
+double FINWIDTHANGLE = 30.0; // the angular width of the 
+double FINRATIO = 0.1; // 0 to 1, ratio of fin to non-fin
 
 bool QUIET = false;
 
@@ -397,28 +406,53 @@ int main(int argc, char* argv[])
 	    cerr << "Set numThreads to 1 to run in single threaded mode" << endl;
 	    cerr << "or to postprocess, specify files in terms of filenumber" 
 		 << endl << "./comet post 1:2:10" << endl
-         << "./comet post 0:0  <- use 0:0 to process all frames, multi thread if POST_PROCESS_CPUS > 1" << endl;
+         << "./comet post 0:0  <- use 0:0 to process all frames, multi thread if POST_PROCESS_CPUS > 1" << endl
+         << "./comet vtk 100:100  postprocess vtk for given frames" << endl;
 	    cerr << endl;
 
 	    exit(EXIT_FAILURE);
 	}
 
-    if (argc > 2) 
+    if (argc > 1) 
 	{
 		if (strcmp(argv[1], "sym") == 0 ) 
 			REWRITESYMBREAK = true;
 
 		if (strcmp(argv[1], "post") == 0 )
+        {
 			POST_PROCESS = true;
+            POST_BMP = true;
+            POST_VTK = false;
+        }                                         
 
-		if (strcmp(argv[1], "psingle") == 0 )
+        if (strcmp(argv[1], "vtk") == 0 )
+        {
+			POST_PROCESS = true;
+            POST_BMP = false;
+            POST_VTK = true;
+        }
+
+		if (strcmp(argv[1], "psingleb") == 0 )
 		{
 			POST_PROCESS = true;
 			POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
+            POST_BMP = true;
+            POST_VTK = false;
 		}
 
+        if (strcmp(argv[1], "psinglev") == 0 )
+		{
+			POST_PROCESS = true;
+			POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
+            POST_BMP = false;
+            POST_VTK = true;
+		}
+
+        if (argc > 2)
+        {
 		if (strcmp(argv[2], "q") == 0 || strcmp(argv[2], "Q") == 0)
 			QUIET = true;
+        }
 
 	} 
 		
@@ -470,6 +504,11 @@ int main(int argc, char* argv[])
         POST_PROCESS_CPUS = 4;
     }
 
+    if (    (strcmp( hostname, "machaonbook.local")       == 0) )
+    {
+        POST_PROCESS_CPUS = 2;
+    }
+
 
     int nicelevel = 0;
 
@@ -487,6 +526,16 @@ int main(int argc, char* argv[])
 		{
 			nicelevel = default_nice_level;
         }
+    }
+
+
+    if (CLUSTER)
+    {   // override some defaults if running on a cluster machine
+
+        QUIET = true;   // quiet still produces output, but only once per written file, rather than per second
+        NO_IMAGE_TEXT = true;  //remove image text for matrix display
+        SYM_BREAK_TO_RIGHT = true;  // offset and fix break direction to right for matrix display
+        BMP_CENTER_ON_LEFT = true;
     }
 
 #ifndef _WIN32
@@ -702,8 +751,11 @@ int main(int argc, char* argv[])
         else if (tag == "SYM_BREAK_TO_RIGHT") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
 
+        else if (tag == "BMP_CENTER_ON_LEFT") 
+			{ss >> buff2; if (buff2=="TRUE") BMP_CENTER_ON_LEFT = true; else BMP_CENTER_ON_LEFT = false;}
+
         else if (tag == "SYM_IN_COVERSLIP_PLANE") 
-			{ss >> buff2; if (buff2=="TRUE") SYM_IN_COVERSLIP_PLANE = true; else SYM_IN_COVERSLIP_PLANE = false;}
+			{ss >> buff2; if (buff2=="TRUE") SYM_IN_COVERSLIP_PLANE = true; else SYM_IN_COVERSLIP_PLANE = false;}   
 
 		else if (tag == "VTK_MOVE_WITH_BEAD")   
 			{ss >> buff2; if (buff2=="TRUE") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false;}
@@ -741,11 +793,11 @@ int main(int argc, char* argv[])
         else if (tag == "POST_PROCESS_CPUS") 
 			{ss >> POST_PROCESS_CPUS;}
 
-		else if (tag == "POST_BMP") 
-			{ss >> buff2; if (buff2=="TRUE") POST_BMP = true; else POST_BMP = false;}   
+		//else if (tag == "POST_BMP") 
+		//	{ss >> buff2; if (buff2=="TRUE") POST_BMP = true; else POST_BMP = false;}   
 
-		else if (tag == "POST_VTK") 
-			{ss >> buff2; if (buff2=="TRUE") POST_VTK = true; else POST_VTK = false;}
+		//else if (tag == "POST_VTK") 
+		//	{ss >> buff2; if (buff2=="TRUE") POST_VTK = true; else POST_VTK = false;}
 
 		else if (tag == "POST_STATS") 
 			{ss >> buff2; if (buff2=="TRUE") POST_STATS = true; else POST_STATS = false;}
@@ -950,7 +1002,16 @@ int main(int argc, char* argv[])
     		
 		    else if (tag == "ASYMMETRIC_NUCLEATION") 
 			    {ss >> ASYMMETRIC_NUCLEATION;} 
-    		
+
+            else if (tag == "FINPITCH") 
+			    {ss >> FINPITCH;} 
+
+            else if (tag == "FINWIDTHANGLE") 
+			    {ss >> FINWIDTHANGLE;} 
+
+            else if (tag == "FINRATIO") 
+			    {ss >> FINRATIO;} 
+ 		
 		    else if (tag == "RADIAL_SEGMENTS") 
 			    {ss >> RADIAL_SEGMENTS;} 
     		
@@ -968,15 +1029,18 @@ int main(int argc, char* argv[])
     		
 		    else if (tag == "GAUSSFWHM") 
 			    {ss >> GAUSSFWHM;}         
-    #ifdef BMP_USE_FOCAL_DEPTH
+
             else if (tag == "FOCALDEPTH") 
 			    {ss >> FOCALDEPTH;}         
-    #endif
+
             else if (tag == "BMP_INTENSITY_OFFSET") 
 			    {ss >> BMP_INTENSITY_OFFSET;}
     		
 		    else if (tag == "SPECKLE") 
-			    {ss >> buff2;if(buff2=="TRUE") SPECKLE = true;else SPECKLE = false;}
+			    {ss >> buff2;if(buff2=="TRUE") SPECKLE = true;else SPECKLE = false;} 
+
+            else if (tag == "SPECKLE_NO_ROTATE") 
+			    {ss >> buff2;if(buff2=="TRUE") SPECKLE_NO_ROTATE = true;else SPECKLE_NO_ROTATE = false;} 
 
             else if (tag == "COL_NODE_BY_STRAIN") 
 			    {ss >> buff2;if(buff2=="TRUE") COL_NODE_BY_STRAIN = true;else COL_NODE_BY_STRAIN = false;}
@@ -986,13 +1050,19 @@ int main(int argc, char* argv[])
 
             else if (tag == "COL_INDIVIDUAL_NODES") 
 			    {ss >> buff2;if(buff2=="TRUE") COL_INDIVIDUAL_NODES = true;else COL_INDIVIDUAL_NODES = false;}
+
+            else if (tag == "BMP_LINKS_BROKEN") 
+			    {ss >> buff2;if(buff2=="TRUE") BMP_LINKS_BROKEN = true;else BMP_LINKS_BROKEN = false;}
             
             else if (tag == "NODE_SCALE_GAMMA") 
-			    {ss >> NODE_SCALE_GAMMA;}
+			    {ss >> NODE_SCALE_GAMMA;}           
 
             else if (tag == "COL_GREY_BGND") 
-			    {ss >> buff2;if(buff2=="TRUE") COL_GREY_BGND = true;else COL_GREY_BGND = false;}
+			    {ss >> buff2;if(buff2=="TRUE") COL_GREY_BGND = true;else COL_GREY_BGND = false;}  
 
+            else if (tag == "NO_BGND") 
+			    {ss >> buff2;if(buff2=="TRUE") NO_BGND = true;else NO_BGND = false;}  
+            
             else if (tag == "COL_INDIVIDUAL_SCALE") 
 			    {ss >> COL_INDIVIDUAL_SCALE;}
 
@@ -1111,13 +1181,7 @@ int main(int argc, char* argv[])
 
 	}
 
-    if (CLUSTER)
-    {   // override some parameters if running on a cluster machine
-
-        QUIET = true;   // quiet still produces output, but only once per written file, rather than per second
-        NO_IMAGE_TEXT = true;  //remove image text for matrix display
-        SYM_BREAK_TO_RIGHT = true;  // offset and fix break direction to right for matrix display
-    }
+    
 
 
 
@@ -1239,7 +1303,10 @@ int main(int argc, char* argv[])
     if (POST_PROCESS || REWRITESYMBREAK)
     {
         cout << "Postprocessing iterations: ";
-	    get_postprocess_iterations(argv[2], postprocess_iterations, lastframedone);
+        if (argc > 2)
+	        get_postprocess_iterations(argv[2], postprocess_iterations, lastframedone);
+        else
+            get_postprocess_iterations("0:0", postprocess_iterations, lastframedone);
     }
         
     if (!REWRITESYMBREAK  && !POST_PROCESS)
@@ -1433,7 +1500,7 @@ int main(int argc, char* argv[])
         if (theactin.highestnodecount > ((int)theactin.node.size() - 1000))
             theactin.reservemorenodes(10000);
 
-
+        theactin.find_center(last_center);
 
         if (TEST_SQUASH)
         {
@@ -2387,14 +2454,22 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 	    for (unsigned int i = 1; i != POST_PROCESS_CPUS; ++i)
 	    {
-		    sprintf(command1, "%s psingle %i:%i:%i &", argv[0], firstframe + i, POST_PROCESS_CPUS, lastframe);
+            if (POST_BMP)
+		        sprintf(command1, "%s psingleb %i:%i:%i &", argv[0], firstframe + i, POST_PROCESS_CPUS, lastframe);
+            else
+                sprintf(command1, "%s psinglev %i:%i:%i &", argv[0], firstframe + i, POST_PROCESS_CPUS, lastframe);
 		    system(command1);
 		    //cout << command1 << endl;
 	    }
 
         // do first one in foreground:
 
-        sprintf(command1, "%s psingle %i:%i:%i", argv[0], firstframe , POST_PROCESS_CPUS, lastframe);
+        if (POST_BMP)
+	        sprintf(command1, "%s psingleb %i:%i:%i", argv[0], firstframe , POST_PROCESS_CPUS, lastframe);
+        else
+            sprintf(command1, "%s psinglev %i:%i:%i", argv[0], firstframe , POST_PROCESS_CPUS, lastframe);
+
+        
 	    system(command1);
  
 	} else
@@ -2464,13 +2539,9 @@ void postprocess(nucleator& nuc_object, actin &theactin,
             //mytimer loadtimer;
             //loadtimer.start();
 
-            //unsigned int nowtime = (unsigned) clock();
-
 		    load_data(theactin, *iteration, false);
 
             //cout << " Loadtime: " << loadtimer << endl;
-
-            //cout << " Loadtime: " << setprecision(2) <<  ((double)( (unsigned)clock() - nowtime) ) / (double) CLOCKS_PER_SEC << " seconds " << endl;
     		
             cout.flush();
 

@@ -310,7 +310,7 @@ void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) 
 
 }
 
-double segments::getsegmentnum(const vect& node, const projection &axis)
+double segments::getsegmentnum(const vect& node, const projection &axis) const
 {
     double dblxseg, dblyseg, dblzseg;
 
@@ -344,11 +344,12 @@ void segments::getsegmentnum(const vect& node, double& xseg, double& yseg, doubl
 	else
 	{	// capsule
 	
-		xseg = getcapsuleseg(node.y,node.z);
-		yseg = getcapsuleseg(node.x,node.z);
+		xseg = getcapsuleseg(node.y,node.z);   
+		yseg = getcapsuleseg(node.x,node.z);   //x
 		zseg = (double)num_cap_segs * (1+ (atan2(-node.y,node.x) / PI));
-	}
 
+	}
+                                          
 }
 
 double segments::getcapsuleseg(const double & x, const double & y) const
@@ -372,7 +373,18 @@ double segments::getcapsuleseg(const double & x, const double & y) const
 	} 
 	else
 	{	
-		if (y > 0)
+		//if (y > 0)
+		//{
+		//	// top cap
+		//	return ((double)num_cap_segs * (1+ (atan2( -(y - CAPSULE_HALF_LINEAR),  x) / PI)) );
+ 	//	}
+  //      else
+		//{	// bottom cap
+		//	return num_straight_segs + num_cap_segs
+		//		+  ((double)num_cap_segs * (1+ (atan2(  (y + CAPSULE_HALF_LINEAR), -x) / PI)) );
+		//}
+
+        if (y > 0)
 		{
 			// top cap
 			return ((double)num_cap_segs * (1+ (atan2( -(y - CAPSULE_HALF_LINEAR),  x) / PI)) );

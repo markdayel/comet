@@ -1854,7 +1854,7 @@ void actin::set_axisrotation(const projection &  proj, rotationmatrix & axisrota
     axisrotation.settoidentity();
 
     if (proj == xaxis)
-	{
+	{        
         return;
     } else
     if (proj == yaxis)
@@ -2000,7 +2000,12 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 	// precalculate gaussian for psf
 
-	double gaussmax = (double) GAUSSFWHM * 3 / 2;  // full extent of gaussian radius -  fwhm is 2/3 this
+	double gaussmax;
+    
+    //if (BMP_LINKS_BROKEN)  
+    //    gaussmax = (double) GAUSSFWHM * 5 / 2;  // wider for the links broken thing, so we don't notice the circles
+    //else
+        gaussmax = (double) GAUSSFWHM * 3 / 2; // full extent of gaussian radius -  fwhm is 2/3 this
 	
 	Dbl2d GaussMat, GaussMat2;
 
@@ -2026,14 +2031,14 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 					= exp(-3*((double)(xg*xg + yg*yg)) / (double)(xgmax*ygmax));
 
 			GaussMat2[xg+xgmax][yg+ygmax] 
-					= exp(-9*((double)(xg*xg + yg*yg)) / (double)(xgmax*ygmax));
+					= exp(-12*((double)(xg*xg + yg*yg)) / (double)(xgmax*ygmax));
 		}
 	}
 
     int bmpcenterx = BMP_WIDTH  / 2;
     int bmpcentery = BMP_HEIGHT / 2;
 
-    if (SYM_BREAK_TO_RIGHT)
+    if (BMP_CENTER_ON_LEFT)
         bmpcenterx = BMP_WIDTH/3; 
 
 	// clear the image array
@@ -2145,6 +2150,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     nodecol.setwhite();
 
 
+
+
     //  main loop over nodes:
 
     for(int i=0; i != highestnodecount; ++i)
@@ -2152,7 +2159,31 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
        if (!node[i].polymer)
 			continue;
 
+        // calculate position in pixels 
+        // with displacement to bring bead back in bounds
+
+        x = pixels(rotatednodepositions[i].y - origin.y) + bmpcenterx + movex;                      
+		y = pixels(rotatednodepositions[i].z - origin.z) + bmpcentery + movey;
+
+
+        // skip if out of focal depth
+        if (fabs(rotatednodepositions[i].x - nucposn.x) > FOCALDEPTH)
+            continue;
+
+        //mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
+       
+        // skip if off of the edge of the picture
+
+        if ((x+xgmax < 0) || 
+            (x-xgmax >= BMP_WIDTH) ||
+            (y+ygmax < 0) || 
+            (y-ygmax >= BMP_HEIGHT))
+            continue;
+
         // set speckle magnitude for this point
+
+       mult = 1.0;
+       double specmult = 0.0;
 
 		if (SPECKLE)
         {
@@ -2165,44 +2196,49 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 sym_break_rotation_to_xy_plane.rotate(originalpos);  
                 axisrotation.rotate(originalpos);  
                 
-                if (fabs(originalpos.x) * 2 > RADIUS )  // if outside RADIUS/2 then black
-                {
-                    mult = 0;
-                }
-                else
-                {
-                    if ( (node[i].creation_iter_num % SPECKLEGRIDPERIODiter) < SPECKLEGRIDTIMEWIDTHiter)
+                double segnum;
+
+                //if (fabs(originalpos.x) > FOCALDEPTH )  // if outside focal depth then black
+                //{
+                //    specmult = 0;
+                //}
+                //else
+                //{
+                    if ( ((node[i].creation_iter_num + SPECKLEGRIDPERIODiter/2) % SPECKLEGRIDPERIODiter) < SPECKLEGRIDTIMEWIDTHiter)
                     {
-                        mult = 1.0;  // if within time stripe, then white
+                        specmult = 1.0;  // if within time stripe, then white
                     }
                     else
                     {
                         //if ( ((int)(10 * 360 * (atan2(originalpos.y,originalpos.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
                         //      < (10 * 360 * 2 * PI * (SPECKLEGRIDSTRIPEWIDTH/360)))
 
-                        double segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position,proj); 
+                        if (SPECKLE_NO_ROTATE)
+                            segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position, proj);
+                        else
+                            segnum = ptheactin->p_nuc->segs.getsegmentnum(originalpos, proj);
 
                         if ( fabs(segnum + 0.5 - (double)((int)segnum + 0.5)) < SPECKLEGRIDSTRIPEWIDTH )
-                            mult = 1.0;  // if on spoke then white
+                            specmult = 1.0;  // if on spoke then white
                         else
-                            mult = 0.0;  // else black
+                            specmult = 0.0;  // else black
                     }
-                }
+                //}
 
             }
             else                                                           
             {
-                mult = speckle_array[node[i].creation_iter_num % speckle_array_size];
+                specmult = speckle_array[node[i].creation_iter_num % speckle_array_size];
             }
         }
         else
         {
-            mult = 1.0;
+            specmult = 1.0;
         }
 
+        specmult *= 10.0;
 
-        x = pixels(rotatednodepositions[i].y - origin.y) + bmpcenterx;                      
-		y = pixels(rotatednodepositions[i].z - origin.z) + bmpcentery;
+
 
 
 #ifdef BMPS_USING_LINKS
@@ -2223,32 +2259,27 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 #endif 
 
-        // displace to bring bead back in bounds
-        // and add the offset for the gaussian (not?)
-        x += movex;// - xgmax;  
-		y += movey;// - ygmax;
+        
 
 
         //if (prob_to_bool(0.01))
         //     cout << " " << x << "," << y ;
 
-#ifdef BMP_USE_FOCAL_DEPTH
-        //mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
+
         
-        if (fabs(rotatednodepositions[i].x) > FOCALDEPTH)
-            continue;
-
-#endif
-
-        mult = 1.0;
 
         if (COL_NODE_BY_STRAIN)
         {
 
+        double value;
+
 #ifdef BMPS_USING_LINKS
 
-            double value = link_i->forcesum / (InterRecordIterations * LINK_BREAKAGE_FORCE) ;   // scale by 1/LINK_BREAKAGE_FORCE
-            
+            if (BMP_LINKS_BROKEN)
+                value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
+            else
+                value = link_i->forcesum / (InterRecordIterations * LINK_BREAKAGE_FORCE) ;   // scale by 1/LINK_BREAKAGE_FORCE
+
             if (value < 0.0)
                 continue;
 
@@ -2262,8 +2293,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 value = value * ( 1 - dirfactor );
 
 #else
-            double value = node[i].linkforce_transverse / COL_INDIVIDUAL_SCALE;
-            //double value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
+            if (BMP_LINKS_BROKEN)
+                value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
+            else
+                value = node[i].linkforce_transverse / COL_INDIVIDUAL_SCALE;
+
 #endif
 
             //if (prob_to_bool(0.01))
@@ -2278,12 +2312,10 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 mult = value;
                    
             }
-
-	        //w = pow( w , 1/COLOUR_GAMMA);	    
-	        //w = w*0.9+0.1;
-            
-            //nodecol.setcol(w);        
+        
         }
+
+        
 
   
         // add the gaussian
@@ -2300,6 +2332,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                     (y+yg >= BMP_HEIGHT))
                     continue;   // skip if outside image bounds
 				
+                
+
                 if (COL_NODE_BY_STRAIN)
                 {   // just store magnitudes in R, color at the end
                     if (!COL_INDIVIDUAL_NODES)
@@ -2307,11 +2341,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                     imageR[x+xg][y+yg] += 10 * mult * GaussMat[xg+xgmax][yg+ygmax];
                     }
 
-                    if (COL_GREY_BGND )
+                    if (COL_GREY_BGND)
                     {
-                    imageG[x+xg][y+yg] += GaussMat[xg+xgmax][yg+ygmax];
+                        imageG[x+xg][y+yg] += GaussMat[xg+xgmax][yg+ygmax];
                     }
-                    
+
                     if (COL_INDIVIDUAL_NODES)
                     {
                     imageR[x+xg][y+yg] += mult * 10 * nodecol.r * GaussMat[xg+xgmax][yg+ygmax];
@@ -2326,7 +2360,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     				
 				    if (SPECKLE)
                     {
-					    imageR[x+xg][y+yg] += mult *
+					    imageR[x+xg][y+yg] += specmult *
 						        GaussMat2[xg+xgmax][yg+ygmax];  // GaussMat2 is narrower than GaussMat
                     }
 
@@ -2379,7 +2413,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     double Bscale = BMP_INTENSITY_SCALE / imageBmax[proj];
 
     // scale
-    if ((COL_NODE_BY_STRAIN) && (!COL_INDIVIDUAL_NODES) && (fabs(1.0 - NODE_SCALE_GAMMA) > 0.001))
+    if (( ( COL_NODE_BY_STRAIN && !COL_INDIVIDUAL_NODES ) || SPECKLE ) && fabs(1.0 - NODE_SCALE_GAMMA) > 0.001 ) 
     {
     for (x = 0; x != BMP_WIDTH; ++x)
 	    {
@@ -2393,7 +2427,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     }
 
     
-
+    //if (SPECKLEGRID)
+    //    Rscale *= 1.4;
      
 
     double minscale = mymin(mymin(Rscale,Gscale),Bscale);
@@ -2432,6 +2467,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                         colscale = 0.0;
                     }
 	                
+
                     double greyscale = imageG[x][y] * Gscale ;
 
                     imageR[x][y] = mymin( mymax( greyscale , colscale * nodecol.r), 1.0);
@@ -2443,16 +2479,56 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         }
     }
     else
-    {   // scale RGB separately
-        for (x = 0; x != BMP_WIDTH; ++x)
-        {
-	        for (y = 0; y != BMP_HEIGHT; ++y)
-	        {
-		        imageR[x][y] = mymin( ((imageR[x][y] * Rscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
-		        imageG[x][y] = mymin( ((imageG[x][y] * Gscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
-		        imageB[x][y] = mymin( ((imageB[x][y] * Bscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
-	        }
+    {   
+        if (COL_GREY_BGND)
+        {    
+            if (NO_BGND)
+            {
+
+                // scale RGB separately
+                for (x = 0; x != BMP_WIDTH; ++x)
+                {
+	                for (y = 0; y != BMP_HEIGHT; ++y)
+	                {
+                        
+                        imageR[x][y] = mymin( imageR[x][y] * Rscale, 1.0);
+                        imageG[x][y] = mymin( 0                    , 1.0); // green is the greyscale value
+                        imageB[x][y] = mymin( imageB[x][y] * Bscale, 1.0);
+	                }
+                }
+            }
+            else
+            {   
+                double greyscale;
+                // scale RGB separately
+                for (x = 0; x != BMP_WIDTH; ++x)
+                {
+	                for (y = 0; y != BMP_HEIGHT; ++y)
+	                {
+                        greyscale = 0.7 * imageG[x][y] * Gscale ;
+
+                        imageR[x][y] = mymin( mymax( greyscale , imageR[x][y] * Rscale), 1.0);
+                        imageG[x][y] = mymin( mymax( greyscale , 0                    ), 1.0); // green is the greyscale value
+                        imageB[x][y] = mymin( mymax( greyscale , imageB[x][y] * Bscale), 1.0);
+	                }
+            }
+            }
+
         }
+        else
+        {
+            // scale RGB separately
+            for (x = 0; x != BMP_WIDTH; ++x)
+            {
+	            for (y = 0; y != BMP_HEIGHT; ++y)
+	            {
+		            imageR[x][y] = mymin( ((imageR[x][y] * Rscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
+		            imageG[x][y] = mymin( ((imageG[x][y] * Gscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
+		            imageB[x][y] = mymin( ((imageB[x][y] * Bscale) + BMP_INTENSITY_OFFSET) / (1+BMP_INTENSITY_OFFSET), 1.0);
+	            }
+            }
+        }
+ 
     }
 
 
@@ -3472,11 +3548,16 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
 
 	}
 
-    if (p_nuc->geometry==nucleator::capsule)
-    {
-        sym_break_z_angle += PI/2;   // rotate into x/y plane for capsule
-    }
 
+    sym_break_rotation_to_xy_plane.settoidentity();
+
+    // now have all the angles
+	// need to assemble them in the right (reverse) order z,y,x
+	// to get the rotation matrix
+
+	// sym_break_rotation_to_xy_plane includes a pre-rotation with the old x angle
+	// to prevent it moving always onto the z-axis
+	// sym_break_rotation_to_zaxis does not have this
     
     if (constrain_to_zy_plane) // if we're using coverslip, flatten direction to zy plane
     {
@@ -3484,24 +3565,20 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
         sym_break_y_angle=0.0;
     }
 
-	// now have all the angles
-	// need to assemble them in the right (reverse) order z,y,x
-	// to get the rotation matrix
-
-	// sym_break_rotation_to_xy_plane includes a pre-rotation with the old x angle
-	// to prevent it moving always onto the z-axis
-	// sym_break_rotation_to_zaxis does not have this
-
-	sym_break_rotation_to_xy_plane.settoidentity();
-
-
-    if (SYM_BREAK_TO_RIGHT)
+    if (p_nuc->geometry==nucleator::capsule)
     {
-        sym_break_rotation_to_xy_plane.rotatematrix(-PI/2,xaxis); // rotate so that always breaks to the right
-
-    } else // restore the component of the sym break in the yz plane
+        sym_break_z_angle += PI/2;   // rotate into x/y plane for capsule
+    }
+    else
     {
-        sym_break_rotation_to_xy_plane.rotatematrix(-sym_break_x_angle, xaxis);
+        if (SYM_BREAK_TO_RIGHT)   // only do this for sphere
+        {
+            sym_break_rotation_to_xy_plane.rotatematrix(-PI/2,xaxis); // rotate so that always breaks to the right
+
+        } else // restore the component of the sym break in the yz plane
+        {
+            sym_break_rotation_to_xy_plane.rotatematrix(-sym_break_x_angle, xaxis);
+        }
     }
 
 	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_z_angle, zaxis);
