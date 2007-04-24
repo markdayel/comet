@@ -1364,12 +1364,13 @@ void segments::write_bins_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB,
 
 		}
 
-        write_colourmap_bitmap(imageR, imageG, imageB, BMP_AA_FACTOR);
+        write_colourmap_bitmap(imageR, imageG, imageB);//, BMP_AA_FACTOR);
 
 }
 
-void segments::write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB, double scalefactor)
+void segments::write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &imageB) // double widthscalefactor)
 {
+    double widthscalefactor = 1; // ignore this for now
 
     // write out colormap key
 
@@ -1377,9 +1378,9 @@ void segments::write_colourmap_bitmap(Dbl2d &imageR, Dbl2d &imageG, Dbl2d &image
     const int height = (int) imageR[0].size();
 
     const int keyheight = (int) ((double) height * 2/3);
-    const int keywidth  = (int) (10 * scalefactor);
+    const int keywidth  = (int) ((10 * height * widthscalefactor) / 800);
 
-    const int keyxorig = (int)(1 * scalefactor); //centerx - offsetx;
+    const int keyxorig = (int)(1 * widthscalefactor); //centerx - offsetx;
     const int keyyorig = (height/2) - (keyheight / 2);
 
     Colour colour;

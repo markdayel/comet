@@ -132,9 +132,9 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     file_prefix = "vtk";
         
     // find out data size
-    ni = int(BMP_HEIGHT / voxel_scale);
-    nj = int(BMP_HEIGHT / voxel_scale);
-    nk = int(BMP_HEIGHT / voxel_scale);
+    ni = int(BMP_HEIGHT/voxel_scale) ;
+    nj = int(BMP_HEIGHT/voxel_scale) ;
+    nk = int(BMP_HEIGHT/voxel_scale) ;
     
     OptsInteractive         = true;
     OptsRenderNucleator     = true;
@@ -158,6 +158,10 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     OptsCameraDistMult = 7;
     VIS_LINETHICKNESS = 1.0;
 
+    //voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
+
+    voxelscalefactor = (800 / 30) / voxel_scale;   // fix this---the voxel scale stuff is a mess (and unnecessary?)
+
     setOptions();
 
     // kludge for os x rendering
@@ -166,8 +170,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
 #endif
 
     // this is *.99 so that links on the surface don't look like they go inside the sphere
-    radius_pixels = ptheactin->dbl_pixels(0.99 * RADIUS)/voxel_scale;
-    capsule_length_pixels = ptheactin->dbl_pixels(CAPSULE_HALF_LINEAR)/voxel_scale;
+    radius_pixels = voxelscalefactor * 0.99 * RADIUS;
+    capsule_length_pixels = voxelscalefactor * CAPSULE_HALF_LINEAR;
     
     if(renderwin_npx == 0 || renderwin_npy == 0) {
       if(OptsInteractive) {
@@ -196,6 +200,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     render_win->SetSize(renderwin_npx, renderwin_npy);
 	render_win->LineSmoothingOn();
     
+
+    viewupvect=vect(0,0,-1);
     //render_win->PointSmoothingOn();
 
 
@@ -224,6 +230,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     }
 
     
+
     // write the colourmap file
     // this is kind of slow, so only write if doesn't already exist
    
@@ -264,7 +271,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
             fill(imageB[x].begin(),imageB[x].end(),0.0);
 	    }
 
-        ptheactin->p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB, VTK_AA_FACTOR); 
+        ptheactin->p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB); //, VTK_AA_FACTOR); 
     
 	    outbmpfile.open(tmpfilename, ios::out | ios::binary | ios::trunc);
 
@@ -454,7 +461,7 @@ void CometVtkVis::addAxes()
     vtkAxes *axes = vtkAxes::New();
     VTK_FLOAT_PRECISION origin[3] = {0.0, 0.0, 0.0};
     axes->SetOrigin( origin );
-    axes->SetScaleFactor(1.3*ptheactin->dbl_pixels(RADIUS)/voxel_scale);
+    axes->SetScaleFactor(1.3*voxelscalefactor * RADIUS);
     
     vtkTubeFilter *axes_tubes = vtkTubeFilter::New();
     axes_tubes->SetInput( axes->GetOutput() );
@@ -563,38 +570,68 @@ void CometVtkVis::saveImage(int framenumber)
     
     char textstring[1024];
     
+    int text_height_pixels = int ( 25 * (double) TEXT_POINTSIZE / 20.0);
+
     if (NO_IMAGE_TEXT)
     {
         *textstring=0;
     }
     else
     {
-        sprintf(textstring, "-font helvetica -fill white -pointsize 20 -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\"",
-            5 , ( 25 ),
+        sprintf(textstring, "-font helvetica -fill white -pointsize %i -draw \"text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\"",
+            TEXT_POINTSIZE, 5 , text_height_pixels,
             framenumber,
-            5 , ( 50 ) ,
+            5 , text_height_pixels * 2 ,
             int(framenumber * InterRecordIterations * DELTA_T) );
     }
 
-    if (VTK_AA_FACTOR!=1)
+    if (NO_COLBAR)
     {
-        char command1[1024];
-        sprintf(command1, 
-            "(%s -compose Dst_Over -composite -quality %i -resize %f%% %s %s %s %s ; rm %s ) &",
-            IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
-             VTK_colmap_filename, tmpfilename, filename, tmpfilename);
-        //cout << command1 << endl;
-        system(command1);
+        if (VTK_AA_FACTOR!=1)
+        {
+            char command1[1024];
+            sprintf(command1, 
+                "(%s -quality %i -resize %f%% %s %s %s ; rm %s ) &",
+                IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
+                  tmpfilename, filename, tmpfilename);
+            //cout << command1 << endl;
+            system(command1);
+        }
+        else
+        {
+            char command1[1024];
+            
+            sprintf(command1, 
+                "(%s -quality %i %s %s %s ; rm %s ) &",
+                IMAGEMAGICKCONVERT, BMP_COMPRESSION, textstring,
+                tmpfilename, filename, tmpfilename);
+
+            //cout << command1 << endl;
+            system(command1);
+        }
     }
     else
     {
-        char command1[1024];
-        sprintf(command1, 
-            "(%s -compose Dst_Over -composite -quality %i %s %s %s %s ; rm %s ) &",
-            IMAGEMAGICKCONVERT, BMP_COMPRESSION, textstring,
-            VTK_colmap_filename, tmpfilename, filename, tmpfilename);
-        //cout << command1 << endl;
-        system(command1);
+        if (VTK_AA_FACTOR!=1)
+        {
+            char command1[1024];
+            sprintf(command1, 
+                "(%s -compose Dst_Over -composite -quality %i -resize %f%% %s %s %s %s ; rm %s ) &",
+                IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
+                 VTK_colmap_filename, tmpfilename, filename, tmpfilename);
+            //cout << command1 << endl;
+            system(command1);
+        }
+        else
+        {
+            char command1[1024];
+            sprintf(command1, 
+                "(%s -compose Dst_Over -composite -quality %i %s %s %s %s ; rm %s ) &",
+                IMAGEMAGICKCONVERT, BMP_COMPRESSION, textstring,
+                VTK_colmap_filename, tmpfilename, filename, tmpfilename);
+            //cout << command1 << endl;
+            system(command1);
+        }
     }
 
 }
@@ -649,7 +686,6 @@ void CometVtkVis::addNucleator()
 
 void CometVtkVis::addCapsuleNucleator()
 {
-    static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
 
     // the capsule is oriented along z in the nuc frame of ref:
 
@@ -757,61 +793,8 @@ void CometVtkVis::addCapsuleNucleator()
 
 void CometVtkVis::addSphericalNucleator()
 {   
-    static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
 
-    //double nucposn.x, nucposn.y, nucposn.z;
     vect nucposn = ptheactin->p_nuc->position * voxelscalefactor;
-
-    
-    // temp: reset center:
-
-
-	
-
-    //ptheactin->nuc_to_world_rot.rotate(nucposn.x, nucposn.y, nucposn.z);
-    //vtk_cam_rot.rotate(nucposn.x, nucposn.y, nucposn.z); 
-
-    // stops bead 
- //   double keep_within_border;
- //   if( ptheactin->p_nuc->geometry == nucleator::sphere )
-	//keep_within_border = 2*RADIUS;
- //   else
-	//keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
-
- //   int beadminucposn.x = int(ptheactin->pixels(-keep_within_border - nucposn.x)/voxel_scale) + ni/2 + 1;
- //   int beadminucposn.y = int(ptheactin->pixels(-keep_within_border - nucposn.y)/voxel_scale) + nj/2 + 1; 
- //   int beadminucposn.z = int(ptheactin->pixels(-keep_within_border - nucposn.z)/voxel_scale) + nk/2 + 1; 
- //   int beadmaxx = int(ptheactin->pixels( keep_within_border - nucposn.x)/voxel_scale) + ni/2 + 1; 
- //   int beadmaxy = int(ptheactin->pixels( keep_within_border - nucposn.y)/voxel_scale) + nj/2 + 1; 
- //   int beadmaxz = int(ptheactin->pixels( keep_within_border - nucposn.z)/voxel_scale) + nk/2 + 1; 
- //   
- //   int movex = 0;
- //   int movey = 0;
- //   int movez = 0;
-
- //   if(beadminucposn.x < 0)
-	//    movex = -beadminucposn.x;
- //   if(beadminucposn.y < 0)
-	//    movey = -beadminucposn.y;
- //   if(beadminucposn.z < 0)
-	//    movez = -beadminucposn.z;    
-
- //   if(beadmaxx > ni)
-	//    movex = -(beadmaxx - ni);
- //   if(beadmaxy > nj)
-	//    movey = -(beadmaxy - nj);
- //   if(beadmaxz > nk)
-	//    movez = -(beadmaxz - nk);
- //   
- //   nucposn.x = ptheactin->dbl_pixels(-nucposn.x)/voxel_scale; 
- //   nucposn.y = ptheactin->dbl_pixels(-nucposn.y)/voxel_scale; 
- //   nucposn.z = ptheactin->dbl_pixels(-nucposn.z)/voxel_scale;
- //   
- //   // displace to bring nucleator back in bounds
- //   nucposn.x += movex;
- //   nucposn.y += movey;
- //   nucposn.z += movez;
-
 
     //map->SetResolveCoincidentTopologyToPolygonOffset()
     // SetResolveCoincidentTopologyToShiftZBuffer();  // mark: testing this
@@ -940,7 +923,7 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     double gaussmax = (double) GAUSSFWHM * 3/2.0;  
     // full extent of gaussian radius -  fwhm is 2/3 this
   
-    const int splat_sz = (int)(ptheactin->dbl_pixels(gaussmax) / voxel_scale); // as in actin 
+    const int splat_sz = (int)(voxelscalefactor * gaussmax) ; // as in actin 
     cout << "  gaussian splat extent: "<< splat_sz << endl;
   
     vector< vector< vector<double > > >  splat;
@@ -976,12 +959,12 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     else
 	keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
     
-    int beadminx = int(ptheactin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
-    int beadminy = int(ptheactin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadminz = int(ptheactin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
-    int beadmaxx = int(ptheactin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
-    int beadmaxy = int(ptheactin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadmaxz = int(ptheactin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+    int beadminx = int(voxelscalefactor * (-keep_within_border - meanx) + ni/2 + 1);
+    int beadminy = int(voxelscalefactor * (-keep_within_border - meany) + nj/2 + 1); 
+    int beadminz = int(voxelscalefactor * (-keep_within_border - meanz) + nk/2 + 1); 
+    int beadmaxx = int(voxelscalefactor * ( keep_within_border - meanx) + ni/2 + 1); 
+    int beadmaxy = int(voxelscalefactor * ( keep_within_border - meany) + nj/2 + 1); 
+    int beadmaxz = int(voxelscalefactor * ( keep_within_border - meanz) + nk/2 + 1); 
   
     int movex = 0;
     int movey = 0;
@@ -1019,9 +1002,9 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     
 	// node centre in local voxel coords (nuc at centre) 
 	// REVISIT: check why we need to add one here
-	x = int(ptheactin->pixels(node_pos.x - meanx)/voxel_scale) + ni/2 + 1; 
-	y = int(ptheactin->pixels(node_pos.y - meany)/voxel_scale) + nj/2 + 1;
-	z = int(ptheactin->pixels(node_pos.z - meanz)/voxel_scale) + nk/2 + 1;
+	x = int(voxelscalefactor * (node_pos.x - meanx) + ni/2 + 1); 
+	y = int(voxelscalefactor * (node_pos.y - meany) + nj/2 + 1);
+	z = int(voxelscalefactor * (node_pos.z - meanz) + nk/2 + 1);
     
 	// displace nucleator to bring back in bounds
 	x += movex;
@@ -1297,7 +1280,7 @@ void CometVtkVis::addNodes()
     
     // create sphere geometry
     vtkSphereSource *sphere = vtkSphereSource::New();
-    sphere->SetRadius( 0.01*ptheactin->dbl_pixels(RADIUS)/voxel_scale ); // scale with the nucleator
+    sphere->SetRadius( 0.01*voxelscalefactor * (RADIUS) ); // scale with the nucleator
     sphere->SetThetaResolution(10); // low res is fine
     sphere->SetPhiResolution(10);
     
@@ -1322,12 +1305,12 @@ void CometVtkVis::addNodes()
     else
 	keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
 
-    int beadminx = int(ptheactin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
-    int beadminy = int(ptheactin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadminz = int(ptheactin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
-    int beadmaxx = int(ptheactin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
-    int beadmaxy = int(ptheactin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-    int beadmaxz = int(ptheactin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+    int beadminx = int(voxelscalefactor * (-keep_within_border - meanx) + ni/2 + 1);
+    int beadminy = int(voxelscalefactor * (-keep_within_border - meany) + nj/2 + 1); 
+    int beadminz = int(voxelscalefactor * (-keep_within_border - meanz) + nk/2 + 1); 
+    int beadmaxx = int(voxelscalefactor * ( keep_within_border - meanx) + ni/2 + 1); 
+    int beadmaxy = int(voxelscalefactor * ( keep_within_border - meany) + nj/2 + 1); 
+    int beadmaxz = int(voxelscalefactor * ( keep_within_border - meanz) + nk/2 + 1); 
     
     int movex = 0;
     int movey = 0;
@@ -1361,9 +1344,9 @@ void CometVtkVis::addNodes()
 	if(OptsSkipOutOfFocusPoints && fabs(ncx) > FOCALDEPTH)
 	  continue;  // skip points outside focal depth
 
-	ncx = ptheactin->dbl_pixels(ncx - meanx)/voxel_scale; 
-	ncy = ptheactin->dbl_pixels(ncy - meany)/voxel_scale;
-	ncz = ptheactin->dbl_pixels(ncz - meanz)/voxel_scale;
+	ncx = voxelscalefactor * (ncx - meanx); 
+	ncy = voxelscalefactor * (ncy - meany);
+	ncz = voxelscalefactor * (ncz - meanz);
 	
 	// displace to bring node back in bounds
 	ncx += movex;
@@ -1394,7 +1377,6 @@ void CometVtkVis::addNodes()
 
 bool CometVtkVis::convert_to_vtkcoord(VTK_FLOAT_PRECISION &x, VTK_FLOAT_PRECISION &y, VTK_FLOAT_PRECISION &z)
 {
-    static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
 
     //ptheactin->nuc_to_world_rot.rotate(x, y, z); 
     //vtk_cam_rot.rotate(x, y, z); // bring rip to y-axis
@@ -1429,12 +1411,12 @@ void CometVtkVis::set_mean_posns()
   else
     keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
   
-  int beadminx = int(ptheactin->pixels(-keep_within_border - meanx)/voxel_scale) + ni/2 + 1;
-  int beadminy = int(ptheactin->pixels(-keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-  int beadminz = int(ptheactin->pixels(-keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
-  int beadmaxx = int(ptheactin->pixels( keep_within_border - meanx)/voxel_scale) + ni/2 + 1; 
-  int beadmaxy = int(ptheactin->pixels( keep_within_border - meany)/voxel_scale) + nj/2 + 1; 
-  int beadmaxz = int(ptheactin->pixels( keep_within_border - meanz)/voxel_scale) + nk/2 + 1; 
+  int beadminx = int(voxelscalefactor * (-keep_within_border - meanx) + ni/2 + 1);
+  int beadminy = int(voxelscalefactor * (-keep_within_border - meany) + nj/2 + 1); 
+  int beadminz = int(voxelscalefactor * (-keep_within_border - meanz) + nk/2 + 1); 
+  int beadmaxx = int(voxelscalefactor * ( keep_within_border - meanx) + ni/2 + 1); 
+  int beadmaxy = int(voxelscalefactor * ( keep_within_border - meany) + nj/2 + 1); 
+  int beadmaxz = int(voxelscalefactor * ( keep_within_border - meanz) + nk/2 + 1); 
   
   movex=movey=movez=0;
   
@@ -1521,7 +1503,10 @@ void CometVtkVis::addLinks()
   //bool firstpointinfocus, secondpointinfocus; // used to reject links if both points are out of focal planes
   
   for(int i=0; i != ptheactin->highestnodecount; i++) 
-  {      
+  { 
+      if (!ptheactin->node[i].polymer)
+          continue;
+    
     nodeposvec = ptheactin->node[i];
 
     n_pt[0] = ptheactin->node[i].x;
@@ -1628,7 +1613,7 @@ void CometVtkVis::addLinks()
         // note this is scaled by LINK_BREAKAGE_FORCE not NUC_LINK_BREAKAGE_FORCE, to keep colours consistant
 
         double magcol = force / LINK_BREAKAGE_FORCE;    // note: colour relative to normal link scale
-        if ( magcol * 100.0 < VTK_MIN_PLOT_LINK_FORCE_PCT) // only plot ones with this force or greater
+        if ( (force / NUC_LINK_BREAKAGE_FORCE )* 100.0 < VTK_MIN_PLOT_LINK_FORCE_PCT) // only plot ones with this force or greater
             continue;
 
         //magcol = pow( magcol , 1 / COLOUR_GAMMA);	    
@@ -1644,7 +1629,12 @@ void CometVtkVis::addLinks()
 
         if (VTK_NUC_LINKS_ONLY)
         {   // if monitoring attachment only, amplify the length
-            vect linkendpos = stuck_pos_world_frame + displacement * 20;
+            vect linkendpos = stuck_pos_world_frame + displacement * VTK_NUC_LINKS_ONLY_AMPLIFY;
+
+            // and change colour to relative to nuc link breakage force
+
+            magcol = force / NUC_LINK_BREAKAGE_FORCE;
+            magcol = magcol * 0.9 + 0.1;
 
             n_pt[0] = linkendpos.x;
             n_pt[1] = linkendpos.y;
@@ -1707,11 +1697,10 @@ void CometVtkVis::SetFocalDepthPlanes(vtkPolyDataMapper *map)
 {    // sets the mapper clipping planes to reject data outside of distance of FOCALDEPTH
      // above and below the nucleator (in x direction)
   
-  static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
 
-  vect focdepposvec(-FOCALDEPTH*voxelscalefactor,0,0);
+  vect focdepposvec = vect(-FOCALDEPTH*voxelscalefactor,0,0);
 
-  ptheactin->sym_break_rotation_to_xy_plane.rotate(focdepposvec);
+  ptheactin->sym_break_rotation_to_xy_plane.inverse().rotate(focdepposvec);
 
   //// the planes are focdepposx above and below the nucleator
   vect nucpos=ptheactin->p_nuc->position * voxelscalefactor; 
@@ -1791,29 +1780,34 @@ void CometVtkVis::addLight()
 
     renderer->GetActiveCamera()->GetPosition(campos.x,campos.y,campos.z);
 
+    campos-= ptheactin->p_nuc->position;
+
     vect l1pos=campos * 1.3;
     vect l2pos=campos * 1.3;
 
     rotationmatrix rot1, rot2;
     
     rot1.rotatematrix(-40 * PI / 180 , zaxis);
-    rot1.rotatematrix(-50 * PI / 180 , yaxis);
+    rot1.rotatematrix(50 * PI / 180 , yaxis);
     rot1.rotate(l1pos);
     
     rot2.rotatematrix(40 * PI / 180 , zaxis);
-    rot2.rotatematrix(10 * PI / 180 , yaxis);
+    rot2.rotatematrix(-10 * PI / 180 , yaxis);
     rot2.rotate(l2pos);
+
+    l1pos += ptheactin->p_nuc->position;
+    l2pos += ptheactin->p_nuc->position;
 
 	vtkLight *light1 = vtkLight::New();
 	light1->SetIntensity(1.0);
-	light1->SetColor(0.8,0.8,1.0);
+	light1->SetColor(1,0.9,0.8);
     light1->SetPosition(l1pos.x, l1pos.y, l1pos.z);
     renderer->AddLight(light1);
     light1->Delete();
 
     vtkLight *light2 = vtkLight::New();                                                       
 	light2->SetIntensity(1.0);
-	light2->SetColor(1,0.9,0.8);
+	light2->SetColor(0.8,0.8,1.0);
     light2->SetPosition(l2pos.x, l2pos.y, l2pos.z);
     renderer->AddLight(light2);
     light2->Delete();
@@ -1828,7 +1822,7 @@ void CometVtkVis::setProjection()
 
 void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
 {
-    static const double voxelscalefactor = ptheactin->dbl_pixels(1.0)/voxel_scale;
+    
     vect camerapos;
     vect focalpoint; 
 
@@ -1862,35 +1856,40 @@ void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
     
     // this sets where camera is relative to the bead
 
+    
+
     if (OptsRenderProjection == X )
     {
         // x
-        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane;
+        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane.inverse();
         
-        renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+        viewupvect = vect(0,0,-1);
 
-    } else if (  OptsRenderProjection == Y )
+    } else if ( OptsRenderProjection == Y )
     {
         // y
-        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane;
+        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane.inverse();
         vtk_cam_rot.rotatematrix(0,0,PI/2);
-
-        renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
+        
+        viewupvect = vect(0,0,-1);
+        //renderer->GetActiveCamera()->SetViewUp(0, 0, -1);
 
     } else if (OptsRenderProjection == Z )
     {
         // z
-        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane;
+        vtk_cam_rot = ptheactin->sym_break_rotation_to_xy_plane.inverse();
         vtk_cam_rot.rotatematrix(0,PI/2,0);
 
-        renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
+        viewupvect = vect(0,-1,0);
+        //renderer->GetActiveCamera()->SetViewUp(0, -1, 0);
 
     } else if ( OptsRenderProjection == RIP )
     {
-        vtk_cam_rot = ptheactin->sym_break_rotation_to_zaxis;	  // note using different rotation matrix!
+        vtk_cam_rot = ptheactin->sym_break_rotation_to_zaxis.inverse();	  // note using different rotation matrix!
         vtk_cam_rot.rotatematrix(0,-50*(PI/180),0); // angle of view
         
-        renderer->GetActiveCamera()->SetViewUp(-1, 0, 0);
+        viewupvect = vect(-1,0,0);
+        //renderer->GetActiveCamera()->SetViewUp(-1, 0, 0);
       
     } else 
     {
@@ -1898,12 +1897,15 @@ void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
     }
 
     // set position of the camera relative to the origin
-    vect camera_posn_vect(radius_pixels*OptsCameraDistMult,0,0);
+    vect camera_posn_vect(-radius_pixels*OptsCameraDistMult,0,0);
 
     vtk_cam_rot.rotate(camera_posn_vect);
     camera_posn_vect += camerapos;
 
+    vtk_cam_rot.rotate(viewupvect);
+
     renderer->GetActiveCamera()->SetPosition(camera_posn_vect.x,camera_posn_vect.y,camera_posn_vect.z);
+    renderer->GetActiveCamera()->SetViewUp(viewupvect.x, viewupvect.y, viewupvect.z);
     //renderer->ResetCamera();
 
 }

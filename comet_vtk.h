@@ -88,6 +88,10 @@ class CometVtkVis {
   double VIS_LINETHICKNESS;
   bool VIS_PARALLELPROJECTION;
 
+  vect viewupvect;
+
+  double voxelscalefactor;
+
   bool OptVIEW_VTK;
 
   bool texturereadOK;

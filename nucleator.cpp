@@ -312,6 +312,32 @@ int nucleator::addnodescapsule(void)
                 }
 
             }
+
+            if (ASYMMETRIC_NUCLEATION==10)  /// no nucleation above z=0 , fin on one side :)
+            {
+                if (z<-CAPSULE_HALF_LINEAR/2) continue;
+
+                //double FINPITCH =  0.1; // 0.1  ; // turns per length
+                //double FINWIDTHANGLE = 30 * PI / 180; // the angular width of the 
+                //double FINRATIO = 0.1; // 0 to 1, ratio of fin to non-fin
+
+                double finangle = z * (FINPITCH * ( 2 * PI / 2 * CAPSULE_HALF_LINEAR ) );
+                bool finnoskip = prob_to_bool(FINRATIO);
+
+                if ( fabs( fmod((theta - finangle * PI / 180 ), 2*PI )) * 2 < FINWIDTHANGLE  )
+                {   // on the fin
+                    if (!finnoskip)
+                        continue;
+                }
+                else
+                {
+                    if (finnoskip)
+                       continue;
+                }
+
+            }
+
+
 		}
 
 

@@ -58,7 +58,10 @@ int VTK_WIDTH  = 1024;
 int VTK_HEIGHT = 768;
 int VTK_AA_FACTOR = 1;
 
+unsigned int TEXT_POINTSIZE = 20;
+
 bool VTK_NUC_LINKS_ONLY = false;
+double VTK_NUC_LINKS_ONLY_AMPLIFY = 20;
 
 double COLOUR_GAMMA = 1.6;
 bool VTK_MOVE_WITH_BEAD = true;
@@ -82,6 +85,7 @@ bool POST_STATS = false;
 bool POST_REPORTS = false;
 bool BMP_TRACKS = false;
 bool BMP_LINKS_BROKEN = false;
+bool BMP_TRANSVERSELINKSONLY = false;
 
 bool PLOTFORCES = true;
 
@@ -139,6 +143,8 @@ int SAVE_DATA_PRECISION	= 4;
 //bool FORCES_ON_SIDE = true;
 
 bool NO_IMAGE_TEXT = false;
+bool NO_COLBAR = false;
+
 int BMP_COMPRESSION = 95;
 string BMP_OUTPUT_FILETYPE = "png";
 
@@ -499,7 +505,7 @@ int main(int argc, char* argv[])
         POST_PROCESS_CPUS = 2;  // the cluster machines have 2 cpus
     }
 
-    if (    (strcmp( hostname, "medusa")       == 0) )
+    if (    (strcmp( hostname, "medusa.kinglab")       == 0) )
     {
         POST_PROCESS_CPUS = 4;
     }
@@ -745,8 +751,14 @@ int main(int argc, char* argv[])
 		else if (tag == "VTK_HEIGHT")	  
 			{ss >> VTK_HEIGHT;}
 
+        else if (tag == "TEXT_POINTSIZE")	  
+			{ss >> TEXT_POINTSIZE;}
+
         else if (tag == "VTK_NUC_LINKS_ONLY") 
-			{ss >> buff2; if (buff2=="TRUE") VTK_NUC_LINKS_ONLY = true; else VTK_NUC_LINKS_ONLY = false;}
+			{ss >> buff2; if (buff2=="TRUE") VTK_NUC_LINKS_ONLY = true; else VTK_NUC_LINKS_ONLY = false;} 
+
+        else if (tag == "VTK_NUC_LINKS_ONLY_AMPLIFY")	  
+			{ss >> VTK_NUC_LINKS_ONLY_AMPLIFY;}
 
         else if (tag == "SYM_BREAK_TO_RIGHT") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
@@ -1053,8 +1065,11 @@ int main(int argc, char* argv[])
 
             else if (tag == "BMP_LINKS_BROKEN") 
 			    {ss >> buff2;if(buff2=="TRUE") BMP_LINKS_BROKEN = true;else BMP_LINKS_BROKEN = false;}
+
+            else if (tag == "BMP_TRANSVERSELINKSONLY") 
+			    {ss >> buff2;if(buff2=="TRUE") BMP_TRANSVERSELINKSONLY = true;else BMP_TRANSVERSELINKSONLY = false;}
             
-            else if (tag == "NODE_SCALE_GAMMA") 
+            else if (tag == "NODE_SCALE_GAMMA")      
 			    {ss >> NODE_SCALE_GAMMA;}           
 
             else if (tag == "COL_GREY_BGND") 
@@ -1101,6 +1116,9 @@ int main(int argc, char* argv[])
     		
 		    else if (tag == "NO_IMAGE_TEXT") 
 			    {ss >> buff2;if(buff2=="TRUE") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false;} 
+
+            else if (tag == "NO_COLBAR") 
+			    {ss >> buff2;if(buff2=="TRUE") NO_COLBAR = true; else NO_COLBAR = false;}
     		
 		    else if (tag == "BMP_COMPRESSION") 
 			    {ss >> BMP_COMPRESSION;	if (BMP_COMPRESSION > 100) BMP_COMPRESSION = 100; else if (BMP_COMPRESSION < 0)	BMP_COMPRESSION = 0;} 
@@ -1182,8 +1200,13 @@ int main(int argc, char* argv[])
 	}
 
     
-
-
+    // change bitmap directory if outputting links
+    if (BMP_LINKS_BROKEN)
+    {
+        sprintf(BITMAPDIR,"%s/bitmaps_links/", path);
+    	sprintf(command1, "mkdir %s 2>/dev/null", BITMAPDIR  );
+	    system(command1);
+    }
 
 
     // calculate commonly used constants from parameters:
@@ -1451,7 +1474,8 @@ int main(int argc, char* argv[])
 	int lastlinksformed = 0;
 	int lastlinksbroken = 0;
 
-	
+    int framemaxvelmoved = 1;                
+    vect maxvelmoved;
 
 	theactin.newnodescolour.setcol(0);
 
@@ -1841,15 +1865,21 @@ srand( rand_num_seed );
 				
 				theactin.brokensymmetry = true;
 
-                vect sym_break_direction = posn[filenum] - posn[filenum - 10];
+                //vect sym_break_direction = posn[filenum] - posn[filenum - 10];
 
 				// set camera rotation for save
-                if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 2*RADIUS))
-				    theactin.set_sym_break_axes(true,sym_break_direction);  // constrain to zy plane
-                else
-                    theactin.set_sym_break_axes(false,sym_break_direction);
+    //            if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 2*RADIUS))
+				//    theactin.set_sym_break_axes(true,sym_break_direction);  // constrain to zy plane
+    //            else
+    //                theactin.set_sym_break_axes(false,sym_break_direction);
 
-				theactin.save_sym_break_axes();
+				//theactin.save_sym_break_axes();
+
+                // post-process one bitmap to set the symmetry breaking direction                                                   
+                sprintf(command1, "%s post %d:%d 1>postsetsymbreak.txt 2>postsetsymbreak.err", argv[0], framemaxvelmoved , framemaxvelmoved  );
+				system(command1);
+
+                ptheactin->load_sym_break_axes();
 
                 // calculate but don't write bitmaps to get scaling factors
 			    theactin.savebmp(filenum, xaxis, actin::runfg, false);
@@ -1874,7 +1904,7 @@ srand( rand_num_seed );
 				// reprocess bitmaps etc.
 
 				// call another instance to write bitmaps
-				// fix this to do in same process when threading working
+
 				cout << "Spawning new background process to write bitmaps 1--" << filenum-1 
 					<< " and continuing..." << endl;
 
@@ -1912,11 +1942,9 @@ srand( rand_num_seed );
 
 			}  
 
-            save_data(theactin, i);
+            save_data(theactin, i);  
 
-            
-
-            // save the nodes per dist file for the nodesupdate
+             // save the nodes per dist file for the nodesupdate
 			ofstream opnodesupdate(NODESUPDATEFILE, ios::out | ios::trunc);
 			
             if (!opnodesupdate) 
@@ -1939,7 +1967,6 @@ srand( rand_num_seed );
             // find the symmetry break time
 
 
-
             // find max velocity
 
             double maxvel = 0;
@@ -1953,8 +1980,7 @@ srand( rand_num_seed );
             
             // find where crosses half max
 
-            int framemaxvelmoved = 0;                
-            vect maxvelmoved;
+            
 
             for (int frame = 1; frame != TOT_FRAMES+1; ++frame)
             {
@@ -1977,7 +2003,7 @@ srand( rand_num_seed );
             else
             {
                 opsymbreaktime << "Frame Time Speed Velocity" << endl;
-                opsymbreaktime << framemaxvelmoved << " " << framemaxvelmoved * DELTA_T * InterRecordIterations << " " << " " << maxvelmoved << endl;
+                opsymbreaktime << framemaxvelmoved << " " << framemaxvelmoved * DELTA_T * InterRecordIterations << " " << maxvelmoved << endl;
                 opsymbreaktime.close();
             }
 
@@ -2367,9 +2393,10 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
     // load the sym break info
 
-    int framemaxvelmoved = 0;
+    int framemaxvelmoved = 1;
     vect maxvelmoved;
-    
+    int symframe = 1;
+
     int iter = *(postprocess_iterations.end()-1);  // default to last frame if we can't find sym break time
 
     ifstream ipsymbreaktime("symbreaktime.txt");
@@ -2385,10 +2412,12 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         ipsymbreaktime >> framemaxvelmoved >> buff >> maxvelmoved;
         ipsymbreaktime.close();
 
-        iter = framemaxvelmoved * InterRecordIterations;
-    }
+        symframe = framemaxvelmoved;
+
+        iter = symframe * InterRecordIterations;
     
-    cout << "Sym break at frame " << framemaxvelmoved << endl;
+    }                            
+    cout << "Sym break at frame " << symframe  << endl;
 
     const int maxframe = (int) nodeposns.size() - 1;
 
@@ -2432,7 +2461,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     nuc_object.segs.addallnodes();                                  
     nuc_object.segs.set_scale_factors();
 
-    vect sym_break_direction = nodeposns[framemaxvelmoved + 10] - nodeposns[framemaxvelmoved - 10];
+    vect sym_break_direction = nodeposns[framemaxvelmoved];// - nodeposns[framemaxvelmoved - 20];
 
     if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 2*RADIUS))
 	    ptheactin->set_sym_break_axes(true, sym_break_direction);  // constrain to zy plane

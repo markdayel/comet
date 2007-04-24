@@ -227,6 +227,7 @@ extern bool NO_BGND;
 extern double COL_INDIVIDUAL_SCALE;
 
 extern bool BMP_LINKS_BROKEN;
+extern bool BMP_TRANSVERSELINKSONLY;
 
 
 //-- Threading
@@ -319,11 +320,13 @@ extern int VTK_AA_FACTOR;
 extern int BMP_AA_FACTOR;
 
 extern bool VTK_NUC_LINKS_ONLY;
+extern double VTK_NUC_LINKS_ONLY_AMPLIFY;
 extern double COLOUR_GAMMA;
 extern bool VTK_MOVE_WITH_BEAD;
 extern double VTK_VIEWANGLE;
 
 extern bool NO_IMAGE_TEXT;
+extern bool NO_COLBAR;
 extern int BMP_COMPRESSION;
 extern string BMP_OUTPUT_FILETYPE;
 
@@ -350,6 +353,8 @@ extern double GAUSSFWHM;
 extern double SPECKLE_FACTOR;
 extern bool   SPECKLE;
 extern bool SPECKLE_NO_ROTATE;
+
+extern unsigned int TEXT_POINTSIZE;
 
 extern bool SPECKLEGRID;
 extern double SPECKLEGRIDPERIOD;

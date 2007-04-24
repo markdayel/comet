@@ -1049,6 +1049,9 @@ void actin::nucleator_node_interactions()
 									i_node != node.begin()+highestnodecount;
 							      ++i_node)
 	{
+        if (!i_node->polymer)
+            continue;
+
         if (i_node->dist_from_surface < 0) // if node is inside nucleator           
         {   
             if (p_nuc->collision(*i_node)) // (*i)->x,(*i)->y,(*i)->z)==0)  
@@ -1864,6 +1867,7 @@ void actin::set_axisrotation(const projection &  proj, rotationmatrix & axisrota
 	}
 	else
 	{	
+        axisrotation.rotatematrix(-PI/2, xaxis);
         axisrotation.rotatematrix(PI/2, yaxis); // x to z is by rotation around y and z
         axisrotation.rotatematrix(PI/2, zaxis);
 	}
@@ -2039,7 +2043,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     int bmpcentery = BMP_HEIGHT / 2;
 
     if (BMP_CENTER_ON_LEFT)
-        bmpcenterx = BMP_WIDTH/3; 
+        bmpcenterx = BMP_HEIGHT/3; // note, this is meant to be height
 
 	// clear the image array
 
@@ -2193,17 +2197,21 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 // and rotate into observation frame, (without the bead rotation of course)
                 // to define thickness for speckle slice
                 originalpos = node[i].nucleator_stuck_position;
-                sym_break_rotation_to_xy_plane.rotate(originalpos);  
-                axisrotation.rotate(originalpos);  
                 
+                if (!SPECKLE_NO_ROTATE)
+                    nuc_to_world_rot.rotate(originalpos);
+
+                axisrotation.rotate(originalpos);  
+                sym_break_rotation_to_xy_plane.rotate(originalpos);
+
                 double segnum;
 
-                //if (fabs(originalpos.x) > FOCALDEPTH )  // if outside focal depth then black
-                //{
-                //    specmult = 0;
-                //}
-                //else
-                //{
+                if (fabs(originalpos.x) > RADIUS / 2 ) // FOCALDEPTH )  // if outside focal depth then black
+                {
+                    specmult = 0;
+                }
+                else
+                {
                     if ( ((node[i].creation_iter_num + SPECKLEGRIDPERIODiter/2) % SPECKLEGRIDPERIODiter) < SPECKLEGRIDTIMEWIDTHiter)
                     {
                         specmult = 1.0;  // if within time stripe, then white
@@ -2213,17 +2221,24 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                         //if ( ((int)(10 * 360 * (atan2(originalpos.y,originalpos.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
                         //      < (10 * 360 * 2 * PI * (SPECKLEGRIDSTRIPEWIDTH/360)))
 
+
+                        //if (SPECKLE_NO_ROTATE)
+                        //    segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position, proj);
+                        //else
+                        //    segnum = ptheactin->p_nuc->segs.getsegmentnum(originalpos, proj);
+
                         if (SPECKLE_NO_ROTATE)
                             segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position, proj);
                         else
                             segnum = ptheactin->p_nuc->segs.getsegmentnum(originalpos, proj);
+
 
                         if ( fabs(segnum + 0.5 - (double)((int)segnum + 0.5)) < SPECKLEGRIDSTRIPEWIDTH )
                             specmult = 1.0;  // if on spoke then white
                         else
                             specmult = 0.0;  // else black
                     }
-                //}
+                }
 
             }
             else                                                           
@@ -2241,7 +2256,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 
 
-#ifdef BMPS_USING_LINKS
+#ifdef BMPS_USING_LINKS   
 
         for(vector<links>::iterator link_i  = node[i].listoflinks.begin(); 
 	                                link_i != node[i].listoflinks.end();
@@ -2295,8 +2310,10 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 #else
             if (BMP_LINKS_BROKEN)
                 value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
-            else
+            else if (BMP_TRANSVERSELINKSONLY)
                 value = node[i].linkforce_transverse / COL_INDIVIDUAL_SCALE;
+            else
+                value = (node[i].linkforce_transverse + node[i].linkforce_radial) / COL_INDIVIDUAL_SCALE;
 
 #endif
 
@@ -2415,15 +2432,15 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     // scale
     if (( ( COL_NODE_BY_STRAIN && !COL_INDIVIDUAL_NODES ) || SPECKLE ) && fabs(1.0 - NODE_SCALE_GAMMA) > 0.001 ) 
     {
-    for (x = 0; x != BMP_WIDTH; ++x)
-	    {
-		    for (y = 0; y != BMP_HEIGHT; ++y)
-		    {
-                imageR[x][y] = pow( imageR[x][y] / imageRmax[proj] , 1.0 / NODE_SCALE_GAMMA);
-		    }
-	    }
+        for (x = 0; x != BMP_WIDTH; ++x)
+	        {
+		        for (y = 0; y != BMP_HEIGHT; ++y)
+		        {
+                    imageR[x][y] = pow( imageR[x][y] / imageRmax[proj] , 1.0 / NODE_SCALE_GAMMA);
+		        }
+	        }
 
-    Rscale = 1;
+        Rscale = 1.0;
     }
 
     
@@ -2631,8 +2648,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 				    p_nuc->segs.link_transverse, p_nuc->segs.link_transverse_scalefactor, proj);
 	}
 	
-    if (COL_NODE_BY_STRAIN)
-        p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB, BMP_AA_FACTOR);
+    if (COL_NODE_BY_STRAIN && !NO_COLBAR)
+        p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB); // BMP_AA_FACTOR);
     
     // write the bitmap file
 		
@@ -2799,6 +2816,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     // so have option to bypass
     // (also changed to get rid of quotes in imagemagick call)
 
+    int text_height_pixels = int ( 25 * (double) TEXT_POINTSIZE / 20.0);
 
     if (NO_IMAGE_TEXT)
     {	
@@ -2816,14 +2834,15 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     {
 		sprintf(command1,
 		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%ium' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s%s_proj_%05i.%s", 
-        IMAGEMAGICKCONVERT, temp_BMP_filename, BMP_COMPRESSION, 
-            20 * BMP_AA_FACTOR, 5 * BMP_AA_FACTOR, (BMP_HEIGHT - 5) * BMP_AA_FACTOR, scalebarmicrons, 
-            5 * BMP_AA_FACTOR, (BMP_HEIGHT - 24) * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  (BMP_HEIGHT - 27) * BMP_AA_FACTOR,
-            5 * BMP_AA_FACTOR, 20 * BMP_AA_FACTOR,  // first line of text
+            IMAGEMAGICKCONVERT, temp_BMP_filename, BMP_COMPRESSION,   // command and bitmap quality
+            TEXT_POINTSIZE * BMP_AA_FACTOR,                           // font size
+            5 * BMP_AA_FACTOR, BMP_HEIGHT - 5 * BMP_AA_FACTOR, scalebarmicrons,   // scale bar text
+            5 * BMP_AA_FACTOR, BMP_HEIGHT - (text_height_pixels + 4 ) * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  BMP_HEIGHT - (text_height_pixels + 7) * BMP_AA_FACTOR,
+            5 * BMP_AA_FACTOR,   10        * BMP_AA_FACTOR,  // first line of text
             projletter, 
-            5 * BMP_AA_FACTOR, ( 20 + 25 )* BMP_AA_FACTOR , 
+            5 * BMP_AA_FACTOR, ( 10 + text_height_pixels ) * BMP_AA_FACTOR , 
             filenum,
-			5 * BMP_AA_FACTOR, ( 20 + 50 )* BMP_AA_FACTOR , 
+			5 * BMP_AA_FACTOR, ( 10 + 2 * text_height_pixels ) * BMP_AA_FACTOR , 
             int(filenum * InterRecordIterations * DELTA_T), drawcmd.str().c_str(), BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
@@ -3522,20 +3541,18 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
 			if ((!node[i].polymer) || (node[i].harbinger))
 				continue;
 
-			tmp_nodepos = node[i];
-            
-            tmp_nodepos -= p_nuc->position;
+			tmp_nodepos = node[i] - p_nuc->position; // node position relative to bead
 
 			tmp_rotation.rotate(tmp_nodepos);   // rotate points to bring in line with sym break dir'n
 			tmp_rotation2.rotate(tmp_nodepos);	// rotate z
 
-            tmp_nodepos = tmp_nodepos.unitvec();  // normalize so we don't weight further ones more
+            //tmp_nodepos = tmp_nodepos.unitvec();  // normalize so we don't weight further ones more
 
 
-			// only look at front of bead (i.e. new z<0, in direction of movement)
-			//if (tmp_nodepos.z<0)
+			
+			//if ( tmp_nodepos.z <  0 ) // only look at front of bead (i.e. new z<0, in direction of movement)
 			{
-				chi += tmp_nodepos.y * tmp_nodepos.y; // sum the squares of distance from the axis
+				chi += fabs(tmp_nodepos.y);// - fabs(tmp_nodepos.x); // sum the distances from the axis
 			}
 			
 		}
@@ -3561,6 +3578,7 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
     
     if (constrain_to_zy_plane) // if we're using coverslip, flatten direction to zy plane
     {
+        cout << "Symbreak constrained to zy plane" << endl;
         sym_break_z_angle=0.0;
         sym_break_y_angle=0.0;
     }
