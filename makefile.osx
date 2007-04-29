@@ -1,22 +1,69 @@
-PROG = comet
-SRCS = actin.cpp Colour.cpp comet.cpp links.cpp nodes.cpp nucleator.cpp rotationmatrix.cpp 
+PROG = ~/bin/comet
+SRCS = actin.cpp Colour.cpp links.cpp \
+       nodes.cpp nucleator.cpp rotationmatrix.cpp \
+       segments.cpp kbhit.cpp threadedtaskqueue.cpp \
+
+VTKSRCS = comet_vtk.cpp comet.cpp 
+
 OBJS = $(SRCS:.cpp=.o)
-LIBS =  -lm -lpthread
-#CXXFLAGS = -O5 -ffast-math -fsingle-precision-constant -march=athlon-xp -mfpmath=sse -fomit-frame-pointer -malign-double -fprefetch-loop-arrays
-CXXFLAGS = -O5 -ffast-math -fomit-frame-pointer -fprefetch-loop-arrays  -g -Wall
-#CXXFLAGS = -O5 -ffast-math -march=athlon-xp -mfpmath=sse -fomit-frame-pointer -malign-double -fprefetch-loop-arrays -Wall
-#CXXFLAGS = -O5 -march=athlon-xp -mfpmath=sse -fmove-all-movables \
-#                -freduce-all-givs -Winline -Wall -g
-#CXXFLAGS = -O5 -march=athlon-xp -ffast-math -mfpmath=sse -Wall -g 
-#CXXFLAGS = -O3 -ffast-math -Wall -g
-#CXXFLAGS = -Wall
+VTKOBJS = $(VTKSRCS:.cpp=.o)
+ALLOBJS = $(OBJS) $(VTKOBJS) 
+
+# LIBS = -lm -I/usr/local/include/stlport -L/usr/local/lib/stlport
+LIBS = -lm -lpthread
+
+# vtk 
+VTKINCLUDES = -I/opt/local/include/vtk/
+VTKLIBPATH  = -L/opt/local/lib/vtk/
+VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
+              -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
+              -lvtkHybrid
+#normal:
+#CXXFLAGS = -O3 -ffast-math -DLINK_VTK
+#           -Wall -pthread -Wno-deprecated 
+
+
+#debug:
+#CXXFLAGS = -O3 -DLINK_VTK \
+#           -g -Wall  -Wno-deprecated 
+
+#safe:
+#CXXFLAGS = -DLINK_VTK \
+#           -Wall -Wno-deprecated 
+
+# -fast-math and -Wno-depreciated not working now...
+#fast:
+CXXFLAGS =  -O3 -fast -march=nocona -mtune=nocona \
+            -DLINK_VTK  \
+            -mfpmath=sse -msse2 \
+ 	    -fomit-frame-pointer -fprefetch-loop-arrays \
+            -Wall -Wno-deprecated -DNDEBUG \
+            -ftree-vectorize \
+            -DLINK_VTK -Wno-non-virtual-dtor -fasm-blocks 
+
+#\
+#           -fno-exceptions -fno-rtti
+#           -ftree-vectorizer-verbose=3 
+# ,387 -msse -mmmx\
+
 CXX = c++
 
-$(PROG): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LIBS)
+$(PROG):$(ALLOBJS)
+	$(CXX) $(CXXFLAGS) $(VTKLIBPATH) \
+	-o $(PROG) $(ALLOBJS) $(LIBS) \
+	$(VTKLIBS)
+
+
+comet.o:comet.cpp
+	$(CXX) $(CXXFLAGS) $(VTKINCLUDES) \
+	-c -o $@ $< 
+
+comet_vtk.o:comet_vtk.cpp
+	$(CXX) $(CXXFLAGS) $(VTKINCLUDES) \
+	-c -o $@ $< 
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(ALLOBJS)
 
 distclean: clean
 	rm -f $(PROG)

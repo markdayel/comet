@@ -48,6 +48,8 @@ double DELTA_T = 0.1;
 
 bool NUCLEATOR_FORCES = true;
 
+bool NO_SYMBREAK_ROTATION = false;
+
 double GAUSSFWHM =  0.266;
 
 int BMP_WIDTH  = 800;
@@ -826,8 +828,11 @@ int main(int argc, char* argv[])
         else if (tag == "TRACK_MAX_RANGE") 
 			{ss >> TRACK_MAX_RANGE;}
 
-        else if (tag == "TRACKFRAMESTEP") 
+        else if (tag == "TRACKFRAMESTEP")     
 			{ss >> TRACKFRAMESTEP;}
+
+        else if (tag == "NO_SYMBREAK_ROTATION") 
+			{ss >> buff2; if (buff2=="TRUE") NO_SYMBREAK_ROTATION = true; else NO_SYMBREAK_ROTATION = false;}
 
 		else if (tag == "X_BMP")     
 			{ss >> buff2; if (buff2=="TRUE") X_BMP = true; else X_BMP = false;}
@@ -2539,7 +2544,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         // workaround is to create the vtk object within the loop, so that
         // the destructor clears out and we recreate the object every time
 
-        //CometVtkVis vtkvis(true); // should this be false? (i.e. no render window)
+        CometVtkVis vtkvis(false); // should this be false? (i.e. no render window)
 
 
         vector<int>::iterator start = postprocess_iterations.begin();
@@ -2620,7 +2625,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 		    if (POST_VTK)
 		    {
-                CometVtkVis vtkvis(true);  // true?
+                //CometVtkVis vtkvis(true);  // true?
 
                 mytimer rendertimer;
                 rendertimer.start();

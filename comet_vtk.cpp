@@ -71,6 +71,10 @@
 #include "vtkCellData.h"
 #include "vtkDataSet.h"
 
+//#include "vtkSmartPointer.h"
+
+#include "vtkRenderLargeImage.h"
+
 #include "vtkExporter.h"
 
 //#include "vtkPlanes.h"
@@ -165,23 +169,23 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     setOptions();
 
     // kludge for os x rendering
-#ifdef __APPLE__ 
-    VTK_AA_FACTOR = 1;
-#endif
+//#ifdef __APPLE__ 
+//    VTK_AA_FACTOR = 1;
+//#endif
 
     // this is *.99 so that links on the surface don't look like they go inside the sphere
     radius_pixels = voxelscalefactor * 0.99 * RADIUS;
     capsule_length_pixels = voxelscalefactor * CAPSULE_HALF_LINEAR;
     
-    if(renderwin_npx == 0 || renderwin_npy == 0) {
-      if(OptsInteractive) {
+    //if(renderwin_npx == 0 || renderwin_npy == 0) {
+    //  if(OptsInteractive) {
 	renderwin_npx = VTK_WIDTH;
 	renderwin_npy = VTK_HEIGHT;
-      } else {
-	renderwin_npx = VTK_WIDTH * VTK_AA_FACTOR;
-	renderwin_npy = VTK_HEIGHT * VTK_AA_FACTOR;
-      }
-    }
+    //  } else {
+	//renderwin_npx = VTK_WIDTH * VTK_AA_FACTOR;
+	//renderwin_npy = VTK_HEIGHT * VTK_AA_FACTOR;
+    //  }
+    //}
 
     
     // REVISIT: Make a renderer each time? or clear out and rebuild?
@@ -190,12 +194,32 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     //render_win = vtkRenderWindow::New();
     //render_win->AddRenderer(renderer);
 
+    renderer = vtkRenderer::New();
+	renderer->SetBackground(0, 0, 0);
+
     OptVIEW_VTK = VIEW_VTK;
 
     cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
     cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
 
     render_win = vtkRenderWindow::New();
+
+    if(OptsInteractive || VIEW_VTK)	 // only create window if we're actually using vtk
+    {
+        
+        iren = vtkRenderWindowInteractor::New();
+        iren->SetRenderWindow(render_win);
+        iren->Initialize();   
+    } else
+    {
+
+        render_win->OffScreenRenderingOn();
+
+        // increase quality for non-interactive?
+    }
+
+
+    render_win->AddRenderer(renderer);
 
     render_win->SetSize(renderwin_npx, renderwin_npy);
 	render_win->LineSmoothingOn();
@@ -214,22 +238,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
         render_win->SetAAFrames(5);
     }
 
-    
-    if(OptsInteractive || VIEW_VTK)	 // only create window if we're actually using vtk
-    {
-        
-        iren = vtkRenderWindowInteractor::New();
-        iren->SetRenderWindow(render_win);
-        iren->Initialize();   
-    } else
-    {
 
-        render_win->OffScreenRenderingOn();
-
-        // increase quality for non-interactive?
-    }
-
-    
 
     // write the colourmap file
     // this is kind of slow, so only write if doesn't already exist
@@ -346,9 +355,13 @@ CometVtkVis::~CometVtkVis()
     // REVISIT: deleting renderer kills the pipeline?
     // iren->Delete();
     //render_win->Delete();
-    //renderer->Delete();
+    
+    render_win->RemoveRenderer(renderer);
 
     render_win->Delete();
+
+    renderer->Delete();
+
 
     if(OptsInteractive || OptVIEW_VTK)	 // increase quality for non-interactive
     {
@@ -385,14 +398,16 @@ void CometVtkVis::RestartRenderWindow()
 void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & cameratarget)
 {
     
-    renderer = vtkRenderer::New();
-	renderer->SetBackground(0, 0, 0);
+    //renderer = vtkRenderer::New();
+	//renderer->SetBackground(0, 0, 0);
+
+    //render_win->AddRenderer(renderer);
 
     setProjection(cameraposition,cameratarget);  // also sets the rotation of the objects, so comes before actors:
 	renderer->ResetCameraClippingRange();
     //renderer->ResetCameraClippingRange(FLT_MIN,FLT_MAX,FLT_MIN,FLT_MAX,FLT_MIN,FLT_MAX);
     
-
+    
     // add objects to renderer
     
              
@@ -421,26 +436,28 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     
     //renderer->GetActiveCamera()->ViewingRaysModified();
 
-	render_win->AddRenderer(renderer);
-	renderer->Delete();
-	 
-    cout << "Rendering..." << endl;
-    cout.flush();
+	
+	//cout << "Rendering..." << endl;
+    //cout.flush();
 
+    
+
+    
     // -- rendering
     if(OptsInteractive) 
     {
         cout << "Starting interactive mode" << endl;
-
+        
+       
         iren->Start();
     } 
     else 
     {
-#ifndef __APPLE__
-        render_win->Render();
-#else
-        iren->Render();
-#endif
+//#ifndef __APPLE__
+//        render_win->Render();
+//#else
+//        iren->Render();
+//#endif
         saveImage(framenumber);
         //saveVRML(framenumber);
     }
@@ -451,7 +468,16 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     //renderer->Delete();
     // CHECK: order matters in deletion of these objects
     // otherwise too many X Servers error.
+    //render_win->RemoveRenderer(renderer);
+
+#if VTK_MAJOR_VERSION < 5
+    renderer->RemoveAllProps();
+#else
+    renderer->RemoveAllViewProps();
+#endif
     
+    
+    //renderer->Delete();
 }
 
 // -- Helper functions
@@ -555,18 +581,25 @@ void CometVtkVis::saveImage(int framenumber)
 
     cout << "Saving " << filename << endl;
   
-    vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
-    rwin_to_image->SetInput(render_win);
+    //vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
+    //rwin_to_image->SetInput(render_win);
+
+    vtkRenderLargeImage *renderLarge = vtkRenderLargeImage::New();
+    renderLarge->SetInput(renderer);
+    renderLarge->SetMagnification(VTK_AA_FACTOR);
     
     // vtkBMPWriter seems a bit faster than vtkPNGWriter, and we're compressing with IM to png anyway later
     // so use BMP here
     vtkBMPWriter *imagewriter = vtkBMPWriter::New();
-    imagewriter->SetInput( rwin_to_image->GetOutput() );
+    
+    imagewriter->SetInput( renderLarge->GetOutput() ); //rwin_to_image->GetOutput() );
     imagewriter->SetFileName( tmpfilename );
     imagewriter->Write();    
+    
     imagewriter->Delete();
 
-    rwin_to_image->Delete();
+    //rwin_to_image->Delete();
+    renderLarge->Delete();
     
     char textstring[1024];
     

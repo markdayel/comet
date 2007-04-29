@@ -230,6 +230,8 @@ extern bool BMP_LINKS_BROKEN;
 extern bool BMP_TRANSVERSELINKSONLY;
 
 
+extern bool NO_SYMBREAK_ROTATION;
+
 //-- Threading
 extern TaskQueue thread_queue;
 extern bool USETHREAD_LINKFORCES;
@@ -279,6 +281,7 @@ extern int MAXNODES;
 
 extern bool REWRITESYMBREAK;
 extern bool POST_PROCESS;
+extern bool POST_PROCESSSINGLECPU;
 
 extern int POST_PROC_ORDER;
 

@@ -2206,7 +2206,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
                 double segnum;
 
-                if (fabs(originalpos.x) > RADIUS / 2 ) // FOCALDEPTH )  // if outside focal depth then black
+                if (fabs(originalpos.x) > RADIUS /2 ) // FOCALDEPTH )  // if outside focal depth then black
                 {
                     specmult = 0;
                 }
@@ -2313,7 +2313,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             else if (BMP_TRANSVERSELINKSONLY)
                 value = node[i].linkforce_transverse / COL_INDIVIDUAL_SCALE;
             else
-                value = (node[i].linkforce_transverse + node[i].linkforce_radial) / COL_INDIVIDUAL_SCALE;
+                value = node[i].linkforce_radial / COL_INDIVIDUAL_SCALE;
+                //value = (node[i].linkforce_transverse + node[i].linkforce_radial) / COL_INDIVIDUAL_SCALE;
 
 #endif
 
@@ -2444,8 +2445,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     }
 
     
-    //if (SPECKLEGRID)
-    //    Rscale *= 1.4;
+    if (SPECKLEGRID)
+        Rscale *= 2.0;
      
 
     double minscale = mymin(mymin(Rscale,Gscale),Bscale);
@@ -2672,7 +2673,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
 
-    if ( PLOTFORCES || (POST_PROCESS && BMP_TRACKS))
+    if ( PLOTFORCES || ((POST_PROCESS || POST_PROCESSSINGLECPU) && BMP_TRACKS) )
     {
         // if we're drawing, begin the imagemagick draw command
 	    drawcmd << "-fill none -stroke grey -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"";
@@ -3487,32 +3488,32 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
     if (p_nuc->geometry==nucleator::sphere)
     {   // only rotate by x and y if sphere, otherwise just by 90 degrees in z axis (after z rot calc)
 
-    //find_center(sym_break_direction);  // which way did the bead go?
+        //find_center(sym_break_direction);  // which way did the bead go?
 
-     
-    //if (constrain_to_zy_plane) // if we're using coverslip, flatten direction to zy plane
-    //   sym_break_direction.x=0.0;
+         
+        //if (constrain_to_zy_plane) // if we're using coverslip, flatten direction to zy plane
+        //   sym_break_direction.x=0.0;
 
-    tmp_rotation.settoidentity();
-    sym_break_x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
+        tmp_rotation.settoidentity();
+        sym_break_x_angle = atan2(sym_break_direction.y,sym_break_direction.z);
 
-    tmp_rotation.rotatematrix(sym_break_x_angle, 0 , 0);
-    tmp_rotation.rotate(sym_break_direction);
-
-
-    sym_break_y_angle = -atan2(sym_break_direction.x,sym_break_direction.z);
-
-    tmp_rotation.rotatematrix(0, sym_break_y_angle , 0); // now pointing upwards
-    tmp_rotation.rotate(sym_break_direction);
+        tmp_rotation.rotatematrix(sym_break_x_angle, 0 , 0);
+        tmp_rotation.rotate(sym_break_direction);
 
 
+        sym_break_y_angle = -atan2(sym_break_direction.x,sym_break_direction.z);
 
-    // construct x & y rotation matrix
+        tmp_rotation.rotatematrix(0, sym_break_y_angle , 0); // now pointing upwards
+        tmp_rotation.rotate(sym_break_direction);
 
-    tmp_rotation.settoidentity();
 
-    tmp_rotation.rotatematrix(sym_break_y_angle , yaxis);
-    tmp_rotation.rotatematrix(sym_break_x_angle , xaxis);
+
+        // construct x & y rotation matrix
+
+        tmp_rotation.settoidentity();
+
+        tmp_rotation.rotatematrix(sym_break_y_angle , yaxis);
+        tmp_rotation.rotatematrix(sym_break_x_angle , xaxis);
 
     }
 
@@ -3524,14 +3525,16 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
     // to align the break, we 
 	// need to determine the z rotation by the principlal axis
 
-	double theta, chi, maxchi;
+    const double threshold = 1.005; // angle is average between edges.  Edge determined by only resetting if new value greater than this times old
 
-	maxchi = 0;
-	sym_break_z_angle = 0;
+	double chi, maxchi;
 
-	for(theta = -PI; theta < PI; theta+=PI/360)    // PI/360 i.e. 0.5 degree intervals
-	{
-		chi = 0;
+	maxchi = 0.0;
+	sym_break_z_angle = 0.0;
+
+	for(double theta = -PI; theta < PI; theta+=PI/360)    // PI/360 i.e. 0.5 degree intervals
+    {
+		chi = 0.0;
 
 		tmp_rotation2.settoidentity();
 		tmp_rotation2.rotatematrix(0,0,theta);
@@ -3551,19 +3554,67 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
 
 			
 			//if ( tmp_nodepos.z <  0 ) // only look at front of bead (i.e. new z<0, in direction of movement)
-			{
+			//{
 				chi += fabs(tmp_nodepos.y);// - fabs(tmp_nodepos.x); // sum the distances from the axis
-			}
+			//}
 			
 		}
 
-		if (chi > maxchi)
+		if (chi > (maxchi * threshold))
 		{
 			maxchi = chi;
 			sym_break_z_angle = theta;
 		}
 
 	}
+
+    double angle1=sym_break_z_angle;
+    // other way
+    maxchi = 0.0;
+	sym_break_z_angle = 0.0;
+
+    for(double theta = PI; theta > -PI; theta-=PI/360)    // PI/360 i.e. 0.5 degree intervals
+    {
+		chi = 0.0;
+
+		tmp_rotation2.settoidentity();
+		tmp_rotation2.rotatematrix(0,0,theta);
+
+		for (int i=0; i != highestnodecount; ++i)
+		{
+			if ((!node[i].polymer) || (node[i].harbinger))
+				continue;
+
+			tmp_nodepos = node[i] - p_nuc->position; // node position relative to bead
+
+			tmp_rotation.rotate(tmp_nodepos);   // rotate points to bring in line with sym break dir'n
+			tmp_rotation2.rotate(tmp_nodepos);	// rotate z
+
+            //tmp_nodepos = tmp_nodepos.unitvec();  // normalize so we don't weight further ones more
+
+
+			
+			//if ( tmp_nodepos.z <  0 ) // only look at front of bead (i.e. new z<0, in direction of movement)
+			//{
+				chi += fabs(tmp_nodepos.y);// - fabs(tmp_nodepos.x); // sum the distances from the axis
+			//}
+			
+		}
+
+		if (chi > (maxchi * threshold))
+		{
+			maxchi = chi;
+			sym_break_z_angle = theta;
+		}
+
+	}
+
+    if (sym_break_z_angle < 0 && angle1 > 0)
+        sym_break_z_angle += 2*PI;  // make sure both angles are on same side
+
+    sym_break_z_angle = (sym_break_z_angle + angle1) / 2;
+
+    sym_break_z_angle += PI/2;
 
 
     sym_break_rotation_to_xy_plane.settoidentity();
@@ -3599,6 +3650,8 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
         }
     }
 
+    
+
 	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_z_angle, zaxis);
 	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_y_angle, yaxis);
 	sym_break_rotation_to_xy_plane.rotatematrix(sym_break_x_angle, xaxis);
@@ -3611,6 +3664,14 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
 	sym_break_rotation_to_zaxis.rotatematrix(sym_break_y_angle, yaxis);
 	sym_break_rotation_to_zaxis.rotatematrix(sym_break_x_angle, xaxis);
 
+    
+    if (NO_SYMBREAK_ROTATION)
+    {
+        sym_break_rotation_to_xy_plane.settoidentity();
+        sym_break_rotation_to_zaxis.settoidentity();
+        sym_break_x_angle = sym_break_y_angle = sym_break_z_angle = 0.0;
+
+    }
 
 
     //reverse_sym_break_rotation_to_xy_plane = sym_break_rotation_to_xy_plane.inverse();

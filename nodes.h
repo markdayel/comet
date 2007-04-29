@@ -172,12 +172,21 @@ public:
 
 	inline void adddirectionalmags(const vect &v, double &dotmag, double &crossmag) const
 	{   // add components of v into dotmag a crossmag vectors
-		double tmp_dotmag; 
 		
-		tmp_dotmag = fabs(unit_vec_posn.dot(v));
+		//double mag_in_radial_dirn = fabs(unit_vec_posn.dot(v));
 
-		dotmag   += tmp_dotmag;
-		crossmag += v.length() - tmp_dotmag;
+        dotmag   += fabs(v.dot(unit_vec_posn));
+		crossmag += v.cross(unit_vec_posn).length();
+
+        // temporarily hijack this function for the x,z components (for capsule plotting---not worth breaking the save file format)
+                                           // note this will not be useful after symmetry is broken 
+                                           // (because this is the simulation x frame, not the bead or camera frame)
+                                           // ...this is OK since we only need it for the pre sym break info
+                                           // we could put this in the bead frame, but it's extra calculation, and we don't need it
+
+        dotmag   += fabs( v.cross(unit_vec_posn).x);  // component into picture
+		crossmag +=       v.cross(unit_vec_posn).cross(vect(1,0,0)).length() ;
+
 	}
 
 	inline void clearstats()
