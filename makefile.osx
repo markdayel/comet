@@ -10,14 +10,16 @@ VTKOBJS = $(VTKSRCS:.cpp=.o)
 ALLOBJS = $(OBJS) $(VTKOBJS) 
 
 # LIBS = -lm -I/usr/local/include/stlport -L/usr/local/lib/stlport
-LIBS = -lm -lpthread
+LIBS = -lm -lpthread -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -framework AppKit -framework OpenGL -lGL -lGLU
 
 # vtk 
-VTKINCLUDES = -I/opt/local/include/vtk/
-VTKLIBPATH  = -L/opt/local/lib/vtk/
+#VTKINCLUDES = -I/opt/local/include/vtk/
+#VTKLIBPATH  = -L/opt/local/lib/vtk/
+VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild/include/vtk-5.1/
+VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild/lib/
 VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
               -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
-              -lvtkHybrid
+              -lvtkHybrid -lvtkVolumeRendering -lvtkjpeg -lvtktiff -lvtksys -lvtkzlib
 #normal:
 #CXXFLAGS = -O3 -ffast-math -DLINK_VTK
 #           -Wall -pthread -Wno-deprecated 
@@ -55,11 +57,11 @@ $(PROG):$(ALLOBJS)
 
 
 comet.o:comet.cpp
-	$(CXX) $(CXXFLAGS) $(VTKINCLUDES) \
+	$(CXX) $(FRAMEWORK) $(CXXFLAGS) $(VTKINCLUDES) \
 	-c -o $@ $< 
 
 comet_vtk.o:comet_vtk.cpp
-	$(CXX) $(CXXFLAGS) $(VTKINCLUDES) \
+	$(CXX) $(FRAMEWORK) $(CXXFLAGS) $(VTKINCLUDES) \
 	-c -o $@ $< 
 
 clean:

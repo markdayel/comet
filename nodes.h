@@ -184,8 +184,8 @@ public:
                                            // ...this is OK since we only need it for the pre sym break info
                                            // we could put this in the bead frame, but it's extra calculation, and we don't need it
 
-        dotmag   += fabs( v.cross(unit_vec_posn).x);  // component into picture
-		crossmag +=       v.cross(unit_vec_posn).cross(vect(1,0,0)).length() ;
+        //dotmag   += fabs( v.cross(unit_vec_posn).x);  // component into picture
+		//crossmag +=       v.cross(unit_vec_posn).cross(vect(1,0,0)).length() ;
 
 	}
 

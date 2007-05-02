@@ -1082,7 +1082,10 @@ void actin::nucleator_node_interactions()
 
                 forcevec = disp * (force/dist);  // '(disp/dist)' is just to get the unit vector
                                                  // note this vector in nucleator frame!
-	
+
+                nuc_to_world_rot.rotate(forcevec);      // rotate to world co-ords before adding to the node vector
+
+
 #ifndef NO_CALC_STATS
 
                 // add to node segment stats (tension only since default dist is zero)
@@ -1101,8 +1104,6 @@ void actin::nucleator_node_interactions()
 				p_nuc->move_nuc(*i_node,tomove);		// add to nucleator movement vector
 
 				i_node->nucleator_link_force += tomove;	// add to nuc link force stats
-
-                nuc_to_world_rot.rotate(forcevec); // rotate to world co-ords before adding to the node vector
 
                 i_node->link_force_vec -= forcevec;			// add to move node
             }
@@ -2827,8 +2828,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		//	 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
         sprintf(command1,
-		"%s -quality %i %s %s%s_proj_%05i.%s", 
-        IMAGEMAGICKCONVERT, BMP_COMPRESSION, temp_BMP_filename, BITMAPDIR, 
+		"%s -quality %i %s %s %s%s_proj_%05i.%s", 
+        IMAGEMAGICKCONVERT, BMP_COMPRESSION, temp_BMP_filename, drawcmd.str().c_str(), BITMAPDIR, 
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
     else 
@@ -2903,17 +2904,17 @@ void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, con
 
 	// define data structures for bitmap header:
 
-	#ifdef _WIN32
-		#define QUADWORD __int64
-	#else 
-		#define QUADWORD long long
-	#endif
+	//#ifdef _WIN32
+	//	#define QUADWORD __int64
+	//#else 
+	//	#define QUADWORD long long
+	//#endif
 
 	#define DWORD unsigned int
 	#define LONG unsigned int
 	#define WORD unsigned short int
 	#define BYTE unsigned char
-	#define FOURCC unsigned int
+	//#define FOURCC unsigned int
 
 	#pragma pack(push,1)  // align the structs to byte boundaries
 
@@ -2985,6 +2986,8 @@ void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, con
 
 #ifdef __BIG_ENDIAN__
 
+    // if we're running on a big endian machine (e.g. ppc mac), we need to swap the bytes:
+
 #pragma pack(push,1)  // align the structs to byte boundaries
 	endian_swap(fileHeader->bfType);
 	endian_swap(fileHeader->bfSize);
@@ -3026,15 +3029,15 @@ void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, con
 void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB)
 {  // re-scale for byte output and save image data
 
-#define BYTE unsigned char
+//#define BYTE unsigned char
 
 #pragma pack(push,1)  // align the structs to byte boundaries
 
 	typedef struct tagRGB 
 	{
-		BYTE    B; 
-		BYTE    G; 
-		BYTE    R; 
+		unsigned char    B; 
+		unsigned char    G; 
+		unsigned char    R; 
 	} RGB; 
 
 #pragma pack(pop)

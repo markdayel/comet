@@ -2466,7 +2466,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     nuc_object.segs.addallnodes();                                  
     nuc_object.segs.set_scale_factors();
 
-    vect sym_break_direction = nodeposns[framemaxvelmoved];// - nodeposns[framemaxvelmoved - 20];
+    vect sym_break_direction = nodeposns[framemaxvelmoved] - nodeposns[framemaxvelmoved - 20];
 
     if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 2*RADIUS))
 	    ptheactin->set_sym_break_axes(true, sym_break_direction);  // constrain to zy plane
@@ -2480,7 +2480,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
     char command1[1024];
 
-    if (!POST_PROCESSSINGLECPU && postprocess_iterations.size() > POST_PROCESS_CPUS)
+    if (!POST_VTK && !POST_PROCESSSINGLECPU && postprocess_iterations.size() > POST_PROCESS_CPUS)
 	{   // divide up tasks and spawn worker processes
 
 		int firstframe =  *postprocess_iterations.begin()  / InterRecordIterations;

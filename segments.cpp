@@ -471,8 +471,12 @@ void segments::addnode(const nodes& node)
 	//double radius;
 
 	nodes           rot_pos = node;
+    rot_pos -= p_nuc->position;
+
 	vect           rot_unit = node.unit_vec_posn;
 	vect rot_nuc_link_force = node.nucleator_link_force;
+
+    //ptheactin->nuc_to_world_rot.rotate(rot_nuc_link_force);  // temp fix---remove this!!!
 	
 	vect xfacvec, yfacvec, zfacvec;
 
@@ -742,15 +746,15 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 	
 		// draw the surface impacts:
 
-		unscaledlen = surfaceimpacts[axis][i] * scale
+		unscaledlen =  2 * surfaceimpacts[axis][i] * scale
                             / (seg_area * surfaceimpacts_scalefactor);
 
 		//cout << setw(10) << setprecision(5) << unscaledlen << endl;
 
 		//cout << "surfaceimpacts[" << axis <<"][" <<i<<"]" << surfaceimpacts[axis][i] << endl;
 
-		linex = unscaledlen * lineunitvecx[axis][i];
-		liney = unscaledlen * lineunitvecy[axis][i];
+		linex = 2 * unscaledlen * lineunitvecx[axis][i];
+		liney = 2 * unscaledlen * lineunitvecy[axis][i];
 
 		linelen = calcdist(linex,liney);
 
@@ -784,12 +788,13 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 		{
 
 			// draw the nucleator link forces:
+            //cout << surfacestuckforce[axis][i][0] << " " << surfacestuckforce[axis][i][1] << endl; 
 
-			unscaledlen = calcdist(surfacestuckforce[axis][i][0],surfacestuckforce[axis][i][1]) * scale
+			unscaledlen = 20*calcdist(surfacestuckforce[axis][i][0],surfacestuckforce[axis][i][1]) * scale
 								/ (seg_area * surfaceimpacts_scalefactor);  // same scale factor as above
 
-			linex = - surfacestuckforce[axis][i][0] * scale / (seg_area * surfaceimpacts_scalefactor);
-			liney = - surfacestuckforce[axis][i][1] * scale / (seg_area * surfaceimpacts_scalefactor);
+			linex = - 20*surfacestuckforce[axis][i][0] * scale / (seg_area * surfaceimpacts_scalefactor);
+			liney = - 20*surfacestuckforce[axis][i][1] * scale / (seg_area * surfaceimpacts_scalefactor);
 
 			linelen = calcdist(linex,liney);
 
@@ -829,7 +834,7 @@ void segments::addallnodes()
 {
     clearbins();
 
-	for (int i=0; i<ptheactin->highestnodecount; i++)
+	for (int i=0; i != ptheactin->highestnodecount; ++i)
 	{
 		if ((ptheactin->node[i].polymer))  // is point valid?
 		{
