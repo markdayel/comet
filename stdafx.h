@@ -285,6 +285,7 @@ extern bool POST_PROCESSSINGLECPU;
 
 extern int POST_PROC_ORDER;
 
+extern bool POST_VTK_VIEW;
 
 extern double TOTAL_SIMULATION_TIME;  
 extern double DELTA_T;
@@ -293,6 +294,8 @@ extern bool STICK_TO_NUCLEATOR;
 extern bool RESTICK_TO_NUCLEATOR;
 
 extern bool NUCLEATOR_FORCES;
+
+extern int REFERENCEFRAME;
 
 
 extern double NUC_LINK_FORCE;
@@ -484,6 +487,8 @@ typedef vector<Bool1d> Bool2d;
 
 typedef vector<double> Dbl1d;
 typedef vector<Dbl1d> Dbl2d;
+
+extern vector <nodes> referencenodes;
 
 struct thread_data
 {

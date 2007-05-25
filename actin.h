@@ -170,6 +170,8 @@ public:
 	
 	void savebmp(const int &filenum, const projection & proj, const processfgbg& fgbg, bool writefile);
 
+    double getvaluetoplot(nodes & mynode, links & mylink);
+    double getvaluetoplot(nodes & mynode);
 
 
 	nucleator* p_nuc;

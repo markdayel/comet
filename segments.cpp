@@ -43,7 +43,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	radialdist = RADIUS * 0.1;		// for radial-only averaging
 	num_radial_bins = 20;
 
-	centerx = BMP_WIDTH  / 7;  // specifies center of nucleator on forces and seg maps
+	centerx = BMP_WIDTH  /2 ; // / 7;  // specifies center of nucleator on forces and seg maps
 	centery = BMP_HEIGHT / 2;
 
 	bins_bitmap_width  = centerx * 2;			// width and height of pixels to plot
@@ -476,7 +476,7 @@ void segments::addnode(const nodes& node)
 	vect           rot_unit = node.unit_vec_posn;
 	vect rot_nuc_link_force = node.nucleator_link_force;
 
-    //ptheactin->nuc_to_world_rot.rotate(rot_nuc_link_force);  // temp fix---remove this!!!
+    ptheactin->nuc_to_world_rot.rotate(rot_nuc_link_force);  // temp fix---remove this!!!
 	
 	vect xfacvec, yfacvec, zfacvec;
 

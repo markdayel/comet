@@ -14,6 +14,8 @@
 
 #include "stdafx.h"
 
+#include "Colour.h"
+
 #ifdef LINK_VTK
 
 
@@ -142,7 +144,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     nj = int(BMP_HEIGHT/voxel_scale) ;
     nk = int(BMP_HEIGHT/voxel_scale) ;
     
-    OptsInteractive         = true;
+    //OptsInteractive         = true;
     OptsRenderNucleator     = true;
     OptsRenderNodes         = false;
     OptsRenderLinks         = false;
@@ -180,7 +182,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     capsule_length_pixels = voxelscalefactor * CAPSULE_HALF_LINEAR;
     
     //if(renderwin_npx == 0 || renderwin_npy == 0) {
-    //  if(OptsInteractive) {
+    //  if(POST_VTK_VIEW) {
 	renderwin_npx = VTK_WIDTH;
 	renderwin_npy = VTK_HEIGHT;
     //  } else {
@@ -205,23 +207,11 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
 
     render_win = vtkRenderWindow::New();
-
-
-    if(OptsInteractive || VIEW_VTK)	 // only create window if we're actually using vtk
-    {
-        
-        iren = vtkRenderWindowInteractor::New();
-        iren->SetRenderWindow(render_win);
-        iren->Initialize();   
-    } else
-    {
-
-        render_win->OffScreenRenderingOn();
-
-        // increase quality for non-interactive?
-    }
-
     render_win->SetSize(renderwin_npx, renderwin_npy);
+
+   
+
+    
 	//render_win->LineSmoothingOn();
     
 
@@ -239,6 +229,20 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     }
 
     render_win->AddRenderer(renderer);
+    
+    if(POST_VTK_VIEW || VIEW_VTK)	 // only create window if we're actually using vtk
+    {
+        
+        iren = vtkRenderWindowInteractor::New();
+        iren->SetRenderWindow(render_win);
+        iren->Initialize();   
+    } else
+    {
+
+        //render_win->OffScreenRenderingOn();
+
+        // increase quality for non-interactive?
+    }
 
     // write the colourmap file
     // this is kind of slow, so only write if doesn't already exist
@@ -363,7 +367,7 @@ CometVtkVis::~CometVtkVis()
     renderer->Delete();
 
 
-    if(OptsInteractive || OptVIEW_VTK)	 // increase quality for non-interactive
+    if(POST_VTK_VIEW || OptVIEW_VTK)	 // increase quality for non-interactive
     {
         iren->Delete();
     }
@@ -384,7 +388,7 @@ void CometVtkVis::RestartRenderWindow()
 {
     render_win->Delete();
 
-    if(OptsInteractive || OptVIEW_VTK)	 // increase quality for non-interactive
+    if(POST_VTK_VIEW || OptVIEW_VTK)	 // increase quality for non-interactive
     {
         iren->Delete();
 
@@ -420,12 +424,27 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     if(OptsRenderNucleator)
 	    addNucleator();
 
-    if(OptsVolumeRenderNodes)
-	    addGuassianNodeVolume(false);        
-                        
-    if(OptsIsoRenderNodes)
-	    addGuassianNodeVolume(true);
-    
+    if(OptsVolumeRenderNodes || OptsIsoRenderNodes)
+    {
+	    //addGuassianNodeVolume(true);
+
+        vtkStructuredPoints *spoints = vtkStructuredPoints::New();
+        createGaussianVoxelRepresentation(spoints);
+
+        if(OptsVolumeRenderNodes)
+	        addStructuredPointVolumeRender(spoints);        
+                            
+        if(OptsIsoRenderNodes)
+        {
+	        addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
+            //addStructuredPointIsoRender(spoints, 150.0, Colour( 0.6, 0.3, 0.2), 0.5 );
+            addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
+        }
+        
+        spoints->Delete();
+
+    }
+
     if(OptsRenderAxes)
 	    addAxes();
        
@@ -437,14 +456,13 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     //renderer->GetActiveCamera()->ViewingRaysModified();
 
 	
-	//cout << "Rendering..." << endl;
-    //cout.flush();
+	cout << "Rendering..." << endl;
+    cout.flush();
 
-    
-
+   
     
     // -- rendering
-    if(OptsInteractive) 
+    if(POST_VTK_VIEW) 
     {
         cout << "Starting interactive mode" << endl;
         
@@ -581,12 +599,14 @@ void CometVtkVis::saveImage(int framenumber)
 
     cout << "Saving " << filename << endl;
   
+
     //vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
     //rwin_to_image->SetInput(render_win);
 
     vtkRenderLargeImage *renderLarge = vtkRenderLargeImage::New();
     renderLarge->SetInput(renderer);
     renderLarge->SetMagnification(VTK_AA_FACTOR);
+    
 
     // vtkBMPWriter seems a bit faster than vtkPNGWriter, and we're compressing with IM to png anyway later
     // so use BMP here
@@ -691,22 +711,22 @@ void CometVtkVis::saveVRML(int framenumber)
     system(command1);
 }
 
-void CometVtkVis::addGuassianNodeVolume(bool do_iso)
-{	
-    vtkStructuredPoints *spoints = vtkStructuredPoints::New();
-    createGaussianVoxelRepresentation(spoints);
-  
-    if(do_iso){
-	// render the volume using an iso surface
-	addStructuredPointIsoRender(spoints);    
-    } else {                                                                                          
-	// volume render the points
-	addStructuredPointVolumeRender(spoints);
-    }
-    
-    // Delete spoints
-    spoints->Delete();
-}
+//void CometVtkVis::addGuassianNodeVolume(bool do_iso)
+//{	
+//    vtkStructuredPoints *spoints = vtkStructuredPoints::New();
+//    createGaussianVoxelRepresentation(spoints);
+//  
+//    if(do_iso){
+//	// render the volume using an iso surface
+//	addStructuredPointIsoRender(spoints);    
+//    } else {                                                                                          
+//	// volume render the points
+//	addStructuredPointVolumeRender(spoints);
+//    }
+//    
+//    // Delete spoints
+//    spoints->Delete();
+//}
 
 void CometVtkVis::addNucleator()
 {
@@ -1181,15 +1201,13 @@ void CometVtkVis::addStructuredPointVolumeRender(vtkStructuredPoints *vx)
     opacity_tf->Delete();
 }
 
-void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp)
+void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp, const double threshold, const Colour col, const double opacity)
 {
     // render using an iso-surface
     vtkContourFilter *iso_surf = vtkContourFilter::New();
     iso_surf->SetInput( sp );
-    iso_surf->SetValue(0, 250);
+    iso_surf->SetValue(0, threshold);
     iso_surf->ComputeNormalsOn();
- 
-   
 
 	//vtkSmoothPolyDataFilter *smooth = vtkSmoothPolyDataFilter::New();
 	vtkWindowedSincPolyDataFilter *smooth = vtkWindowedSincPolyDataFilter::New();
@@ -1217,8 +1235,8 @@ void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp)
     iso_actor->SetMapper(iso_mapper);
     iso_mapper->Delete();
     
-    iso_actor->GetProperty()->SetOpacity(1.0);
-    iso_actor->GetProperty()->SetColor(0.3, 0.6, 0.3);
+    iso_actor->GetProperty()->SetOpacity(opacity);
+    iso_actor->GetProperty()->SetColor(col.r, col.g, col.b);
     
     renderer->AddActor(iso_actor);
     iso_actor->Delete();
@@ -1463,16 +1481,24 @@ void CometVtkVis::addLinks()
   
   VTK_FLOAT_PRECISION rgba[4];
   
+  bool VTK_SCALECOLOPACITY = true;
+
   if(OptsShadeLinks)
   {
       for(int i=0; i<numcol; i++) 
       {
-        col.setcol((double)i/(double)(numcol-1));
+        double value = (double)i/(double)(numcol-1);
+        col.setcol(value);
         
         rgba[0] = col.r;
         rgba[1] = col.g;
         rgba[2] = col.b;
-        rgba[3] = 1.0;	
+
+        if (VTK_SCALECOLOPACITY)
+            rgba[3] = value;
+        else
+            rgba[3] = 1.0;	
+
         lut->SetTableValue(i, rgba);
       }
   }
@@ -1579,7 +1605,7 @@ void CometVtkVis::addLinks()
         if ( magcol < 0.0 ) magcol = 0.0;
         if ( magcol > 1.0 ) magcol = 1.0;
 
-            
+        magcol *= magcol; // square to get energy    
         magcol = magcol * 0.9 + 0.1; // prevent zeros because colorscheme makes them black
         //col.setcol(magcol);
 
@@ -1933,12 +1959,12 @@ void CometVtkVis::setOptions()
 	    continue;
 	}
 
-	if(tag == "VIS_INTERACTIVE") 
-	{ 
-	    ss >> value;
-	    OptsInteractive = getBoolOpt(value);
-	    continue;
-	}
+	//if(tag == "VIS_INTERACTIVE") 
+	//{ 
+	//    ss >> value;
+	//    OptsInteractive = getBoolOpt(value);
+	//    continue;
+	//}
       
 	if(tag == "VIS_NUCLEATOR") 
 	{
@@ -2091,7 +2117,7 @@ CometVtkVis::OptProjectionType CometVtkVis::getProjectionOpt(const string &value
 
 void CometVtkVis::reportOptions()
 {   
-    cout << "OptsInteractive          = " << OptsInteractive          << endl;
+    cout << "OptsInteractive          = " << POST_VTK_VIEW          << endl;
     cout << "OptsRenderNucleator      = " << OptsRenderNucleator      << endl;
     cout << "OptsRenderNodes          = " << OptsRenderNodes          << endl;
     cout << "OptsRenderLinks          = " << OptsRenderLinks          << endl;

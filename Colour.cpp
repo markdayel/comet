@@ -20,9 +20,16 @@ Colour::Colour(void)
 	setcol(0.0);
 }
 
-Colour::Colour(double val)
+Colour::Colour(const double val)
 {
 	setcol(val);
+}
+
+Colour::Colour(const double rr, const double gg, const double bb)
+{
+	r=rr;
+    g=gg;
+    b=bb;
 }
 
 Colour::~Colour(void)

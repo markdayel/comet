@@ -1381,7 +1381,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
 
                                 // n.b. if you change this function, also change the energy function below to be the integral
-
+                               // F_R = M_R (( \frac{d_R}{d} )^{P_R} -1)
                                if (recipdist < (1.0/0.05) )
                                    rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                                else
@@ -2199,15 +2199,21 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                 // to define thickness for speckle slice
                 originalpos = node[i].nucleator_stuck_position;
                 
+                
                 if (!SPECKLE_NO_ROTATE)
                     nuc_to_world_rot.rotate(originalpos);
 
-                axisrotation.rotate(originalpos);  
+                vect posincameraframe = originalpos;
+
+                  
                 sym_break_rotation_to_xy_plane.rotate(originalpos);
+                sym_break_rotation_to_xy_plane.rotate(posincameraframe);
+
+                axisrotation.rotate(posincameraframe);
 
                 double segnum;
 
-                if (fabs(originalpos.x) > RADIUS /2 ) // FOCALDEPTH )  // if outside focal depth then black
+                if (fabs(posincameraframe.x) > RADIUS /2 ) // FOCALDEPTH )  // if outside focal depth then black
                 {
                     specmult = 0;
                 }
@@ -2228,6 +2234,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                         //else
                         //    segnum = ptheactin->p_nuc->segs.getsegmentnum(originalpos, proj);
 
+
+                        // note should we pass projection::xaxis, because we've already done the rotation above
                         if (SPECKLE_NO_ROTATE)
                             segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position, proj);
                         else
@@ -2281,44 +2289,66 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         //if (prob_to_bool(0.01))
         //     cout << " " << x << "," << y ;
 
+       
 
+
+
+//#ifdef BMPS_USING_LINKS
+//
+//            if (BMP_LINKS_BROKEN)
+//                value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
+//            else
+//                value = link_i->forcesum / (InterRecordIterations * LINK_BREAKAGE_FORCE) ;   // scale by 1/LINK_BREAKAGE_FORCE
+//
+//            if (value < 0.0)
+//                continue;
+//
+//            vect linkvec = node[i] - *(link_i->linkednodeptr);
+//
+//            double dirfactor = fabs ( linkvec.unitvec().dot(node[i].unit_vec_posn) );  // we don't care about sign, just angle
+//
+//            if (COL_LINK_BY_DIRN)
+//                value = dirfactor ;  // put the actual direction in the links
+//            else
+//                value = value * ( 1 - dirfactor );
+//
+//#else
+//            if (BMP_LINKS_BROKEN)
+//                value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
+//            else if (BMP_TRANSVERSELINKSONLY)
+//                value = node[i].linkforce_transverse / COL_INDIVIDUAL_SCALE;
+//            else
+//                value = node[i].linkforce_radial / COL_INDIVIDUAL_SCALE;
+//                //value = (node[i].linkforce_transverse + node[i].linkforce_radial) / COL_INDIVIDUAL_SCALE;
+//
+//#endif
+            
+            
+        //}
         
-
-        if (COL_NODE_BY_STRAIN)
-        {
-
         double value;
+
 
 #ifdef BMPS_USING_LINKS
 
-            if (BMP_LINKS_BROKEN)
-                value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
-            else
-                value = link_i->forcesum / (InterRecordIterations * LINK_BREAKAGE_FORCE) ;   // scale by 1/LINK_BREAKAGE_FORCE
-
-            if (value < 0.0)
-                continue;
-
-            vect linkvec = node[i] - *(link_i->linkednodeptr);
-
-            double dirfactor = fabs ( linkvec.unitvec().dot(node[i].unit_vec_posn) );  // we don't care about sign, just angle
-
-            if (COL_LINK_BY_DIRN)
-                value = dirfactor ;  // put the actual direction in the links
-            else
-                value = value * ( 1 - dirfactor );
+        if (REFERENCEFRAME)
+            value = getvaluetoplot(node[i], *link_i) - getvaluetoplot(referencenodes[i], *link_i);
+        else
+            value = getvaluetoplot(node[i], *link_i);
 
 #else
-            if (BMP_LINKS_BROKEN)
-                value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
-            else if (BMP_TRANSVERSELINKSONLY)
-                value = node[i].linkforce_transverse / COL_INDIVIDUAL_SCALE;
-            else
-                value = node[i].linkforce_radial / COL_INDIVIDUAL_SCALE;
-                //value = (node[i].linkforce_transverse + node[i].linkforce_radial) / COL_INDIVIDUAL_SCALE;
+        if (REFERENCEFRAME)
+            value = getvaluetoplot(node[i]) - getvaluetoplot(referencenodes[i]);
+        else
+            value = getvaluetoplot(node[i]);
 
 #endif
 
+        //if (value < 0.01)   // do we want this? messes up the reference stuff
+        //    continue;
+
+        if (COL_NODE_BY_STRAIN)
+        {
             //if (prob_to_bool(0.01))
             //    cout << " " << value;
 
@@ -2697,10 +2727,10 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	    //	drawcmd << "\" -stroke blue -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd1.str();
 
 	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.5 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
+		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
 
 	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.1 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd3.str();
+		    drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd3.str();
     }
 
     vect temp_nuc_posn;
@@ -2895,6 +2925,40 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	}
 
 	return;
+}
+
+double actin::getvaluetoplot(nodes & mynode)
+{
+
+    if (BMP_LINKS_BROKEN)
+        return mynode.links_broken / COL_INDIVIDUAL_SCALE;
+    else if (BMP_TRANSVERSELINKSONLY)
+        return mynode.linkforce_transverse / COL_INDIVIDUAL_SCALE;
+    else
+        return mynode.linkforce_radial / COL_INDIVIDUAL_SCALE;
+
+}
+
+double actin::getvaluetoplot(nodes & mynode, links & mylink)
+{
+    double value; 
+
+    if (BMP_LINKS_BROKEN)
+        value = mynode.links_broken / COL_INDIVIDUAL_SCALE;
+    else
+        value = mylink.forcesum / (InterRecordIterations * LINK_BREAKAGE_FORCE) ;   // scale by 1/LINK_BREAKAGE_FORCE
+
+    vect linkvec = mynode - *(mylink.linkednodeptr);
+
+    double dirfactor = fabs ( linkvec.unitvec().dot(mynode.unit_vec_posn) );  // we don't care about sign, just angle
+
+    if (COL_LINK_BY_DIRN)
+        value = dirfactor ;  // put the actual direction in the links
+    else
+        value = value * ( 1 - dirfactor );
+
+    return value;
+
 }
 
 void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight)

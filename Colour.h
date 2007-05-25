@@ -19,7 +19,8 @@ class Colour
 {
 public:
 	Colour(void);
-	Colour(double val);
+	Colour(const double val);
+    Colour(const double rr, const double gg, const double bb);
 	~Colour(void);
 	double r,g,b;
 	unsigned char R,G,B;

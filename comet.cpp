@@ -60,10 +60,14 @@ int VTK_WIDTH  = 1024;
 int VTK_HEIGHT = 768;
 int VTK_AA_FACTOR = 1;
 
+int REFERENCEFRAME = 0;
+
 unsigned int TEXT_POINTSIZE = 20;
 
 bool VTK_NUC_LINKS_ONLY = false;
 double VTK_NUC_LINKS_ONLY_AMPLIFY = 20;
+
+bool POST_VTK_VIEW = false;
 
 double COLOUR_GAMMA = 1.6;
 bool VTK_MOVE_WITH_BEAD = true;
@@ -326,6 +330,8 @@ Nodes2d actin::nodes_on_same_gridpoint;
 vector<vector<NODEGRIDTYPE<nodes*>*> > actin::gridpointsbythread;
 vector <int> actin::nearby_collision_gridpoint_offsets;
 
+vector <nodes> referencenodes;   // used for bitmaps/vtk to normalise energies etc.
+
 
 rotationmatrix actin::torque_rotate;
 //vect actin::nuc_disp;
@@ -433,11 +439,20 @@ int main(int argc, char* argv[])
             POST_VTK = false;
         }                                         
 
+        if (strcmp(argv[1], "vtkview") == 0 )
+        {
+			POST_PROCESS = true;
+            POST_BMP = false;
+            POST_VTK = true;
+            POST_VTK_VIEW = true;
+        }
+
         if (strcmp(argv[1], "vtk") == 0 )
         {
 			POST_PROCESS = true;
             POST_BMP = false;
             POST_VTK = true;
+            POST_VTK_VIEW = false;
         }
 
 		if (strcmp(argv[1], "psingleb") == 0 )
@@ -509,12 +524,18 @@ int main(int argc, char* argv[])
 
     if (    (strcmp( hostname, "medusa.kinglab")       == 0) )
     {
-        POST_PROCESS_CPUS = 4;
+        if (POST_VTK)    // computer seems to croak (out of memory?) if vtk with 4 threads
+            POST_PROCESS_CPUS = 2;
+        else
+            POST_PROCESS_CPUS = 4;
     }
 
     if (    (strcmp( hostname, "machaonbook.local")       == 0) )
     {
-        POST_PROCESS_CPUS = 2;
+        if (POST_VTK)  
+            POST_PROCESS_CPUS = 1;
+        else
+            POST_PROCESS_CPUS = 2;
     }
 
 
@@ -830,6 +851,9 @@ int main(int argc, char* argv[])
 
         else if (tag == "TRACKFRAMESTEP")     
 			{ss >> TRACKFRAMESTEP;}
+
+        else if (tag == "REFERENCEFRAME")     
+			{ss >> REFERENCEFRAME;} 
 
         else if (tag == "NO_SYMBREAK_ROTATION") 
 			{ss >> buff2; if (buff2=="TRUE") NO_SYMBREAK_ROTATION = true; else NO_SYMBREAK_ROTATION = false;}
@@ -2449,6 +2473,18 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         cameravel = meanvel * 1.0 / ( 1.0 + exp( - 6.0 * (  2 * (double)(i - maxaccelframe) / (double)accelwidth) ));
     }
 
+    if (REFERENCEFRAME)
+    {
+        cout << "Loading frame " << REFERENCEFRAME << " for reference" << endl;
+
+        load_data(theactin, REFERENCEFRAME * InterRecordIterations, false);
+
+        // copy the nodes data
+        referencenodes.assign(theactin.node.begin(), theactin.node.end());
+    }
+
+
+
     //iter =  180 * InterRecordIterations;
 
     cout << "Loading frame " << (iter/InterRecordIterations) << " for scaling and to set sym break axis" << endl;
@@ -2480,7 +2516,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
     char command1[1024];
 
-    if (!POST_VTK && !POST_PROCESSSINGLECPU && postprocess_iterations.size() > POST_PROCESS_CPUS)
+    if (!POST_VTK_VIEW && !POST_PROCESSSINGLECPU && postprocess_iterations.size() > POST_PROCESS_CPUS)
 	{   // divide up tasks and spawn worker processes
 
 		int firstframe =  *postprocess_iterations.begin()  / InterRecordIterations;

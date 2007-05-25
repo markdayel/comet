@@ -15,6 +15,8 @@
 #include <string>
 #include "stdafx.h"
 
+#include "Colour.h"
+
 #include "vtkVersion.h"
 
 #include "vtkRenderWindow.h"
@@ -70,7 +72,7 @@ class CometVtkVis {
 
   double radius_pixels, capsule_length_pixels;
   
-  bool OptsInteractive;
+  //bool OptsInteractive;    // changed to POST_VTK_VIEW
   bool OptsRenderNucleator;
   bool OptsRenderNodes;
   bool OptsRenderLinks;
@@ -118,11 +120,11 @@ class CometVtkVis {
   void addNodes();
   void addLinks();
   void addGaussianSplatterToNodes();
-  void addGuassianNodeVolume(bool do_iso);
+  //void addGuassianNodeVolume(bool do_iso);
   void addLight();
   void addVolumeTest();
   void addStructuredPointVolumeRender(vtkStructuredPoints *vx);
-  void addStructuredPointIsoRender(vtkStructuredPoints *sp);
+  void addStructuredPointIsoRender(vtkStructuredPoints *sp, const double threshold, const Colour col, const double Opacity);
   void addAxes();
   void addVoxelBound();
 
