@@ -208,9 +208,6 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
 
     render_win = vtkRenderWindow::New();
     render_win->SetSize(renderwin_npx, renderwin_npy);
-
-   
-
     
 	//render_win->LineSmoothingOn();
     
@@ -438,7 +435,7 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
         {
 	        addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
             //addStructuredPointIsoRender(spoints, 150.0, Colour( 0.6, 0.3, 0.2), 0.5 );
-            addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
+            //addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
         }
         
         spoints->Delete();
@@ -1481,7 +1478,7 @@ void CometVtkVis::addLinks()
   
   VTK_FLOAT_PRECISION rgba[4];
   
-  bool VTK_SCALECOLOPACITY = true;
+  
 
   if(OptsShadeLinks)
   {
@@ -1605,7 +1602,7 @@ void CometVtkVis::addLinks()
         if ( magcol < 0.0 ) magcol = 0.0;
         if ( magcol > 1.0 ) magcol = 1.0;
 
-        magcol *= magcol; // square to get energy    
+        //magcol *= magcol; // square to get energy    
         magcol = magcol * 0.9 + 0.1; // prevent zeros because colorscheme makes them black
         //col.setcol(magcol);
 
@@ -1908,7 +1905,7 @@ void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
     {
         vtk_cam_rot = ptheactin->sym_break_rotation_to_zaxis.inverse();	  // note using different rotation matrix!
 
-        vtk_cam_rot.rotatematrix(0,80*(PI/180),0); // angle of view
+        vtk_cam_rot.rotatematrix(0,VTK_RIP_Z_ANGLE*(PI/180),0); // angle of view
 
     }
     else 

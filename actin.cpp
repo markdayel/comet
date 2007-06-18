@@ -702,7 +702,7 @@ void actin::iterate()  // this is the main iteration loop call
     if (!TEST_SQUASH)
         nucleator_node_interactions();	    // do forcable node ejection	
 	
-    if (COVERSLIPGAP > 2 * RADIUS)   // skip if less than diameter (so set to 0 to disable) 
+    if (COVERSLIPGAP > 0)   // skip if less than diameter (so set to 0 to disable) 
 	    squash(COVERSLIPGAP);	 
 
 	iteration_num++;
@@ -1116,6 +1116,7 @@ void actin::nucleator_node_interactions()
 
 void actin::collisiondetection(void)
 {
+
     fill(donenode.begin(), donenode.begin()+highestnodecount, false);
     
     // do collision detection
@@ -1211,32 +1212,6 @@ size_t actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, co
     return p_recti_near_nodeslist->size();
 }
 
-//void actin::findnearbynodes_collision_setup(const int& adjgridpoints)
-//{
-//	nearby_collision_gridpoint_offsets.reserve(128);
-//	nearby_collision_gridpoint_offsets.resize(0);
-//
-//	int x,y,z;
-//	
-//	for (x = -adjgridpoints; x != adjgridpoints + 1; ++x) 
-//    {
-//	    for (y = -adjgridpoints; y != adjgridpoints + 1; ++y) 
-//        {
-//            for (z = -adjgridpoints; z != adjgridpoints + 1; ++z)	 
-//            {
-//				// skip the 0,0,0 gridpoint since will be added separately
-//				if ((x!=0) || (y!=0) || (z!=0))
-//					nearby_collision_gridpoint_offsets.push_back((GRIDSIZE*GRIDSIZE*x) + (GRIDSIZE*y) + z);
-//            }
-//        }
-//    }
-//
-//	nearby_collision_gridpoint_offset_begin = nearby_collision_gridpoint_offsets.begin();
-//	nearby_collision_gridpoint_offset_end   = nearby_collision_gridpoint_offsets.end();
-//
-//}
-
-
 void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 {	
     // cast arg
@@ -1306,7 +1281,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
             sameGPnodenum = p_sameGPnode->nodenum;
     	    
             // do coverslip repulsion if necessary
-            if (COVERSLIPGAP > 2*RADIUS)
+            if (COVERSLIPGAP > 0)
             {
 
                 if (p_sameGPnode->x >   COVERSLIPGAP - NODE_REPULSIVE_RANGE)
@@ -1332,8 +1307,6 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
                     p_sameGPnode->rep_force_vec.x += 2*rep_force_mag ;
                 }
-
-                
 
             }
 
@@ -1361,9 +1334,11 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 			                if ( p_sameGPnode == p_nearnode)
 				                continue;  // skip if self
 
-                            
+                            if ((p_sameGPnode->nodenum < lowestnodetoupdate)  &&
+                                (p_nearnode->nodenum < lowestnodetoupdate))
+                                continue; // if we're not updating either node, then skip
 
-			                disp = *p_nearnode - nodeposvec;   // relative position of node
+			                disp = *p_nearnode - nodeposvec;   // find relative position of node
 			                
                             
                             distsqr = disp.sqrlength();    // square of distance
@@ -1411,7 +1386,10 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 					            rep_force_vect = disp * rep_force_mag * recipdist;
 
                                 // add to the actual repulsion
+
 				                p_sameGPnode->rep_force_vec -= rep_force_vect ;
+
+
 #ifndef NO_CALC_STATS
 
                                 // add to the statistics
@@ -1680,7 +1658,7 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 void actin::linkforces()
 {
 
-    // remove the links for ones that were broken last time
+    // remove the links that were broken last time
     for(int threadnum=0; threadnum<NUM_THREAD_DATA_CHUNKS; ++threadnum)
     {
         for (unsigned int i=0; i!=linkremovefrom[threadnum].size() ; ++i )
@@ -1693,6 +1671,9 @@ void actin::linkforces()
         linkremoveto[threadnum].resize(0);
     }
    
+
+    // parcel out the work for the threads
+
     int numthreadnodes, start, end;
 
     numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREAD_DATA_CHUNKS;
@@ -2702,12 +2683,14 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	// to use as disposable objects
 	// .clear() or .str("") don't seem to work.
 
+    double strokewidth = 4;
+
     stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
 
     if ( PLOTFORCES || ((POST_PROCESS || POST_PROCESSSINGLECPU) && BMP_TRACKS) )
     {
         // if we're drawing, begin the imagemagick draw command
-	    drawcmd << "-fill none -stroke grey -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"";
+	    drawcmd << "-fill none -stroke grey -strokewidth " << strokewidth * BMP_AA_FACTOR << " -draw \"";
     }
 
     if (PLOTFORCES)
@@ -2726,11 +2709,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj, 1 * FORCE_BAR_SCALE) > 0)		
 	    //	drawcmd << "\" -stroke blue -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd1.str();
 
-	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.5 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
+	    //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.05 * FORCE_BAR_SCALE) > 0)	
+		//    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
 
-	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.1 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd3.str();
+	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.4 * FORCE_BAR_SCALE) > 0)	
+		    drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR * strokewidth << " -draw \"" << tmp_drawcmd3.str();
     }
 
     vect temp_nuc_posn;
@@ -2850,6 +2833,13 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     int text_height_pixels = int ( 25 * (double) TEXT_POINTSIZE / 20.0);
 
+    char sourceimage[1024];
+
+    if (BLANK_BMP)
+        sprintf(sourceimage, " -size %ix%i xc:white ", BMP_WIDTH , BMP_HEIGHT); // or 'transparent' or 'black'
+    else
+        sprintf(sourceimage, " %s ", temp_BMP_filename );
+
     if (NO_IMAGE_TEXT)
     {	
 		//sprintf(command1,
@@ -2859,14 +2849,15 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
         sprintf(command1,
 		"%s -quality %i %s %s %s%s_proj_%05i.%s", 
-        IMAGEMAGICKCONVERT, BMP_COMPRESSION, temp_BMP_filename, drawcmd.str().c_str(), BITMAPDIR, 
+        IMAGEMAGICKCONVERT, BMP_COMPRESSION, sourceimage, drawcmd.str().c_str(), BITMAPDIR, 
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
     else 
     {
+
 		sprintf(command1,
 		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%ium' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s%s_proj_%05i.%s", 
-            IMAGEMAGICKCONVERT, temp_BMP_filename, BMP_COMPRESSION,   // command and bitmap quality
+            IMAGEMAGICKCONVERT, sourceimage, BMP_COMPRESSION,   // command and bitmap quality
             TEXT_POINTSIZE * BMP_AA_FACTOR,                           // font size
             5 * BMP_AA_FACTOR, BMP_HEIGHT - 5 * BMP_AA_FACTOR, scalebarmicrons,   // scale bar text
             5 * BMP_AA_FACTOR, BMP_HEIGHT - (text_height_pixels + 4 ) * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  BMP_HEIGHT - (text_height_pixels + 7) * BMP_AA_FACTOR,
@@ -2910,7 +2901,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     }
 
-    //opruninfo << command3 << endl;
+    opruninfo << command3 << endl;
 
 	p_outbmpfile->flush();  // must flush the bitmap file buffer before calling imagemagick
 
@@ -2934,8 +2925,10 @@ double actin::getvaluetoplot(nodes & mynode)
         return mynode.links_broken / COL_INDIVIDUAL_SCALE;
     else if (BMP_TRANSVERSELINKSONLY)
         return mynode.linkforce_transverse / COL_INDIVIDUAL_SCALE;
-    else
+    else if (BMP_RADIALLINKSONLY)
         return mynode.linkforce_radial / COL_INDIVIDUAL_SCALE;
+    else  // energy
+        return (pow(mynode.linkforce_radial,2) + pow(mynode.linkforce_transverse,2)) / COL_INDIVIDUAL_SCALE;
 
 }
 
@@ -2964,15 +2957,9 @@ double actin::getvaluetoplot(nodes & mynode, links & mylink)
 void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight)
 {
 
-	// bitmap headers etc (see microsoft website---large chunks pasted from given code):
+	// bitmap headers etc (see microsoft documentation---large chunks pasted from given code):
 
 	// define data structures for bitmap header:
-
-	//#ifdef _WIN32
-	//	#define QUADWORD __int64
-	//#else 
-	//	#define QUADWORD long long
-	//#endif
 
 	#define DWORD unsigned int
 	#define LONG unsigned int
@@ -3157,6 +3144,12 @@ void actin::squash(const double & thickness)
 			i_node->x = -halfthickness;
 	}
 
+    if (NO_X_MOTION)
+    {
+        p_nuc->position.x = 0.0;
+        return;
+    }
+
     // make sure the nucleator is in bounds, too
     // todo: do the capsule shape, too
 
@@ -3173,6 +3166,9 @@ void actin::squash(const double & thickness)
         //cout << "Warning - Nucleator has hit the coverslip" << endl;
         nuc_struck_coverslip = true;
     }
+
+    
+
 
 	return;
 }
@@ -3537,9 +3533,7 @@ void actin::setdontupdates(void)
 
 void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direction)
 {
-    
-
-	vect tmp_nodepos;
+    vect tmp_nodepos;
 	//vect CofM;
 	//vect sym_break_direction;
 
@@ -3574,7 +3568,6 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
         tmp_rotation.rotate(sym_break_direction);
 
 
-
         // construct x & y rotation matrix
 
         tmp_rotation.settoidentity();
@@ -3583,9 +3576,6 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
         tmp_rotation.rotatematrix(sym_break_x_angle , xaxis);
 
     }
-
-    
-
 
 
 	// we now have tmp_rotation which will transform the bead direction to be along the z axis
@@ -3796,7 +3786,7 @@ void actin::clear_node_stats(void)
 {
 	attemptedpolrate = polrate	= 0;
 
-	for (int i=lowestnodetoupdate; i<highestnodecount; ++i)
+	for (int i=lowestnodetoupdate; i != highestnodecount; ++i)
 	{
 		node[i].clearstats();
 	}

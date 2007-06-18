@@ -194,6 +194,14 @@ int nucleator::addnodessphere(void)
 
         ptheactin->nuc_to_world_frame(worldframepos);
 
+        if ((COVERSLIPGAP > 0) &&
+            ((worldframepos.x * 2 >  COVERSLIPGAP) ||
+             (worldframepos.x * 2 < -COVERSLIPGAP)) )  
+        {   // skip of outside coverslip
+            continue;
+        }
+
+
         // add the new node:
         ptheactin->highestnodecount++;
         ptheactin->node[ptheactin->highestnodecount].polymerize(worldframepos);             

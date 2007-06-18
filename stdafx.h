@@ -228,9 +228,13 @@ extern double COL_INDIVIDUAL_SCALE;
 
 extern bool BMP_LINKS_BROKEN;
 extern bool BMP_TRANSVERSELINKSONLY;
+extern bool BMP_RADIALLINKSONLY;
 
+extern bool VTK_SCALECOLOPACITY;
 
 extern bool NO_SYMBREAK_ROTATION;
+
+extern bool NO_X_MOTION;
 
 //-- Threading
 extern TaskQueue thread_queue;
@@ -319,6 +323,10 @@ extern double MAX_POLYMERISATION_PRESSURE;
 extern bool POST_VTK;
 extern bool POST_STATS;
 
+extern bool DRAW_COMPRESSIVE_FORCES;
+
+extern bool BLANK_BMP;
+
 extern int BMP_WIDTH,BMP_HEIGHT;
 extern int VTK_WIDTH;
 extern int VTK_HEIGHT;
@@ -330,6 +338,7 @@ extern double VTK_NUC_LINKS_ONLY_AMPLIFY;
 extern double COLOUR_GAMMA;
 extern bool VTK_MOVE_WITH_BEAD;
 extern double VTK_VIEWANGLE;
+extern double VTK_RIP_Z_ANGLE;
 
 extern bool NO_IMAGE_TEXT;
 extern bool NO_COLBAR;

@@ -78,7 +78,6 @@ double BMP_INTENSITY_SCALE = 1.4;
 double INIT_R_GAIN = 20;
 double INIT_G_GAIN = 20;
 double INIT_B_GAIN = 20;
-
 double FOCALDEPTH = 2.0;
 
 double BMP_INTENSITY_OFFSET = 0.24;
@@ -92,10 +91,15 @@ bool POST_REPORTS = false;
 bool BMP_TRACKS = false;
 bool BMP_LINKS_BROKEN = false;
 bool BMP_TRANSVERSELINKSONLY = false;
+bool BMP_RADIALLINKSONLY = false;
+
+bool BLANK_BMP = false;
 
 bool PLOTFORCES = true;
 
 bool ALLOW_HARBINGERS_TO_MOVE = false;
+
+bool NO_X_MOTION = false;
 
 bool   SPECKLE = false;
 double SPECKLE_FACTOR = 1;
@@ -220,7 +224,9 @@ double VISC_DIST = 0.7;
 bool STICK_TO_NUCLEATOR = false;
 bool RESTICK_TO_NUCLEATOR = true;
 
+bool VTK_SCALECOLOPACITY = false;
 
+double VTK_RIP_Z_ANGLE = 80;
 
 double LINK_FORCE = 0.1;
 double P_XLINK =  0.5;
@@ -248,6 +254,8 @@ char STATSDIR[2048];
 
 char IMAGEMAGICKCONVERT[1024];
 char IMAGEMAGICKMOGRIFY[1024];
+
+bool DRAW_COMPRESSIVE_FORCES = true;
 
 double LINK_POWER_SCALE = 0;
 
@@ -524,7 +532,7 @@ int main(int argc, char* argv[])
 
     if (    (strcmp( hostname, "medusa.kinglab")       == 0) )
     {
-        if (POST_VTK)    // computer seems to croak (out of memory?) if vtk with 4 threads
+        if (POST_VTK)  
             POST_PROCESS_CPUS = 2;
         else
             POST_PROCESS_CPUS = 4;
@@ -789,6 +797,9 @@ int main(int argc, char* argv[])
         else if (tag == "BMP_CENTER_ON_LEFT") 
 			{ss >> buff2; if (buff2=="TRUE") BMP_CENTER_ON_LEFT = true; else BMP_CENTER_ON_LEFT = false;}
 
+        else if (tag == "BLANK_BMP")  
+			{ss >> buff2; if (buff2=="TRUE") BLANK_BMP = true; else BLANK_BMP = false;}
+
         else if (tag == "SYM_IN_COVERSLIP_PLANE") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_IN_COVERSLIP_PLANE = true; else SYM_IN_COVERSLIP_PLANE = false;}   
 
@@ -796,19 +807,22 @@ int main(int argc, char* argv[])
 			{ss >> buff2; if (buff2=="TRUE") VTK_MOVE_WITH_BEAD = true; else VTK_MOVE_WITH_BEAD = false;}
 
         else if (tag == "VTK_MIN_PLOT_LINK_FORCE_PCT") 
-			{ss >> VTK_MIN_PLOT_LINK_FORCE_PCT;}
+			{ss >> VTK_MIN_PLOT_LINK_FORCE_PCT;}    
 
         else if (tag == "VIEW_VTK")  
-			{ss >> buff2; if (buff2=="TRUE") VIEW_VTK = true; else VTK_MOVE_WITH_BEAD = false;}
+			{ss >> buff2; if (buff2=="TRUE") VIEW_VTK = true; else VIEW_VTK = false;}
 
 		else if (tag == "VTK_AA_FACTOR")	  
 			{ss >> VTK_AA_FACTOR;}
+
+        else if (tag == "VTK_RIP_Z_ANGLE")	  
+			{ss >> VTK_RIP_Z_ANGLE;}
 
         else if (tag == "BMP_AA_FACTOR")	  
 			{ss >> BMP_AA_FACTOR;}
 
 		else if (tag == "COLOUR_GAMMA")	  
-			{ss >> COLOUR_GAMMA;}
+			{ss >> COLOUR_GAMMA;}     
 
 		else if (tag == "VTK_VIEWANGLE")	  
 			{ss >> VTK_VIEWANGLE;}
@@ -1097,9 +1111,18 @@ int main(int argc, char* argv[])
 
             else if (tag == "BMP_TRANSVERSELINKSONLY") 
 			    {ss >> buff2;if(buff2=="TRUE") BMP_TRANSVERSELINKSONLY = true;else BMP_TRANSVERSELINKSONLY = false;}
-            
+
+            else if (tag == "BMP_RADIALLINKSONLY") 
+			    {ss >> buff2;if(buff2=="TRUE") BMP_RADIALLINKSONLY = true;else BMP_RADIALLINKSONLY = false;}
+
             else if (tag == "NODE_SCALE_GAMMA")      
-			    {ss >> NODE_SCALE_GAMMA;}           
+			    {ss >> NODE_SCALE_GAMMA;}
+
+            else if (tag == "VTK_SCALECOLOPACITY") 
+			    {ss >> buff2;if(buff2=="TRUE") VTK_SCALECOLOPACITY = true;else VTK_SCALECOLOPACITY = false;}
+
+            else if (tag == "NO_X_MOTION") 
+			    {ss >> buff2;if(buff2=="TRUE") NO_X_MOTION = true;else NO_X_MOTION = false;} 
 
             else if (tag == "COL_GREY_BGND") 
 			    {ss >> buff2;if(buff2=="TRUE") COL_GREY_BGND = true;else COL_GREY_BGND = false;}  
@@ -1140,6 +1163,9 @@ int main(int argc, char* argv[])
 		    else if (tag == "ROTATION") 
 			    {ss >> buff2;if(buff2=="TRUE") ROTATION = true; else ROTATION = false;} 
     		
+            else if (tag == "DRAW_COMPRESSIVE_FORCES") 
+			    {ss >> buff2;if(buff2=="TRUE") DRAW_COMPRESSIVE_FORCES = true; else DRAW_COMPRESSIVE_FORCES = false;}
+
 		    else if (tag == "MOFI") 
 			    {ss >> MOFI;} 
     		
@@ -1298,6 +1324,12 @@ int main(int argc, char* argv[])
 
     BMP_WIDTH  *= BMP_AA_FACTOR;
     BMP_HEIGHT *= BMP_AA_FACTOR;
+
+    if (REFERENCEFRAME && !POST_PROCESS)
+    {
+        cerr << "REFERENCEFRAME set, but not post-processing.  Ignored." << endl;
+        REFERENCEFRAME = 0; // force ignore of reference frame if calculating
+    }
 
 	if (SPECKLE_FACTOR<0)
 	{
@@ -1897,7 +1929,7 @@ srand( rand_num_seed );
                 //vect sym_break_direction = posn[filenum] - posn[filenum - 10];
 
 				// set camera rotation for save
-    //            if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 2*RADIUS))
+    //            if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 0))
 				//    theactin.set_sym_break_axes(true,sym_break_direction);  // constrain to zy plane
     //            else
     //                theactin.set_sym_break_axes(false,sym_break_direction);
@@ -2118,7 +2150,8 @@ srand( rand_num_seed );
             if (VIEW_VTK)
                 vtkvis.buildVTK(filenum, origin, origin);
 
-            theactin.setdontupdates();
+            theactin.setdontupdates(); // note this is called *before* the clear_nodes_stats()
+                                       // so the stats won't be cleared as they go out of the update range
 
 			theactin.clear_node_stats();  // clear the cumulative stats data in the nodes *after setdontupdates*
                                           // so we preserve the numbers in the ones we're no longer calculating
@@ -2209,7 +2242,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
     #ifdef _WIN32
     cout << "Note that on windows, you must manually unzip any gzipped data files" << endl;
     #endif
-	return 1;
+	return false;
     }
 
     string str;    
@@ -2218,7 +2251,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
     // ensure the identifier for the start of the actin
     if(str.compare("comet:") !=0 ){
 	cout << "error in checkpoint file, 'comet:' expected" << endl;
-	return 1;
+	return false;
     }
     
     int saved_iteration;
@@ -2477,7 +2510,12 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     {
         cout << "Loading frame " << REFERENCEFRAME << " for reference" << endl;
 
-        load_data(theactin, REFERENCEFRAME * InterRecordIterations, false);
+        if (!load_data(theactin, REFERENCEFRAME * InterRecordIterations, false))
+        {
+            cerr << "Unable to open reference frame, ignoring" << endl;
+        }
+
+        REFERENCEFRAME = 0;
 
         // copy the nodes data
         referencenodes.assign(theactin.node.begin(), theactin.node.end());
@@ -2504,7 +2542,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
     vect sym_break_direction = nodeposns[framemaxvelmoved] - nodeposns[framemaxvelmoved - 20];
 
-    if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 2*RADIUS))
+    if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 0))
 	    ptheactin->set_sym_break_axes(true, sym_break_direction);  // constrain to zy plane
     else
         ptheactin->set_sym_break_axes(false,sym_break_direction);

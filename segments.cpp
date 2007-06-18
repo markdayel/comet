@@ -727,7 +727,7 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 		segstodraw = 2 * num_cap_segs;
 	}
 	
-	for (int i=0; i<segstodraw; ++i)
+	for (int i=0; i != segstodraw; ++i)
 	{
 
 		startx = linestartx[axis][i];
@@ -773,7 +773,10 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 		else
 		{
 
-		drawcmd << " line "
+            if (DRAW_COMPRESSIVE_FORCES)
+            {
+
+		    drawcmd << " line "
 				<< centerx + ptheactin->pixels(startx) << "," 
 				<< centery + ptheactin->pixels(starty) << " "
 
@@ -781,6 +784,7 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 				<< centery + ptheactin->pixels(starty + liney);
 				
 				numlinesplotted++;
+            }
 
 		}
 
@@ -799,11 +803,11 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 			linelen = calcdist(linex,liney);
 
 			// truncate if too long (this can be longer than 0.9 RADIUS, if want)
-			if (linelen > 0.9 * RADIUS)
-			{
-				linex *= 0.9 * RADIUS / linelen;
-				liney *= 0.9 * RADIUS / linelen;			
-			}
+			//if (linelen > 0.9 * RADIUS)
+			//{
+			//	linex *= 0.9 * RADIUS / linelen;
+			//	liney *= 0.9 * RADIUS / linelen;			
+			//}
 
 			// don't plot zero length lines
 			if ( (ptheactin->pixels(startx) == ptheactin->pixels(startx + linex)) &&
