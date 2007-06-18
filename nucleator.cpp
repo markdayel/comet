@@ -835,7 +835,7 @@ void nucleator::definecagepoints(void)
 	// sphere
 
 		for (double theta=-PI+2*PI/pointdensity; theta<PI-2*PI/pointdensity; theta+=2*PI/pointdensity)
-			for (double phi=-PI+2*PI/pointdensity; phi<PI-2*PI/pointdensity; phi+=(2*PI/pointdensity) * ELLIPSOID_STRETCHFACTOR)
+			for (double phi=-PI+2*PI/pointdensity; phi<PI-2*PI/pointdensity; phi+=(2*PI/pointdensity) / ELLIPSOID_STRETCHFACTOR)
 			{
 				
 				r = RADIUS * cos(phi);		// radius of circle

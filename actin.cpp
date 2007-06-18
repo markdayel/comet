@@ -2901,7 +2901,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     }
 
-    opruninfo << command3 << endl;
+    // opruninfo << command3 << endl;
 
 	p_outbmpfile->flush();  // must flush the bitmap file buffer before calling imagemagick
 
@@ -3546,8 +3546,8 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
     sym_break_y_angle = 0.0;
     sym_break_z_angle = 0.0; 
 
-    if (NUCSHAPE==nucleator::sphere)
-    {   // only rotate by x and y if sphere, otherwise just by 90 degrees in z axis (after z rot calc)
+    if (NUCSHAPE!=nucleator::capsule)
+    {   // only rotate by x and y if not capsule, otherwise just by 90 degrees in z axis (after z rot calc)
 
         //find_center(sym_break_direction);  // which way did the bead go?
 
