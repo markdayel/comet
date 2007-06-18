@@ -333,6 +333,8 @@ extern int VTK_HEIGHT;
 extern int VTK_AA_FACTOR;
 extern int BMP_AA_FACTOR;
 
+extern double ELLIPSOID_STRETCHFACTOR;
+
 extern bool VTK_NUC_LINKS_ONLY;
 extern double VTK_NUC_LINKS_ONLY_AMPLIFY;
 extern double COLOUR_GAMMA;

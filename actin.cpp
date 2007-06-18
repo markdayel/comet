@@ -2082,7 +2082,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 	double keep_within_border;
 
-	if (p_nuc->geometry == nucleator::sphere)
+	if (NUCSHAPE == nucleator::sphere)
 		 keep_within_border = 2 * RADIUS;
 	else
 		 keep_within_border = CAPSULE_HALF_LINEAR + ( 2 * RADIUS );
@@ -2573,7 +2573,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	int cagemovex = movex;
 	int cagemovey = movey;
 
-	if ((CAGE_ON_SIDE) && (p_nuc->is_sphere()))
+    if ((CAGE_ON_SIDE) && (NUCSHAPE == nucleator::sphere))
 	{   // move cage to side of image
 		cagedispy = cagedispz = 0.0;
 		cagemovex = p_nuc->segs.centerx - bmpcenterx - xgmax;
@@ -3546,7 +3546,7 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
     sym_break_y_angle = 0.0;
     sym_break_z_angle = 0.0; 
 
-    if (p_nuc->geometry==nucleator::sphere)
+    if (NUCSHAPE==nucleator::sphere)
     {   // only rotate by x and y if sphere, otherwise just by 90 degrees in z axis (after z rot calc)
 
         //find_center(sym_break_direction);  // which way did the bead go?
@@ -3691,7 +3691,7 @@ void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direct
         sym_break_y_angle=0.0;
     }
 
-    if (p_nuc->geometry==nucleator::capsule)
+    if (NUCSHAPE==nucleator::capsule)
     {
         sym_break_z_angle += PI/2;   // rotate into x/y plane for capsule
     }

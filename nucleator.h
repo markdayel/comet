@@ -28,11 +28,11 @@ class nucleator
 public:
 	enum shape {
 		sphere = 0,
-		capsule = 1};
+		capsule = 1,
+        ellipsoid = 2};
 	nucleator(void);
 	~nucleator(void);
-	nucleator(shape set_geometry);
-	shape geometry;
+	//shape geometry;
 
 	double surf_area;
 	double movability;
@@ -49,16 +49,17 @@ public:
 	vector <vect> cagepoints;
 
 
-	inline bool is_sphere()
-	{
-		return (geometry == sphere);
-	}
+	//inline bool is_sphere()
+	//{
+	//	return (geometry == sphere);
+	//}
 
     void move_nuc(const vect& origin_of_movement, const vect& tomove);
 
 	int addnodes(void);
 	int addnodessphere(void);
 	int addnodescapsule(void);
+    int addnodesellipsoid(void);
     double polyfeedbackprob(const double& x, const double& y, const double& z) const;
 
 	int savevrml(ofstream *outputstream);

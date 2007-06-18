@@ -114,6 +114,8 @@ double POLY_FEEDBACK_DIST = 1.0;
 double POLY_FEEDBACK_MIN_PROB = 0.05;
 double POLY_FEEDBACK_FACTOR = 4;
 
+double ELLIPSOID_STRETCHFACTOR = 2.0;
+
 
 bool ROTATION = true;
 
@@ -1182,7 +1184,16 @@ int main(int argc, char* argv[])
 			    {ss >> buff2; istringstream ss3(strtolower(buff2)); ss3 >> BMP_OUTPUT_FILETYPE;} 
     		
 		    else if (tag == "SHAPE") 
-			    {ss >> buff2; if (buff2 == "CAPSULE") NUCSHAPE = nucleator::capsule; else NUCSHAPE = nucleator::sphere;}
+			    {ss >> buff2; 
+                if (buff2 == "CAPSULE") 
+                    NUCSHAPE = nucleator::capsule; 
+                else if (buff2 == "ELLIPSOID")
+                    NUCSHAPE = nucleator::ellipsoid;
+                else
+                    NUCSHAPE = nucleator::sphere;}
+
+            else if (tag == "ELLIPSOID_STRETCHFACTOR") 
+			    {ss >> ELLIPSOID_STRETCHFACTOR;}
 
             else if (tag == "CLUSTER") 
 			    {ss >> buff2;if(buff2=="TRUE") CLUSTER = true; else CLUSTER = false;}
@@ -1493,7 +1504,7 @@ int main(int argc, char* argv[])
 
     ptheactin = &theactin;  // ugly global pointer for access from nodes,nucleator and segments
 
-    static nucleator nuc_object(NUCSHAPE);//, &theactin);
+    static nucleator nuc_object;//, &theactin);
 
     // formatting
 

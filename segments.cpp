@@ -61,7 +61,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 	// add up segments
 
-	if (p_nuc->geometry == nucleator::sphere)
+	if (NUCSHAPE == nucleator::sphere)
 	{	// sphere
 
 		num_straight_segs = 0;
@@ -194,7 +194,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 			linestartx[axis][i] = startx;	// line start
 	        
-			if ((p_nuc->geometry == nucleator::sphere) || (axis == 2))
+			if ((NUCSHAPE == nucleator::sphere) || (axis == 2))
 			{	// sphere or capsule z
 				linestarty[axis][i] = starty;
 			}
@@ -217,7 +217,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 			startx = - cos (theta) * RADIUS;  // unit components
 			starty =   sin (theta) * RADIUS;
 
-			if ((p_nuc->geometry == nucleator::sphere) || (axis == zaxis))
+			if ((NUCSHAPE == nucleator::sphere) || (axis == zaxis))
 			{	// sphere or capsule z
 				linestartx[axis][i] = startx;  // line start
 				linestarty[axis][i] = starty;
@@ -238,7 +238,7 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 		// sides
 
-		if  ((p_nuc->geometry == nucleator::capsule) && (axis != zaxis))
+		if  ((NUCSHAPE == nucleator::capsule) && (axis != zaxis))
 		{
 			
 			for(int i = 0; i != num_straight_segs; ++i)
@@ -332,7 +332,7 @@ double segments::getsegmentnum(const vect& node, const projection &axis) const
 void segments::getsegmentnum(const vect& node, double& xseg, double& yseg, double& zseg) const
 {  // set the segment number for each axis, dependent on node position
 
-	if (p_nuc->geometry == nucleator::sphere)
+	if (NUCSHAPE == nucleator::sphere)
 	{	// sphere
 
 		xseg = (double) num_cap_segs * (1+ (atan2(-node.z,node.y) / PI));
@@ -407,7 +407,7 @@ void segments::getsegmentdist(const nodes& node,int& xdist, int& ydist, int& zdi
 
 	//ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_pos); 
 	
-	if (p_nuc->geometry == nucleator::sphere)
+	if (NUCSHAPE == nucleator::sphere)
 	{	// sphere
 
 		xdist = dist_to_seg(calcdist(rot_pos.y, rot_pos.z) - RADIUS); 
@@ -506,7 +506,7 @@ void segments::addnode(const nodes& node)
 	//xfactor = calcdist(rot_unit.y,rot_unit.z);
 	//yfactor = calcdist(rot_unit.x,rot_unit.z);
 
-	if (p_nuc->is_sphere())
+    if (NUCSHAPE == nucleator::sphere)
 	{
 		zfacvec = vect(rot_unit.x,rot_unit.y,0);
 		//zfactor = calcdist(rot_unit.x,rot_unit.y);	
@@ -676,7 +676,7 @@ void segments::drawoutline(ostream& drawcmd, const projection & axis) const
 	
 	// draw outline
 
-    if	((p_nuc->geometry == nucleator::sphere) || (axis == zaxis))
+    if	((NUCSHAPE == nucleator::sphere) || (axis == zaxis))
 	{	
 		// sphere
 
@@ -722,7 +722,7 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 
 	int segstodraw = num_segs;
 
-	if ((p_nuc->geometry == nucleator::capsule) && (axis == zaxis))
+	if ((NUCSHAPE == nucleator::capsule) && (axis == zaxis))
 	{	// capsule z axis, no linear section to plot
 		segstodraw = 2 * num_cap_segs;
 	}
@@ -733,7 +733,7 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 		startx = linestartx[axis][i];
 		starty = linestarty[axis][i];
 
-		if ((p_nuc->geometry == nucleator::capsule) && 
+		if ((NUCSHAPE == nucleator::capsule) && 
 			(axis != 2) &&
 			(fabs(starty) < CAPSULE_HALF_LINEAR))
 		{	// on capsule side
@@ -973,7 +973,7 @@ void segments::savereport(const int& filenum) const
 
                 if (axis == xaxis)
                 {
-                    if (p_nuc->geometry == nucleator::sphere)
+                    if (NUCSHAPE == nucleator::sphere)
 				    {	// sphere or capsule z
 					    radius = calcdist(y,z) - RADIUS;
 				    }
@@ -992,7 +992,7 @@ void segments::savereport(const int& filenum) const
                 }
                 else if (axis == yaxis)
                 {
-                    if ((p_nuc->geometry == nucleator::sphere) || (axis == zaxis))
+                    if ((NUCSHAPE == nucleator::sphere) || (axis == zaxis))
 				    {	// sphere or capsule z
 					    radius = calcdist(x,z) - RADIUS;
 				    }

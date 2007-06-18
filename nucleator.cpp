@@ -24,23 +24,23 @@ double NUCPOINT_SCALE = 0.9;
 double NUCPOINT_SCALE = 1.0001;
 #endif
 			
-nucleator::nucleator(void)
-{  
-}
+//nucleator::nucleator(void)
+//{  
+//}
 
 nucleator::~nucleator(void)
 {
 }
 
-nucleator::nucleator(shape set_geometry)//, actin *actinptr)
+nucleator::nucleator(void)//, actin *actinptr)
 {
 	//radius = RADIUS;
 	//segment = 2*CAPSULE_HALF_LINEAR;
 	//P_NUC = (double)0.8 / (4*PI*radius*radius);
 
-	geometry = set_geometry;
+	//geometry = set_geometry;
 
-	if (geometry==sphere)
+	if (NUCSHAPE==sphere)
 	{
 		surf_area = 4 * PI * RADIUS * RADIUS;
         
@@ -100,7 +100,7 @@ nucleator::nucleator(shape set_geometry)//, actin *actinptr)
 int nucleator::addnodes(void)
 {
 	int nodesadded = 0;
-	switch (geometry)
+	switch (NUCSHAPE)
 	{
 	case (sphere):
 		{
@@ -110,6 +110,11 @@ int nucleator::addnodes(void)
 	case (capsule):
 		{
 		nodesadded = addnodescapsule();
+		break;
+		}
+    case (ellipsoid):
+		{
+		nodesadded = addnodesellipsoid();
 		break;
 		}
 	}
@@ -211,6 +216,84 @@ int nucleator::addnodessphere(void)
 
         nodesadded++;
 	}
+
+	return nodesadded;
+}
+
+int nucleator::addnodesellipsoid(void)
+{
+	int nodesadded = 0;
+	double x,y,z,r,theta;
+    double sz; // sphere co-ords
+
+	double floatingnodestoadd = DELTA_T * P_NUC * surf_area;  // number of nodes to add
+
+	int nodestoadd = (int) floatingnodestoadd;  // actual nodes have to be integer
+
+	if ( prob_to_bool( floatingnodestoadd - nodestoadd ) )
+		nodestoadd++;   // deal with fractional nodes using probability
+
+	while (nodesadded < nodestoadd)
+	{
+		sz = 2 * rand_0to1() - 1 ;		// random number -1 to 1
+		theta = 2 * PI * rand_0to1();  // circle vector
+		
+		if (sz*sz<1) // avoid floating exception due to rounding errors causing -ve sqrt
+		{
+			r = RADIUS * sqrt(1 - sz*sz);		// radius of circle
+		}
+		else
+		{
+			r = RADIUS;  
+		}
+
+		x =  r * cos(theta) * NUCPOINT_SCALE;   // x and y of point
+		y =  r * sin(theta) * NUCPOINT_SCALE;
+
+		sz *=  RADIUS * NUCPOINT_SCALE;          // z just scaled by radius
+
+        z = sz * ELLIPSOID_STRETCHFACTOR; // ellipse z is sphere z stretched by ELLIPSOID_STRETCHFACTOR
+        
+        // reject point with probability proportional to distance moved 
+        
+        if (prob_to_bool(fabs( (sz - z) / (RADIUS * ELLIPSOID_STRETCHFACTOR) )))
+            continue;  
+
+        // modifier for +ve feedback in polymerisation
+
+        if (POLY_FEEDBACK)
+        {   // calculate probability of polymerization due to +ve feedback (based on nearby nodes)    
+            if ( prob_to_bool( polyfeedbackprob(x,y,z) ) )
+            {   
+                // don't add node
+                ptheactin->attemptedpolrate++;  // an aborted node should appear as an attempt
+                continue;   // don't polymerise
+            }
+        }
+
+        // transform co-ords to lab frame
+        vect nucframepos(x,y,z);
+        vect worldframepos=nucframepos;
+
+        ptheactin->nuc_to_world_frame(worldframepos);
+
+        if ((COVERSLIPGAP > 0) &&
+            ((worldframepos.x * 2 >  COVERSLIPGAP) ||
+             (worldframepos.x * 2 < -COVERSLIPGAP)) )  
+        {   // skip of outside coverslip
+            continue;
+        }
+
+
+        // add the new node:
+        ptheactin->highestnodecount++;
+        ptheactin->node[ptheactin->highestnodecount].polymerize(worldframepos);             
+
+        // set the stuck position to the nuc frame pos'n
+        ptheactin->node[ptheactin->highestnodecount].nucleator_stuck_position = nucframepos;
+
+        nodesadded++;
+	} 
 
 	return nodesadded;
 }
@@ -473,7 +556,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 	const double rad = RADIUS * NUCPOINT_SCALE; // needed to prevent rounding errors putting back inside nuclator
 
     // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
-	switch (geometry)
+	switch (NUCSHAPE)
 	{
 	    case (sphere):
 	    {
@@ -491,6 +574,33 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
         	
             node_world.nucleator_impacts += rad - r;
 
+
+		    break;
+	    }
+
+        case (ellipsoid):
+	    {
+  
+            // map onto sphere
+            vect posonsphere(node_world.pos_in_nuc_frame.x , node_world.pos_in_nuc_frame.y, node_world.pos_in_nuc_frame.z / ELLIPSOID_STRETCHFACTOR);
+
+		    r = posonsphere.length();
+
+            scale = rad / r;
+
+		    vect new_posonsphere = posonsphere * scale;
+
+            node_world.pos_in_nuc_frame.x = new_posonsphere.x;
+            node_world.pos_in_nuc_frame.y = new_posonsphere.y;
+            node_world.pos_in_nuc_frame.z = new_posonsphere.z * ELLIPSOID_STRETCHFACTOR;
+        	
+            node_world.nucleator_impacts += (node_world.pos_in_nuc_frame - oldpos).length();
+
+			if ((!node_world.stucktonucleator) && (STICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
+			{
+				node_world.stucktonucleator = true;
+				node_world.nucleator_stuck_position = node_world.pos_in_nuc_frame; // link to point *on* the nucleator surface
+			}
 
 		    break;
 	    }
@@ -624,7 +734,7 @@ void nucleator::move_nuc(const vect& origin_of_movement, const vect& tomove)
 
 int nucleator::save_data(ofstream &ostr) 
 {
-    ostr << geometry << endl;
+    ostr << NUCSHAPE << endl;
     ostr << RADIUS << endl;
     ostr << CAPSULE_HALF_LINEAR << endl;
     ostr << surf_area << endl;
@@ -656,10 +766,11 @@ int nucleator::load_data(ifstream &istr)
 {
     int geom;
     istr >> geom;
-    if(geom == 0)
-	geometry= sphere;
-    else
-	geometry = capsule;
+    //if(geom == 0)
+	//geometry= sphere;
+    //else
+	//geometry = capsule;
+    
     istr >> RADIUS;
     istr >> CAPSULE_HALF_LINEAR;
     istr >> surf_area;
@@ -695,7 +806,7 @@ void nucleator::definecagepoints(void)
 
 	double r,xx,yy,zz;
 
-	if (geometry==sphere)
+	if (NUCSHAPE==sphere)
 	{
 
 	// sphere
@@ -709,6 +820,29 @@ void nucleator::definecagepoints(void)
 				xx = r * cos(theta);				// x and y of point
 				yy = r * sin(theta);
 				zz = sin(phi) * RADIUS;						// z just scaled by radius
+
+				cagepoints.push_back(vect(xx,yy,zz));
+			}
+
+
+        cagepoints.push_back(vect(0,0,RADIUS));
+        cagepoints.push_back(vect(0,0,-RADIUS));
+
+	}
+	else if (NUCSHAPE==ellipsoid)
+	{
+
+	// sphere
+
+		for (double theta=-PI+2*PI/pointdensity; theta<PI-2*PI/pointdensity; theta+=2*PI/pointdensity)
+			for (double phi=-PI+2*PI/pointdensity; phi<PI-2*PI/pointdensity; phi+=(2*PI/pointdensity) * ELLIPSOID_STRETCHFACTOR)
+			{
+				
+				r = RADIUS * cos(phi);		// radius of circle
+				
+				xx = r * cos(theta);				// x and y of point
+				yy = r * sin(theta);
+				zz = sin(phi) * RADIUS * ELLIPSOID_STRETCHFACTOR;						// z just scaled by radius
 
 				cagepoints.push_back(vect(xx,yy,zz));
 			}

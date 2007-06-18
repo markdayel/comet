@@ -72,6 +72,8 @@
 //#include "vtkIdType.h"
 #include "vtkCellData.h"
 #include "vtkDataSet.h"
+#include "vtkTransform.h"
+#include "vtkTransformPolyDataFilter.h"
 
 //#include "vtkSmartPointer.h"
 
@@ -727,15 +729,19 @@ void CometVtkVis::saveVRML(int framenumber)
 
 void CometVtkVis::addNucleator()
 {
-    if(ptheactin->p_nuc->geometry == nucleator::sphere){
-	addSphericalNucleator();
-    } else {
-	addCapsuleNucleator();
+    if (NUCSHAPE == nucleator::capsule) 
+    {
+        cout << endl <<  " Nucleator: " << NUCSHAPE  << endl << endl;
+        addCapsuleNucleator();   
+    } else 
+    {   
+	    addSphericalNucleator();
     }
 }
 
 void CometVtkVis::addCapsuleNucleator()
 {
+    
 
     // the capsule is oriented along z in the nuc frame of ref:
 
@@ -870,12 +876,12 @@ void CometVtkVis::addSphericalNucleator()
     //cout << "  voxel_scale: " << voxel_scale << endl;
     //cout << "  nucleator radius: " << radius_pixels << endl;
 
-    
     sphere->SetRadius(radius_pixels);
     sphere->SetThetaResolution(32);
     sphere->SetPhiResolution(32);
     //sphere->LatLongTessellationOn();
 
+    
 
     vtkActor *nuc_actor = vtkActor::New();
 
@@ -889,7 +895,18 @@ void CometVtkVis::addSphericalNucleator()
     nuc_actor->GetProperty()->SetAmbient(0.3);
     nuc_actor->GetProperty()->SetSpecular(1.0);
     nuc_actor->GetProperty()->SetSpecularPower(5.0);
- 
+    
+    vtkTransform *ellipseTransform = vtkTransform::New();
+    vtkTransformPolyDataFilter *ellipseFilter = vtkTransformPolyDataFilter::New();
+    ellipseFilter->SetInput( sphere->GetOutput() );
+
+    if (NUCSHAPE == nucleator::ellipsoid)
+    {
+        ellipseTransform->Scale(1,1,ELLIPSOID_STRETCHFACTOR);
+        ellipseFilter->SetTransform( ellipseTransform );
+    }
+
+
      // mapper
     vtkPolyDataMapper *mapper = vtkPolyDataMapper::New(); 
 
@@ -907,7 +924,7 @@ void CometVtkVis::addSphericalNucleator()
 	    // create texturemap to sphere
 	    vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
 	    tx_mapper->PreventSeamOff();
-        tx_mapper->SetInput( sphere->GetOutput() );
+        tx_mapper->SetInput( ellipseFilter->GetOutput() );
 	    vtkTransformTextureCoords *tx_xfm =  vtkTransformTextureCoords::New();
 	    tx_xfm->SetInput( tx_mapper->GetOutput() );
     	
@@ -929,9 +946,10 @@ void CometVtkVis::addSphericalNucleator()
  #endif
 
 
-    } else {
-	mapper->SetInput(sphere->GetOutput());
-	nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
+    } else 
+    {
+	    mapper->SetInput(ellipseFilter->GetOutput());
+	    nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
     }
 
 
@@ -1426,7 +1444,7 @@ void CometVtkVis::set_mean_posns()
   
   // stops bead 
   double keep_within_border;
-  if( ptheactin->p_nuc->geometry == nucleator::sphere )
+  if( NUCSHAPE == nucleator::sphere )
     keep_within_border = 2*RADIUS;
   else
     keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);

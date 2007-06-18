@@ -483,7 +483,19 @@ int nodes::savelinks(ofstream * outputstream)
 			dist_from_surface -= RADIUS;
 
 		}
-		else
+		else if (NUCSHAPE == nucleator::ellipsoid)
+        {   // TODO: note the vector isn't right yet!
+            vect posonsphere(pos_in_nuc_frame.x, pos_in_nuc_frame.y, pos_in_nuc_frame.z / ELLIPSOID_STRETCHFACTOR);
+            
+            dist_from_surface = posonsphere.length();	 // not really dist_from_surface yet, need to subtract radius
+            unit_vec_posn = posonsphere / dist_from_surface;  // normalise to set unit vector position
+			
+            
+            //nearest_surface_point = unit_vec_posn
+			dist_from_surface -= RADIUS;
+
+		}
+        else
 		{	// capsule
 			if (fabs(pos_in_nuc_frame.z) < CAPSULE_HALF_LINEAR)
 			{  // on cylinder, no z component
