@@ -788,9 +788,9 @@ void CometVtkVis::addCapsuleNucleator()
     ptheactin->world_to_nuc_rot.getangles(nrotation[0], 
 						 nrotation[1], 
 						 nrotation[2]);
-    nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
-    nrotation[1] *= vtkMath::DoubleRadiansToDegrees();
-    nrotation[2] *= vtkMath::DoubleRadiansToDegrees();
+    nrotation[0] *= -vtkMath::DoubleRadiansToDegrees();
+    nrotation[1] *= -vtkMath::DoubleRadiansToDegrees();
+    nrotation[2] *= -vtkMath::DoubleRadiansToDegrees();
     
     // - upper endcap
     // actor coordinates geometry, properties, transformation
@@ -865,9 +865,9 @@ void CometVtkVis::addSphericalNucleator()
     ptheactin->nuc_to_world_rot.getangles(nrotation[0], 
 						 nrotation[1], 
 						 nrotation[2]);
-    nrotation[0] *= vtkMath::DoubleRadiansToDegrees();
-    nrotation[1] *= vtkMath::DoubleRadiansToDegrees();
-    nrotation[2] *= vtkMath::DoubleRadiansToDegrees();
+    nrotation[0] *= -vtkMath::DoubleRadiansToDegrees();
+    nrotation[1] *= -vtkMath::DoubleRadiansToDegrees();
+    nrotation[2] *= -vtkMath::DoubleRadiansToDegrees();
 
 
     // create sphere geometry
@@ -877,20 +877,21 @@ void CometVtkVis::addSphericalNucleator()
     //cout << "  nucleator radius: " << radius_pixels << endl;
 
     sphere->SetRadius(radius_pixels);
-    sphere->SetThetaResolution(32);
-    sphere->SetPhiResolution(32);
+    sphere->SetThetaResolution(64);
+    sphere->SetPhiResolution(64);
     //sphere->LatLongTessellationOn();
 
     
 
     vtkActor *nuc_actor = vtkActor::New();
 
-    nuc_actor->SetPosition(nucposn.x, nucposn.y, nucposn.z);
-    nuc_actor->SetOrientation( nrotation[0] + 180,
+    
+    nuc_actor->SetOrientation( nrotation[0],
 				   nrotation[1],
 				   nrotation[2]);
- 
+    nuc_actor->SetPosition(nucposn.x, nucposn.y, nucposn.z);
     nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
+
     nuc_actor->GetProperty()->SetDiffuse(0.25);
     nuc_actor->GetProperty()->SetAmbient(0.3);
     nuc_actor->GetProperty()->SetSpecular(1.0);
@@ -902,10 +903,10 @@ void CometVtkVis::addSphericalNucleator()
 
     if (NUCSHAPE == nucleator::ellipsoid)
     {
-        ellipseTransform->Scale(1,1,ELLIPSOID_STRETCHFACTOR);
-        ellipseFilter->SetTransform( ellipseTransform );
+        ellipseTransform->Scale(1,1,ELLIPSOID_STRETCHFACTOR);    
     }
 
+    ellipseFilter->SetTransform( ellipseTransform );
 
      // mapper
     vtkPolyDataMapper *mapper = vtkPolyDataMapper::New(); 

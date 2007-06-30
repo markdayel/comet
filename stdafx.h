@@ -408,6 +408,8 @@ extern double TEST_DIST_EQUIL;
 
 extern bool WRITE_BMPS_PRE_SYMBREAK;
 
+extern double NUC_FRICTION_COEFF;
+
 extern double NUCLEATOR_INERTIA;
 extern bool VARY_INERT_W_RAD;
 

@@ -237,7 +237,9 @@ double MAX_POLYMERISATION_PRESSURE = 1000;
 
 double RADIUS =  1.0;
 double CAPSULE_HALF_LINEAR =  6.0;
-double COVERSLIPGAP = 10000;
+double COVERSLIPGAP = 10000;    
+
+double NUC_FRICTION_COEFF = 0.1;
 
 nucleator::shape NUCSHAPE = nucleator::sphere;  //default to sphere
 
@@ -532,10 +534,10 @@ int main(int argc, char* argv[])
         POST_PROCESS_CPUS = 2;  // the cluster machines have 2 cpus
     }
 
-    if (    (strcmp( hostname, "medusa.kinglab")       == 0) )
+    if (    (strcmp( hostname, "medusa.local")       == 0) )
     {
         if (POST_VTK)  
-            POST_PROCESS_CPUS = 2;
+            POST_PROCESS_CPUS = 4;
         else
             POST_PROCESS_CPUS = 4;
     }
@@ -1169,7 +1171,10 @@ int main(int argc, char* argv[])
 			    {ss >> buff2;if(buff2=="TRUE") DRAW_COMPRESSIVE_FORCES = true; else DRAW_COMPRESSIVE_FORCES = false;}
 
 		    else if (tag == "MOFI") 
-			    {ss >> MOFI;} 
+			    {ss >> MOFI;}
+
+            else if (tag == "NUC_FRICTION_COEFF") 
+			    {ss >> NUC_FRICTION_COEFF;}
     		
 		    else if (tag == "NO_IMAGE_TEXT") 
 			    {ss >> buff2;if(buff2=="TRUE") NO_IMAGE_TEXT = true; else NO_IMAGE_TEXT = false;} 
@@ -2565,7 +2570,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
     char command1[1024];
 
-    if (!POST_VTK_VIEW && !POST_PROCESSSINGLECPU && postprocess_iterations.size() > POST_PROCESS_CPUS)
+    if (!POST_VTK_VIEW && !POST_PROCESSSINGLECPU && (postprocess_iterations.size() > POST_PROCESS_CPUS) )
 	{   // divide up tasks and spawn worker processes
 
 		int firstframe =  *postprocess_iterations.begin()  / InterRecordIterations;

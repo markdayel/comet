@@ -115,7 +115,7 @@ public:
     vect posnoflastgridupdate;
 
     //bool unit_vec_correct;
-    vect pos_in_nuc_frame;
+    vect pos_in_nuc_frame, previous_pos_in_nuc_frame;
 
 	inline void applyforces() 
 	{	

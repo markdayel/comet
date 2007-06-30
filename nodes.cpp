@@ -159,6 +159,8 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
     //unit_vec_correct = false;
     setunitvec();
 
+    previous_pos_in_nuc_frame = pos_in_nuc_frame;
+
 	return true;       
 }
 
@@ -472,6 +474,7 @@ int nodes::savelinks(ofstream * outputstream)
         //    return;
         //unit_vec_correct = true;  // prevent unnecessary recalculation if node not moved, etc.
 
+        previous_pos_in_nuc_frame = pos_in_nuc_frame;
         pos_in_nuc_frame=*this;
         ptheactin->world_to_nuc_frame(pos_in_nuc_frame);
 

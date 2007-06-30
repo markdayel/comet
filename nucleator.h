@@ -35,7 +35,7 @@ public:
 	//shape geometry;
 
 	double surf_area;
-	double movability;
+	double inertia;
 
 	segments segs;
 

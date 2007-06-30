@@ -32,13 +32,20 @@ nucleator::~nucleator(void)
 {
 }
 
+
+double arctanh(double x) 
+{ 
+  if (fabs(x)>0.9999999) 
+    return (x/fabs(x))*1e18;
+
+  if (x < 0.000000000001) 
+      return 0.0;
+
+  return log((1.0+x)/(1.0-x)) / 2.0 ;
+}
+
 nucleator::nucleator(void)//, actin *actinptr)
 {
-	//radius = RADIUS;
-	//segment = 2*CAPSULE_HALF_LINEAR;
-	//P_NUC = (double)0.8 / (4*PI*radius*radius);
-
-	//geometry = set_geometry;
 
 	if (NUCSHAPE==sphere)
 	{
@@ -46,15 +53,51 @@ nucleator::nucleator(void)//, actin *actinptr)
         
         if (VARY_INERT_W_RAD)
         {   // movability is a *fraction* representing the ratio of how movable the nucleator is compared to the nodes
-            movability = 0.25 / (RADIUS * NUCLEATOR_INERTIA);
+            inertia = 4 * (RADIUS * NUCLEATOR_INERTIA);
         }
         else
         {
-            movability = 0.25 / (2.5 * NUCLEATOR_INERTIA);
+            inertia = 4 * (2.5 * NUCLEATOR_INERTIA);
         }
 
 		momentofinertia.x = 1000 * RADIUS * MOFI;  // mark:  todo: calculate these numbers
 		momentofinertia.y = 1000 * RADIUS * MOFI;
+		momentofinertia.z = 1000 * RADIUS * MOFI;
+	}
+	else if (NUCSHAPE==ellipsoid)
+	{
+        // formula for surface area of ellipsoid 
+        // (adapted  from wikipedia)
+
+        double a = RADIUS;
+        //double b = RADIUS;
+        double c = RADIUS * ELLIPSOID_STRETCHFACTOR;
+
+        if (ELLIPSOID_STRETCHFACTOR > 1)
+        {   // prolate
+            double OE = acos( a / c );
+            surf_area = 2 * PI * ( a*a + c*c * OE / tan(OE));
+        }
+        else
+        {   // oblate
+            double OE = acos( c / a );
+            surf_area = 2 * PI * ( a*a + c*c * arctanh(sin(OE)) / sin(OE));
+        }
+
+
+		//surf_area = 4 * PI * RADIUS * RADIUS * ELLIPSOID_STRETCHFACTOR;
+        
+        if (VARY_INERT_W_RAD)
+        {   // movability is a *fraction* representing the ratio of how movable the nucleator is compared to the nodes
+            inertia = 4 * (RADIUS * NUCLEATOR_INERTIA * ELLIPSOID_STRETCHFACTOR) ;
+        }
+        else
+        {
+            inertia = 4 * (2.5 * NUCLEATOR_INERTIA);
+        }
+
+		momentofinertia.x = 1000 * RADIUS * MOFI * ELLIPSOID_STRETCHFACTOR;  // mark:  todo: calculate these numbers
+		momentofinertia.y = 1000 * RADIUS * MOFI * ELLIPSOID_STRETCHFACTOR;
 		momentofinertia.z = 1000 * RADIUS * MOFI;
 	}
 	else
@@ -63,16 +106,16 @@ nucleator::nucleator(void)//, actin *actinptr)
 		
         if (VARY_INERT_W_RAD)
         {
-            movability = 0.25 / (NUCLEATOR_INERTIA * (RADIUS + CAPSULE_HALF_LINEAR/2));   // what should this be??
+            inertia = 4 * (NUCLEATOR_INERTIA * (RADIUS + CAPSULE_HALF_LINEAR/2));   // what should this be??
         }
         else
         {
-            movability = 0.25 / (NUCLEATOR_INERTIA * (2.5 + 1.5/2));   // what should this be??
+            inertia = 4 * (NUCLEATOR_INERTIA * (2.5 + 1.5/2));   // what should this be??
         }
         
 
-	    momentofinertia.x = 1000 * RADIUS * CAPSULE_HALF_LINEAR * MOFI;  // mark:  todo: calculate these numbers
-		momentofinertia.y = 1000 * RADIUS * CAPSULE_HALF_LINEAR * MOFI;
+	    momentofinertia.x = 1000 * RADIUS * MOFI * CAPSULE_HALF_LINEAR;  // mark:  todo: calculate these numbers
+		momentofinertia.y = 1000 * RADIUS * MOFI * CAPSULE_HALF_LINEAR;
 		momentofinertia.z = 1000 * RADIUS * MOFI;
 	}
 
@@ -255,9 +298,20 @@ int nucleator::addnodesellipsoid(void)
         z = sz * ELLIPSOID_STRETCHFACTOR; // ellipse z is sphere z stretched by ELLIPSOID_STRETCHFACTOR
         
         // reject point with probability proportional to distance moved 
-        
-        if (prob_to_bool(fabs( (sz - z) / (RADIUS * ELLIPSOID_STRETCHFACTOR) )))
-            continue;  
+        if (ELLIPSOID_STRETCHFACTOR >= 1.0)
+        {   // prolate
+            if (prob_to_bool(fabs( (sz - z) / (RADIUS * ELLIPSOID_STRETCHFACTOR) )))
+                continue;  
+        } else
+        {   // oblate
+            if (prob_to_bool(1 - fabs( (sz - z) / (RADIUS) )))
+                continue;
+            //if (prob_to_bool( pow(((r - fabs(z)) / RADIUS) ,0.5) ))
+            //    continue;
+
+            //if (prob_to_bool( pow( 1- fabs( (sz - z) / (RADIUS * ELLIPSOID_STRETCHFACTOR) ) , 2) ))
+            //    continue;
+        }
 
         // modifier for +ve feedback in polymerisation
 
@@ -514,7 +568,7 @@ double nucleator::polyfeedbackprob(const double& x, const double& y, const doubl
 
 
 int nucleator::savevrml(ofstream *outputstream) 
-{
+{  /// sends the cage points for the nucleator to a vrml stream
 
 int numpoints = 0;
 
@@ -543,6 +597,11 @@ for (vector <vect>::iterator point=cagepoints.begin();
 	return 0;
 }
 
+//vect nucleator::calcfrictionstuff(const double &r1, const vect &lastpos, const vect &thispos)
+//{
+//    
+//}
+
 bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 {   /// returns true if succeeds, false if fails due to too great node ejection
 
@@ -553,6 +612,8 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 	vect node_disp;
 	const vect oldpos = node_world.pos_in_nuc_frame;
 
+    vect frictionvec, frictionpoint, ejection_normal;
+
 	const double rad = RADIUS * NUCPOINT_SCALE; // needed to prevent rounding errors putting back inside nuclator
 
     // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
@@ -562,16 +623,17 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 	    {
 		    r = node_world.pos_in_nuc_frame.length();
 
-			if ((!node_world.stucktonucleator) && (STICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
-			{
-				node_world.stucktonucleator = true;
-				node_world.nucleator_stuck_position = node_world.pos_in_nuc_frame * (RADIUS/r); // link to point *on* the nucleator surface
-			}
+            // assume that since it collided, the previous_pos_in_nuc_frame was close to the surface
 
-			scale = rad / r;
+            // project last position onto surface
+            frictionpoint = node_world.previous_pos_in_nuc_frame.unitvec() * rad;
 
-		    node_world.pos_in_nuc_frame *= scale;
+            // project current position onto surface
+		    node_world.pos_in_nuc_frame *= rad / r;
         	
+            // find point between the two, based on friction
+            frictionvec = (node_world.pos_in_nuc_frame - frictionpoint) * NUC_FRICTION_COEFF;
+
             node_world.nucleator_impacts += rad - r;
 
 
@@ -580,27 +642,45 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
         case (ellipsoid):
 	    {
-  
-            // map onto sphere
-            vect posonsphere(node_world.pos_in_nuc_frame.x , node_world.pos_in_nuc_frame.y, node_world.pos_in_nuc_frame.z / ELLIPSOID_STRETCHFACTOR);
+            double nlen1 = rad;
+            //double nlen2 = rad;
 
-		    r = posonsphere.length();
+            vect new_posonellipse, posonsphere, iterpos;
 
-            scale = rad / r;
+            iterpos = node_world.pos_in_nuc_frame;
 
-		    vect new_posonsphere = posonsphere * scale;
+            while  (nlen1 > (rad * 0.002))   // relates to how close before we accept it
+            {
 
-            node_world.pos_in_nuc_frame.x = new_posonsphere.x;
-            node_world.pos_in_nuc_frame.y = new_posonsphere.y;
-            node_world.pos_in_nuc_frame.z = new_posonsphere.z * ELLIPSOID_STRETCHFACTOR;
-        	
-            node_world.nucleator_impacts += (node_world.pos_in_nuc_frame - oldpos).length();
+                // map onto sphere
+                vect posonsphere(iterpos.x , iterpos.y, iterpos.z / ELLIPSOID_STRETCHFACTOR);
 
-			if ((!node_world.stucktonucleator) && (STICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
-			{
-				node_world.stucktonucleator = true;
-				node_world.nucleator_stuck_position = node_world.pos_in_nuc_frame; // link to point *on* the nucleator surface
-			}
+                // eject to sphere
+		        new_posonellipse = posonsphere.unitvec() * rad; // this is sphere not really ellipsoid yet
+                new_posonellipse.z *= ELLIPSOID_STRETCHFACTOR; // stretch z to map onto ellipsoid
+                
+                // this is not right yet---the ejection normals are not correct
+                // but we can transform them below
+
+                // find the ejection normal, shrink it along ellipse axis, and stretch along it's length
+
+                ejection_normal = new_posonellipse - iterpos;
+                nlen1 = ejection_normal.length();
+
+                ejection_normal.z /= (ELLIPSOID_STRETCHFACTOR * ELLIPSOID_STRETCHFACTOR);
+                //nlen2 = ejection_normal.length(); // squish along ellipse axis
+
+                //ejection_normal *= 0.9 * nlen1 / nlen2; // scale length 
+                
+
+                iterpos = iterpos + ejection_normal;
+
+            }
+
+            node_world.pos_in_nuc_frame = iterpos;
+            ejection_normal = node_world.pos_in_nuc_frame - oldpos;
+    
+            node_world.nucleator_impacts += ejection_normal.length();
 
 		    break;
 	    }
@@ -616,15 +696,6 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
                 // note the nucleator_stuck_position is used to produce the patterned speckle
                 // tracks and should represent the last nucleator collision position
-
-				if ((!node_world.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
-				{
-					node_world.stucktonucleator = true;
-
-                    node_world.nucleator_stuck_position.x = node_world.pos_in_nuc_frame.x * (RADIUS/r);  // link to point *on* the nucleator surface
-				    node_world.nucleator_stuck_position.y = node_world.pos_in_nuc_frame.y * (RADIUS/r);
-				    node_world.nucleator_stuck_position.z = node_world.pos_in_nuc_frame.z;  // cylinder, so not scale z
-				}
 
 			    scale = rad / r;
 
@@ -647,19 +718,6 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
 				r = calcdist(node_world.pos_in_nuc_frame.x,node_world.pos_in_nuc_frame.y,z2);
 
-				if ((!node_world.stucktonucleator) && (STICK_TO_NUCLEATOR) && (RESTICK_TO_NUCLEATOR)) // re-stick to nucleator if come off
-				{
-					node_world.stucktonucleator = true;
-
-                    node_world.nucleator_stuck_position.x = node_world.pos_in_nuc_frame.x * (RADIUS/r);
-				    node_world.nucleator_stuck_position.y = node_world.pos_in_nuc_frame.y * (RADIUS/r);
-
-                    if (node_world.pos_in_nuc_frame.z<0)  // undo make into sphere for stuck position
-					    node_world.nucleator_stuck_position.z = z2 * (RADIUS/r) - (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
-				    else
-					    node_world.nucleator_stuck_position.z = z2 * (RADIUS/r) + (CAPSULE_HALF_LINEAR);// link to point *on* the nucleator surface
-				}
-
 			    scale = rad / r;
 			    node_world.pos_in_nuc_frame.x *= scale;
 			    node_world.pos_in_nuc_frame.y *= scale;
@@ -676,13 +734,19 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 		    break;
 	    }
 
+    }
+
+    if ((!node_world.stucktonucleator) && STICK_TO_NUCLEATOR  && RESTICK_TO_NUCLEATOR) // re-stick to nucleator if come off
+	{
+		node_world.stucktonucleator = true;
+		node_world.nucleator_stuck_position = node_world.pos_in_nuc_frame; // link to point *on* the nucleator surface
 	}
 
     node_disp = node_world.pos_in_nuc_frame - oldpos;  // check now much we have moved
 
     if ((fabs(node_disp.x) > 0.2*RADIUS) ||
 	    (fabs(node_disp.y) > 0.2*RADIUS) ||
-	    (fabs(node_disp.z) > 0.2*RADIUS))
+	    (fabs(node_disp.z) > 0.2*RADIUS*ELLIPSOID_STRETCHFACTOR))
     {
 		cout << setprecision(3) << endl;
 		cout << "node " << node_world.nodenum << " nucleus ejection too great. Radius:" << oldpos.length() <<  endl;
@@ -695,7 +759,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
 #ifndef SEED_INSIDE
 
-    node_world.pos_in_nuc_frame -= node_disp * movability;  // move the node *back* scaled by movibility (since nucleator should move this much)
+    node_world.pos_in_nuc_frame -= node_disp / inertia;  // move the node *back* scaled by movibility (since nucleator should move this much)
 
     move_nuc(oldpos,node_disp);  // move the nucleator
 
@@ -718,7 +782,7 @@ void nucleator::move_nuc(const vect& origin_of_movement, const vect& tomove)
 	/// doesn't actually move anything here---that is done in actin::applyforces()
 
     // displacement is easy:
-    deltanucposn -= tomove * movability;
+    deltanucposn -= tomove / inertia;
 
     // rotate the nucleator
 
@@ -738,12 +802,13 @@ int nucleator::save_data(ofstream &ostr)
     ostr << RADIUS << endl;
     ostr << CAPSULE_HALF_LINEAR << endl;
     ostr << surf_area << endl;
-    ostr << movability << endl;
+    ostr << (1/inertia) << endl;
     ostr << position << endl;
     ostr << deltanucposn << endl;
     ostr << torque << endl;
     ostr << centerofmass << endl;
     ostr << momentofinertia << endl;
+
 //    ostr << nucleator_rotation << endl;
     // omitting
     //  colour
@@ -770,6 +835,8 @@ int nucleator::load_data(ifstream &istr)
 	//geometry= sphere;
     //else
 	//geometry = capsule;
+
+    double movability;
     
     istr >> RADIUS;
     istr >> CAPSULE_HALF_LINEAR;
@@ -780,6 +847,9 @@ int nucleator::load_data(ifstream &istr)
     istr >> torque;
     istr >> centerofmass;
     istr >> momentofinertia;
+
+    inertia = 1/movability;
+
 //    istr >> nucleator_rotation;
     
     return 0;
