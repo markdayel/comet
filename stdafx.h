@@ -234,6 +234,8 @@ extern bool VTK_SCALECOLOPACITY;
 
 extern bool NO_SYMBREAK_ROTATION;
 
+extern double DASHPOT_IMPEDANCE;
+
 extern bool NO_X_MOTION;
 
 //-- Threading
@@ -313,8 +315,8 @@ extern double XLINK_NODE_RANGE;	// Limit crosslink to within this range
 
 extern double LINK_BREAKAGE_FORCE;  // breakage force per link
 extern double LINK_FORCE;
-extern bool USE_BREAKAGE_VISCOSITY;
-extern double BREAKAGE_VISCOSITY_THRESHOLD;
+//extern bool USE_BREAKAGE_VISCOSITY;
+//extern double BREAKAGE_VISCOSITY_THRESHOLD;
 extern double LINK_BREAKAGE_STRAIN;
 extern double P_XLINK;
 extern double P_NUC;

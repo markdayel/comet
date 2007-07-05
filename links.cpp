@@ -25,6 +25,7 @@ links::links(void)
 	linkednodeptr = 0;
 	linkednodenumber = -1;
     last_force_set = false;
+    last_link_length = 0.0;
 
     forcesum=0.0;
 }
@@ -38,6 +39,7 @@ links::links(nodes& linknode, const double& linkdist)
 	linkednodeptr = &linknode;
     linkednodenumber = linknode.nodenum;
     orig_dist = linkdist;
+    last_link_length = linkdist;
     broken = false;
     last_force_set = false;
 
@@ -72,7 +74,9 @@ int links::load_data(ifstream &istr)
 		 >> linkednodenumber
          >> last_force 
          >> last_force_set
-         >> forcesum;                 
+         >> forcesum;                  
+
+    // todo set the last_link_length here (or after setting node positions?)
 
 	orig_dist_recip = 1/orig_dist;
 	linkforcescalefactor = pow(orig_dist_recip,LINK_POWER_SCALE);

@@ -612,7 +612,9 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 	vect node_disp;
 	const vect oldpos = node_world.pos_in_nuc_frame;
 
-    vect frictionvec, frictionpoint, ejection_normal;
+    double normaldisp, td_len, fr_len;
+    vect tangdisp, frictdisp, inffrictionpoint, zerofrictpoint, ejection_normal;
+    vect finalpos, interact_disp;
 
 	const double rad = RADIUS * NUCPOINT_SCALE; // needed to prevent rounding errors putting back inside nuclator
 
@@ -625,16 +627,37 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
             // assume that since it collided, the previous_pos_in_nuc_frame was close to the surface
 
-            // project last position onto surface
-            frictionpoint = node_world.previous_pos_in_nuc_frame.unitvec() * rad;
+            // point on surface if infinite friction, i.e. project last position onto surface
+            inffrictionpoint = node_world.previous_pos_in_nuc_frame.unitvec() * rad;
 
-            // project current position onto surface
-		    node_world.pos_in_nuc_frame *= rad / r;
+            // point on surface if zero friction, i.e. project current position onto surface
+		    zerofrictpoint = node_world.pos_in_nuc_frame * rad / r;
+
+            normaldisp = rad - r; // or force---necessary to multiply by NODE_DIST_TO_FORCE?
+
+            tangdisp = zerofrictpoint - inffrictionpoint ;
+            td_len = tangdisp.length();
+
+            frictdisp = -tangdisp * normaldisp * NUC_FRICTION_COEFF;   // in direction of node movement
+            fr_len = frictdisp.length();
+
+            if (td_len < fr_len)
+            {   // friction can't be greater than tangential force
+                frictdisp *= td_len / fr_len;
+            }
+
+            // move node to final point
+
+            finalpos = zerofrictpoint + frictdisp;
+
+            interact_disp = node_world.pos_in_nuc_frame - finalpos;
+
+            node_world.pos_in_nuc_frame = finalpos;
         	
-            // find point between the two, based on friction
-            frictionvec = (node_world.pos_in_nuc_frame - frictionpoint) * NUC_FRICTION_COEFF;
+            // find frictionvector (between the two, based on friction coeff)
+            //frictionvec = (node_world.pos_in_nuc_frame - inffrictionpoint) * NUC_FRICTION_COEFF;
 
-            node_world.nucleator_impacts += rad - r;
+            node_world.nucleator_impacts += normaldisp;
 
 
 		    break;

@@ -175,8 +175,8 @@ bool VARY_P_XLINK = false;
 double XLINK_NODE_RANGE =  1.0;		// Limit crosslink to within this range
 
 double LINK_BREAKAGE_FORCE =  2;	 // breakage force per link
-bool USE_BREAKAGE_VISCOSITY = false;
-double BREAKAGE_VISCOSITY_THRESHOLD = 1000;
+//bool USE_BREAKAGE_VISCOSITY = false;
+//double BREAKAGE_VISCOSITY_THRESHOLD = 1000;
 double LINK_BREAKAGE_STRAIN = 1.15;
 //double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NEW_NODE = 100;
@@ -187,6 +187,8 @@ double BROWNIANFORCESCALE = 0.01;
 
 double NUCLEATOR_INERTIA = 10;
 bool VARY_INERT_W_RAD = false;
+
+double DASHPOT_IMPEDANCE = 0.01;
 
 double NUC_LINK_FORCE = 0.25;
 double NUC_LINK_BREAKAGE_FORCE = 2;
@@ -537,7 +539,7 @@ int main(int argc, char* argv[])
     if (    (strcmp( hostname, "medusa.local")       == 0) )
     {
         if (POST_VTK)  
-            POST_PROCESS_CPUS = 4;
+            POST_PROCESS_CPUS = 2;
         else
             POST_PROCESS_CPUS = 4;
     }
@@ -952,9 +954,12 @@ int main(int argc, char* argv[])
 			    {ss >> LINK_POWER_SCALE;}
 
 		    else if (tag == "LINK_FORCE") 
-			    {ss >> LINK_FORCE;}	
+			    {ss >> LINK_FORCE;}
 
-		    else if (tag == "MAX_POLYMERISATION_PRESSURE") 
+            else if (tag == "DASHPOT_IMPEDANCE") 
+			    {ss >> DASHPOT_IMPEDANCE;}
+
+		    else if (tag == "MAX_POLYMERISATION_PRESSURE")     
 			    {ss >> MAX_POLYMERISATION_PRESSURE;}
             
 		    else if (tag == "STICK_TO_NUCLEATOR") 
@@ -972,11 +977,11 @@ int main(int argc, char* argv[])
 		    else if (tag == "USETHREAD_APPLYFORCES") 
 			    {ss >> buff2; if(buff2=="TRUE") USETHREAD_APPLYFORCES = true; else USETHREAD_APPLYFORCES = false;} 
         	
-		    else if (tag == "USE_BREAKAGE_VISCOSITY") 
-			    {ss >> buff2; if(buff2=="TRUE") USE_BREAKAGE_VISCOSITY = true; else USE_BREAKAGE_VISCOSITY = false;} 
+		    //else if (tag == "USE_BREAKAGE_VISCOSITY") 
+			//    {ss >> buff2; if(buff2=="TRUE") USE_BREAKAGE_VISCOSITY = true; else USE_BREAKAGE_VISCOSITY = false;} 
 
-            else if (tag == "BREAKAGE_VISCOSITY_THRESHOLD") 
-			    {ss >> BREAKAGE_VISCOSITY_THRESHOLD;}
+//            else if (tag == "BREAKAGE_VISCOSITY_THRESHOLD") 
+//			    {ss >> BREAKAGE_VISCOSITY_THRESHOLD;}
     		
 		    else if (tag == "P_NUC")      
 			    {ss >> P_NUC;}

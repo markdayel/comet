@@ -455,8 +455,8 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     //renderer->GetActiveCamera()->ViewingRaysModified();
 
 	
-	cout << "Rendering..." << endl;
-    cout.flush();
+	//cout << "Rendering..." << endl;
+    //cout.flush();
 
    
     
