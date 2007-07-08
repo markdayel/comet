@@ -205,8 +205,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
 
     OptVIEW_VTK = VIEW_VTK;
 
-    cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
-    cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
+    //cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
+    //cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
 
     render_win = vtkRenderWindow::New();
     render_win->SetSize(renderwin_npx, renderwin_npy);
@@ -224,14 +224,26 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     
     if(VTK_HIGHQUAL)	 // increase quality for non-interactive
     {
-        render_win->SetAAFrames(5);  // this does not work for vtkRenderLargeImage
+        render_win->SetAAFrames(7);  // this does not work for vtkRenderLargeImage
     }
 
     render_win->AddRenderer(renderer);
+
+//    const bool VTK_STEREO = true;
+//
+//    if (VTK_STEREO)
+//    {
+//        render_win->StereoCapableWindowOn();
+//#if VTK_MAJOR_VERSION > 4
+//        render_win->SetStereoTypeToAnaglyph();
+//#else
+//        render_win->SetStereoTypeToRedBlue();
+//#endif
+//    }
+
     
-    if(POST_VTK_VIEW || VIEW_VTK)	 // only create window if we're actually using vtk
+    if(POST_VTK_VIEW || VIEW_VTK)	 // only create interactive window if we're actually using it
     {
-        
         iren = vtkRenderWindowInteractor::New();
         iren->SetRenderWindow(render_win);
         iren->Initialize();   
@@ -421,7 +433,19 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
 	    addLinks();
 
     if(OptsRenderNucleator)
-	    addNucleator();
+    {   
+        if (VTK_WIREFRAME) // this is behaving as though #defined as 1 somewhere, but can't find it.  odd... 
+        {   
+            cout << "VTK_WIREFRAME true" << endl;
+	        addNucleator(true,1.015);
+        }
+        else
+        {
+            cout << "VTK_WIREFRAME false" << endl;
+        }
+
+        addNucleator(false,1.0);
+    }
 
     if(OptsVolumeRenderNodes || OptsIsoRenderNodes)
     {
@@ -605,7 +629,6 @@ void CometVtkVis::saveImage(int framenumber)
     vtkRenderLargeImage *renderLarge = vtkRenderLargeImage::New();
     renderLarge->SetInput(renderer);
     renderLarge->SetMagnification(VTK_AA_FACTOR);
-    
 
     // vtkBMPWriter seems a bit faster than vtkPNGWriter, and we're compressing with IM to png anyway later
     // so use BMP here
@@ -727,27 +750,26 @@ void CometVtkVis::saveVRML(int framenumber)
 //    spoints->Delete();
 //}
 
-void CometVtkVis::addNucleator()
+void CometVtkVis::addNucleator(bool wireframe, double scale)
 {
     if (NUCSHAPE == nucleator::capsule) 
     {
-        cout << endl <<  " Nucleator: " << NUCSHAPE  << endl << endl;
-        addCapsuleNucleator();   
+        addCapsuleNucleator(wireframe, scale);   
     } else 
     {   
-	    addSphericalNucleator();
+	    addSphericalNucleator(wireframe, scale);
     }
 }
 
-void CometVtkVis::addCapsuleNucleator()
+void CometVtkVis::addCapsuleNucleator(bool wireframe, double scale)
 {
     
 
     // the capsule is oriented along z in the nuc frame of ref:
 
     vect bodyposn(0,0,0);
-    vect cap1posn(0,0, CAPSULE_HALF_LINEAR);
-    vect cap2posn(0,0,-CAPSULE_HALF_LINEAR);
+    vect cap1posn(0,0, CAPSULE_HALF_LINEAR*scale);
+    vect cap2posn(0,0,-CAPSULE_HALF_LINEAR*scale);
 
     ptheactin->nuc_to_world_frame(bodyposn);
     ptheactin->nuc_to_world_frame(cap1posn);
@@ -761,9 +783,9 @@ void CometVtkVis::addCapsuleNucleator()
     // -- endcap source
     // create top sphere geometry
     vtkSphereSource *endcap = vtkSphereSource::New();
-    endcap->SetRadius(radius_pixels); // can't we get radius through nucleator:: ??
+    endcap->SetRadius(radius_pixels*scale); // can't we get radius through nucleator:: ??
     endcap->SetThetaResolution(32);
-    endcap->SetPhiResolution(32);
+    endcap->SetPhiResolution(16);
     endcap->SetStartPhi(0);
     endcap->SetEndPhi(90);
     // endcap mapper
@@ -773,8 +795,8 @@ void CometVtkVis::addCapsuleNucleator()
     
     // - body source
     vtkCylinderSource *body = vtkCylinderSource::New();
-    body->SetRadius(radius_pixels); // why not through nucleator:: ??
-    body->SetHeight(2*capsule_length_pixels);
+    body->SetRadius(radius_pixels*scale); // why not through nucleator:: ??
+    body->SetHeight(2*capsule_length_pixels*scale);
     body->SetResolution(32);
     body->CappingOff();
     // body mapper
@@ -785,10 +807,10 @@ void CometVtkVis::addCapsuleNucleator()
     // -- Actors
     // rotate the nucleator sections
     double nrotation[3];
-    ptheactin->world_to_nuc_rot.getangles(nrotation[0], 
+    ptheactin->nuc_to_world_rot.getangles(nrotation[0], 
 						 nrotation[1], 
 						 nrotation[2]);
-    nrotation[0] *= -vtkMath::DoubleRadiansToDegrees();
+    nrotation[0] *= -vtkMath::DoubleRadiansToDegrees(); // should these be negative?
     nrotation[1] *= -vtkMath::DoubleRadiansToDegrees();
     nrotation[2] *= -vtkMath::DoubleRadiansToDegrees();
     
@@ -801,9 +823,7 @@ void CometVtkVis::addCapsuleNucleator()
     centre[1] = cap1posn.y;
     centre[2] = cap1posn.z;
 
-    endcap1_actor->SetOrientation( nrotation[0],
-				   nrotation[1],
-				   nrotation[2]);
+    endcap1_actor->SetOrientation( nrotation[0], nrotation[1], nrotation[2]);
 
     endcap1_actor->SetPosition( centre );
     endcap1_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
@@ -815,7 +835,7 @@ void CometVtkVis::addCapsuleNucleator()
     centre[0] = cap2posn.x;
     centre[1] = cap2posn.y;
     centre[2] = cap2posn.z;
-    endcap2_actor->SetOrientation( nrotation[0] + 180, nrotation[1], nrotation[2]);
+    endcap2_actor->SetOrientation( -nrotation[0] + 180, -nrotation[1], -nrotation[2]);
 
     endcap2_actor->SetPosition( centre );
     endcap2_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
@@ -829,12 +849,25 @@ void CometVtkVis::addCapsuleNucleator()
     centre[0] = bodyposn.x;
     centre[1] = bodyposn.y;
     centre[2] = bodyposn.z;
-    body_actor->SetPosition( centre );
+    
     body_actor->SetOrientation( nrotation[0] + 90, nrotation[1], nrotation[2]);
 
+    body_actor->SetPosition( centre );
     body_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
     body_actor->GetProperty()->SetOpacity(nuc_opacity);
     body_mapper->Delete();
+
+
+    if (wireframe)
+    {
+        endcap1_actor->GetProperty()->SetRepresentationToWireframe();
+        endcap2_actor->GetProperty()->SetRepresentationToWireframe();
+        body_actor->GetProperty()->SetRepresentationToWireframe();
+
+        endcap1_actor->GetProperty()->SetColor(0, 0, 0);
+        endcap2_actor->GetProperty()->SetColor(0, 0, 0);
+        body_actor->GetProperty()->SetColor(0, 0, 0);
+    }
 
     // add the actors to the scene
     renderer->AddActor(endcap1_actor);
@@ -847,7 +880,7 @@ void CometVtkVis::addCapsuleNucleator()
     body_actor->Delete();
 }
 
-void CometVtkVis::addSphericalNucleator()
+void CometVtkVis::addSphericalNucleator(bool wireframe, double scale)
 {   
 
     vect nucposn = ptheactin->p_nuc->position * voxelscalefactor;
@@ -877,8 +910,8 @@ void CometVtkVis::addSphericalNucleator()
     //cout << "  nucleator radius: " << radius_pixels << endl;
 
     sphere->SetRadius(radius_pixels);
-    sphere->SetThetaResolution(64);
-    sphere->SetPhiResolution(64);
+    sphere->SetThetaResolution(32);
+    sphere->SetPhiResolution(32);
     //sphere->LatLongTessellationOn();
 
     
@@ -902,9 +935,9 @@ void CometVtkVis::addSphericalNucleator()
     ellipseFilter->SetInput( sphere->GetOutput() );
 
     if (NUCSHAPE == nucleator::ellipsoid)
-    {
-        ellipseTransform->Scale(1,1,ELLIPSOID_STRETCHFACTOR);    
-    }
+        ellipseTransform->Scale(scale,scale,scale * ELLIPSOID_STRETCHFACTOR);    
+    else
+        ellipseTransform->Scale(scale,scale,scale); 
 
     ellipseFilter->SetTransform( ellipseTransform );
 
@@ -953,6 +986,11 @@ void CometVtkVis::addSphericalNucleator()
 	    nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
     }
 
+    if (wireframe)
+    {
+      nuc_actor->GetProperty()->SetRepresentationToWireframe();
+      nuc_actor->GetProperty()->SetColor(0, 0, 0);
+    }
 
     nuc_actor->SetMapper(mapper);
 
@@ -1325,90 +1363,56 @@ void CometVtkVis::addNodes()
     
     // map
     vtkPolyDataMapper *map = vtkPolyDataMapper::New();
+
+    SetFocalDepthPlanes(map);
     map->SetInput(sphere->GetOutput());
     sphere->Delete();
 
-    // temp: reset center:
-    double meanx = 0.0, meany = 0.0, meanz = 0.0;
- //   meanx = -ptheactin->p_nuc->position.x; 
- //   meany = -ptheactin->p_nuc->position.y; 
- //   meanz = -ptheactin->p_nuc->position.z; 
- //   
- //   ptheactin->nuc_to_world_rot.rotate(meanx, meany, meanz);
- //   vtk_cam_rot.rotate(meanx, meany, meanz); 
+    Colour col;
 
- //   // stops bead 
- //   double keep_within_border;
- //   if( ptheactin->p_nuc->geometry == nucleator::sphere )
-	//keep_within_border = 2*RADIUS;
- //   else
-	//keep_within_border = CAPSULE_HALF_LINEAR+(2*RADIUS);
-
- //   int beadminx = int(voxelscalefactor * (-keep_within_border - meanx) + ni/2 + 1);
- //   int beadminy = int(voxelscalefactor * (-keep_within_border - meany) + nj/2 + 1); 
- //   int beadminz = int(voxelscalefactor * (-keep_within_border - meanz) + nk/2 + 1); 
- //   int beadmaxx = int(voxelscalefactor * ( keep_within_border - meanx) + ni/2 + 1); 
- //   int beadmaxy = int(voxelscalefactor * ( keep_within_border - meany) + nj/2 + 1); 
- //   int beadmaxz = int(voxelscalefactor * ( keep_within_border - meanz) + nk/2 + 1); 
-    
-    int movex = 0;
-    int movey = 0;
-    int movez = 0;
-
- /*   if(beadminx < 0)
-	movex = -(beadminx);
-    if(beadminy < 0)
-	movey = -(beadminy);
-    if(beadminz < 0)
-	movez = -(beadminz);    
-
-    if(beadmaxx > ni)
-	movex = -(beadmaxx - ni);
-    if(beadmaxy > nj)
-	movey = -(beadmaxy - nj);
-    if(beadmaxz > nk)
-	movez = -(beadmaxz - nk);*/
-
+    const bool VTK_RAND_NODE_COL = true;
     // loop over the nodes
-    double ncx, ncy, ncz;
+    VTK_FLOAT_PRECISION ncx, ncy, ncz;
     for(int i=0; i < ptheactin->highestnodecount; i++)
     {
-	ncx = ptheactin->node[i].x;
-	ncy = ptheactin->node[i].y;
-	ncz = ptheactin->node[i].z;
+	    ncx = ptheactin->node[i].x;
+	    ncy = ptheactin->node[i].y;
+	    ncz = ptheactin->node[i].z;
 
-	//ptheactin->nuc_to_world_rot.rotate(ncx, ncy, ncz); 
-	//vtk_cam_rot.rotate(ncx, ncy, ncz); // bring rip to y-axis
-	
-	if(OptsSkipOutOfFocusPoints && fabs(ncx) > FOCALDEPTH)
-	  continue;  // skip points outside focal depth
+        convert_to_vtkcoord(ncx, ncy, ncz);
+    	
+	    // actor coordinates geometry, properties, transformation
+	    vtkActor *node_actor = vtkActor::New();
+	    node_actor->SetMapper(map);
+	    node_actor->SetPosition(ncx, ncy, ncz);
+    	
+	    if ( ptheactin->node[i].polymer ) 
+        { 
+            if (VTK_RAND_NODE_COL)
+            {
+                col.setcol( double(ptheactin->node[i].creation_iter_num % 200) / 200);
+	            node_actor->GetProperty()->SetColor(col.r, col.g, col.b);     // plot polymerised red
+            }
+            else
+                node_actor->GetProperty()->SetColor(1.0, 0, 0);     // plot polymerised red
+	    } 
+        else if ( ptheactin->node[i].harbinger )
+        {
+	        node_actor->GetProperty()->SetColor(0.5, 0.5, 0.0); // plot harbinger yellow
+	    } 
+        else if ( !ptheactin->node[i].listoflinks.empty() )
+        {
+	        node_actor->GetProperty()->SetColor(0.5, 0.5, 0.5); // plot empty grey
+	    } 
+        else 
+        {
+	        node_actor->GetProperty()->SetColor(0, 1, 0);       // otherwise green
+	    }
 
-	ncx = voxelscalefactor * (ncx - meanx); 
-	ncy = voxelscalefactor * (ncy - meany);
-	ncz = voxelscalefactor * (ncz - meanz);
-	
-	// displace to bring node back in bounds
-	ncx += movex;
-	ncy += movey;
-	ncz += movez;
-	
-	// actor coordinates geometry, properties, transformation
-	vtkActor *node_actor = vtkActor::New();
-	node_actor->SetMapper(map);
-	node_actor->SetPosition(ncx, ncy, ncz);
-	
-	if( ptheactin->node[i].polymer ) { 
-	    node_actor->GetProperty()->SetColor(1.0, 0, 0);     // plot polymerised red
-	} else if( ptheactin->node[i].harbinger ){
-	    node_actor->GetProperty()->SetColor(0.5, 0.5, 0.0); // plot harbinger purple
-	} else if( !ptheactin->node[i].listoflinks.empty() ){
-	    node_actor->GetProperty()->SetColor(0.5, 0.5, 0.5); // plot empty grey
-	} else {
-	    node_actor->GetProperty()->SetColor(0, 1, 0);       // otherwise green
-	}	
-	// add the actor to the scene	
-	renderer->AddActor(node_actor);
-	node_actor->Delete();
+
+	    // add the actor to the scene	
+	    renderer->AddActor(node_actor);
+	    node_actor->Delete();
     }
     
     map->Delete();
@@ -1846,14 +1850,14 @@ void CometVtkVis::addLight()
     l2pos += ptheactin->p_nuc->position;
 
 	vtkLight *light1 = vtkLight::New();
-	light1->SetIntensity(1.0);
+	light1->SetIntensity(0.8);
 	light1->SetColor(1,0.9,0.8);
     light1->SetPosition(l1pos.x, l1pos.y, l1pos.z);
     renderer->AddLight(light1);
     light1->Delete();
 
     vtkLight *light2 = vtkLight::New();                                                       
-	light2->SetIntensity(1.0);
+	light2->SetIntensity(0.8);
 	light2->SetColor(0.8,0.8,1.0);
     light2->SetPosition(l2pos.x, l2pos.y, l2pos.z);
     renderer->AddLight(light2);

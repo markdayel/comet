@@ -43,7 +43,11 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 	radialdist = RADIUS * 0.1;		// for radial-only averaging
 	num_radial_bins = 20;
 
-	centerx = BMP_WIDTH  /2 ; // / 7;  // specifies center of nucleator on forces and seg maps
+    if (FORCES_ON_SIDE)
+	    centerx = BMP_WIDTH  /7 ; // / 7;  // specifies center of nucleator on forces and seg maps
+    else
+        centerx = BMP_WIDTH  /2 ;
+
 	centery = BMP_HEIGHT / 2;
 
 	bins_bitmap_width  = centerx * 2;			// width and height of pixels to plot
@@ -475,14 +479,17 @@ void segments::addnode(const nodes& node)
 
 	vect           rot_unit = node.unit_vec_posn;
 	vect rot_nuc_link_force = node.nucleator_link_force;
+    vect rot_nuc_impacts = node.nucleator_impacts;
 
-    ptheactin->nuc_to_world_rot.rotate(rot_nuc_link_force);  // temp fix---remove this!!!
-	
-	vect xfacvec, yfacvec, zfacvec;
+    ptheactin->nuc_to_world_rot.rotate(rot_nuc_link_force); 
+	ptheactin->nuc_to_world_rot.rotate(rot_nuc_impacts);
 
 	ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_pos); 
 	ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_unit); 
 	ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_nuc_link_force);
+    ptheactin->sym_break_rotation_to_xy_plane.rotate(rot_nuc_impacts);
+
+    vect xfacvec, yfacvec, zfacvec;
 
     // there is an annoying rounding error problem for 
     // capsule when fabs(rot_pos.z) == CAPSULE_HALF_LINEAR
@@ -536,23 +543,23 @@ void segments::addnode(const nodes& node)
 
 	//radius = node.dist_from_surface;
 
-	surfaceimpacts[0][xseg] += xfactor * node.nucleator_impacts; 
-	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts; 
-	surfaceimpacts[2][zseg] += zfactor * node.nucleator_impacts;
+    surfaceimpacts[0][xseg] += xfactor * node.nucleator_impacts.cross(vect(1,0,0)).length(); 
+	surfaceimpacts[1][yseg] += yfactor * node.nucleator_impacts.cross(vect(0,1,0)).length(); 
+	surfaceimpacts[2][zseg] += zfactor * node.nucleator_impacts.cross(vect(0,0,1)).length();
 
 	//if ((xseg==11))
 	//	cout << "node.nucleator_impacts: "  << setw(30) << setprecision(20) << node.nucleator_impacts << endl;
 
 	// check this, may not be right
 
-	surfacestuckforce[0][xseg][0] += xfactor * rot_nuc_link_force.y; 
-	surfacestuckforce[0][xseg][1] += xfactor * rot_nuc_link_force.z;
+	surfacestuckforce[0][xseg][0] += xfactor * (rot_nuc_link_force.y + rot_nuc_impacts.y); 
+	surfacestuckforce[0][xseg][1] += xfactor * (rot_nuc_link_force.z + rot_nuc_impacts.z);
 
-	surfacestuckforce[1][yseg][0] += yfactor * rot_nuc_link_force.x;
-	surfacestuckforce[1][yseg][1] += yfactor * rot_nuc_link_force.z; 
+	surfacestuckforce[1][yseg][0] += yfactor * (rot_nuc_link_force.x + rot_nuc_impacts.x);
+	surfacestuckforce[1][yseg][1] += yfactor * (rot_nuc_link_force.z + rot_nuc_impacts.z); 
 
-	surfacestuckforce[2][zseg][0] += zfactor * rot_nuc_link_force.x;
-	surfacestuckforce[2][zseg][1] += zfactor * rot_nuc_link_force.y;
+	surfacestuckforce[2][zseg][0] += zfactor * (rot_nuc_link_force.x + rot_nuc_impacts.x);
+	surfacestuckforce[2][zseg][1] += zfactor * (rot_nuc_link_force.y + rot_nuc_impacts.y);
 
 
 	if (xdist!=-1)
@@ -788,7 +795,7 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 
 		}
 
-		if (STICK_TO_NUCLEATOR)
+		if (STICK_TO_NUCLEATOR || (NUC_FRICTION_COEFF > 0.00001))
 		{
 
 			// draw the nucleator link forces:
@@ -812,7 +819,8 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 			// don't plot zero length lines
 			if ( (ptheactin->pixels(startx) == ptheactin->pixels(startx + linex)) &&
 				 (ptheactin->pixels(starty) == ptheactin->pixels(starty + liney)) )
-			{	// do nothing
+			{	
+                // do nothing :)
 			}
 			else
 			{

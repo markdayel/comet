@@ -152,7 +152,7 @@ double gridscanjitter = 0.01;
 int SAVE_DATA_PRECISION	= 4;
 
 
-//bool FORCES_ON_SIDE = true;
+bool FORCES_ON_SIDE = false;
 
 bool NO_IMAGE_TEXT = false;
 bool NO_COLBAR = false;
@@ -373,6 +373,8 @@ bool POST_PROCESSSINGLECPU = false;
 unsigned int POST_PROCESS_CPUS = 1;
 bool VIEW_VTK = false;
 
+bool VTK_WIREFRAME = false;
+
 int POST_PROC_ORDER = +1;  // +1 = forward, -1 = reverse;
 
 int InterRecordIterations = 0;
@@ -539,7 +541,7 @@ int main(int argc, char* argv[])
     if (    (strcmp( hostname, "medusa.local")       == 0) )
     {
         if (POST_VTK)  
-            POST_PROCESS_CPUS = 2;
+            POST_PROCESS_CPUS = 3;
         else
             POST_PROCESS_CPUS = 4;
     }
@@ -721,7 +723,7 @@ int main(int argc, char* argv[])
 
 	// read the parameters file:
 
-	cout << endl << "Parsing parameters file..." << endl << endl;
+	//cout << endl << "Parsing parameters file..." << endl;
 
 	ifstream param(COMET_PARAMS_FILE); 
 	if(!param) 
@@ -794,8 +796,11 @@ int main(int argc, char* argv[])
         else if (tag == "VTK_NUC_LINKS_ONLY") 
 			{ss >> buff2; if (buff2=="TRUE") VTK_NUC_LINKS_ONLY = true; else VTK_NUC_LINKS_ONLY = false;} 
 
+        else if (tag == "VTK_WIREFRAME") 
+			{ss >> buff2; if (buff2=="TRUE") VTK_WIREFRAME = true; else VTK_WIREFRAME = false;} 
+
         else if (tag == "VTK_NUC_LINKS_ONLY_AMPLIFY")	  
-			{ss >> VTK_NUC_LINKS_ONLY_AMPLIFY;}
+			{ss >> VTK_NUC_LINKS_ONLY_AMPLIFY;}      
 
         else if (tag == "SYM_BREAK_TO_RIGHT") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
@@ -890,7 +895,10 @@ int main(int argc, char* argv[])
 		else if (tag == "CAGE_ON_SIDE") 
 			{ss >> buff2; if (buff2=="TRUE") CAGE_ON_SIDE = true; else CAGE_ON_SIDE = false;}
 
-        else if (tag == "BMP_FIX_BEAD_MOVEMENT") 
+        else if (tag == "FORCES_ON_SIDE") 
+			{ss >> buff2; if (buff2=="TRUE") FORCES_ON_SIDE = true; else FORCES_ON_SIDE = false;}
+
+        else if (tag == "BMP_FIX_BEAD_MOVEMENT")         
 			{ss >> buff2; if (buff2=="TRUE") BMP_FIX_BEAD_MOVEMENT = true; else BMP_FIX_BEAD_MOVEMENT = false;}
 
         else if (tag == "BMP_FIX_BEAD_ROTATION") 
@@ -1231,8 +1239,8 @@ int main(int argc, char* argv[])
 
 		ss2 >> tag2 >> buff3 >> std::ws;
 
-		if (!POST_PROCESSSINGLECPU)
-            cout << setw(30) << tag2.c_str() << setw(7) << buff3.c_str() << endl;
+		//if (!POST_PROCESSSINGLECPU)
+        //    cout << setw(30) << tag2.c_str() << setw(7) << buff3.c_str() << endl;
 
 	 }
 
@@ -1240,10 +1248,8 @@ int main(int argc, char* argv[])
 
 	if (unrecognisedlines.length()!=0)
 	{
-		cerr << endl;
-		cerr << "Warning---The following lines were unrecognised:" << endl << endl;
+		cerr << endl << "Warning---The following lines were unrecognised:" << endl << endl;
 		cerr << unrecognisedlines << endl;
-		cerr << endl << endl;
 		
  #ifndef NOKBHIT
 		if (!REWRITESYMBREAK && !POST_PROCESS && !QUIET && !CLUSTER)
@@ -1274,6 +1280,7 @@ int main(int argc, char* argv[])
 #endif
 
 	}
+
 
     
     // change bitmap directory if outputting links
@@ -1598,6 +1605,9 @@ int main(int argc, char* argv[])
 
         cout << "Restored from frame "
 			 << RESTORE_FROM_FRAME << " (iteration " << starting_iter << ")" << endl;
+
+        lastlinksformed = ptheactin->linksformed;
+        lastlinksbroken = ptheactin->linksbroken;
 
         // srand( (unsigned) 200 );
  

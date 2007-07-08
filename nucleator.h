@@ -56,10 +56,10 @@ public:
 
     void move_nuc(const vect& origin_of_movement, const vect& tomove);
 
-	int addnodes(void);
-	int addnodessphere(void);
-	int addnodescapsule(void);
-    int addnodesellipsoid(void);
+	int addnodes(void) const;
+	int addnodessphere(void) const;
+	int addnodescapsule(void) const;
+    int addnodesellipsoid(void) const;
     double polyfeedbackprob(const double& x, const double& y, const double& z) const;
 
 	int savevrml(ofstream *outputstream);
@@ -69,7 +69,13 @@ public:
 	//bool is_capsule();
 
 	bool collision(nodes &node);
-	void definecagepoints(void);
+
+    vect eject_sphere(const vect& inputpoint) const;
+    vect eject_ellipsoid(const vect& inputpoint) const;   
+    vect eject_capsule(const vect& inputpoint) const;
+    vect eject_point(const vect& inputpoint) const;
+	
+    void definecagepoints(void);
 };
 
 #endif

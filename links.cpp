@@ -62,6 +62,7 @@ int links::save_data(ofstream &ostr)
 		 << linkednodeptr->nodenum << " "
          << last_force << " "
          << last_force_set << " "
+         << last_link_length << " "
          << forcesum;
 	
     return 0;
@@ -74,6 +75,7 @@ int links::load_data(ifstream &istr)
 		 >> linkednodenumber
          >> last_force 
          >> last_force_set
+         >> last_link_length
          >> forcesum;                  
 
     // todo set the last_link_length here (or after setting node positions?)

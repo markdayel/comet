@@ -1289,8 +1289,10 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                     recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
 
                     if ( recipdist < (1.0/0.05) )
+//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
                        rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
+//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * (  NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05)  - 1 ) ;
                        rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
 
                     p_sameGPnode->rep_force_vec.x -= 2*rep_force_mag ;
@@ -1301,8 +1303,10 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                     recipdist = 1.0 / ( - p_sameGPnode->x - COVERSLIPGAP );
 
                     if ( recipdist < (1.0/0.05) )
+//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
                        rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
+//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
                        rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
 
                     p_sameGPnode->rep_force_vec.x += 2*rep_force_mag ;
@@ -1456,6 +1460,7 @@ void actin::applyforces(void)
 		x_angle = IMPOSED_NUC_ROT_SPEED * 2 * PI * DELTA_T;
 
 		torque_rotate.rotatematrix( x_angle, 0, 0);
+
 
 	}
 	else if (ROTATION)
@@ -2698,7 +2703,9 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 	    
 	    p_nuc->segs.drawoutline(drawcmd,proj);				// draw outline of nucleator
-    					
+    	
+        // for these scales, smaller number = bigger lines
+
 	    // check have lines to draw before adding them
 	    // else ImageMagick intermittently crashes
 
@@ -2709,11 +2716,12 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj, 1 * FORCE_BAR_SCALE) > 0)		
 	    //	drawcmd << "\" -stroke blue -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd1.str();
 
-	    //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,0.05 * FORCE_BAR_SCALE) > 0)	
-		//    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
-
-	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.4 * FORCE_BAR_SCALE) > 0)	
+        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.01 * FORCE_BAR_SCALE) > 0)	
 		    drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR * strokewidth << " -draw \"" << tmp_drawcmd3.str();
+
+	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj, 0.002 * FORCE_BAR_SCALE) > 0)	
+		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
+
     }
 
     vect temp_nuc_posn;

@@ -229,6 +229,9 @@ bool nodes::load_data(ifstream &istrm)
       >> nucleator_link_force 
 	  >> creation_iter_num >> ch;
 
+    if (stucktonucleator && !STICK_TO_NUCLEATOR)
+        stucktonucleator = false; // if we're continuing run and turning off nucleator attachments, we delete them here
+
 	//if (nucleator_impacts>0.00001)
 	//	cout << "Loaded nucleator impact " <<nucleator_impacts << endl;
     
@@ -261,6 +264,24 @@ bool nodes::load_data(ifstream &istrm)
     if(ch!=':' ){
 	cout << "error in checkpoint file, end of node ':' expected" 
 	     << endl;
+
+            cout << "Read: " << nodenum << " " 
+	         << x << " " << y << " " << z << " " 
+	         << harbinger << " " 
+	         << polymer << " " 
+             << testnode << " "
+             << testsurface << " "
+	         << delta << " " 
+	         << linkforce_transverse << " " 
+	         << linkforce_radial << " " 
+	         << repforce_transverse << " " 
+	         << repforce_radial << " " 
+	         << links_broken << " " 
+	         << nucleator_impacts << " "
+	         << stucktonucleator << " "
+	         << nucleator_stuck_position << " " 
+             << nucleator_link_force << " "
+	         << creation_iter_num << endl;
 	return false;
     }
     
@@ -269,6 +290,7 @@ bool nodes::load_data(ifstream &istrm)
     if( ch!=')' ){
 	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
 	     << endl;
+
 	return false;
     }
 
@@ -289,6 +311,8 @@ bool nodes::load_data(ifstream &istrm)
     // stored by the actin.  The actin knows that.
 
     setunitvec();
+
+    previous_pos_in_nuc_frame=pos_in_nuc_frame; // not worth saving this?
 
     // only add to grid if doing normal run or a post-process that needs links:
     if (POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
@@ -474,7 +498,9 @@ int nodes::savelinks(ofstream * outputstream)
         //    return;
         //unit_vec_correct = true;  // prevent unnecessary recalculation if node not moved, etc.
 
-        previous_pos_in_nuc_frame = pos_in_nuc_frame;
+        previous_pos_in_nuc_frame = pos_in_nuc_frame; // old position
+        //ptheactin->torque_rotate.rotate(previous_pos_in_nuc_frame);  // (don't need this!) need to rotate in case nucleator rotated
+
         pos_in_nuc_frame=*this;
         ptheactin->world_to_nuc_frame(pos_in_nuc_frame);
 

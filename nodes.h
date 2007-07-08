@@ -75,7 +75,7 @@ public:
 
     //double initial_repulsive_energy;
 	
-	double nucleator_impacts;	// keeps track of ejections of node from nucleator
+	vect nucleator_impacts;	// keeps track of ejections of node from nucleator
 								// merely for display of ejection forces
 								// segmented in segments.cpp
 								// not used in moving node, nucleator etc.
@@ -197,8 +197,8 @@ public:
 		linkforce_radial     = 
 		repforce_transverse  = 
 		repforce_radial      = 
-		links_broken	     =
- 		nucleator_impacts    = 0.0;
+		links_broken	     = 0.0;
+ 		nucleator_impacts.zero();
 
 		nucleator_link_force.zero();
 

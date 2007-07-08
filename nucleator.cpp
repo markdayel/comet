@@ -140,7 +140,7 @@ nucleator::nucleator(void)//, actin *actinptr)
 
 }
 
-int nucleator::addnodes(void)
+int nucleator::addnodes(void) const
 {
 	int nodesadded = 0;
 	switch (NUCSHAPE)
@@ -164,7 +164,7 @@ int nucleator::addnodes(void)
 	return nodesadded;
 }
 
-int nucleator::addnodessphere(void)
+int nucleator::addnodessphere(void) const
 {
 	int nodesadded = 0;
 	double x,y,z,r,theta;
@@ -251,11 +251,13 @@ int nucleator::addnodessphere(void)
 
 
         // add the new node:
-        ptheactin->highestnodecount++;
+        
         ptheactin->node[ptheactin->highestnodecount].polymerize(worldframepos);             
 
         // set the stuck position to the nuc frame pos'n
         ptheactin->node[ptheactin->highestnodecount].nucleator_stuck_position = nucframepos;
+
+        ptheactin->highestnodecount++;
 
         nodesadded++;
 	}
@@ -263,7 +265,7 @@ int nucleator::addnodessphere(void)
 	return nodesadded;
 }
 
-int nucleator::addnodesellipsoid(void)
+int nucleator::addnodesellipsoid(void) const
 {
 	int nodesadded = 0;
 	double x,y,z,r,theta;
@@ -313,6 +315,34 @@ int nucleator::addnodesellipsoid(void)
             //    continue;
         }
 
+        // modifier for asymmetric nucleation
+
+		if (ASYMMETRIC_NUCLEATION!=0)
+		{
+			if (ASYMMETRIC_NUCLEATION == 1)  // no nucleation above z=0
+				if ((y < 0) || (fabs(x+z) > 0.5)) continue;
+			if (ASYMMETRIC_NUCLEATION == 2)  // linear degredation to zero
+				if (z < RADIUS * ( 2 * rand_0to1() - 1))
+					continue;
+			if (ASYMMETRIC_NUCLEATION == 3)  // linear degredation
+				if (z < RADIUS * ( 4 * rand_0to1() - 3))
+					continue;
+			if (ASYMMETRIC_NUCLEATION == 4) 
+            { // fixed random location
+			    static double fixed_x = x;
+			    static double fixed_y = y;
+			    static double fixed_z = z;
+			    x = fixed_x;
+			    y = fixed_y;
+			    z = fixed_z;				
+		    }
+			if (ASYMMETRIC_NUCLEATION == 7)  // half caps one side
+				if ( ( (y > 0) && (z > 0) ) || 
+                     ( (y < 0) && (z < 0) ) || 
+                       (z < 0) )
+					continue;
+		}
+
         // modifier for +ve feedback in polymerisation
 
         if (POLY_FEEDBACK)
@@ -340,19 +370,19 @@ int nucleator::addnodesellipsoid(void)
 
 
         // add the new node:
-        ptheactin->highestnodecount++;
+        
         ptheactin->node[ptheactin->highestnodecount].polymerize(worldframepos);             
 
         // set the stuck position to the nuc frame pos'n
         ptheactin->node[ptheactin->highestnodecount].nucleator_stuck_position = nucframepos;
-
+        ptheactin->highestnodecount++;
         nodesadded++;
 	} 
 
 	return nodesadded;
 }
 
-int nucleator::addnodescapsule(void)
+int nucleator::addnodescapsule(void) const
 {
 	int nodesadded = 0;
 	double x,y,z,r,theta;
@@ -505,12 +535,12 @@ int nucleator::addnodescapsule(void)
         ptheactin->nuc_to_world_frame(worldframepos);
 
         // add the new node:
-        ptheactin->highestnodecount++;
+        
         ptheactin->node[ptheactin->highestnodecount].polymerize(worldframepos);
 
         // set the stuck position to the nuc frame pos'n
         ptheactin->node[ptheactin->highestnodecount].nucleator_stuck_position = nucframepos;
-
+        ptheactin->highestnodecount++;
         nodesadded++;
 
 	}
@@ -602,187 +632,189 @@ for (vector <vect>::iterator point=cagepoints.begin();
 //    
 //}
 
-bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
-{   /// returns true if succeeds, false if fails due to too great node ejection
+vect nucleator::eject_point(const vect& inputpoint) const
+{   /// returns the closest point on the surface of the nucleator to the point given
 
-	/// node has entered nucleator,
-	/// push to surface
-
-    double r, scale, z2;
-	vect node_disp;
-	const vect oldpos = node_world.pos_in_nuc_frame;
-
-    double normaldisp, td_len, fr_len;
-    vect tangdisp, frictdisp, inffrictionpoint, zerofrictpoint, ejection_normal;
-    vect finalpos, interact_disp;
-
-	const double rad = RADIUS * NUCPOINT_SCALE; // needed to prevent rounding errors putting back inside nuclator
-
-    // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
-	switch (NUCSHAPE)
+    switch (NUCSHAPE)
 	{
 	    case (sphere):
 	    {
-		    r = node_world.pos_in_nuc_frame.length();
-
-            // assume that since it collided, the previous_pos_in_nuc_frame was close to the surface
-
-            // point on surface if infinite friction, i.e. project last position onto surface
-            inffrictionpoint = node_world.previous_pos_in_nuc_frame.unitvec() * rad;
-
-            // point on surface if zero friction, i.e. project current position onto surface
-		    zerofrictpoint = node_world.pos_in_nuc_frame * rad / r;
-
-            normaldisp = rad - r; // or force---necessary to multiply by NODE_DIST_TO_FORCE?
-
-            tangdisp = zerofrictpoint - inffrictionpoint ;
-            td_len = tangdisp.length();
-
-            frictdisp = -tangdisp * normaldisp * NUC_FRICTION_COEFF;   // in direction of node movement
-            fr_len = frictdisp.length();
-
-            if (td_len < fr_len)
-            {   // friction can't be greater than tangential force
-                frictdisp *= td_len / fr_len;
-            }
-
-            // move node to final point
-
-            finalpos = zerofrictpoint + frictdisp;
-
-            interact_disp = node_world.pos_in_nuc_frame - finalpos;
-
-            node_world.pos_in_nuc_frame = finalpos;
-        	
-            // find frictionvector (between the two, based on friction coeff)
-            //frictionvec = (node_world.pos_in_nuc_frame - inffrictionpoint) * NUC_FRICTION_COEFF;
-
-            node_world.nucleator_impacts += normaldisp;
-
-
+            return eject_sphere(inputpoint);
 		    break;
 	    }
 
         case (ellipsoid):
 	    {
-            double nlen1 = rad;
-            //double nlen2 = rad;
-
-            vect new_posonellipse, posonsphere, iterpos;
-
-            iterpos = node_world.pos_in_nuc_frame;
-
-            while  (nlen1 > (rad * 0.002))   // relates to how close before we accept it
-            {
-
-                // map onto sphere
-                vect posonsphere(iterpos.x , iterpos.y, iterpos.z / ELLIPSOID_STRETCHFACTOR);
-
-                // eject to sphere
-		        new_posonellipse = posonsphere.unitvec() * rad; // this is sphere not really ellipsoid yet
-                new_posonellipse.z *= ELLIPSOID_STRETCHFACTOR; // stretch z to map onto ellipsoid
-                
-                // this is not right yet---the ejection normals are not correct
-                // but we can transform them below
-
-                // find the ejection normal, shrink it along ellipse axis, and stretch along it's length
-
-                ejection_normal = new_posonellipse - iterpos;
-                nlen1 = ejection_normal.length();
-
-                ejection_normal.z /= (ELLIPSOID_STRETCHFACTOR * ELLIPSOID_STRETCHFACTOR);
-                //nlen2 = ejection_normal.length(); // squish along ellipse axis
-
-                //ejection_normal *= 0.9 * nlen1 / nlen2; // scale length 
-                
-
-                iterpos = iterpos + ejection_normal;
-
-            }
-
-            node_world.pos_in_nuc_frame = iterpos;
-            ejection_normal = node_world.pos_in_nuc_frame - oldpos;
-    
-            node_world.nucleator_impacts += ejection_normal.length();
-
+            return eject_ellipsoid(inputpoint);
 		    break;
 	    }
 
 	    case (capsule):
 
 	    {
-		    if ((fabs(node_world.pos_in_nuc_frame.z) < CAPSULE_HALF_LINEAR))
-		    { 
-			    // on the cylinder
-
-			    r = calcdist(node_world.pos_in_nuc_frame.x, node_world.pos_in_nuc_frame.y);
-
-                // note the nucleator_stuck_position is used to produce the patterned speckle
-                // tracks and should represent the last nucleator collision position
-
-			    scale = rad / r;
-
-			    node_world.pos_in_nuc_frame.x *= scale;
-			    node_world.pos_in_nuc_frame.y *= scale;
-    			
-                node_world.nucleator_impacts += rad - r;
-
-
-		    }
-		    else
-		    {	// on the ends
-    			
-			    // calculate theta, phi :
-
-				if (node_world.pos_in_nuc_frame.z<0)  // make into a sphere again
-				    z2 = node_world.pos_in_nuc_frame.z + CAPSULE_HALF_LINEAR;
-			    else
-				    z2 = node_world.pos_in_nuc_frame.z - CAPSULE_HALF_LINEAR;
-
-				r = calcdist(node_world.pos_in_nuc_frame.x,node_world.pos_in_nuc_frame.y,z2);
-
-			    scale = rad / r;
-			    node_world.pos_in_nuc_frame.x *= scale;
-			    node_world.pos_in_nuc_frame.y *= scale;
-			    z2 *= scale;
-
-				if (node_world.pos_in_nuc_frame.z<0)
-				    node_world.pos_in_nuc_frame.z = z2 - CAPSULE_HALF_LINEAR;
-			    else
-				    node_world.pos_in_nuc_frame.z = z2 + CAPSULE_HALF_LINEAR;
-    		
-			    node_world.nucleator_impacts += rad - r;
-		    }
-
+            return eject_capsule(inputpoint);
 		    break;
 	    }
 
     }
 
-    if ((!node_world.stucktonucleator) && STICK_TO_NUCLEATOR  && RESTICK_TO_NUCLEATOR) // re-stick to nucleator if come off
+    cerr << "Unknown nucleator shape!" << endl;
+
+    return inputpoint; // shouldn't get here!
+}
+
+
+vect nucleator::eject_sphere(const vect& inputpoint) const
+{
+    return inputpoint.unitvec() * (RADIUS * NUCPOINT_SCALE);
+}
+
+vect nucleator::eject_ellipsoid(const vect& inputpoint) const
+{
+    double nlen1 = RADIUS * NUCPOINT_SCALE;
+    //double nlen2 = rad;
+
+    vect new_posonellipse, posonsphere, iterpos, ejection_normal;
+
+    iterpos = inputpoint;
+
+    while  (nlen1 > ((RADIUS * NUCPOINT_SCALE) * 0.002))   // relates to how close before we accept it
+    {
+
+        // map onto sphere
+        vect posonsphere(iterpos.x , iterpos.y, iterpos.z / ELLIPSOID_STRETCHFACTOR);
+
+        // eject to sphere
+        new_posonellipse = posonsphere.unitvec() * (RADIUS * NUCPOINT_SCALE); // this is sphere not really ellipsoid yet
+        new_posonellipse.z *= ELLIPSOID_STRETCHFACTOR; // stretch z to map onto ellipsoid
+        
+        // this is not right yet---the ejection normals are not correct
+        // but we can transform them below
+
+        // find the ejection normal, shrink it along ellipse axis, and stretch along it's length
+
+        ejection_normal = new_posonellipse - iterpos;
+        nlen1 = ejection_normal.length();
+
+        ejection_normal.z /= (ELLIPSOID_STRETCHFACTOR * ELLIPSOID_STRETCHFACTOR);
+        //nlen2 = ejection_normal.length(); // squish along ellipse axis
+
+        //ejection_normal *= 0.9 * nlen1 / nlen2; // scale length 
+        
+
+        iterpos = iterpos + ejection_normal;
+
+    }
+
+    return iterpos;
+}
+
+vect nucleator::eject_capsule(const vect& inputpoint) const
+{
+    vect ejectedpoint=inputpoint;
+    double z2, scale;
+
+    if ((fabs(ejectedpoint.z) < CAPSULE_HALF_LINEAR))
+    { 
+	    // on the cylinder
+
+        // note the nucleator_stuck_position is used to produce the patterned speckle
+        // tracks and should represent the last nucleator collision position
+
+	    scale = (RADIUS * NUCPOINT_SCALE) / calcdist(ejectedpoint.x, ejectedpoint.y);
+
+	    ejectedpoint.x *= scale;
+	    ejectedpoint.y *= scale;
+    }
+    else
+    {	// on the ends
+		
+	    // calculate theta, phi :
+
+		if (ejectedpoint.z<0)  // make into a sphere again
+		    z2 = ejectedpoint.z + CAPSULE_HALF_LINEAR;
+	    else
+		    z2 = ejectedpoint.z - CAPSULE_HALF_LINEAR;
+
+	    scale = (RADIUS * NUCPOINT_SCALE) / calcdist(ejectedpoint.x,ejectedpoint.y,z2);
+	    ejectedpoint.x *= scale;
+	    ejectedpoint.y *= scale;
+	    z2 *= scale;
+
+		if (ejectedpoint.z<0)
+		    ejectedpoint.z = z2 - CAPSULE_HALF_LINEAR;
+	    else
+		    ejectedpoint.z = z2 + CAPSULE_HALF_LINEAR;
+    }
+
+    return ejectedpoint;
+}
+
+bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
+{   /// returns true if succeeds, false if fails due to too great node ejection
+
+	/// node has entered nucleator,
+	/// push to surface
+
+	const vect oldpos = node_world.pos_in_nuc_frame;
+   
+    // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
+	if (NUC_FRICTION_COEFF < 0.0001)  
+    {   // if no friction, then just eject point
+        node_world.pos_in_nuc_frame = eject_point(node_world.pos_in_nuc_frame);
+    }
+    else
+    {   // friction
+        double normaldisp, td_len, fr_len;
+        vect tangdisp, frictdisp, inffrictionpoint, zerofrictpoint, ejection_normal;
+        vect finalpos, interact_disp;
+        
+        // assume that since it collided, the previous_pos_in_nuc_frame was close to the surface
+
+        // point on surface if infinite friction, i.e. project last position onto surface
+        // this should really be the intersection of the vector with the sphere
+        // but this is a good approximation
+        inffrictionpoint = eject_point(node_world.previous_pos_in_nuc_frame);
+
+
+        // find distance from center
+	    double r = node_world.pos_in_nuc_frame.length();
+        // point on surface if zero friction, i.e. project current position onto surface
+	    zerofrictpoint = eject_point(node_world.pos_in_nuc_frame);
+
+        normaldisp = RADIUS * NUCPOINT_SCALE - r; // or force---necessary to multiply by NODE_DIST_TO_FORCE?
+
+        tangdisp = zerofrictpoint - inffrictionpoint ;
+        td_len = tangdisp.length();
+
+        frictdisp = -tangdisp * normaldisp * NUC_FRICTION_COEFF;   // in direction of node movement
+        fr_len = frictdisp.length();
+
+        if (td_len < fr_len)
+        {   // friction can't be greater than tangential force
+            frictdisp *= td_len / fr_len;
+        }
+
+        // move node to final point
+
+        node_world.pos_in_nuc_frame = (zerofrictpoint + inffrictionpoint )/2; //zerofrictpoint + frictdisp;
+    }    
+
+    //node_world.previous_pos_in_nuc_frame = oldpos;
+
+    if ((!node_world.stucktonucleator) && STICK_TO_NUCLEATOR && RESTICK_TO_NUCLEATOR) // re-stick to nucleator if come off
 	{
 		node_world.stucktonucleator = true;
 		node_world.nucleator_stuck_position = node_world.pos_in_nuc_frame; // link to point *on* the nucleator surface
 	}
 
-    node_disp = node_world.pos_in_nuc_frame - oldpos;  // check now much we have moved
-
-    if ((fabs(node_disp.x) > 0.2*RADIUS) ||
-	    (fabs(node_disp.y) > 0.2*RADIUS) ||
-	    (fabs(node_disp.z) > 0.2*RADIUS*ELLIPSOID_STRETCHFACTOR))
-    {
-		cout << setprecision(3) << endl;
-		cout << "node " << node_world.nodenum << " nucleus ejection too great. Radius:" << oldpos.length() <<  endl;
-	    cout << "old (x,y,z): " <<  oldpos.x << ", " << oldpos.y << ", " << oldpos.z << endl;
-	    cout << "new (x,y,z): " <<  node_world.pos_in_nuc_frame.x << ", " << node_world.pos_in_nuc_frame.y << ", " << node_world.pos_in_nuc_frame.z <<  endl;
-		//cout << "#links: " << (int) node.listoflinks.size() << endl;
-	    return false;  // failed
-    }
-
+    vect node_disp = node_world.pos_in_nuc_frame - oldpos;  // check now much we have moved
+    
+    node_world.nucleator_impacts += node_disp;
 
 #ifndef SEED_INSIDE
 
-    node_world.pos_in_nuc_frame -= node_disp / inertia;  // move the node *back* scaled by movibility (since nucleator should move this much)
+    //node_world.pos_in_nuc_frame -= node_disp / inertia;  // move the node *back* scaled by movibility (since nucleator should move this much)
 
     move_nuc(oldpos,node_disp);  // move the nucleator
 
@@ -794,8 +826,19 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
     ptheactin->nuc_to_world_frame(node_world);  // move node back to the world frame of ref
 
+    // check if moved too much
+    if ((fabs(node_disp.x) > 0.2*RADIUS) ||
+	    (fabs(node_disp.y) > 0.2*RADIUS) ||
+	    (fabs(node_disp.z) > 0.2*RADIUS*ELLIPSOID_STRETCHFACTOR))
+    {
+		cout << setprecision(3);
+        cout << "Warning: Node " << node_world.nodenum << " nucleus ejection too great: " << node_disp.length() << " uM" << endl;
+	    return false;  // failed (node still moved, though)
+    }
+
 	return true; // sucessful node ejection
 }
+
 
 void nucleator::move_nuc(const vect& origin_of_movement, const vect& tomove)
 {

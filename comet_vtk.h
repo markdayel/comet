@@ -114,9 +114,9 @@ class CometVtkVis {
   void buildVTK(int framenumber, vect & cameraposition, vect & cameratarget);
 
   void RestartRenderWindow();
-  void addNucleator();
-  void addCapsuleNucleator();
-  void addSphericalNucleator();
+  void addNucleator(bool wireframe, double scale);
+  void addCapsuleNucleator(bool wireframe, double scale);
+  void addSphericalNucleator(bool wireframe, double scale);
   void addNodes();
   void addLinks();
   void addGaussianSplatterToNodes();
