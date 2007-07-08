@@ -128,6 +128,8 @@ class CometVtkVis {
   void addAxes();
   void addVoxelBound();
 
+  void set_transform_matrix(vtkMatrix4x4 * vtkmat, const rotationmatrix & rotmat) const;
+
   void SetFocalDepthPlanes(vtkPolyDataMapper *map);
   void saveVRML(int framenumber);
   
