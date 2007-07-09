@@ -754,7 +754,8 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 {   /// returns true if succeeds, false if fails due to too great node ejection
 
 	/// node has entered nucleator,
-	/// push to surface
+	/// push to surface along normal
+    /// also use the push vector to move and rotate nucleator
 
 	const vect oldpos = node_world.pos_in_nuc_frame;
    
@@ -765,9 +766,11 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
     }
     else
     {   // friction
-        double normaldisp, td_len, fr_len;
-        vect tangdisp, frictdisp, inffrictionpoint, zerofrictpoint, ejection_normal;
-        vect finalpos, interact_disp;
+        //double normaldisp, td_len, fr_len;
+        //vect tangdisp, frictdisp; 
+        vect inffrictionpoint, zerofrictpoint;
+        //vect ejection_normal;
+        //vect finalpos, interact_disp;
         
         // assume that since it collided, the previous_pos_in_nuc_frame was close to the surface
 
@@ -778,22 +781,22 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
 
         // find distance from center
-	    double r = node_world.pos_in_nuc_frame.length();
+	    //double r = node_world.pos_in_nuc_frame.length();
         // point on surface if zero friction, i.e. project current position onto surface
 	    zerofrictpoint = eject_point(node_world.pos_in_nuc_frame);
 
-        normaldisp = RADIUS * NUCPOINT_SCALE - r; // or force---necessary to multiply by NODE_DIST_TO_FORCE?
+        //normaldisp = RADIUS * NUCPOINT_SCALE - r; // or force---necessary to multiply by NODE_DIST_TO_FORCE?
 
-        tangdisp = zerofrictpoint - inffrictionpoint ;
-        td_len = tangdisp.length();
+        //tangdisp = zerofrictpoint - inffrictionpoint ;
+        //td_len = tangdisp.length();
 
-        frictdisp = -tangdisp * normaldisp * NUC_FRICTION_COEFF;   // in direction of node movement
-        fr_len = frictdisp.length();
+        //frictdisp = -tangdisp * normaldisp * NUC_FRICTION_COEFF;   // in direction of node movement
+        //fr_len = frictdisp.length();
 
-        if (td_len < fr_len)
-        {   // friction can't be greater than tangential force
-            frictdisp *= td_len / fr_len;
-        }
+        //if (td_len < fr_len)
+        //{   // friction can't be greater than tangential force
+        //    frictdisp *= td_len / fr_len;
+        //}
 
         // move node to final point
 

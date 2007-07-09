@@ -149,7 +149,7 @@ int TRACKFRAMESTEP = 5;
 
 double gridscanjitter = 0.01;
 
-int SAVE_DATA_PRECISION	= 4;
+int SAVE_DATA_PRECISION	= 6;
 
 
 bool FORCES_ON_SIDE = false;
@@ -2300,15 +2300,15 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
         abort();
     }
     theactin.setdontupdates();
-    
+    theactin.clear_node_stats();
     ifstrm.close();
 
  
     if (usingtmpdatafile)
-    {
+    {   // delete the temp data file
 #ifndef _WIN32
         char command1[1024];
-        sprintf(command1, "rm  %s",tmpdatafile);
+        sprintf(command1, "rm  %s",tmpdatafile);           
         system(command1);
 #endif    
     }
