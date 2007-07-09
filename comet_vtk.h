@@ -29,6 +29,8 @@
 
 #include "vtkJPEGReader.h"
 
+#include "vtkAssembly.h"
+
 //#include "vtkMesaRenderer.h"
 //#include "vtkMesaRenderWindow.h"
 
@@ -115,8 +117,10 @@ class CometVtkVis {
 
   void RestartRenderWindow();
   void addNucleator(bool wireframe, double scale);
-  void addCapsuleNucleator(bool wireframe, double scale);
-  void addSphericalNucleator(bool wireframe, double scale);
+  //void addCapsuleNucleator(bool wireframe, double scale);
+  //void addSphericalNucleator(bool wireframe, double scale);
+  void add_capsule_to_assembly(vtkAssembly* nucleator_actor, bool wireframe) ;
+  void add_sphere_to_assembly(vtkAssembly* nucleator_actor, bool wireframe) ;
   void addNodes();
   void addLinks();
   void addGaussianSplatterToNodes();

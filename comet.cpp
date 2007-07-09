@@ -373,7 +373,7 @@ bool POST_PROCESSSINGLECPU = false;
 unsigned int POST_PROCESS_CPUS = 1;
 bool VIEW_VTK = false;
 
-bool VTK_WIREFRAME = false;
+bool VTK_NUC_WIREFRAME = true;
 
 int POST_PROC_ORDER = +1;  // +1 = forward, -1 = reverse;
 
@@ -796,8 +796,8 @@ int main(int argc, char* argv[])
         else if (tag == "VTK_NUC_LINKS_ONLY") 
 			{ss >> buff2; if (buff2=="TRUE") VTK_NUC_LINKS_ONLY = true; else VTK_NUC_LINKS_ONLY = false;} 
 
-        else if (tag == "VTK_WIREFRAME") 
-			{ss >> buff2; if (buff2=="TRUE") VTK_WIREFRAME = true; else VTK_WIREFRAME = false;} 
+        else if (tag == "VTK_NUC_WIREFRAME") 
+			{ss >> buff2; if (buff2=="TRUE") VTK_NUC_WIREFRAME = true; else VTK_NUC_WIREFRAME = false;} 
 
         else if (tag == "VTK_NUC_LINKS_ONLY_AMPLIFY")	  
 			{ss >> VTK_NUC_LINKS_ONLY_AMPLIFY;}      

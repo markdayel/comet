@@ -435,14 +435,14 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
 
     if(OptsRenderNucleator)
     {   
-        if (VTK_WIREFRAME) // this is behaving as though #defined as 1 somewhere, but can't find it.  odd... 
+        if (VTK_NUC_WIREFRAME) // this is behaving as though #defined as 1 somewhere, but can't find it.  odd... 
         {   
-            cout << "VTK_WIREFRAME true" << endl;
+            cout << "VTK_NUC_WIREFRAME true" << endl;
 	        addNucleator(true,1.015);
         }
         else
         {
-            cout << "VTK_WIREFRAME false" << endl;
+            cout << "VTK_NUC_WIREFRAME false" << endl;
         }
 
         addNucleator(false,1.0);
@@ -751,20 +751,52 @@ void CometVtkVis::saveVRML(int framenumber)
 //    spoints->Delete();
 //}
 
+//void CometVtkVis::addNucleator(bool wireframe, double scale)
+//{
+//    //if (NUCSHAPE == nucleator::capsule) 
+//    //{
+//        addCapsuleNucleator(wireframe, scale);   
+//    //} else 
+//    //{   
+//	   // addSphericalNucleator(wireframe, scale);
+//    //}
+//}
+
 void CometVtkVis::addNucleator(bool wireframe, double scale)
 {
+
+    // add nucleator
+    vtkAssembly *nucleator_actor=vtkAssembly::New();
+
     if (NUCSHAPE == nucleator::capsule) 
     {
-        addCapsuleNucleator(wireframe, scale);   
-    } else 
+        add_capsule_to_assembly(nucleator_actor, wireframe);   
+    } 
+    else 
     {   
-	    addSphericalNucleator(wireframe, scale);
+	    add_sphere_to_assembly(nucleator_actor, wireframe);
     }
+
+
+    // set nucleator rotation and translation matrix
+
+    vtkMatrix4x4 *transformationmatrix = vtkMatrix4x4::New();
+    set_transform_matrix(transformationmatrix, ptheactin->nuc_to_world_rot.inverse());
+    
+    nucleator_actor->SetUserMatrix(transformationmatrix);
+    
+    // scale (for wireframe)
+    
+    nucleator_actor->SetScale(scale);
+ 
+    // add nucleator
+    renderer->AddActor(nucleator_actor);
+    nucleator_actor->Delete();
+
 }
 
-void CometVtkVis::addCapsuleNucleator(bool wireframe, double scale)
+void CometVtkVis::add_capsule_to_assembly(vtkAssembly* nucleator_actor, bool wireframe)
 {
-
     // -- Sources
     // -- endcap source
     // create top sphere geometry
@@ -777,6 +809,7 @@ void CometVtkVis::addCapsuleNucleator(bool wireframe, double scale)
 
     // endcap mapper
     vtkPolyDataMapper *endcap_mapper = vtkPolyDataMapper::New();
+    SetFocalDepthPlanes(endcap_mapper);
     endcap_mapper->SetInput( endcap->GetOutput() );
     endcap->Delete();
     
@@ -789,6 +822,7 @@ void CometVtkVis::addCapsuleNucleator(bool wireframe, double scale)
 
     // body mapper
     vtkPolyDataMapper *body_mapper = vtkPolyDataMapper::New();
+    SetFocalDepthPlanes(body_mapper);
     body_mapper->SetInput( body->GetOutput() );
     body->Delete();
 
@@ -840,116 +874,17 @@ void CometVtkVis::addCapsuleNucleator(bool wireframe, double scale)
     }
     
     //assemble nucleator from parts
-    vtkAssembly *nucleator_actor=vtkAssembly::New();
+
     nucleator_actor->AddPart(endcap1_actor);
     nucleator_actor->AddPart(endcap2_actor);
     nucleator_actor->AddPart(body_actor);
     endcap1_actor->Delete();
     endcap2_actor->Delete();
     body_actor->Delete();
-
-    // rotate the nucleator
- 
-    double xrot,yrot,zrot;
-    ptheactin->nuc_to_world_rot.getangles(xrot,yrot,zrot);
-
-    xrot *= -vtkMath::DoubleRadiansToDegrees(); // should these be negative?
-    yrot *= -vtkMath::DoubleRadiansToDegrees();
-    zrot *= -vtkMath::DoubleRadiansToDegrees();
-    
-    // set rotation by angles
-    nucleator_actor->SetOrientation(xrot, yrot, zrot);
-
-
-    vtkMatrix4x4 *transformationmatrix = vtkMatrix4x4::New();
-    set_transform_matrix(transformationmatrix, ptheactin->nuc_to_world_rot.inverse());
-    
-    // set rotation by matrix
-    //nucleator_actor->SetUserMatrix(transformationmatrix);
-
-    // set position
-
-    vect nuc_center(0,0,0);
-    ptheactin->nuc_to_world_frame(nuc_center);
-    nuc_center *= voxelscalefactor;
-
-    nucleator_actor->SetPosition(nuc_center.x, nuc_center.y, nuc_center.z);
-    
-    // scale
-    
-    nucleator_actor->SetScale(scale);
- 
-    // add nucleator
-    renderer->AddActor(nucleator_actor);
-    nucleator_actor->Delete();
-
 }
 
-void CometVtkVis::set_transform_matrix(vtkMatrix4x4 * vtkmat, const rotationmatrix & rotmat) const
-{   // convert 3x3 rotationmatrix into 4x4 vtk transform matrix
-
-    //vtkmat->SetElement(0,0,rotmat.xx);
-    //vtkmat->SetElement(0,1,rotmat.yx);
-    //vtkmat->SetElement(0,2,rotmat.zx);
-    //vtkmat->SetElement(0,3,0);
-
-    //vtkmat->SetElement(1,0,rotmat.xy);
-    //vtkmat->SetElement(1,1,rotmat.yy);
-    //vtkmat->SetElement(1,2,rotmat.zy);
-    //vtkmat->SetElement(1,3,0);
-    //
-    //vtkmat->SetElement(2,0,rotmat.xz);
-    //vtkmat->SetElement(2,1,rotmat.yz);
-    //vtkmat->SetElement(2,1,rotmat.zz);
-    //vtkmat->SetElement(2,3,0);
-
-    //vtkmat->SetElement(3,0,0);
-    //vtkmat->SetElement(3,1,0);
-    //vtkmat->SetElement(3,2,0);
-    //vtkmat->SetElement(3,3,1);
-
-    vtkmat->SetElement(0,0,rotmat.xx);
-    vtkmat->SetElement(0,1,rotmat.xy);
-    vtkmat->SetElement(0,2,rotmat.xz);
-    vtkmat->SetElement(0,3,0);
-
-    vtkmat->SetElement(1,0,rotmat.yx);
-    vtkmat->SetElement(1,1,rotmat.yy);
-    vtkmat->SetElement(1,2,rotmat.yz);
-    vtkmat->SetElement(1,3,0);
-    
-    vtkmat->SetElement(2,0,rotmat.zx);
-    vtkmat->SetElement(2,1,rotmat.zy);
-    vtkmat->SetElement(2,1,rotmat.zz);
-    vtkmat->SetElement(2,3,0);
-
-    vtkmat->SetElement(3,0,0);
-    vtkmat->SetElement(3,1,0);
-    vtkmat->SetElement(3,2,0);
-    vtkmat->SetElement(3,3,1);
-
-}
-
-void CometVtkVis::addSphericalNucleator(bool wireframe, double scale)
-{   
-
-    vect nucposn = ptheactin->p_nuc->position * voxelscalefactor;
-
-    //map->SetResolveCoincidentTopologyToPolygonOffset()
-    // SetResolveCoincidentTopologyToShiftZBuffer();  // mark: testing this
-    //map->ScalarVisibilityOff(); // mark: testing this too
-    
-    // actor coordinates geometry, properties, transformation
-    
-    
-    // rotate the nucleator
-    double nrotation[3];
-
-    ptheactin->nuc_to_world_rot.getangles(nrotation[0], nrotation[1],nrotation[2]);
-    nrotation[0] *= -vtkMath::DoubleRadiansToDegrees();
-    nrotation[1] *= -vtkMath::DoubleRadiansToDegrees();
-    nrotation[2] *= -vtkMath::DoubleRadiansToDegrees();
-
+void CometVtkVis::add_sphere_to_assembly(vtkAssembly* nucleator_actor, bool wireframe)
+{
 
     // create sphere geometry
     vtkSphereSource *sphere = vtkSphereSource::New();
@@ -964,8 +899,6 @@ void CometVtkVis::addSphericalNucleator(bool wireframe, double scale)
 
     vtkActor *nuc_actor = vtkActor::New();
     
-    nuc_actor->SetOrientation( nrotation[0],nrotation[1],nrotation[2]);
-    nuc_actor->SetPosition(nucposn.x, nucposn.y, nucposn.z);
     nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
 
     nuc_actor->GetProperty()->SetDiffuse(0.25);
@@ -978,9 +911,7 @@ void CometVtkVis::addSphericalNucleator(bool wireframe, double scale)
     ellipseFilter->SetInput( sphere->GetOutput() );
 
     if (NUCSHAPE == nucleator::ellipsoid)
-        ellipseTransform->Scale(scale,scale,scale * ELLIPSOID_STRETCHFACTOR);    
-    else
-        ellipseTransform->Scale(scale,scale,scale); 
+        ellipseTransform->Scale(1,1,ELLIPSOID_STRETCHFACTOR);     
 
     ellipseFilter->SetTransform( ellipseTransform );
 
@@ -1039,13 +970,163 @@ void CometVtkVis::addSphericalNucleator(bool wireframe, double scale)
 
     sphere->Delete();
     mapper->Delete();
-	
-    // add the actor to the scene
-    renderer->AddActor(nuc_actor);
-    nuc_actor->Delete();
+    
+    //assemble nucleator from parts
 
+    nucleator_actor->AddPart(nuc_actor);
+    nuc_actor->Delete();
 }
 
+void CometVtkVis::set_transform_matrix(vtkMatrix4x4 * vtkmat, const rotationmatrix & rotmat) const
+{   // convert 3x3 rotationmatrix into 4x4 vtk transform matrix
+
+    // set rotation
+
+    vtkmat->SetElement(0,0,rotmat.xx);
+    vtkmat->SetElement(0,1,rotmat.xy);
+    vtkmat->SetElement(0,2,rotmat.xz);
+    vtkmat->SetElement(0,3,0);
+
+    vtkmat->SetElement(1,0,rotmat.yx);
+    vtkmat->SetElement(1,1,rotmat.yy);
+    vtkmat->SetElement(1,2,rotmat.yz);
+    vtkmat->SetElement(1,3,0);
+    
+    vtkmat->SetElement(2,0,rotmat.zx);
+    vtkmat->SetElement(2,1,rotmat.zy);
+    vtkmat->SetElement(2,2,rotmat.zz);
+    vtkmat->SetElement(2,3,0);
+
+    vtkmat->SetElement(3,0,0);
+    vtkmat->SetElement(3,1,0);
+    vtkmat->SetElement(3,2,0);
+    vtkmat->SetElement(3,3,1);
+
+    // set translation
+
+    vtkmat->SetElement(0,3,ptheactin->p_nuc->position.x * voxelscalefactor);
+    vtkmat->SetElement(1,3,ptheactin->p_nuc->position.y * voxelscalefactor);
+    vtkmat->SetElement(2,3,ptheactin->p_nuc->position.z * voxelscalefactor);
+    vtkmat->SetElement(3,3,1);
+
+}
+//
+//void CometVtkVis::addSphericalNucleator(bool wireframe, double scale)
+//{   
+//
+//    vect nucposn = ptheactin->p_nuc->position * voxelscalefactor;
+//
+//    //map->SetResolveCoincidentTopologyToPolygonOffset()
+//    // SetResolveCoincidentTopologyToShiftZBuffer();  // mark: testing this
+//    //map->ScalarVisibilityOff(); // mark: testing this too
+//    
+//    // actor coordinates geometry, properties, transformation
+//    
+//    
+//    // rotate the nucleator
+//    double nrotation[3];
+//
+//    ptheactin->nuc_to_world_rot.getangles(nrotation[0], nrotation[1],nrotation[2]);
+//    nrotation[0] *= -vtkMath::DoubleRadiansToDegrees();
+//    nrotation[1] *= -vtkMath::DoubleRadiansToDegrees();
+//    nrotation[2] *= -vtkMath::DoubleRadiansToDegrees();
+//
+//
+//    // create sphere geometry
+//    vtkSphereSource *sphere = vtkSphereSource::New();
+//    
+//    //cout << "  voxel_scale: " << voxel_scale << endl;
+//    //cout << "  nucleator radius: " << radius_pixels << endl;
+//
+//    sphere->SetRadius(radius_pixels);
+//    sphere->SetThetaResolution(32);
+//    sphere->SetPhiResolution(32);
+//    //sphere->LatLongTessellationOn();
+//
+//    vtkActor *nuc_actor = vtkActor::New();
+//    
+//    nuc_actor->SetOrientation( nrotation[0],nrotation[1],nrotation[2]);
+//    nuc_actor->SetPosition(nucposn.x, nucposn.y, nucposn.z);
+//    nuc_actor->GetProperty()->SetOpacity(nuc_opacity);
+//
+//    nuc_actor->GetProperty()->SetDiffuse(0.25);
+//    nuc_actor->GetProperty()->SetAmbient(0.3);
+//    nuc_actor->GetProperty()->SetSpecular(1.0);
+//    nuc_actor->GetProperty()->SetSpecularPower(5.0);
+//    
+//    vtkTransform *ellipseTransform = vtkTransform::New();
+//    vtkTransformPolyDataFilter *ellipseFilter = vtkTransformPolyDataFilter::New();
+//    ellipseFilter->SetInput( sphere->GetOutput() );
+//
+//    if (NUCSHAPE == nucleator::ellipsoid)
+//        ellipseTransform->Scale(scale,scale,scale * ELLIPSOID_STRETCHFACTOR);    
+//    else
+//        ellipseTransform->Scale(scale,scale,scale); 
+//
+//    ellipseFilter->SetTransform( ellipseTransform );
+//
+//     // mapper
+//    vtkPolyDataMapper *mapper = vtkPolyDataMapper::New(); 
+//
+//    SetFocalDepthPlanes(mapper);
+//
+//
+//    if((OptsUseNucTextureMap) && (VTK_MAJOR_VERSION > 4) && texturereadOK) 
+//    {
+//      // texture commands not in VTK 4 or below, so skip:
+// #if VTK_MAJOR_VERSION > 4	
+//        
+//        // add texture map to the nucleator,
+//	    // see vtk example: 'GenerateTextureCoords.tcl'
+//
+//	    // create texturemap to sphere
+//	    vtkTextureMapToSphere *tx_mapper = vtkTextureMapToSphere::New();
+//	    tx_mapper->PreventSeamOff();
+//        tx_mapper->SetInput( ellipseFilter->GetOutput() );
+//	    vtkTransformTextureCoords *tx_xfm =  vtkTransformTextureCoords::New();
+//	    tx_xfm->SetInput( tx_mapper->GetOutput() );
+//    	
+//        // add the texture to the nucleator
+//	    vtkTexture *tx = vtkTexture::New();
+//
+//        tx->SetInputConnection( tx_reader->GetOutputPort() );
+//        nuc_actor->SetTexture( tx );
+//
+//	    // set the mapper
+//	    mapper->SetInputConnection( tx_xfm->GetOutputPort() );
+// 	
+//	    // clear up
+//
+//	    tx_mapper->Delete();
+//	    tx_xfm->Delete();
+//	    tx->Delete();
+//
+// #endif
+//
+//
+//    } else 
+//    {
+//	    mapper->SetInput(ellipseFilter->GetOutput());
+//	    nuc_actor->GetProperty()->SetColor(0.7, 0.7, 0.7); // sphere color 
+//    }
+//
+//    if (wireframe)
+//    {
+//      nuc_actor->GetProperty()->SetRepresentationToWireframe();
+//      nuc_actor->GetProperty()->SetColor(0, 0, 0);
+//    }
+//
+//    nuc_actor->SetMapper(mapper);
+//
+//    sphere->Delete();
+//    mapper->Delete();
+//	
+//    // add the actor to the scene
+//    renderer->AddActor(nuc_actor);
+//    nuc_actor->Delete();
+//
+//}
+//
 void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx)
 					    // double vd, double *min)
 {

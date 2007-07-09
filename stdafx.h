@@ -337,7 +337,7 @@ extern int BMP_AA_FACTOR;
 
 extern double ELLIPSOID_STRETCHFACTOR;
 
-extern bool VTK_WIREFRAME;
+extern bool VTK_NUC_WIREFRAME;
 extern bool VTK_NUC_LINKS_ONLY;
 extern double VTK_NUC_LINKS_ONLY_AMPLIFY;
 extern double COLOUR_GAMMA;
