@@ -1443,7 +1443,7 @@ int main(int argc, char* argv[])
 #ifndef NOKBHIT
 		if (!QUIET) 
 		{        
-			cout << "Clear directories and start run(y/n)?";
+			cout << endl << "Clear directories and start run(y/n)?";
 		    
 			cout.flush();
 			int ch;
@@ -1608,6 +1608,8 @@ int main(int argc, char* argv[])
 
         lastlinksformed = ptheactin->linksformed;
         lastlinksbroken = ptheactin->linksbroken;
+
+        theactin.clear_node_stats();
 
         // srand( (unsigned) 200 );
  
@@ -2300,7 +2302,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
         abort();
     }
     theactin.setdontupdates();
-    theactin.clear_node_stats();
+    
     ifstrm.close();
 
  

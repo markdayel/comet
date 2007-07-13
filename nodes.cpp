@@ -115,6 +115,7 @@ bool nodes::depolymerize(void)
 	
 	x = y = z = 0.0;
 	polymer = false;
+    stucktonucleator = false;
 
 	// remove all back links
 	for (vector <links>::iterator i=listoflinks.begin(); i!=listoflinks.end() ; ++i )

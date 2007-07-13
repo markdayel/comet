@@ -36,13 +36,13 @@ public:
 
     double forcesum;
 
-    double last_force;
+    //double last_force;
 
 	//double last_dist;
 	//double last_but_one_dist;
 
 	//int breakcount;
-	bool broken, last_force_set;	
+	bool broken;//, last_force_set;	
 	//bool breaklastiter;
 	//double theta;
 	//double phi;
@@ -57,61 +57,24 @@ public:
         /// break link if above LINK_BREAKAGE_FORCE
         /// returns false if link broken
 
+        // force is on the node in the direction of the link,
+        // i.e. as the link is stretched longer, the force becomes more negative
 
         // calculate forces:
 
+        force = -LINK_FORCE * (dist - orig_dist) * orig_dist_recip * linkforcescalefactor; 
 
-        force = - LINK_FORCE * (dist - orig_dist) * orig_dist_recip * linkforcescalefactor; 
-                
-
-        if (force < 0)  // if stretching, decide if link broken:
-        {
-            
-
-          //  if (USE_BREAKAGE_VISCOSITY)
-          //  {	
-		        //// since strainlimit = distlimit / orig_dist,
-		        //// then distlimit = strainlimit * orig_dist
-    	     //   
-          //      //double p_break = DELTA_T * 1 * exp( (-LINK_BREAKAGE_FORCE * 12) / (force * force));
-
-          //      if (-force > LINK_BREAKAGE_FORCE)
-		        //{
-			       // broken = true;
-			       // return false;  
-		        //}
-
-          //      if (last_force_set)
-          //      {
-          //          if ( fabs(last_force - force) > BREAKAGE_VISCOSITY_THRESHOLD * DELTA_T )
-          //          {
-          //              broken = true;
-          //              return false;
-          //          }
-          //      }
-
-          //  }
-            //else
-            //{ // just using force
-		        if (-force > LINK_BREAKAGE_FORCE)
-		        {   
-			        broken = true;
-                    return false;
-		        }
-
-//            }
-
+        if (-force > LINK_BREAKAGE_FORCE)
+        {   
+            broken = true;
+            return false;
         }
 
-        // add the dashpot *after* the breakage test
-
-        // force-= DASHPOT_IMPEDANCE * (dist - last_link_length) * NODE_DIST_TO_FORCE ;
+        force -= DASHPOT_IMPEDANCE * (dist - last_link_length) * NODE_DIST_TO_FORCE;
 
         last_link_length = dist;
-        last_force = force;
-        last_force_set = true;
 
-	    return true;
+        return true;
     }
 	
 };

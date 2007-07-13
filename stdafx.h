@@ -86,7 +86,7 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 
 #ifdef _WIN32
 
-    #define LINK_VTK 1    // link with vtk if on windows
+    #define LINK_VTK 1    // link with vtk
 
     #define _CRT_SECURE_NO_DEPRECATE
     #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers

@@ -766,41 +766,43 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
     }
     else
     {   // friction
-        //double normaldisp, td_len, fr_len;
-        //vect tangdisp, frictdisp; 
+        double normaldist; 
+        double len_ratio;
+        vect tangdisp, frictdisp; 
         vect inffrictionpoint, zerofrictpoint;
         //vect ejection_normal;
         //vect finalpos, interact_disp;
         
         // assume that since it collided, the previous_pos_in_nuc_frame was close to the surface
 
-        // point on surface if infinite friction, i.e. project last position onto surface
+        // point on surface if infinite friction, i.e. project last node position onto surface
         // this should really be the intersection of the vector with the sphere
-        // but this is a good approximation
+        // but this is a good approximation, since the node is very close to the surface
         inffrictionpoint = eject_point(node_world.previous_pos_in_nuc_frame);
 
-
-        // find distance from center
-	    //double r = node_world.pos_in_nuc_frame.length();
         // point on surface if zero friction, i.e. project current position onto surface
 	    zerofrictpoint = eject_point(node_world.pos_in_nuc_frame);
 
-        //normaldisp = RADIUS * NUCPOINT_SCALE - r; // or force---necessary to multiply by NODE_DIST_TO_FORCE?
+        // calculate normal displacement
+        normaldist = (zerofrictpoint - node_world.pos_in_nuc_frame).length(); 
+        
+        // calculate the tangential displacement for infinite friciton
+        tangdisp = inffrictionpoint - zerofrictpoint; 
+       
+        // friction is the normal displacement * frict coeffin the direction of the movement
+        frictdisp = tangdisp.unitvec() * (normaldist * NUC_FRICTION_COEFF);   // in direction of node movement
 
-        //tangdisp = zerofrictpoint - inffrictionpoint ;
-        //td_len = tangdisp.length();
+        // find ratio of max movment to proposed friction movement
+        len_ratio = tangdisp.length() / frictdisp.length();
 
-        //frictdisp = -tangdisp * normaldisp * NUC_FRICTION_COEFF;   // in direction of node movement
-        //fr_len = frictdisp.length();
-
-        //if (td_len < fr_len)
-        //{   // friction can't be greater than tangential force
-        //    frictdisp *= td_len / fr_len;
-        //}
+        if (len_ratio < 1.0)
+        {   // friction can't be greater than tangential force
+            frictdisp *= len_ratio;
+        }
 
         // move node to final point
 
-        node_world.pos_in_nuc_frame = (zerofrictpoint + inffrictionpoint )/2; //zerofrictpoint + frictdisp;
+        node_world.pos_in_nuc_frame = zerofrictpoint + frictdisp;
     }    
 
     //node_world.previous_pos_in_nuc_frame = oldpos;

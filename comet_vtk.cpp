@@ -746,7 +746,7 @@ void CometVtkVis::addNucleator(bool wireframe)
     
     nucleator_actor->SetUserMatrix(transformationmatrix);
     
-    // make wireframe slighly bigger, so lines appear on outside
+    // make wireframe slightly bigger, so lines appear on outside
     if (wireframe)
         nucleator_actor->SetScale(1.015);
 
@@ -799,7 +799,7 @@ void CometVtkVis::add_capsule_to_assembly(vtkAssembly* nucleator_actor, bool wir
     endcap1_actor->SetOrientation( 0, 0, 0);
 
     endcap1_actor->SetPosition( 0,0,  CAPSULE_HALF_LINEAR*voxelscalefactor);
-    endcap1_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
+    endcap1_actor->GetProperty()->SetColor(0.7, 0.7, 0.7);	
     endcap1_actor->GetProperty()->SetOpacity(nuc_opacity);
     
     // - lower endcap
@@ -809,7 +809,7 @@ void CometVtkVis::add_capsule_to_assembly(vtkAssembly* nucleator_actor, bool wir
     endcap2_actor->SetOrientation( 180, 0, 0);
 
     endcap2_actor->SetPosition( 0, 0, -CAPSULE_HALF_LINEAR*voxelscalefactor);
-    endcap2_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
+    endcap2_actor->GetProperty()->SetColor(0.7, 0.7, 0.7);	
     endcap2_actor->GetProperty()->SetOpacity(nuc_opacity);
     
     endcap_mapper->Delete();
@@ -820,7 +820,7 @@ void CometVtkVis::add_capsule_to_assembly(vtkAssembly* nucleator_actor, bool wir
     
     body_actor->SetOrientation(  90, 0, 0 );
     body_actor->SetPosition( 0,0,0 );
-    body_actor->GetProperty()->SetColor(0.5, 0.5, 0.5);	
+    body_actor->GetProperty()->SetColor(0.7, 0.7, 0.7);	
     body_actor->GetProperty()->SetOpacity(nuc_opacity);
     body_mapper->Delete();
 
@@ -932,9 +932,7 @@ void CometVtkVis::add_sphere_to_assembly(vtkAssembly* nucleator_actor, bool wire
     nuc_actor->SetMapper(mapper);
 
     sphere->Delete();
-    mapper->Delete();
-    
-    //assemble nucleator from parts
+    mapper->Delete();              
 
     nucleator_actor->AddPart(nuc_actor);
     nuc_actor->Delete();
@@ -1469,8 +1467,6 @@ void CometVtkVis::addLinks()
   lut->SetNumberOfTableValues(numcol);
   lut->SetRange(0.7, 1.0);
   lut->Build();
-  // ML REVISIT, crude linear ramp, 
-  // do this better way to do this via vtkLut calls
   
   Colour col;
   
@@ -1530,7 +1526,7 @@ void CometVtkVis::addLinks()
   
   for(int i=0; i != ptheactin->highestnodecount; i++) 
   { 
-      if (!ptheactin->node[i].polymer)
+    if (!ptheactin->node[i].polymer)
           continue;
     
     nodeposvec = ptheactin->node[i];

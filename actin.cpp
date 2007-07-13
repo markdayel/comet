@@ -1079,12 +1079,21 @@ void actin::nucleator_node_interactions()
             }
             else
             {
+                // this is in the nucleator frame
 
                 forcevec = disp * (force/dist);  // '(disp/dist)' is just to get the unit vector
                                                  // note this vector in nucleator frame!
+                
+                vect tomove = -forcevec * DELTA_T * FORCE_SCALE_FACT;  // convert force to distance
+
+				p_nuc->move_nuc(nodepos,tomove);		// add to nucleator movement vector
+
+
 
                 nuc_to_world_rot.rotate(forcevec);      // rotate to world co-ords before adding to the node vector
+                nuc_to_world_rot.rotate(tomove);
 
+                // these are in the world frame
 
 #ifndef NO_CALC_STATS
 
@@ -1098,10 +1107,6 @@ void actin::nucleator_node_interactions()
                 //                                      i_node->linkenergy_transverse);
 
 #endif
-
-				vect tomove = -forcevec * DELTA_T * FORCE_SCALE_FACT;  // convert force to distance
-
-				p_nuc->move_nuc(*i_node,tomove);		// add to nucleator movement vector
 
 				i_node->nucleator_link_force += tomove;	// add to nuc link force stats
 
@@ -2268,52 +2273,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 
 #endif 
-
-        
-
-
-        //if (prob_to_bool(0.01))
-        //     cout << " " << x << "," << y ;
-
-       
-
-
-
-//#ifdef BMPS_USING_LINKS
-//
-//            if (BMP_LINKS_BROKEN)
-//                value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
-//            else
-//                value = link_i->forcesum / (InterRecordIterations * LINK_BREAKAGE_FORCE) ;   // scale by 1/LINK_BREAKAGE_FORCE
-//
-//            if (value < 0.0)
-//                continue;
-//
-//            vect linkvec = node[i] - *(link_i->linkednodeptr);
-//
-//            double dirfactor = fabs ( linkvec.unitvec().dot(node[i].unit_vec_posn) );  // we don't care about sign, just angle
-//
-//            if (COL_LINK_BY_DIRN)
-//                value = dirfactor ;  // put the actual direction in the links
-//            else
-//                value = value * ( 1 - dirfactor );
-//
-//#else
-//            if (BMP_LINKS_BROKEN)
-//                value = node[i].links_broken / COL_INDIVIDUAL_SCALE;
-//            else if (BMP_TRANSVERSELINKSONLY)
-//                value = node[i].linkforce_transverse / COL_INDIVIDUAL_SCALE;
-//            else
-//                value = node[i].linkforce_radial / COL_INDIVIDUAL_SCALE;
-//                //value = (node[i].linkforce_transverse + node[i].linkforce_radial) / COL_INDIVIDUAL_SCALE;
-//
-//#endif
-            
-            
-        //}
-        
+  
         double value;
-
 
 #ifdef BMPS_USING_LINKS
 
@@ -2704,7 +2665,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	    
 	    p_nuc->segs.drawoutline(drawcmd,proj);				// draw outline of nucleator
     	
-        // for these scales, smaller number = bigger lines
+        // for these scales, larger number = longer lines
 
 	    // check have lines to draw before adding them
 	    // else ImageMagick intermittently crashes
@@ -2716,10 +2677,10 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj, 1 * FORCE_BAR_SCALE) > 0)		
 	    //	drawcmd << "\" -stroke blue -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd1.str();
 
-        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.01 * FORCE_BAR_SCALE) > 0)	
+        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.1 * FORCE_BAR_SCALE) > 0)	
 		    drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR * strokewidth << " -draw \"" << tmp_drawcmd3.str();
 
-	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj, 0.002 * FORCE_BAR_SCALE) > 0)	
+	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj, 0.02 * FORCE_BAR_SCALE) > 0)	
 		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
 
     }
