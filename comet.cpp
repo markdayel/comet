@@ -47,6 +47,7 @@ double TOTAL_SIMULATION_TIME = 20000;
 double DELTA_T = 0.1;	
 
 bool NUCLEATOR_FORCES = true;
+double MAX_NUC_MOVE = 100;
 
 bool NO_SYMBREAK_ROTATION = false;
 
@@ -60,12 +61,16 @@ int VTK_WIDTH  = 1024;
 int VTK_HEIGHT = 768;
 int VTK_AA_FACTOR = 1;
 
+bool VTK_RAND_NODE_COL = false;
+
 int REFERENCEFRAME = 0;
 
 unsigned int TEXT_POINTSIZE = 20;
 
 bool VTK_NUC_LINKS_ONLY = false;
 double VTK_NUC_LINKS_ONLY_AMPLIFY = 20;
+double VTK_MAX_NODE_DIST = 10000000;
+bool VTK_PLOT_NUC_IMPACTS = false;
 
 bool POST_VTK_VIEW = false;
 
@@ -149,7 +154,7 @@ int TRACKFRAMESTEP = 5;
 
 double gridscanjitter = 0.01;
 
-int SAVE_DATA_PRECISION	= 6;
+int SAVE_DATA_PRECISION	= 4;
 
 
 bool FORCES_ON_SIDE = false;
@@ -158,7 +163,7 @@ bool NO_IMAGE_TEXT = false;
 bool NO_COLBAR = false;
 
 int BMP_COMPRESSION = 95;
-string BMP_OUTPUT_FILETYPE = "png";
+string BMP_OUTPUT_FILETYPE = "png";                                                  
 
 //int REPORT_AVERAGE_ITTERATIONS = 50;
 
@@ -275,7 +280,7 @@ int CROSSLINKDELAY = 200;  // number of interations before crosslinking
 						  //  (to allow position to be equilibrated to something
 						  //       reasonable before locking node in place)
 
-double NODE_REPULSIVE_POWER = 2.7;
+//double NODE_REPULSIVE_POWER = 2.7;
 double NODE_REPULSIVE_MAG =  1.5;
 double NODE_REPULSIVE_RANGE = 1.0;
 double NODE_REPULSIVE_BUCKLE_RANGE = NODE_REPULSIVE_RANGE * 0.3;
@@ -455,7 +460,7 @@ int main(int argc, char* argv[])
             POST_VTK = false;
         }                                         
 
-        if (strcmp(argv[1], "vtkview") == 0 )
+        if (strcmp(argv[1], "view") == 0 )
         {
 			POST_PROCESS = true;
             POST_BMP = false;
@@ -538,10 +543,11 @@ int main(int argc, char* argv[])
         POST_PROCESS_CPUS = 2;  // the cluster machines have 2 cpus
     }
 
-    if (    (strcmp( hostname, "medusa.local")       == 0) )
+    if (    (strcmp( hostname, "medusa.local")       == 0) ||
+            (strcmp( hostname, "medusa.kinglab")     == 0) )
     {
         if (POST_VTK)  
-            POST_PROCESS_CPUS = 3;
+            POST_PROCESS_CPUS = 4;
         else
             POST_PROCESS_CPUS = 4;
     }
@@ -602,7 +608,11 @@ int main(int argc, char* argv[])
 		USE_THREADS = true;
 	}
 
-	NUM_THREAD_DATA_CHUNKS = NUM_THREADS;
+    // how many chunks to divide data into (these then get passed to threads)
+    // probably best to keep equal to thread #
+    // multiples of thread # would be better, except for collisiondeteciton code
+    // which restricts nearby nodes to same thread data chunk
+	NUM_THREAD_DATA_CHUNKS = NUM_THREADS; 
 
     // create threads:
 	// -- Threading TaskTeam, create and intialise the team
@@ -616,8 +626,6 @@ int main(int argc, char* argv[])
 	else
 		cout << "Running in Single Threaded mode" << endl;
 
-
-	  // was NUM_THREADS*4
 
 	// data for threads (managed outside queue
 	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
@@ -800,7 +808,13 @@ int main(int argc, char* argv[])
 			{ss >> buff2; if (buff2=="TRUE") VTK_NUC_WIREFRAME = true; else VTK_NUC_WIREFRAME = false;} 
 
         else if (tag == "VTK_NUC_LINKS_ONLY_AMPLIFY")	  
-			{ss >> VTK_NUC_LINKS_ONLY_AMPLIFY;}      
+			{ss >> VTK_NUC_LINKS_ONLY_AMPLIFY;} 
+
+        else if (tag == "VTK_PLOT_NUC_IMPACTS")	  
+			{ss >> VTK_PLOT_NUC_IMPACTS;} 
+
+        else if (tag == "VTK_MAX_NODE_DIST") 
+			{ss >> buff2; if (buff2=="TRUE") VTK_MAX_NODE_DIST = true; else VTK_MAX_NODE_DIST = false;}
 
         else if (tag == "SYM_BREAK_TO_RIGHT") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
@@ -836,7 +850,10 @@ int main(int argc, char* argv[])
 			{ss >> COLOUR_GAMMA;}     
 
 		else if (tag == "VTK_VIEWANGLE")	  
-			{ss >> VTK_VIEWANGLE;}
+			{ss >> VTK_VIEWANGLE;}    
+
+        else if (tag == "VTK_RAND_NODE_COL")  
+			{ss >> buff2; if (buff2=="TRUE") VTK_RAND_NODE_COL = true; else VTK_RAND_NODE_COL = false;}
 
 		else if (tag == "CROSSLINKDELAY")	  
 			{ss >> CROSSLINKDELAY;}
@@ -910,7 +927,10 @@ int main(int argc, char* argv[])
 		else if (tag == "NUCLEATOR_FORCES") 
 			{ss >> NUCLEATOR_FORCES;} 
 
-		else if (tag == "FORCE_SCALE_FACT") 
+        else if (tag == "MAX_NUC_MOVE") 
+			{ss >> MAX_NUC_MOVE;}
+
+		else if (tag == "FORCE_SCALE_FACT")    
 			{ss >> FORCE_SCALE_FACT;} 
 
 		else if (tag == "FORCE_BAR_SCALE") 
@@ -1066,8 +1086,8 @@ int main(int argc, char* argv[])
 		    else if (tag == "NODE_REPULSIVE_MAG") 
 			    {ss >> NODE_REPULSIVE_MAG;}
     		
-		    else if (tag == "NODE_REPULSIVE_POWER") 
-			    {ss >> NODE_REPULSIVE_POWER;}
+		    //else if (tag == "NODE_REPULSIVE_POWER") 
+			//    {ss >> NODE_REPULSIVE_POWER;}
     		
 		    else if (tag == "NODE_REPULSIVE_RANGE") 
 			    {ss >> NODE_REPULSIVE_RANGE;}
@@ -1610,6 +1630,7 @@ int main(int argc, char* argv[])
         lastlinksbroken = ptheactin->linksbroken;
 
         theactin.clear_node_stats();
+        theactin.sortnodesbygridpoint();
 
         // srand( (unsigned) 200 );
  
@@ -1637,7 +1658,8 @@ int main(int argc, char* argv[])
 		rand_num_seed = RAND_SEED;
 	} 
 	else
-	{			  
+	{	
+
 		rand_num_seed = (unsigned int)( time(NULL) * getpid());
 		theactin.opruninfo << "Time and PID based random number seed (" << rand_num_seed << ") used" << endl;
 		cerr << "Time and PID based random number seed (" << rand_num_seed << ") used" << endl;
@@ -1730,7 +1752,7 @@ int main(int argc, char* argv[])
 						{
 							cout << endl << "Abort run(y/n)?";
 							cout.flush();
-							int ch;
+                            
 							do 
 							{
 								ch = getch();
@@ -2270,21 +2292,23 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 #endif
     }
                                                     
-    if(!ifstrm) {
-	cout << "Unable to open file " << filename.c_str() << " or " << tmpdatafile << " for input" << endl;
-    #ifdef _WIN32
-    cout << "Note that on windows, you must manually unzip any gzipped data files" << endl;
-    #endif
-	return false;
+    if(!ifstrm) 
+    {
+	    cout << "Unable to open file " << filename.c_str() << " or " << tmpdatafile << " for input" << endl;
+#ifdef _WIN32
+        cout << "Note that on windows, you must manually unzip any gzipped data files" << endl;
+#endif
+	    return false;
     }
 
     string str;    
     // load header
     ifstrm >> str;
     // ensure the identifier for the start of the actin
-    if(str.compare("comet:") !=0 ){
-	cout << "error in checkpoint file, 'comet:' expected" << endl;
-	return false;
+    if(str.compare("comet:") !=0 )
+    {
+	    cout << "error in checkpoint file, 'comet:' expected" << endl;
+	    return false;
     }
     
     int saved_iteration;
@@ -2301,7 +2325,10 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
         cout.flush();
         abort();
     }
+
     theactin.setdontupdates();
+
+    //theactin.sortnodesbygridpoint();   // don't need to do this here
     
     ifstrm.close();
 
@@ -2317,9 +2344,10 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 
 
     // check the iteration is correct
-    if( saved_iteration != iteration ){
-	cout << "error in saved file, saved iteration." << endl;
-	return 1;
+    if( saved_iteration != iteration )
+    {
+	    cout << "error in saved file, saved iteration." << endl;
+	    return 1;
     }
 
     // try to load sym break stuff if present
@@ -2353,9 +2381,10 @@ int save_data(actin &theactin, int iteration)
         filename = DATADIR + filename;
 
     ofstream ofstrm( filename.c_str() );    
-    if(!ofstrm) {
-	cout << "Unable to open file " << filename << " for output" << endl;
-	return 1;
+    if(!ofstrm) 
+    {
+	    cout << "Unable to open file " << filename << " for output" << endl;
+	    return 1;
     } 
     
     // write out a header  and save iteration
@@ -2758,74 +2787,13 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 	if (POST_REPORTS)
 	{
-		char command1[1024];
-		sprintf(command1, "(%s %s*report*.txt 2>/dev/null; mv %s*report*%s %s 2>/dev/null) &"
+		char command5[1024];
+		sprintf(command5, "(%s %s*report*.txt 2>/dev/null; mv %s*report*%s %s 2>/dev/null) &"
 			,COMPRESSCOMMAND, TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
 		system(command1);
 	}
 
 }
-
-
-//void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin)
-//{   // no longer used---call made to postprocess() instead
-//
-//
-//	int filenum;
-//    theactin.load_sym_break_axes();
-//
-//	if (nuc_object.segs.load_scalefactors())
-//    {
-//        // if we're able to load the scale factors
-//        // turn off the auto-scaling
-//        theactin.BMP_intensity_scaling = false;
-//    }
-//
-//    //cout << " InterRecordIterations " << InterRecordIterations
-//	//	 << " theactin.symbreakiter " << theactin.symbreakiter << endl;
-//
-//    // go in reverse order, in case we're autoscaling
-//
-//
-//    for(int i = theactin.symbreakiter - InterRecordIterations; i > 0; i-=InterRecordIterations)
-//	{
-//		filenum = (int)(i/InterRecordIterations);
-//
-//		//cout << "Post processing iteration " << *iteration << ": ";
-//		cout << "Writing bitmaps for frame " << filenum << "/" 
-//			 << (theactin.symbreakiter/InterRecordIterations)-1 << ": ";
-//		cout.flush();
-//
-//		load_data(theactin, i, true);
-//
-//		theactin.load_sym_break_axes();   // overwrite rotation matrixes
-//
-//		// cout << theactin.sym_break_rotation_to_xy_plane;
-//					
-//		nuc_object.segs.addallnodes();  // put node data into segment bins
-//
-//        nuc_object.segs.savereport(filenum);
-//        nuc_object.segs.saveSDreport(filenum);
-//		nuc_object.segs.saveradialreport(filenum);
-//        nuc_object.segs.saveradialaxisreport(filenum, 0);
-//        nuc_object.segs.saveradialaxisreport(filenum, 1);
-//        nuc_object.segs.saveradialaxisreport(filenum, 2);
-//
-//		// run them in foreground to slow things down
-//		// so don't overload system with too many bg processes
-//        // (do we want to change to conditional fg/bg, if not need y, z etc. as above)
-//
-//		theactin.savebmp(filenum, xaxis, actin::runfg, true);  // was bg
-//		theactin.savebmp(filenum, yaxis, actin::runfg, true);	// was bg
-//		theactin.savebmp(filenum, zaxis, actin::runfg, true);
-//		
-//		cout << "\r";
-//		cout.flush();
-//    }
-//	cout << endl;
-//}
-
-
 
 /*
 

@@ -46,7 +46,12 @@ public:
 	void setupsegments(nucleator *pn, actin * pactin);
 
 	void drawoutline(ostream& out, const projection &axis) const;
-	int drawsurfaceimpacts(ostream& out, const projection &axis, const double scale) const;
+	int drawsurfaceimpacts(ostream& out, const projection &axis,const rotationmatrix& axisrotation, const double scale) const;
+
+    int drawline(ostream& drawcmd,
+                    const double& startx, const double& starty, 
+                    double forcevecx, double forcevecy,
+                    const double& maxlen, const double& scalefactor) const;
 
 	void addnode(const nodes& node);
 	void addallnodes();

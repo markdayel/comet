@@ -39,9 +39,11 @@ public:
 
 	segments segs;
 
-	vect position, deltanucposn;
+	vect position, last_delta_position, deltanucposn_sum, deltanucposn;
 	vect torque, centerofmass;
 	vect momentofinertia;
+
+    rotationmatrix last_torque_rotate;
 
 
 	Colour colour;

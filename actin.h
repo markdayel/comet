@@ -128,7 +128,7 @@ public:
 	int lastsorthighestnode;
 
     int stationary_node_number;
-    int stationary_node_xoffset, stationary_node_yoffset;;
+    int stationary_node_xoffset, stationary_node_yoffset;
 
 	Dbl2d imageR, imageG, imageB;
 
@@ -318,7 +318,7 @@ public:
         v -= p_nuc->position;
         world_to_nuc_rot.rotate(v); 
         
-    }
+    }                                                    
 
     inline void nuc_to_world_frame(vect & v)
     {

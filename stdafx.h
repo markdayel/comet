@@ -298,6 +298,7 @@ extern double DELTA_T;
 
 extern bool STICK_TO_NUCLEATOR;
 extern bool RESTICK_TO_NUCLEATOR;
+extern double MAX_NUC_MOVE;
 
 extern bool NUCLEATOR_FORCES;
 
@@ -338,6 +339,9 @@ extern int BMP_AA_FACTOR;
 extern double ELLIPSOID_STRETCHFACTOR;
 
 extern bool VTK_NUC_WIREFRAME;
+extern double VTK_MAX_NODE_DIST;
+extern bool VTK_PLOT_NUC_IMPACTS;
+extern bool VTK_RAND_NODE_COL;
 extern bool VTK_NUC_LINKS_ONLY;
 extern double VTK_NUC_LINKS_ONLY_AMPLIFY;
 extern double COLOUR_GAMMA;
@@ -425,7 +429,7 @@ extern int CROSSLINKDELAY;
 extern int NODES_TO_UPDATE;
 extern double DISTANCE_TO_UPDATE;
 
-extern double NODE_REPULSIVE_POWER;
+// extern double NODE_REPULSIVE_POWER;
 extern double NODE_REPULSIVE_MAG;
 extern double NODE_REPULSIVE_RANGE;
 extern double NODE_REPULSIVE_BUCKLE_RANGE;
@@ -680,6 +684,7 @@ inline bool prob_to_bool(const double & prob)
     return (mers_rand[0].rand() < prob);
 }
 
+// version for threads
 inline bool prob_to_bool(const double & prob, const unsigned int & thread)
 {
     return (mers_rand[thread].rand() < prob);

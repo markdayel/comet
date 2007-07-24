@@ -125,6 +125,12 @@ nucleator::nucleator(void)//, actin *actinptr)
 	ptheactin->p_nuc = this;
 
 	position.zero();
+    last_delta_position.zero();
+
+    deltanucposn_sum.zero();
+
+    //position = vect(5,5,5);
+
 	//definenucleatorgrid();
 
 	deltanucposn.zero();
@@ -132,6 +138,8 @@ nucleator::nucleator(void)//, actin *actinptr)
 	centerofmass.zero();
 
 	torque.zero();
+
+    last_torque_rotate.settoidentity();
 
 	definecagepoints();
 	colour.r = colour.g = colour.b = 1.0;
@@ -627,10 +635,6 @@ for (vector <vect>::iterator point=cagepoints.begin();
 	return 0;
 }
 
-//vect nucleator::calcfrictionstuff(const double &r1, const vect &lastpos, const vect &thispos)
-//{
-//    
-//}
 
 vect nucleator::eject_point(const vect& inputpoint) const
 {   /// returns the closest point on the surface of the nucleator to the point given
@@ -682,7 +686,9 @@ vect nucleator::eject_ellipsoid(const vect& inputpoint) const
     {
 
         // map onto sphere
-        vect posonsphere(iterpos.x , iterpos.y, iterpos.z / ELLIPSOID_STRETCHFACTOR);
+        posonsphere.x = iterpos.x;
+        posonsphere.y = iterpos.y;
+        posonsphere.z = iterpos.z / ELLIPSOID_STRETCHFACTOR;
 
         // eject to sphere
         new_posonellipse = posonsphere.unitvec() * (RADIUS * NUCPOINT_SCALE); // this is sphere not really ellipsoid yet
@@ -755,9 +761,11 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
 	/// node has entered nucleator,
 	/// push to surface along normal
-    /// also use the push vector to move and rotate nucleator
+    /// and use the push vector to move and rotate nucleator
 
 	const vect oldpos = node_world.pos_in_nuc_frame;
+
+    vect nodepos = node_world;
    
     // FIXME: add no movement of nodes to outside the nucleator when SEED_INSIDE is set (ML)? 
 	if (NUC_FRICTION_COEFF < 0.0001)  
@@ -770,15 +778,33 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
         double len_ratio;
         vect tangdisp, frictdisp; 
         vect inffrictionpoint, zerofrictpoint;
-        //vect ejection_normal;
-        //vect finalpos, interact_disp;
-        
-        // assume that since it collided, the previous_pos_in_nuc_frame was close to the surface
 
-        // point on surface if infinite friction, i.e. project last node position onto surface
-        // this should really be the intersection of the vector with the sphere
-        // but this is a good approximation, since the node is very close to the surface
-        inffrictionpoint = eject_point(node_world.previous_pos_in_nuc_frame);
+        nodepos -= node_world.delta; // find previous node position (world frame)
+
+        nodepos -= position; // center it on the nucleator
+
+        // rotate the node along with the nucleator by last rotation
+        // as though it were stuck to it
+        last_torque_rotate.inverse().rotate(nodepos);    
+
+        ptheactin->world_to_nuc_rot.rotate(nodepos); // and bring into nucleator frame
+
+        //vect rotated_last_delta_position = last_delta_position;
+        //ptheactin->world_to_nuc_rot.rotate(rotated_last_delta_position);
+
+        nodepos += last_delta_position;  // move by the nucleator motion
+
+        // the combination of these two rotations brings the point into the nucleator frame
+        // and also means that if the nucleator rotated or moved last time
+        // the point will be swept along (as though infinte friction)
+        
+        // (assuming that since it collided, the point was very close to the surface last time
+        // ideally this should be the intersection of the vector with the sphere
+        // but this is a good approximation)
+
+        // so, point on surface if infinite friction, i.e. project last node position onto surface
+        
+        inffrictionpoint = eject_point(nodepos);
 
         // point on surface if zero friction, i.e. project current position onto surface
 	    zerofrictpoint = eject_point(node_world.pos_in_nuc_frame);
@@ -789,7 +815,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
         // calculate the tangential displacement for infinite friciton
         tangdisp = inffrictionpoint - zerofrictpoint; 
        
-        // friction is the normal displacement * frict coeffin the direction of the movement
+        // friction is the normal displacement * frict coeff in the direction of the movement
         frictdisp = tangdisp.unitvec() * (normaldist * NUC_FRICTION_COEFF);   // in direction of node movement
 
         // find ratio of max movment to proposed friction movement
@@ -800,9 +826,9 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
             frictdisp *= len_ratio;
         }
 
-        // move node to final point
+        // move node to final point                           
 
-        node_world.pos_in_nuc_frame = zerofrictpoint + frictdisp;
+        node_world.pos_in_nuc_frame = zerofrictpoint + frictdisp; // tangdisp * 0.9 ; 
     }    
 
     //node_world.previous_pos_in_nuc_frame = oldpos;
@@ -875,6 +901,7 @@ int nucleator::save_data(ofstream &ostr)
     ostr << surf_area << endl;
     ostr << (1/inertia) << endl;
     ostr << position << endl;
+    ostr << deltanucposn_sum << endl;
     ostr << deltanucposn << endl;
     ostr << torque << endl;
     ostr << centerofmass << endl;
@@ -914,6 +941,7 @@ int nucleator::load_data(ifstream &istr)
     istr >> surf_area;
     istr >> movability;
     istr >> position;
+    istr >> deltanucposn_sum;
     istr >> deltanucposn;
     istr >> torque;
     istr >> centerofmass;

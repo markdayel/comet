@@ -160,7 +160,7 @@ bool nodes::polymerize(const double& set_x, const double& set_y, const double& s
     //unit_vec_correct = false;
     setunitvec();
 
-    previous_pos_in_nuc_frame = pos_in_nuc_frame;
+    //previous_pos_in_nuc_frame = pos_in_nuc_frame;
 
 	return true;       
 }
@@ -175,22 +175,28 @@ int nodes::save_data(ofstream &ostr)
     Colour dummycol;
     // save the nodes
     ostr << nodenum << " " 
-	 << x << " " << y << " " << z << " " 
 	 << harbinger << " " 
 	 << polymer << " " 
+     << stucktonucleator << " "
      << testnode << " "
      << testsurface << " "
-	 << delta << " " 
+	 << links_broken << " "     
+     << creation_iter_num << " "    
+     << dist_from_surface << " "     
+	 << x << " " << y << " " << z << " " 
+     << delta << " "
+     << delta_sum << " "
+     << unit_vec_posn << " "
+     << pos_in_nuc_frame << " "
+//     << previous_pos_in_nuc_frame << " "
 	 << linkforce_transverse << " " 
 	 << linkforce_radial << " " 
 	 << repforce_transverse << " " 
-	 << repforce_radial << " " 
-	 << links_broken << " " 
-	 << nucleator_impacts << " "
-	 << stucktonucleator << " "
+	 << repforce_radial << " "  
+	 << nucleator_impacts << " " 
 	 << nucleator_stuck_position << " " 
-     << nucleator_link_force << " "
-	 << creation_iter_num << ":";
+     << nucleator_link_force
+	 << ":";
     
     // now the links
     ostr << (unsigned int) listoflinks.size() << ")";
@@ -211,24 +217,49 @@ bool nodes::load_data(ifstream &istrm)
     //unit_vec_correct = false;
     Colour dummycol;
     // read in from the stream to our private data
-    char ch;    
+    char ch;
+
     istrm >> nodenum 
-	  >> x >> y >> z 
-	  >> harbinger  
-	  >> polymer
-      >> testnode
-      >> testsurface
-	  >> delta 
-	  >> linkforce_transverse  
-	  >> linkforce_radial  
-	  >> repforce_transverse  
-	  >> repforce_radial                           
-	  >> links_broken
-	  >> nucleator_impacts 
-	  >> stucktonucleator 
-	  >> nucleator_stuck_position 
-      >> nucleator_link_force 
-	  >> creation_iter_num >> ch;
+	 >> harbinger 
+	 >> polymer 
+     >> stucktonucleator
+     >> testnode
+     >> testsurface
+	 >> links_broken     
+     >> creation_iter_num    
+     >> dist_from_surface
+     >> x >> y >> z 
+     >> delta
+     >> delta_sum
+     >> unit_vec_posn
+     >> pos_in_nuc_frame
+//     >> previous_pos_in_nuc_frame
+	 >> linkforce_transverse 
+	 >> linkforce_radial 
+	 >> repforce_transverse 
+	 >> repforce_radial  
+	 >> nucleator_impacts 
+	 >> nucleator_stuck_position 
+     >> nucleator_link_force
+	 >> ch;
+
+   // istrm >> nodenum 
+	  //>> x >> y >> z 
+	  //>> harbinger  
+	  //>> polymer
+   //   >> testnode
+   //   >> testsurface
+	  //>> delta 
+	  //>> linkforce_transverse  
+	  //>> linkforce_radial  
+	  //>> repforce_transverse  
+	  //>> repforce_radial                           
+	  //>> links_broken
+	  //>> nucleator_impacts 
+	  //>> stucktonucleator 
+	  //>> nucleator_stuck_position 
+   //   >> nucleator_link_force 
+	  //>> creation_iter_num >> ch;
 
     if (stucktonucleator && !STICK_TO_NUCLEATOR)
         stucktonucleator = false; // if we're continuing run and turning off nucleator attachments, we delete them here
@@ -313,7 +344,7 @@ bool nodes::load_data(ifstream &istrm)
 
     setunitvec();
 
-    previous_pos_in_nuc_frame=pos_in_nuc_frame; // not worth saving this?
+//    previous_pos_in_nuc_frame=pos_in_nuc_frame; // not worth saving this?
 
     // only add to grid if doing normal run or a post-process that needs links:
     if (POST_VTK || (!REWRITESYMBREAK && !POST_PROCESS))
@@ -336,7 +367,6 @@ void nodes::updategrid(void)
 	short int oldgridz = gridz;
 
 	setgridcoords();				// set gridx,y,z by x,y,z position
-	//setunitvec();	
 
 	if	((gridx == oldgridx) &&		// has the node moved gridpoints?
 		 (gridy == oldgridy) && 
@@ -499,7 +529,7 @@ int nodes::savelinks(ofstream * outputstream)
         //    return;
         //unit_vec_correct = true;  // prevent unnecessary recalculation if node not moved, etc.
 
-        previous_pos_in_nuc_frame = pos_in_nuc_frame; // old position
+//        previous_pos_in_nuc_frame = pos_in_nuc_frame; // old position
         //ptheactin->torque_rotate.rotate(previous_pos_in_nuc_frame);  // (don't need this!) need to rotate in case nucleator rotated
 
         pos_in_nuc_frame=*this;
@@ -514,7 +544,7 @@ int nodes::savelinks(ofstream * outputstream)
 
 		}
 		else if (NUCSHAPE == nucleator::ellipsoid)
-        {   // TODO: note the vector isn't right yet!
+        {   // TODO: note the vector isn't right yet!                                                                    
             vect posonsphere(pos_in_nuc_frame.x, pos_in_nuc_frame.y, pos_in_nuc_frame.z / ELLIPSOID_STRETCHFACTOR);
             
             dist_from_surface = posonsphere.length();	 // not really dist_from_surface yet, need to subtract radius

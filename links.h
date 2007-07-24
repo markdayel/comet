@@ -32,7 +32,7 @@ public:
 	double orig_dist;
 	double orig_dist_recip;
 	double linkforcescalefactor;
-    double last_link_length;
+    double last_link_length;//, lastbutone_link_length;
 
     double forcesum;
 
@@ -70,8 +70,12 @@ public:
             return false;
         }
 
-        force -= DASHPOT_IMPEDANCE * (dist - last_link_length) * NODE_DIST_TO_FORCE;
+        force -= NODE_DIST_TO_FORCE * DASHPOT_IMPEDANCE * (dist - last_link_length);
 
+        //force -= NODE_DIST_TO_FORCE * DASHPOT_IMPEDANCE * ( (dist - last_link_length) - 
+        //                     ((dist - last_link_length) - (last_link_length - lastbutone_link_length)) / 2 );
+
+        //lastbutone_link_length = last_link_length;
         last_link_length = dist;
 
         return true;

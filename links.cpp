@@ -39,6 +39,7 @@ links::links(nodes& linknode, const double& linkdist)
     linkednodenumber = linknode.nodenum;
     orig_dist = linkdist;
     last_link_length = linkdist;
+    //lastbutone_link_length = linkdist;
     broken = false;
     //last_force_set = false;
 
@@ -57,11 +58,12 @@ links::links(ifstream &istr)
 int links::save_data(ofstream &ostr) 
 {
     ostr << broken << " " 
-		 << orig_dist << " "
 		 << linkednodeptr->nodenum << " "
+		 << orig_dist << " "
          //<< last_force << " "
          //<< last_force_set << " "
          << last_link_length << " "
+         //<< lastbutone_link_length << " "
          << forcesum;
 	
     return 0;
@@ -69,14 +71,15 @@ int links::save_data(ofstream &ostr)
 
 int links::load_data(ifstream &istr) 
 {
-    double dummy;
+    //double dummy;
 
     istr >> broken 
-		 >> orig_dist  
 		 >> linkednodenumber
+         >> orig_dist  
          //>> last_force 
          //>> last_force_set
          >> last_link_length
+         //>> lastbutone_link_length
          >> forcesum;                  
 
    

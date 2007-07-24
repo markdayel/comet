@@ -48,14 +48,16 @@ public:
 
 	short int gridx, gridy, gridz;
 
+    vect delta, delta_sum;
+	vect link_force_vec;
+	vect rep_force_vec;
+
 	vect unit_vec_posn;  // this is kept up-to-date in the updategrid() function
 
-	vect link_force_vec;  
-	
-	vect rep_force_vec;
+
 	vect nuc_repulsion_displacement_vec;
  	vect nucleator_stuck_position;
-	vect delta;
+	
 	vect viscosity_velocity_sum;
 
     vect nucleator_link_force;	// force on nodes by the link to the nucleator 
@@ -115,7 +117,7 @@ public:
     vect posnoflastgridupdate;
 
     //bool unit_vec_correct;
-    vect pos_in_nuc_frame, previous_pos_in_nuc_frame;
+    vect pos_in_nuc_frame; //, previous_pos_in_nuc_frame;
 
 	inline void applyforces() 
 	{	
@@ -138,6 +140,7 @@ public:
         }
 
         *this += delta;
+        delta_sum += delta;
 
         setunitvec();  // we've moved the node, so reset the unit vector
         clearforces();   // and clear force sums we just used
@@ -201,6 +204,8 @@ public:
  		nucleator_impacts.zero();
 
 		nucleator_link_force.zero();
+
+        delta_sum.zero();
 
         for (vector <links>::iterator i_link  = listoflinks.begin();
                                       i_link != listoflinks.end();

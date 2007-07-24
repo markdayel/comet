@@ -129,7 +129,7 @@ protected:
 	uint32 mixBits( const uint32& u, const uint32& v ) const
 		{ return hiBit(u) | loBits(v); }
 	uint32 twist( const uint32& m, const uint32& s0, const uint32& s1 ) const
-		{ return m ^ (mixBits(s0,s1)>>1) ^ (-loBit(s1) & 0x9908b0dfUL); }
+		{ return m ^ (mixBits(s0,s1)>>1) ^ (loBit(s1) & 0x9908b0dfUL); }  // mark: removed '-' before loBit()
 	static uint32 hash( time_t t, clock_t c );
 };
 
@@ -269,8 +269,8 @@ inline void MTRand::seed()
 		register uint32 *s = bigSeed;
 		register int i = N;
 		register bool success = true;
-		while( success && i-- )
-			success = fread( s++, sizeof(uint32), 1, urandom );
+		while( success && (i-- != 0) )
+			success = ( fread( s++, sizeof(uint32), 1, urandom ) != 0)  ;   // Mark: change assignment from success = fread() to comparisson
 		fclose(urandom);
 		if( success ) { seed( bigSeed, N );  return; }
 	}

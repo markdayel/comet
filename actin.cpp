@@ -122,23 +122,24 @@ actin::actin(void)
 
     #ifndef NODEGRIDTYPELIST
 
-        int i,j,k;
-        double x,y,z;
 
-        for (i=0; i!=(GRIDSIZE+1); i++)  
+        for (int i=0; i!=(GRIDSIZE+1); i++)  
 	    {
-            x = (i - (GRIDSIZE/2)) * GRIDRES;
-		    for (j=0; j!=(GRIDSIZE+1); j++)
+            double x = (i - (GRIDSIZE/2)) * GRIDRES;
+		    for (int j=0; j!=(GRIDSIZE+1); j++)
 		    {
-                y = (j - (GRIDSIZE/2)) * GRIDRES;
-                for (k=0; k!=(GRIDSIZE+1); k++)
+                double y = (j - (GRIDSIZE/2)) * GRIDRES;
+                for (int k=0; k!=(GRIDSIZE+1); k++)
                 {
-                    z = (k - (GRIDSIZE/2)) * GRIDRES;
+                    double z = (k - (GRIDSIZE/2)) * GRIDRES;
+
                     if ((!REWRITESYMBREAK && !POST_PROCESS) &&
                         ((fabs(x) < RADIUS * 8) ||
                          (fabs(y) < RADIUS * 8) ||
                          (fabs(z) < RADIUS * 8)))
+                    {
                         NODEGRID(i,j,k).reserve(64);
+                    }
                 }
 		    }
 	    }
@@ -287,9 +288,9 @@ actin::actin(void)
 
 	// we write the header now, and just keep changing the pixel part as we write the frames
 
-	writebitmapheader(outbmpfile_x,BMP_WIDTH, BMP_HEIGHT);
-	writebitmapheader(outbmpfile_y,BMP_WIDTH, BMP_HEIGHT);
-	writebitmapheader(outbmpfile_z,BMP_WIDTH, BMP_HEIGHT);
+	writebitmapheader(outbmpfile_x, BMP_WIDTH, BMP_HEIGHT);
+	writebitmapheader(outbmpfile_y, BMP_WIDTH, BMP_HEIGHT);
+	writebitmapheader(outbmpfile_z, BMP_WIDTH, BMP_HEIGHT);
     
     imageRmax.resize(3);
     imageGmax.resize(3);
@@ -670,34 +671,38 @@ void actin::iterate()  // this is the main iteration loop call
     }
 
 
-	if ((lastsorthighestnode != highestnodecount) && ((iteration_num % 10) == 0))
-	{    // only do full sort periodically, and if we have new nodes
+	if ((lastsorthighestnode != highestnodecount)) // && ((iteration_num % 10) == 0))
+	{    // only do full sort periodically, if we have new nodes
 		sortnodesbygridpoint(); // sort the nodes so they can be divided sanely between threads
 		lastsorthighestnode = highestnodecount;
-	} else
-	{	// else just throw the new nodes in whichever node list
-		for (int i=lastsorthighestnode; i!=highestnodecount; ++i)
-		{
-			nodes_by_thread[iteration_num % NUM_THREAD_DATA_CHUNKS].push_back(&node[i]);
-		}
-		lastsorthighestnode	= highestnodecount;
-	}
+	} 
 
-	// in multithreaded mode, these functions just start the threads
-    // else they do the work
+
+    // by far the most time (>80%) is spent in collisiondetection() and a some (~10%) in linkforces()
+    // so these functions are multithreaded
+
+	// in multithreaded mode, these two functions just start the threads
+    // otherwise they do the actual work
+    // these functions depend on node positions 
+    // so we don't update them here, but put store forces for later
 
 	collisiondetection();	    // calc node-to-node repulsion
 	linkforces();			    // and link forces
 
     if  (currentlyusingthreads && (USETHREAD_COLLISION || USETHREAD_LINKFORCES))
-    {   // must wait for threads to finish before updating node positions
+    {   
+        // wait for threads to finish before updating node positions etc.
         thread_queue.complete_queued_tasks();
     }
     
+
     if (USE_BROWNIAN_FORCES)
         addbrownianforces();
 
-    applyforces();              // move the nodes and update the grid     (I just moved this from above the squash() function)
+
+    // applyforces() moves the nodes and nucleator and updates the grid
+    // also calls setunitvec() for the nodes, which notes the last node position (for friction)
+    applyforces();              
 	
     if (!TEST_SQUASH)
         nucleator_node_interactions();	    // do forcable node ejection	
@@ -1064,8 +1069,8 @@ void actin::nucleator_node_interactions()
 
         if (i_node->stucktonucleator)
 		{
-            vect nodepos = *i_node;
-            world_to_nuc_frame(nodepos);
+            vect nodepos = *i_node;      // get the node position in world coords  
+            world_to_nuc_frame(nodepos); // change to nucleator frame
 
             disp = nodepos - i_node->nucleator_stuck_position; // this vector is in the nucleator frame
 	        dist = disp.length();
@@ -1084,7 +1089,7 @@ void actin::nucleator_node_interactions()
                 forcevec = disp * (force/dist);  // '(disp/dist)' is just to get the unit vector
                                                  // note this vector in nucleator frame!
                 
-                vect tomove = -forcevec * DELTA_T * FORCE_SCALE_FACT;  // convert force to distance
+                vect tomove = -forcevec * NODE_FORCE_TO_DIST;  // convert force to distance
 
 				p_nuc->move_nuc(nodepos,tomove);		// add to nucleator movement vector
 
@@ -1120,7 +1125,7 @@ void actin::nucleator_node_interactions()
 }
 
 void actin::collisiondetection(void)
-{
+{  
 
     fill(donenode.begin(), donenode.begin()+highestnodecount, false);
     
@@ -1294,11 +1299,11 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                     recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
 
                     if ( recipdist < (1.0/0.05) )
-//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
+//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
-//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * (  NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05)  - 1 ) ;
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * (  NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05)  - 1 ) ;
+//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
 
                     p_sameGPnode->rep_force_vec.x -= 2*rep_force_mag ;
                 }
@@ -1308,11 +1313,11 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                     recipdist = 1.0 / ( - p_sameGPnode->x - COVERSLIPGAP );
 
                     if ( recipdist < (1.0/0.05) )
-//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
+//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
-//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
+//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
 
                     p_sameGPnode->rep_force_vec.x += 2*rep_force_mag ;
                 }
@@ -1332,6 +1337,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
             {
 	            for (y = miny; y != maxy; ++y)
                 {
+
 	                for (z = minz; z != maxz; ++z) 
                     {
 			            for(NODEGRIDTYPE <nodes*>::iterator nearnode  = NODEGRID(x,y,z).begin(); 
@@ -1367,9 +1373,11 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                                 // n.b. if you change this function, also change the energy function below to be the integral
                                // F_R = M_R (( \frac{d_R}{d} )^{P_R} -1)
                                if (recipdist < (1.0/0.05) )
-                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
+                                   //rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                                else
-                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
+                                   //rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
  
 
 						   // if harbinger, ramp up the repulsive forces gradually (linearly with itter no):
@@ -1462,40 +1470,63 @@ void actin::applyforces(void)
 	{
 		// rotate const speed
 
-		x_angle = IMPOSED_NUC_ROT_SPEED * 2 * PI * DELTA_T;
+		double angle = IMPOSED_NUC_ROT_SPEED * 2 * PI * DELTA_T;
 
-		torque_rotate.rotatematrix( x_angle, 0, 0);
+		torque_rotate.rotatematrix( angle, 0, 0);
 
 
 	}
 	else if (ROTATION)
 	{
-		x_angle = p_nuc->torque.x / p_nuc->momentofinertia.x;
-		y_angle = p_nuc->torque.y / p_nuc->momentofinertia.y;
-		z_angle = p_nuc->torque.z / p_nuc->momentofinertia.z;
+        // torque vector is in nucleator frame, so transform to world frame to make the torque rotation matrix
 
-		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);    // fixme: write a proper axial vector to rotation matrix function
+        vect world_torque_vec = p_nuc->torque;
+
+        nuc_to_world_rot.rotate(world_torque_vec);
+
+		x_angle = world_torque_vec.x / p_nuc->momentofinertia.x;
+		y_angle = world_torque_vec.y / p_nuc->momentofinertia.y;
+		z_angle = world_torque_vec.z / p_nuc->momentofinertia.z;
+
+		torque_rotate.rotatematrix( x_angle, y_angle, z_angle);    
 	}
 
+
     if (!TEST_SQUASH)
-    {   // don't move nucleator if testing forces
+    {   // only move nucleator if not testing forces
 
 	    if (IMPOSED_NUC_ROT || ROTATION)
 	    {
             // rotate the nucleator
-            world_to_nuc_rot.rotatematrix(torque_rotate);
-            nuc_to_world_rot = world_to_nuc_rot.inverse();
 
-            // deltanucposn is in nucleator frame, so change to world frame and move the nucleator
+            world_to_nuc_rot.rotatematrix(torque_rotate); // rotate nucleator by (torque in world co-ords)
 
-            nuc_to_world_rot.rotate(p_nuc->deltanucposn);
+            nuc_to_world_rot = world_to_nuc_rot.inverse();  // set the inverse rotation
 
-            // update the nucleator position
-	        p_nuc->position += p_nuc->deltanucposn;
+            p_nuc->last_torque_rotate = torque_rotate;    // store the torque matrix (used in nucleator friction)
+        }
 
-            // rotate the nucleator displacement vector
-	        //torque_rotate.rotate(p_nuc->position);
-	    }
+        // deltanucposn is in nucleator frame, so change to world frame and move the nucleator
+
+        nuc_to_world_rot.rotate(p_nuc->deltanucposn);
+
+        // if the nucleator is moving too fast, slow it down
+        // this is to simulate the drag of the medium 
+        // when the bead pops out in reality it's not in a vacuum
+        if (p_nuc->deltanucposn.length() > MAX_NUC_MOVE * DELTA_T)
+            p_nuc->deltanucposn *= MAX_NUC_MOVE * DELTA_T / p_nuc->deltanucposn.length();
+
+        // update the nucleator position
+        //p_nuc->last_position = p_nuc->position;
+        p_nuc->position += p_nuc->deltanucposn;
+
+        p_nuc->deltanucposn_sum +=  p_nuc->deltanucposn;
+
+        p_nuc->last_delta_position = p_nuc->deltanucposn;
+
+        // rotate the nucleator displacement vector
+        //torque_rotate.rotate(p_nuc->position);
+	    
 
 	    //nuc_disp = p_nuc->deltanucposn; // store nucleator movement in static for threads
 
@@ -1504,6 +1535,8 @@ void actin::applyforces(void)
     //{   // TEST_SQUASH is true, so lock the nucleator position
     //    nuc_disp.zero();
     //}
+
+    
 
 	// and zero
 	p_nuc->deltanucposn.zero();
@@ -1555,8 +1588,7 @@ void actin::applyforces(void)
     
     // note: we can't do it in threads because
     // of the linked list in the nodegrid.
-	// this is relatively slow, but not too bad.  could possibly thread this based on 
-	// xyz co-ords of nodes, if the removefromgrid function is OK
+	// not much time is spent here
 
 	for(vector <nodes>::iterator	i_node  = node.begin() + lowestnodetoupdate; 
 									i_node != node.begin() + highestnodecount;
@@ -1976,20 +2008,19 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     //    projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
     
 
-    // create copy of the node positions and rotate
+    // create copy of the node positions
 
     vector <vect> rotatednodepositions;
     rotatednodepositions.resize(highestnodecount);
     rotatednodepositions.assign(node.begin(), node.begin()+highestnodecount);
 
+    // rotate the copy into the projection
 	for(vector<vect>::iterator i_node  = rotatednodepositions.begin(); 
 						       i_node != rotatednodepositions.end();
 						     ++i_node)
     {
         projection_rotation.rotate(*i_node);
     }
-
-
 
 	
 	int x,y;
@@ -2651,7 +2682,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     double strokewidth = 4;
 
-    stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3, drawcmd;
+    stringstream  drawcmd;
 
     if ( PLOTFORCES || ((POST_PROCESS || POST_PROCESSSINGLECPU) && BMP_TRACKS) )
     {
@@ -2661,7 +2692,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     if (PLOTFORCES)
     {
-
+        stringstream tmp_drawcmd1,tmp_drawcmd2,tmp_drawcmd3; 
 	    
 	    p_nuc->segs.drawoutline(drawcmd,proj);				// draw outline of nucleator
     	
@@ -2674,14 +2705,14 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         // note the values are already scaled to have a max of 1 from the symmetry breaking
         // so we're scaling the 3 colors mainly to show the range of small values
     	
-        //if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj, 1 * FORCE_BAR_SCALE) > 0)		
-	    //	drawcmd << "\" -stroke blue -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd1.str();
+        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj,axisrotation, 4 * FORCE_BAR_SCALE) > 0)	
+		    drawcmd << "\" -stroke blue   -strokewidth " << BMP_AA_FACTOR * strokewidth / 4 << " -draw \"" << tmp_drawcmd1.str();
 
-        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj, 0.1 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke red -strokewidth " << BMP_AA_FACTOR * strokewidth << " -draw \"" << tmp_drawcmd3.str();
+        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,axisrotation, 0.8 * FORCE_BAR_SCALE) > 0)	
+		    drawcmd << "\" -stroke red    -strokewidth " << BMP_AA_FACTOR * strokewidth / 2 << " -draw \"" << tmp_drawcmd2.str();
 
-	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj, 0.02 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \"" << tmp_drawcmd2.str();	
+	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj,axisrotation, 0.16 * FORCE_BAR_SCALE) > 0)	
+		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR * strokewidth     << " -draw \"" << tmp_drawcmd3.str();	
 
     }
 
@@ -2830,11 +2861,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             TEXT_POINTSIZE * BMP_AA_FACTOR,                           // font size
             5 * BMP_AA_FACTOR, BMP_HEIGHT - 5 * BMP_AA_FACTOR, scalebarmicrons,   // scale bar text
             5 * BMP_AA_FACTOR, BMP_HEIGHT - (text_height_pixels + 4 ) * BMP_AA_FACTOR, scalebarlength + 5 * BMP_AA_FACTOR,  BMP_HEIGHT - (text_height_pixels + 7) * BMP_AA_FACTOR,
-            5 * BMP_AA_FACTOR,   10        * BMP_AA_FACTOR,  // first line of text
+            5 * BMP_AA_FACTOR,       text_height_pixels   * BMP_AA_FACTOR,  // first line of text
             projletter, 
-            5 * BMP_AA_FACTOR, ( 10 + text_height_pixels ) * BMP_AA_FACTOR , 
+            5 * BMP_AA_FACTOR, ( 2 * text_height_pixels ) * BMP_AA_FACTOR , 
             filenum,
-			5 * BMP_AA_FACTOR, ( 10 + 2 * text_height_pixels ) * BMP_AA_FACTOR , 
+			5 * BMP_AA_FACTOR, ( 3 * text_height_pixels ) * BMP_AA_FACTOR , 
             int(filenum * InterRecordIterations * DELTA_T), drawcmd.str().c_str(), BITMAPDIR,
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
@@ -2897,7 +2928,8 @@ double actin::getvaluetoplot(nodes & mynode)
     else if (BMP_RADIALLINKSONLY)
         return mynode.linkforce_radial / COL_INDIVIDUAL_SCALE;
     else  // energy
-        return (pow(mynode.linkforce_radial,2) + pow(mynode.linkforce_transverse,2)) / COL_INDIVIDUAL_SCALE;
+        return  (mynode.linkforce_radial * mynode.linkforce_radial +
+                 mynode.linkforce_transverse * mynode.linkforce_transverse) / COL_INDIVIDUAL_SCALE;
 
 }
 
@@ -3046,7 +3078,7 @@ void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, con
 
 }
 
-void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB)
+void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& myimageR, const Dbl2d& myimageG, const Dbl2d& myimageB)
 {  // re-scale for byte output and save image data
 
 //#define BYTE unsigned char
@@ -3062,8 +3094,8 @@ void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl
 
 #pragma pack(pop)
 
-    const int width  = (int) imageR.size();
-    const int height = (int) imageR[0].size();
+    const int width  = (int) myimageR.size();
+    const int height = (int) myimageR[0].size();
 
     //cout << "Width :" << width << "  Height: " << height << endl;
 
@@ -3078,9 +3110,9 @@ void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl
 		//outbmpfile.write(picbuff + (bitmapwidth*y), bitmapwidth);
 		for (int x = 0; x < width; x++)
 			{
-			line[x].B=(unsigned char)(255 * imageB[x][y]);
-			line[x].G=(unsigned char)(255 * imageG[x][y]);
-			line[x].R=(unsigned char)(255 * imageR[x][y]);
+			line[x].B=(unsigned char)(255 * myimageB[x][y]);
+			line[x].G=(unsigned char)(255 * myimageG[x][y]);
+			line[x].R=(unsigned char)(255 * myimageR[x][y]);
 			}
 			outbmpfile.write((char*)line,width*3);
 		}
@@ -3372,9 +3404,10 @@ bool actin::load_data(ifstream &ifstr)
     // load actin
     ifstr >> str;
     // ensure the identifier for the start of the actin
-    if(str.compare("actin:") !=0 ){
-	cout << "error in checkpoint file, 'actin:' expected" << endl;
-	return false;
+    if(str.compare("actin:") !=0 )
+    {
+	    cout << "error in checkpoint file, 'actin:' expected" << endl;
+	    return false;
     }
 
 	ifstr >> highestnodecount 
@@ -3392,11 +3425,13 @@ bool actin::load_data(ifstream &ifstr)
 
     // load nodes
     
-    if(str.compare("nodes-links:") !=0 ){
-	cout << "error in data file, 'nodes-links:' expected" << endl;
-	cout << "'" << str <<"' last read." << endl;
-	return true;
+    if(str.compare("nodes-links:") !=0 )
+    {
+	    cout << "error in data file, 'nodes-links:' expected" << endl;
+	    cout << "'" << str <<"' last read." << endl;
+	    return true;
     }
+
     // ** Remember the node vector is preallocated to MAXNODES
     for(vector <nodes>::iterator	i_node  = node.begin(); 
 									i_node != node.begin()+highestnodecount;
@@ -3429,34 +3464,39 @@ bool actin::load_data(ifstream &ifstr)
     
     // load xlinkdelays
     ifstr >> str;
-    if(str.compare("xlinkdelays:") !=0 ){
-	cout << "error in checkpoint file, 'xlinkdelays:' expected" 
-	     << endl;
-	return false;
+    if(str.compare("xlinkdelays:") !=0 )
+    {
+	    cout << "error in checkpoint file, 'xlinkdelays:' expected" 
+	         << endl;
+	    return false;
     }
     
     int numcrosslinkdelay;
     ifstr >> numcrosslinkdelay >> ch;
-    if(ch!=')' ){
-	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
+    if(ch!=')' )
+    {
+	    cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
 	     << endl;
-	return false;
+	    return false;
     }
     //crosslinknodesdelay.clear();
     crosslinknodesdelay.resize(numcrosslinkdelay);
     // load each delay
-    for(vector<int>::iterator i = crosslinknodesdelay.begin(); 
-	i != crosslinknodesdelay.end(); ++i) {
-	ifstr >> (*i) ;
+    for(vector<int>::iterator i  = crosslinknodesdelay.begin(); 
+	                          i != crosslinknodesdelay.end(); ++i) 
+    {
+	    ifstr >> (*i) ;
     }
 
     // load nucleator
     ifstr >> str;
-    if(str.compare("nucleator:") !=0 ){
-	cout << "error in checkpoint file, 'nucleator:' expected" 
-	     << endl;
-	return false;
+    if(str.compare("nucleator:") !=0 )
+    {
+	    cout << "error in checkpoint file, 'nucleator:' expected" 
+	         << endl;
+	    return false;
     }
+
     p_nuc->load_data(ifstr);
     
     return true;
@@ -3759,6 +3799,8 @@ void actin::clear_node_stats(void)
 	{
 		node[i].clearstats();
 	}
+
+    p_nuc->deltanucposn_sum.zero();
 
 }
 

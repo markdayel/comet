@@ -292,13 +292,13 @@ void segments::setupsegments(nucleator *pnuc, actin * pactin)
 
 	curved_seg_area   = cap_seg_len;// (3 * PI * RADIUS * RADIUS * RADIUS / 4) /	(2 * num_cap_segs);
 
-    numnodes_scalefactor = 0.1;
-	rep_radial_scalefactor = 0.1;
-	rep_transverse_scalefactor = 0.1;
-	link_radial_scalefactor = 0.1;
-	link_transverse_scalefactor = 0.1;
-	links_broken_scalefactor = 0.1;
-    surfaceimpacts_scalefactor = 0.1;
+    numnodes_scalefactor = 1;
+	rep_radial_scalefactor = 1;
+	rep_transverse_scalefactor = 1;
+	link_radial_scalefactor = 1;
+	link_transverse_scalefactor = 1;
+	links_broken_scalefactor = 1;
+    surfaceimpacts_scalefactor = 1;
 }
 
 void segments::getsegmentnum(const vect& node, int& xseg, int& yseg, int& zseg) const
@@ -717,15 +717,16 @@ void segments::drawoutline(ostream& drawcmd, const projection & axis) const
  
 }
 
-int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, const double scale) const
+int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, const rotationmatrix& axisrotation, const double scale) const
 {
 
-	double linelen, linex, liney;
+	double linex, liney;
 	double startx, starty;
 
-	double seg_area, unscaledlen;
+	//double seg_area; 
+    //double unscaledlen;
 
-	int numlinesplotted = 0;
+	int numlinesplotted = 0;   // we track the # lines plotted, because ImageMagick croaks if we give it too many in one go
 
 	int segstodraw = num_segs;
 
@@ -733,6 +734,13 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 	{	// capsule z axis, no linear section to plot
 		segstodraw = 2 * num_cap_segs;
 	}
+
+
+    // we have summed over the number of iterations so need to scale by that
+    const double scalefactor = scale * NODE_DIST_TO_FORCE / 
+                               (surfaceimpacts_scalefactor * (double) InterRecordIterations);
+
+    const double maxlinelength = 0.9 * RADIUS;
 	
 	for (int i=0; i != segstodraw; ++i)
 	{
@@ -740,106 +748,121 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 		startx = linestartx[axis][i];
 		starty = linestarty[axis][i];
 
-		if ((NUCSHAPE == nucleator::capsule) && 
-			(axis != 2) &&
-			(fabs(starty) < CAPSULE_HALF_LINEAR))
-		{	// on capsule side
-			seg_area = straight_seg_area;
-		}
-		else
-		{
-			seg_area = curved_seg_area;
-		}
-	
+
+        // may want to scale by surface area of segment?
+        //
+		//if ((NUCSHAPE == nucleator::capsule) && 
+		//	(axis != 2) &&
+		//	(fabs(starty) < CAPSULE_HALF_LINEAR))
+		//{	// on capsule side
+		//	seg_area = straight_seg_area;
+		//}
+		//else
+		//{
+		//	seg_area = curved_seg_area;
+		//}
+
+
 		// draw the surface impacts:
 
-		unscaledlen =  2 * surfaceimpacts[axis][i] * scale
-                            / (seg_area * surfaceimpacts_scalefactor);
+      //  if (DRAW_COMPRESSIVE_FORCES)
+      //  {
 
-		//cout << setw(10) << setprecision(5) << unscaledlen << endl;
+      //      // magnitude of the impacts
+		    //unscaledlen = surfaceimpacts[axis][i] * NODE_DIST_TO_FORCE; // these are movements, so convert to forces
 
-		//cout << "surfaceimpacts[" << axis <<"][" <<i<<"]" << surfaceimpacts[axis][i] << endl;
+      //      // convert the length into vector
 
-		linex = 2 * unscaledlen * lineunitvecx[axis][i];
-		liney = 2 * unscaledlen * lineunitvecy[axis][i];
+		    //linex = unscaledlen * lineunitvecx[axis][i];
+		    //liney = unscaledlen * lineunitvecy[axis][i];
 
-		linelen = calcdist(linex,liney);
 
-		// truncate if too long
-		if (linelen > 0.9 * RADIUS)
-		{
-			linex *= 0.9 * RADIUS / linelen;
-			liney *= 0.9 * RADIUS / linelen;			
-		}
+      //      numlinesplotted += drawline(drawcmd, 
+      //                                  startx, starty,
+      //                                  linex, liney,
+      //                                  maxlinelength, scalefactor); 
+      //  
+      //  }
 
-		// don't plot zero length lines
-		if ( (ptheactin->pixels(startx) == ptheactin->pixels(startx + linex)) &&
-			 (ptheactin->pixels(starty) == ptheactin->pixels(starty + liney)) )
-		{   // do nothing
-		}
-		else
-		{
 
-            if (DRAW_COMPRESSIVE_FORCES)
-            {
-
-		    drawcmd << " line "
-				<< centerx + ptheactin->pixels(startx) << "," 
-				<< centery + ptheactin->pixels(starty) << " "
-
-				<< centerx + ptheactin->pixels(startx + linex) << ","
-				<< centery + ptheactin->pixels(starty + liney);
-				
-				numlinesplotted++;
-            }
-
-		}
-
-		if (STICK_TO_NUCLEATOR || (NUC_FRICTION_COEFF > 0.00001))
-		{
+		//if (STICK_TO_NUCLEATOR || (NUC_FRICTION_COEFF > 0.00001))
+		//{
 
 			// draw the nucleator link forces:
             //cout << surfacestuckforce[axis][i][0] << " " << surfacestuckforce[axis][i][1] << endl; 
 
-			unscaledlen = 20*calcdist(surfacestuckforce[axis][i][0],surfacestuckforce[axis][i][1]) * scale
-								/ (seg_area * surfaceimpacts_scalefactor);  // same scale factor as above
 
-			linex = - 20*surfacestuckforce[axis][i][0] * scale / (seg_area * surfaceimpacts_scalefactor);
-			liney = - 20*surfacestuckforce[axis][i][1] * scale / (seg_area * surfaceimpacts_scalefactor);
+			linex = - surfacestuckforce[axis][i][0] ;
+			liney = - surfacestuckforce[axis][i][1] ;
+                                                                                                   
+            numlinesplotted += drawline(drawcmd, 
+                                        startx, starty,
+                                        linex, liney,
+                                        maxlinelength, scalefactor);
 
-			linelen = calcdist(linex,liney);
+        //}
 
-			// truncate if too long (this can be longer than 0.9 RADIUS, if want)
-			//if (linelen > 0.9 * RADIUS)
-			//{
-			//	linex *= 0.9 * RADIUS / linelen;
-			//	liney *= 0.9 * RADIUS / linelen;			
-			//}
+    }
 
-			// don't plot zero length lines
-			if ( (ptheactin->pixels(startx) == ptheactin->pixels(startx + linex)) &&
-				 (ptheactin->pixels(starty) == ptheactin->pixels(starty + liney)) )
-			{	
-                // do nothing :)
-			}
-			else
-			{
+    // draw the nucleator movement vector
 
-			drawcmd << " line "
-					<< centerx + ptheactin->pixels(startx) << "," 
-					<< centery + ptheactin->pixels(starty) << " "
+    vect nucmove = p_nuc->deltanucposn_sum;
+    
+    ptheactin->sym_break_rotation_to_xy_plane.rotate(nucmove);
 
-					<< centerx + ptheactin->pixels(startx + linex) << ","
-					<< centery + ptheactin->pixels(starty + liney);
-					
-					numlinesplotted++;
+    axisrotation.rotate(nucmove);
 
-			}
-		}
+    nucmove *= p_nuc->inertia * NODE_DIST_TO_FORCE;  // convert movement to force
+
+    numlinesplotted += drawline(drawcmd, 
+                                0, 4 * RADIUS,
+                                nucmove.y, nucmove.z,
+                                maxlinelength, scalefactor);
+
+    return numlinesplotted;
+}
+
+
+int segments::drawline(ostream& drawcmd ,
+                        const double& startx, const double& starty,  // position (in uM) of start of line
+                        double forcevecx, double forcevecy,          // force vector
+                        const double& maxlendist, const double& scalefactor) const
+{
+	
+    // scale the force vectors (i.e. convert into a distance)
+
+    forcevecx *= scalefactor;
+    forcevecy *= scalefactor;
+
+    const double linelen = calcdist(forcevecx, forcevecy);
+
+    // and truncate if too long
+	if (linelen > maxlendist)
+	{
+		forcevecx *= maxlendist / linelen;
+		forcevecy *= maxlendist / linelen;			
+	}
+
+	// don't plot zero length lines
+	if ( (ptheactin->pixels(startx) == ptheactin->pixels(startx + forcevecx)) &&
+		 (ptheactin->pixels(starty) == ptheactin->pixels(starty + forcevecy)) )
+	{   
+        return 0;
+	}
+	else
+	{
+
+	    drawcmd << " line "
+			<< centerx + ptheactin->pixels(startx) << "," 
+			<< centery + ptheactin->pixels(starty) << " "
+
+			<< centerx + ptheactin->pixels(startx + forcevecx) << ","
+			<< centery + ptheactin->pixels(starty + forcevecy);
+			
+		return 1;
 
 	}
 
-return numlinesplotted;
 }
 
 void segments::addallnodes()

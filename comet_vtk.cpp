@@ -77,6 +77,12 @@
 
 //#include "vtkSmartPointer.h"
 
+#include "vtkStructuredGrid.h"
+#include "vtkHedgeHog.h"
+#include "vtkStreamLine.h"
+#include "vtkTubeFilter.h"
+#include "vtkRungeKutta4.h"
+
 #include "vtkRenderLargeImage.h"
 #include "vtkAssembly.h"
 
@@ -191,7 +197,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
 	//renderwin_npy = VTK_HEIGHT * VTK_AA_FACTOR;
     //  }
     //}
-
+    viewupvect=vect(0,0,-1);
     
     // REVISIT: Make a renderer each time? or clear out and rebuild?
     // a renderer and render window
@@ -208,26 +214,19 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     //cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
 
     render_win = vtkRenderWindow::New();
+
+    //if(!(POST_VTK_VIEW || VIEW_VTK))
+    //    render_win->OffScreenRenderingOn();    // this seems to do nothing...
+
     render_win->SetSize(renderwin_npx, renderwin_npy);
     
 	//render_win->LineSmoothingOn();
-   
-
-    viewupvect=vect(0,0,-1);
     //render_win->PointSmoothingOn();
-
 
     // smoothing seems to cause lines on sphere for some reason
     //if (!OptsRenderNodes)   // smoothing is too slow if rendering the nodes
     //   render_win->PolygonSmoothingOn();   // seem to need this else rendering artifact on sphere
     
-    if(VTK_HIGHQUAL)	 // increase quality for non-interactive
-    {
-        render_win->SetAAFrames(7);  // this does not work for vtkRenderLargeImage
-    }
-
-    render_win->AddRenderer(renderer);
-
 //    const bool VTK_STEREO = true;
 //
 //    if (VTK_STEREO)
@@ -240,6 +239,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
 //#endif
 //    }
 
+    render_win->AddRenderer(renderer);
     
     if(POST_VTK_VIEW || VIEW_VTK)	 // only create interactive window if we're actually using it
     {
@@ -248,10 +248,11 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
         iren->Initialize();   
     } else
     {
+        if(VTK_HIGHQUAL)	 // increase quality for non-interactive
+        {
+            render_win->SetAAFrames(7);
+        }
 
-        //render_win->OffScreenRenderingOn();
-
-        // increase quality for non-interactive?
     }
 
     // write the colourmap file
@@ -412,19 +413,10 @@ void CometVtkVis::RestartRenderWindow()
 void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & cameratarget)
 {
     
-    //renderer = vtkRenderer::New();
-	//renderer->SetBackground(0, 0, 0);
-
-    //render_win->AddRenderer(renderer);
-
     setProjection(cameraposition,cameratarget);  // also sets the rotation of the objects, so comes before actors:
-	
-    //renderer->ResetCameraClippingRange(FLT_MIN,FLT_MAX,FLT_MIN,FLT_MAX,FLT_MIN,FLT_MAX);
-    
     
     // add objects to renderer
-    
-             
+                 
     if(OptsRenderNodes)
 	    addNodes();
   
@@ -433,7 +425,7 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
 
     if(OptsRenderNucleator)
     {   
-        addNucleator(false);
+        addNucleator(false); // render a solid nucleator
         
         if (VTK_NUC_WIREFRAME)
 	        addNucleator(true);  // if wireframe, add another nucleator, in wireframe and slightly bigger
@@ -461,7 +453,8 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     }
 
     if(OptsRenderAxes)
-	    addAxes();
+	    addflow();
+        //addAxes();
        
     // if(OptsRenderText)        
     // addVoxelBound(renderer);
@@ -730,7 +723,7 @@ void CometVtkVis::saveVRML(int framenumber)
 void CometVtkVis::addNucleator(bool wireframe)
 {
 
-    // add nucleator
+    // creat assembly and add nucleator
     vtkAssembly *nucleator_actor=vtkAssembly::New();
 
     if (NUCSHAPE == nucleator::capsule) 
@@ -743,8 +736,8 @@ void CometVtkVis::addNucleator(bool wireframe)
 
     vtkMatrix4x4 *transformationmatrix = vtkMatrix4x4::New();
     set_transform_matrix(transformationmatrix, ptheactin->nuc_to_world_rot);
-    
     nucleator_actor->SetUserMatrix(transformationmatrix);
+
     
     // make wireframe slightly bigger, so lines appear on outside
     if (wireframe)
@@ -753,6 +746,7 @@ void CometVtkVis::addNucleator(bool wireframe)
 
     // add nucleator
     renderer->AddActor(nucleator_actor);
+
     nucleator_actor->Delete();
     transformationmatrix->Delete();
 }
@@ -765,7 +759,7 @@ void CometVtkVis::add_capsule_to_assembly(vtkAssembly* nucleator_actor, bool wir
     vtkSphereSource *endcap = vtkSphereSource::New();
     endcap->SetRadius(radius_pixels); // can't we get radius through nucleator:: ??
     endcap->SetThetaResolution(32);
-    endcap->SetPhiResolution(16);
+    endcap->SetPhiResolution(16);    // half the phi resolution because it's a hemisphere
     endcap->SetStartPhi(0);
     endcap->SetEndPhi(90);
 
@@ -834,6 +828,10 @@ void CometVtkVis::add_capsule_to_assembly(vtkAssembly* nucleator_actor, bool wir
         endcap1_actor->GetProperty()->SetColor(0, 0, 0);
         endcap2_actor->GetProperty()->SetColor(0, 0, 0);
         body_actor->GetProperty()->SetColor(0, 0, 0);
+
+        endcap1_actor->GetProperty()->SetLineWidth((double)VTK_AA_FACTOR * VIS_LINETHICKNESS / 2.0);
+        endcap2_actor->GetProperty()->SetLineWidth((double)VTK_AA_FACTOR * VIS_LINETHICKNESS / 2.0);
+        body_actor->GetProperty()->SetLineWidth((double)VTK_AA_FACTOR * VIS_LINETHICKNESS / 2.0);
     }
     
     //assemble nucleator from parts
@@ -943,8 +941,6 @@ void CometVtkVis::set_transform_matrix(vtkMatrix4x4 * vtkmat, const rotationmatr
 
     // set rotation
 
-    // todo: transpose these, and get rid of the .inverse() in the calling function
-
     vtkmat->SetElement(0,0,rotmat.xx);
     vtkmat->SetElement(1,0,rotmat.xy);
     vtkmat->SetElement(2,0,rotmat.xz);
@@ -961,10 +957,10 @@ void CometVtkVis::set_transform_matrix(vtkMatrix4x4 * vtkmat, const rotationmatr
     vtkmat->SetElement(3,2,0);
 
     // default zero translation
-    vtkmat->SetElement(0,3,0);
-    vtkmat->SetElement(1,3,0);
-    vtkmat->SetElement(2,3,0);
-    vtkmat->SetElement(3,3,1);
+    //vtkmat->SetElement(0,3,0);
+    //vtkmat->SetElement(1,3,0);
+    //vtkmat->SetElement(2,3,0);
+    //vtkmat->SetElement(3,3,1);
 
     // set translation
 
@@ -980,12 +976,16 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
 					    // double vd, double *min)
 {
     // zero the voxel set
-    for(int i=0; i<ni; ++i) {
-	for(int j=0; j<nj; ++j) {
-	    for(int k=0; k<nk; ++k) {		
-		vx[i][j][k] = 0;
+    for(int i=0; i<ni; ++i) 
+    {
+	    for(int j=0; j<nj; ++j) 
+        {
+            fill(vx[i][j].begin(),vx[i][j].end(),0);
+	        //for(int k=0; k<nk; ++k) 
+            //{		            
+		    //    vx[i][j][k] = 0;
+	        //}
 	    }
-	}
     }
    
   
@@ -999,28 +999,33 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
   
     vector< vector< vector<double > > >  splat;
     splat.resize(2*splat_sz+1);
-    for(int i=0; i<2*splat_sz+1 ;i++) {
-	splat[i].resize(2*splat_sz+1);
-	for(int j=0; j<2*splat_sz+1; j++) {
-	    splat[i][j].resize(2*splat_sz+1); // extent x2
-	}
+    for(int i=0; i<2*splat_sz+1 ;i++) 
+    {
+	    splat[i].resize(2*splat_sz+1);
+	    for(int j=0; j<2*splat_sz+1; j++) 
+        {
+	        splat[i][j].resize(2*splat_sz+1); // extent x2
+	    }
     }
   
 
     // create splat to reuse
-    for(int i=-splat_sz; i<=splat_sz; i++) {
-	for(int j=-splat_sz; j<=splat_sz; j++) {
-	    for(int k=-splat_sz; k<=splat_sz; k++) {
+    for(int i=-splat_sz; i<=splat_sz; i++) 
+    {
+	    for(int j=-splat_sz; j<=splat_sz; j++) 
+        {
+	        for(int k=-splat_sz; k<=splat_sz; k++) 
+            {
 	
-		// cut the corners
-		if(i*i + j*j + k*k > splat_sz*splat_sz )
-		    continue;
-	
-		splat[i+splat_sz][j+splat_sz][k+splat_sz]
-		    = exp(-3*((double)(i*i+j*j+k*k)) / 
-			  (double)(splat_sz*splat_sz*splat_sz) );
+		    // cut the corners
+		    if(i*i + j*j + k*k > splat_sz*splat_sz )
+		        continue;
+    	
+		    splat[i+splat_sz][j+splat_sz][k+splat_sz]
+		        = exp(-3*((double)(i*i+j*j+k*k)) / 
+			      (double)(splat_sz*splat_sz*splat_sz) );
+	        }
 	    }
-	}
     }
   
   
@@ -1031,80 +1036,88 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     double vx_imax = 0;
     double vx_isum = 0;
     int n_isums = 0;
-    for(int n=0; n<ptheactin->highestnodecount; n++) {
-	if (!ptheactin->node[n].polymer)
-	    continue;
-      
-	node_pos = ptheactin->node[n]; // copy x,y,z coords from node[n]
-    
-	//ptheactin->nuc_to_world_rot.rotate(node_pos); 
-	//vtk_cam_rot.rotate(node_pos); // bring rip to y-axis
-    
-	// node centre in local voxel coords (nuc at centre) 
-	// REVISIT: check why we need to add one here
-	x = int(voxelscalefactor * node_pos.x + ni/2 + 1); 
-	y = int(voxelscalefactor * node_pos.y + nj/2 + 1);
-	z = int(voxelscalefactor * node_pos.z + nk/2 + 1);
-    
-    
-	if((x<0) || (x>=ni) ||
-	   (y<0) || (y>=nj) ||
-	   (z<0) || (z>=nk) )  // only plot if point in bounds
-	{
-	    //  cout << "point out of bounds " << x << "," << y << endl;
-	} else {
-	    // if((n%SPECKLE_FACTOR)==0)
-      
-	    for(int i=-splat_sz; i<=splat_sz; ++i) {
-		for(int j=-splat_sz; j<=splat_sz; ++j) {
-		    for(int k=-splat_sz; k<=splat_sz; ++k) {
-	    
-			if((i*i+j*j+k*k) > (splat_sz*splat_sz))
-			    continue;  // don't do corners
-	    
-			vi = x+i;
-			vj = y+j;
-			vk = z+k;
-	    
-			if((vi<0) || (vi>=ni) ||
-			   (vj<0) || (vj>=nj) ||
-			   (vk<0) || (vk>=nk) )  // only plot if point in bounds		  
-			    continue;
-	    
-			// amount of actin		  
-			vx[vi][vj][vk] += 
-			    splat[i+splat_sz][j+splat_sz][k+splat_sz];
-	    
-			// keep tabs on the maximum
-			if(vx[vi][vj][vk] > vx_imax)
-			    vx_imax = vx[vi][vj][vk];
-			// calc sum
-			vx_isum += vx[vi][vj][vk];
-			++n_isums;
-		    }
-		}
-	    } // loop over splat
+    for(int n=0; n<ptheactin->highestnodecount; n++) 
+    {
+	    if (!ptheactin->node[n].polymer)
+	        continue;
+          
+	    node_pos = ptheactin->node[n]; // copy x,y,z coords from node[n]
+        
+	    //ptheactin->nuc_to_world_rot.rotate(node_pos); 
+	    //vtk_cam_rot.rotate(node_pos); // bring rip to y-axis
+        
+	    // node centre in local voxel coords (nuc at centre) 
+	    // REVISIT: check why we need to add one here
+	    x = int(voxelscalefactor * node_pos.x + ni/2 + 1); 
+	    y = int(voxelscalefactor * node_pos.y + nj/2 + 1);
+	    z = int(voxelscalefactor * node_pos.z + nk/2 + 1);
+        
+        
+	    if((x<0) || (x>=ni) ||
+	       (y<0) || (y>=nj) ||
+	       (z<0) || (z>=nk) )  // only plot if point in bounds
+	    {
+	        //  cout << "point out of bounds " << x << "," << y << endl;
+	    } 
+        else
+        {
+	        // if((n%SPECKLE_FACTOR)==0)
+          
+	        for(int i=-splat_sz; i<=splat_sz; ++i) 
+            {
+		        for(int j=-splat_sz; j<=splat_sz; ++j) 
+                {
+		            for(int k=-splat_sz; k<=splat_sz; ++k) {
+    	    
+			        if((i*i+j*j+k*k) > (splat_sz*splat_sz))
+			            continue;  // don't do corners
+    	    
+			        vi = x+i;
+			        vj = y+j;
+			        vk = z+k;
+        	    
+			        if((vi<0) || (vi>=ni) ||
+			           (vj<0) || (vj>=nj) ||
+			           (vk<0) || (vk>=nk) )  // only plot if point in bounds		  
+			            continue;
+        	    
+			        // amount of actin		  
+			        vx[vi][vj][vk] += 
+			            splat[i+splat_sz][j+splat_sz][k+splat_sz];
+        	    
+			        // keep tabs on the maximum
+			        if(vx[vi][vj][vk] > vx_imax)
+			            vx_imax = vx[vi][vj][vk];
+			        // calc sum
+			        vx_isum += vx[vi][vj][vk];
+			        ++n_isums;
+		            }
+		        }
+	        } // loop over splat
 
-	} // else (add intensity)
-    
+	    } // else (add intensity)
+        
     } // loop over nodes
+
     cout << "  max gausian intensity: "  << vx_imax << endl;
     cout << "  mean gausian intensity: " << vx_isum/n_isums << endl;
   
-    // if(ptheactin->BMP_intensity_scaling){
-    if(OptsNormaliseFrames){
-    
-	cout << "  normalising Frame, vx_max: " << vx_imax << endl;
-	// scale the data
-	for(int i=0; i<ni; ++i) {
-	    for(int j=0; j<nj; ++j) {
-		for(int k=0; k<nk; ++k) {		
-		    vx[i][j][k] = vx[i][j][k]/vx_imax;
-		}
+    if(OptsNormaliseFrames)
+    {
+	    cout << "  normalising Frame, vx_max: " << vx_imax << endl;
+	    // scale the data
+	    for(int i=0; i<ni; ++i) 
+        {
+	        for(int j=0; j<nj; ++j) 
+            {
+		        for(int k=0; k<nk; ++k) 
+                {		
+		            vx[i][j][k] = vx[i][j][k]/vx_imax;
+		        }
+	        }
 	    }
-	}
-    
-    } // NormaliseFrames 
+        
+    } 
   
 }
 
@@ -1124,11 +1137,13 @@ void CometVtkVis::createGaussianVoxelRepresentation(vtkStructuredPoints *sp)
     // create the voxel 3d vector
     vector< vector< vector<double > > >  vx;
     vx.resize(ni);  
-    for(int i=0; i< ni; i++) {
-	vx[i].resize(nj);
-	for (int j=0; j<nj; j++) {
-	    vx[i][j].resize(nk);
-	}
+    for(int i=0; i< ni; i++) 
+    {
+	    vx[i].resize(nj);
+	    for (int j=0; j<nj; j++) 
+        {
+	        vx[i][j].resize(nk);
+	    }
     }
   
     // fill voxel set from the actin node data
@@ -1148,30 +1163,43 @@ void CometVtkVis::createGaussianVoxelRepresentation(vtkStructuredPoints *sp)
     // see vtk examples for voxel data
     vtkUnsignedCharArray *vxdata = vtkUnsignedCharArray::New();    
     double iscale = 1.0;
-    if(OptsNormaliseFrames) {
-	cout << "  normalised frame" << endl;
-    } else {
-	cout << "  using fixed intensity scale:" << vx_intensity_scale << endl;
-	iscale = vx_intensity_scale;
+    
+    if(OptsNormaliseFrames) 
+    {
+	    cout << "  normalised frame" << endl;
+    } 
+    else 
+    {
+	    cout << "  using fixed intensity scale:" << vx_intensity_scale << endl;
+	    iscale = vx_intensity_scale;
     }
     
     // loop over voxel set converting to structured points suitable for 
     // vtk volume rendering
     int offset = 0;
-    for(int k=0 ; k<nk ; ++k){
-	for(int j=0 ; j<nj ; ++j){
-	    for(int i=0 ; i<ni; ++i){
+    for(int i=0; i<ni; ++i) 
+    {
+        for(int j=0; j<nj; ++j) 
+        {
+	        for(int k=0; k<nk; ++k) 
+            {
 		
-		double value = vx[i][j][k]/iscale; 
-		if(value > 0) {
-		    if(value > 1) {
-			vxdata->InsertValue(offset, 255 );
-		    } else {
-			vxdata->InsertValue(offset, (int)(value*255) );
+		    double value = vx[i][j][k]/iscale; 
+		    if(value > 0) 
+            {
+		        if(value > 1) 
+                {
+			        vxdata->InsertValue(offset, 255 );
+		        } 
+                else 
+                {
+			        vxdata->InsertValue(offset, (int)(value*255) );
+		        }
+		    } 
+            else 
+            {
+		        vxdata->InsertValue(offset, 0);
 		    }
-		} else {
-		    vxdata->InsertValue(offset, 0);
-		}
 		// show voxel volume border, to aid alignment 
 		//if(i==0 || j==0 || k==0) {
 		//  data->InsertValue(offset, 255);	  
@@ -1183,6 +1211,230 @@ void CometVtkVis::createGaussianVoxelRepresentation(vtkStructuredPoints *sp)
     sp->GetPointData()->SetScalars(vxdata);
     vxdata->Delete();  
 }
+
+
+void CometVtkVis::addflow()
+{
+    // Accumulate a gaussian splat
+  
+    // find out extent of the data
+    // initialise extents
+  
+    // create the voxel set as vtk structured point data
+    // create a structured grid for the nodes, and sample them
+    // simple binning of the node data into a voxel set, with
+    // gaussian contributions.
+  
+    // create the voxel 3d vector
+    vector< vector< vector<vect > > >  flow;
+    flow.resize(ni);  
+    for(int i=0; i< ni; i++) 
+    {
+	    flow[i].resize(nj);
+	    for (int j=0; j<nj; j++) 
+        {
+	        flow[i][j].resize(nk);
+	    
+            fill(flow[i][j].begin(),flow[i][j].end(),vect(0,0,0));
+        }
+    }
+  
+    // fill voxel set from the actin node data
+    cout << "  filling vtk voxel flow data " << endl;
+//    const double vd = 1;
+//    VTK_FLOAT_PRECISION vx_orig[3] = {-ni/2.0-1, -nj/2.0-1, -nk/2.0-1};
+//    fillVoxelSetFromActinNodes(vx); //, vd, vx_orig);
+    
+
+    
+    // loop over the nodes, and splat them into the volume
+    //vect node_pos;
+    int x,y,z;
+    //int vi,vj,vk;
+    double flow_imax = 0;
+//    double flow_isum = 0;
+//   int n_isums = 0;
+
+    for(vector <nodes>::iterator	i_node  = ptheactin->node.begin(); 
+									i_node != ptheactin->node.begin() + ptheactin->highestnodecount;
+							      ++i_node)
+    {
+
+	    if (!i_node->polymer)
+	        continue;
+   
+        
+	    //ptheactin->nuc_to_world_rot.rotate(node_pos); 
+	    //vtk_cam_rot.rotate(node_pos); // bring rip to y-axis
+        
+	    // node centre in local voxel coords (nuc at centre) 
+	    // REVISIT: check why we need to add one here
+	    x = int(voxelscalefactor * i_node->x + ni/2 + 1); 
+	    y = int(voxelscalefactor * i_node->y + nj/2 + 1);
+	    z = int(voxelscalefactor * i_node->z + nk/2 + 1);
+        
+        
+	    if((x<0) || (x>=ni) ||
+	       (y<0) || (y>=nj) ||
+	       (z<0) || (z>=nk) )  // only plot if point in bounds
+	    {
+	        //  cout << "point out of bounds " << x << "," << y << endl;
+	    } 
+        else
+        {
+      
+    	    
+            // amount of actin		  
+            flow[x][y][z] += i_node->delta_sum;
+	        
+            // keep tabs on the maximum
+	        if(flow[x][y][z].length() > flow_imax)
+	            flow_imax = flow[x][y][z].length();
+
+
+	    } // else (add intensity)
+        
+    } // loop over nodes
+
+    //cout << "  max gausian intensity: "  << flow_imax << endl;
+    //cout << "  mean gausian intensity: " << flow_isum/n_isums << endl;
+  
+    if(OptsNormaliseFrames)
+    {
+	    cout << "  normalising Frame, flow_imax: " << flow_imax << endl;
+	    // scale the data
+	    for(int i=0; i<ni; ++i) 
+        {
+	        for(int j=0; j<nj; ++j) 
+            {
+		        for(int k=0; k<nk; ++k) 
+                {		
+		            flow[i][j][k] = flow[i][j][k] * flow_imax;
+		        }
+	        }
+	    }
+        
+    } 
+
+
+
+
+    // set up the spoints for volume rendering
+    int dim[3] = {ni, nj, nk};
+
+ 
+  
+    // create the underlying voxel data (only UnsignedChar or Short)
+    // see vtk examples for voxel data
+
+    vtkFloatArray *vectors = vtkFloatArray::New();
+    vectors->SetNumberOfComponents(3);
+    vectors->SetNumberOfTuples(dim[0]*dim[1]*dim[2]);
+
+    vtkPoints *points = vtkPoints::New();
+    points->Allocate(dim[0]*dim[1]*dim[2]);
+
+    //points->SetDimensions(dim);
+    //points->SetSpacing(vd, vd, vd);
+    //points->SetOrigin( vx_orig );
+
+    //vtkUnsignedCharArray *vxdata = vtkUnsignedCharArray::New();    
+
+    
+    VTK_FLOAT_PRECISION vel[3], pos[3];
+
+    double vd = 1.0;
+
+    // loop over voxel set converting to structured points suitable for 
+    // vtk volume rendering
+    int offset = 0;
+    for(int i=0 ; i<ni ; ++i)
+    {   
+        pos[0] = (i - ni/2 - 1) * vd ; // ((VTK_FLOAT_PRECISION)(i - ni/2 - 1)) / voxelscalefactor ;
+
+	    for(int j=0 ; j<nj ; ++j)
+        {
+            pos[1] = (j - nj/2 - 1) * vd ; //((VTK_FLOAT_PRECISION)(j - nj/2 - 1)) / voxelscalefactor;
+
+	        for(int k=0 ; k<nk; ++k)
+            {
+		        pos[2] = (k - nk/2 - 1) * vd ; //((VTK_FLOAT_PRECISION)(k - nk/2 - 1)) / voxelscalefactor;
+
+                vel[0] = flow[i][j][k].x;
+                vel[1] = flow[i][j][k].y;
+                vel[2] = flow[i][j][k].z;
+
+                points->InsertPoint(offset, pos);
+                vectors->InsertTuple(offset, vel);
+
+		        offset++;		
+            }
+        }
+    }
+
+
+
+    vtkStructuredGrid *sgrid = vtkStructuredGrid::New();
+    sgrid->SetDimensions(dim);
+
+    sgrid->SetPoints(points);
+
+    sgrid->GetPointData()->SetVectors(vectors);
+    vectors->Delete();
+
+    vtkHedgeHog *hedgehog = vtkHedgeHog::New();
+    hedgehog->SetInput(sgrid);
+    hedgehog->SetScaleFactor(10);   
+
+    //vtkPolyData * data = vtkPolyData::New();
+    //data->SetSource(sgrid->Get);
+
+
+
+    //vtkRungeKutta4 *integ = vtkRungeKutta4::New();
+
+    //vtkStreamLine *flowStreamer = vtkStreamLine::New();
+
+    //flowStreamer->SetInput(hedgehog->GetOutput());
+    //flowStreamer->SetSource(hedgehog->GetOutput());
+    //flowStreamer->SetStartPosition(RADIUS, RADIUS, RADIUS);
+    //flowStreamer->SetMaximumPropagationTime(500);
+    //flowStreamer->SetStepLength(0.25);
+    //flowStreamer->SetIntegrationStepLength(0.025);
+    //flowStreamer->SetIntegrationDirectionToIntegrateBothDirections();
+    //flowStreamer->SetIntegrator(integ);
+
+    //vtkTubeFilter *flowtube = vtkTubeFilter::New();
+
+    //flowtube->SetInput(flowStreamer->GetOutput());
+    //flowtube->SetRadius(0.01);
+    //flowtube->SetNumberOfSides(12);
+    //flowtube->SetVaryRadiusToVaryRadiusByVector();
+
+    //vtkPolyDataMapper *flowtubeMapper = vtkPolyDataMapper::New();
+    //flowtubeMapper->SetInput(flowtube->GetOutput());
+
+    //vtkActor *flowtubeactor = vtkActor::New();
+    //flowtubeactor->SetMapper(flowtubeMapper);
+
+    //renderer->AddActor(flowtubeactor);
+
+     //flowtubeactor->Delete();
+    
+    vtkPolyDataMapper *sgridMapper = vtkPolyDataMapper::New();
+    sgridMapper->SetInput(hedgehog->GetOutput());
+
+    vtkActor *sgridActor = vtkActor::New();
+    sgridActor->SetMapper(sgridMapper);
+    sgridActor->GetProperty()->SetColor(1,1,1);
+
+    renderer->AddActor(sgridActor);
+
+    sgridActor->Delete();
+}
+
+
+
 
 void CometVtkVis::addStructuredPointVolumeRender(vtkStructuredPoints *vx)
 {
@@ -1236,10 +1488,8 @@ void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp, const dou
     iso_surf->SetValue(0, threshold);
     iso_surf->ComputeNormalsOn();
 
-	//vtkSmoothPolyDataFilter *smooth = vtkSmoothPolyDataFilter::New();
 	vtkWindowedSincPolyDataFilter *smooth = vtkWindowedSincPolyDataFilter::New();
     smooth->SetInput(iso_surf->GetOutput());
-	//smooth->SetInput(normals->GetOutput());
     smooth->SetNumberOfIterations( 200 );
 //	smooth->SetRelaxationFactor( 0.02 );
     smooth->SetFeatureAngle(45);
@@ -1252,11 +1502,9 @@ void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp, const dou
     //smooth->BoundarySmoothingOn();
 
     vtkPolyDataMapper *iso_mapper = vtkPolyDataMapper::New();
-    //iso_mapper->SetInput( iso_surf->GetOutput() );
 	iso_mapper->SetInput( normals->GetOutput() );
     iso_mapper->ScalarVisibilityOff();
     iso_surf->Delete();
-    
     
     vtkActor *iso_actor = vtkActor::New();
     iso_actor->SetMapper(iso_mapper);
@@ -1343,11 +1591,15 @@ void CometVtkVis::addNodes()
 
     Colour col;
 
-    const bool VTK_RAND_NODE_COL = true;
+    //const double VTK_MAX_NODE_DIST = 10000000; // 0.1;
+
     // loop over the nodes
     VTK_FLOAT_PRECISION ncx, ncy, ncz;
     for(int i=0; i < ptheactin->highestnodecount; i++)
     {
+        if (ptheactin->node[i].dist_from_surface > VTK_MAX_NODE_DIST)
+            continue;
+
 	    ncx = ptheactin->node[i].x;
 	    ncy = ptheactin->node[i].y;
 	    ncz = ptheactin->node[i].z;
@@ -1359,29 +1611,42 @@ void CometVtkVis::addNodes()
 	    node_actor->SetMapper(map);
 	    node_actor->SetPosition(ncx, ncy, ncz);
     	
-	    if ( ptheactin->node[i].polymer ) 
-        { 
-            if (VTK_RAND_NODE_COL)
+	    
+        if (VTK_RAND_NODE_COL)
+        {
+            col.setcol( double(ptheactin->node[i].creation_iter_num % 200) / 200);
+            
+            if(ptheactin->node[i].harbinger)
             {
-                col.setcol( double(ptheactin->node[i].creation_iter_num % 200) / 200);
-	            node_actor->GetProperty()->SetColor(col.r, col.g, col.b);     // plot polymerised red
+                col.r = 1.0;
+                col.g = 1.0;
+                col.b = 1.0;
             }
-            else
-                node_actor->GetProperty()->SetColor(1.0, 0, 0);     // plot polymerised red
-	    } 
-        else if ( ptheactin->node[i].harbinger )
-        {
-	        node_actor->GetProperty()->SetColor(0.5, 0.5, 0.0); // plot harbinger yellow
-	    } 
-        else if ( !ptheactin->node[i].listoflinks.empty() )
-        {
-	        node_actor->GetProperty()->SetColor(0.5, 0.5, 0.5); // plot empty grey
-	    } 
+            
+            node_actor->GetProperty()->SetColor(col.r, col.g, col.b); 
+        }
         else 
-        {
-	        node_actor->GetProperty()->SetColor(0, 1, 0);       // otherwise green
-	    }
+        {              
+            if ( ptheactin->node[i].harbinger )
+            {
+	            node_actor->GetProperty()->SetColor(1.0,0.0,0.0); // plot harbinger red
+	        } 
+            else if ( ptheactin->node[i].listoflinks.empty() )
+            {
+	            node_actor->GetProperty()->SetColor(0.5, 0.5, 0.5); // plot empty grey
+	        } 
+            else if ( ptheactin->node[i].polymer ) 
+            { 
+                node_actor->GetProperty()->SetColor(0.2, 1.0, 0.2);     // plot polymerised green
+	        } 
+            else
+                node_actor->GetProperty()->SetColor(0.2, 0.2, 1.0);
+        
+            //node_actor->GetProperty()->SetColor(1.0, 0.2, 0.2);
+        
+        }
 
+        
 
 	    // add the actor to the scene	
 	    renderer->AddActor(node_actor);
@@ -1507,8 +1772,8 @@ void CometVtkVis::addLinks()
   }
   
   // loop over the nodes
-  VTK_FLOAT_PRECISION n_pt[3];
-  VTK_FLOAT_PRECISION l_pt[3];
+  VTK_FLOAT_PRECISION ncx,ncy,ncz; //n_pt[3];
+  VTK_FLOAT_PRECISION lptx, lpty, lptz; //l_pt[3];
   vect testpos;
   vect nodeposvec;
   
@@ -1531,12 +1796,12 @@ void CometVtkVis::addLinks()
     
     nodeposvec = ptheactin->node[i];
 
-    n_pt[0] = ptheactin->node[i].x;
-    n_pt[1] = ptheactin->node[i].y;
-    n_pt[2] = ptheactin->node[i].z;		
+    ncx = ptheactin->node[i].x;
+    ncy = ptheactin->node[i].y;
+    ncz = ptheactin->node[i].z;		
     
     //firstpointinfocus = 
-    convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]);
+    convert_to_vtkcoord(ncx, ncy, ncz);
  
     if(!ptheactin->node[i].listoflinks.empty() && !VTK_NUC_LINKS_ONLY) 
     {
@@ -1552,12 +1817,12 @@ void CometVtkVis::addLinks()
         if( (*link_i).linkednodeptr->nodenum < i)
             continue;
 
-        l_pt[0] = link_i->linkednodeptr->x;
-        l_pt[1] = link_i->linkednodeptr->y;
-        l_pt[2] = link_i->linkednodeptr->z;
+        lptx = link_i->linkednodeptr->x;
+        lpty = link_i->linkednodeptr->y;
+        lptz = link_i->linkednodeptr->z;
 
         //secondpointinfocus = 
-        convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
+        convert_to_vtkcoord(lptx, lpty, lptz);
 
         //if (!firstpointinfocus && !secondpointinfocus)
         //    continue;  // both points out of focus, so skip link
@@ -1603,8 +1868,8 @@ void CometVtkVis::addLinks()
         // create line for the link
 
         vtkIdType linept_ids[2];	
-        linept_ids[0] = linepts->InsertNextPoint( n_pt );
-        linept_ids[1] = linepts->InsertNextPoint( l_pt );
+        linept_ids[0] = linepts->InsertNextPoint( ncx, ncy, ncz );
+        linept_ids[1] = linepts->InsertNextPoint( lptx, lpty, lptz );
         vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);
 
 
@@ -1643,11 +1908,11 @@ void CometVtkVis::addLinks()
         //col.setcol(y);
 
         // create line for the link
-        l_pt[0] = stuck_pos_world_frame.x;
-        l_pt[1] = stuck_pos_world_frame.y;
-        l_pt[2] = stuck_pos_world_frame.z;
+        lptx = stuck_pos_world_frame.x;
+        lpty = stuck_pos_world_frame.y;
+        lptz = stuck_pos_world_frame.z;
 
-        convert_to_vtkcoord(l_pt[0], l_pt[1], l_pt[2]);
+        convert_to_vtkcoord(lptx, lpty, lptz);
 
         if (VTK_NUC_LINKS_ONLY)
         {   // if monitoring attachment only, amplify the length
@@ -1658,17 +1923,78 @@ void CometVtkVis::addLinks()
             magcol = force / NUC_LINK_BREAKAGE_FORCE;
             magcol = magcol * 0.9 + 0.1;
 
-            n_pt[0] = linkendpos.x;
-            n_pt[1] = linkendpos.y;
-            n_pt[2] = linkendpos.z;
+            ncx = linkendpos.x;
+            ncy = linkendpos.y;
+            ncz = linkendpos.z;
 
-            convert_to_vtkcoord(n_pt[0], n_pt[1], n_pt[2]);
+            convert_to_vtkcoord(ncx, ncy, ncz);
 
         }
 
-        vtkIdType linept_ids[2];	
-        linept_ids[0] = linepts->InsertNextPoint( n_pt );
-        linept_ids[1] = linepts->InsertNextPoint( l_pt );
+        vtkIdType linept_ids[2];		
+        linept_ids[0] = linepts->InsertNextPoint( ncx, ncy, ncz );
+        linept_ids[1] = linepts->InsertNextPoint( lptx, lpty, lptz );
+        vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);
+
+        if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
+        {
+            cellscalars->InsertValue(cell_id, magcol);
+        } 
+        else 
+        {
+            cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
+        }	
+            
+     }
+
+     //const bool VTK_PLOT_NUC_IMPACTS = false; // true;
+
+     if (VTK_PLOT_NUC_IMPACTS)
+     {
+
+
+        vect displacement = ptheactin->node[i].nucleator_impacts * NODE_DIST_TO_FORCE / (double) InterRecordIterations ;
+        double distance = displacement.length();
+
+        force = distance;
+
+        // note this is scaled by LINK_BREAKAGE_FORCE not NUC_LINK_BREAKAGE_FORCE, to keep colours consistant
+
+        double magcol = force / LINK_BREAKAGE_FORCE;    // note: colour relative to normal link scale
+        if ( (force / NUC_LINK_BREAKAGE_FORCE )* 100.0 < VTK_MIN_PLOT_LINK_FORCE_PCT) // only plot ones with this force or greater
+            continue;
+
+        //magcol = pow( magcol , 1 / COLOUR_GAMMA);	    
+        magcol = magcol * 0.9 + 0.1; // prevent zeros because colorscheme makes them black
+        //col.setcol(y);
+
+        // create line for the link
+        lptx = ptheactin->node[i].x;
+        lpty = ptheactin->node[i].y;
+        lptz = ptheactin->node[i].z;
+
+        convert_to_vtkcoord(lptx, lpty, lptz);
+
+        if (VTK_NUC_LINKS_ONLY)
+        {   // if monitoring attachment only, amplify the length
+            vect linkendpos = ptheactin->node[i] + displacement * VTK_NUC_LINKS_ONLY_AMPLIFY;
+
+            // and change colour to relative to nuc link breakage force
+
+            magcol = force / NUC_LINK_BREAKAGE_FORCE;
+            magcol = magcol * 0.9 + 0.1;
+
+            ncx = linkendpos.x;
+            ncy = linkendpos.y;
+            ncz = linkendpos.z;
+
+            convert_to_vtkcoord(ncx, ncy, ncz);
+
+        }
+
+        vtkIdType linept_ids[2];		
+        linept_ids[0] = linepts->InsertNextPoint( ncx, ncy, ncz );
+        linept_ids[1] = linepts->InsertNextPoint( lptx, lpty, lptz );
         vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);
 
         if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
@@ -1704,7 +2030,7 @@ void CometVtkVis::addLinks()
   //lines_actor->GetProperty()->SetAmbient(2.0);
   //lines_actor->GetProperty()->SetDiffuse(2.0);
   //lines_actor->GetProperty()->SetSpecular(2.0);
-  lines_actor->GetProperty()->SetLineWidth(VIS_LINETHICKNESS);
+  lines_actor->GetProperty()->SetLineWidth((double)VTK_AA_FACTOR * VIS_LINETHICKNESS);
   lines_actor->SetMapper(map);
   map->Delete();
   //render
