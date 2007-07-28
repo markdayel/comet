@@ -407,6 +407,8 @@ extern double COVERSLIPGAP;
 extern double IMPOSED_NUC_ROT_SPEED;
 extern bool   IMPOSED_NUC_ROT;
 
+extern double IMPOSED_NUC_DISP_SPEED;
+extern bool   IMPOSED_NUC_DISP;
 
 extern bool   TEST_SQUASH;
 extern double TEST_FORCE_INITIAL_MAG;

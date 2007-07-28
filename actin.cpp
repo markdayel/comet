@@ -1466,6 +1466,12 @@ void actin::applyforces(void)
 
 	torque_rotate.settoidentity();
 
+    if (IMPOSED_NUC_DISP)
+    {
+        double speed = IMPOSED_NUC_DISP_SPEED * DELTA_T;
+        p_nuc->deltanucposn = vect( 0, speed, 0);
+    }
+
 	if (IMPOSED_NUC_ROT)
 	{
 		// rotate const speed
@@ -3293,8 +3299,8 @@ void actin::compressfilesdowork(const int & filenum)
                                        
 	// wrl file
 
-	sprintf(command1 , "(gzip -9 -f  %snodes%05i.wrl 2>/dev/null; mv %snodes%05i.wrl.gz %snodes%05i.wrz 2>/dev/null) &",
-						TEMPDIR, filenum, TEMPDIR,filenum, VRMLDIR,filenum );
+	sprintf(command1 , "(gzip -9 -f -c %snodes%05i.wrl > %snodes%05i.wrz 2>/dev/null) &",
+						TEMPDIR, filenum,  VRMLDIR,filenum);
 	system(command1);
 
 #else
@@ -3363,7 +3369,9 @@ int actin::save_data(ofstream &ofstrm)
 	   << sym_break_rotation_to_xy_plane << " "
 	   << sym_break_rotation_to_zaxis << endl;
 
-    
+    // save nucleator (must be before nodes, else unit vectors are wrong when read in)
+    ofstrm << "nucleator:" << endl;
+    p_nuc->save_data(ofstrm);
     
     // save nodes
     ofstrm << "nodes-links:" << endl;
@@ -3384,9 +3392,7 @@ int actin::save_data(ofstream &ofstrm)
 	    ofstrm << endl;
     }
 
-    // save nucleator
-    ofstrm << "nucleator:" << endl;
-    p_nuc->save_data(ofstrm);
+
     
     return 0;
 }
@@ -3421,9 +3427,21 @@ bool actin::load_data(ifstream &ifstr)
 
     nuc_to_world_rot = world_to_nuc_rot.inverse();
 
-    ifstr >> str;
 
-    // load nodes
+    // load nucleator
+    ifstr >> str;
+    if(str.compare("nucleator:") !=0 )
+    {
+	    cout << "error in checkpoint file, 'nucleator:' expected" 
+	         << endl;
+	    return false;
+    }
+
+    p_nuc->load_data(ifstr);
+
+     // load nodes
+
+    ifstr >> str;
     
     if(str.compare("nodes-links:") !=0 )
     {
@@ -3488,16 +3506,7 @@ bool actin::load_data(ifstream &ifstr)
 	    ifstr >> (*i) ;
     }
 
-    // load nucleator
-    ifstr >> str;
-    if(str.compare("nucleator:") !=0 )
-    {
-	    cout << "error in checkpoint file, 'nucleator:' expected" 
-	         << endl;
-	    return false;
-    }
 
-    p_nuc->load_data(ifstr);
     
     return true;
 }

@@ -204,6 +204,10 @@ double NUC_LINK_BREAKAGE_FORCE = 2;
 double IMPOSED_NUC_ROT_SPEED = 1;
 bool   IMPOSED_NUC_ROT = false;
 
+double IMPOSED_NUC_DISP_SPEED = 1;
+bool   IMPOSED_NUC_DISP = false;
+
+
 bool   TEST_SQUASH = false;
 double TEST_FORCE_INITIAL_MAG = 0;
 double TEST_FORCE_INCREMENT = 10;
@@ -810,11 +814,11 @@ int main(int argc, char* argv[])
         else if (tag == "VTK_NUC_LINKS_ONLY_AMPLIFY")	  
 			{ss >> VTK_NUC_LINKS_ONLY_AMPLIFY;} 
 
-        else if (tag == "VTK_PLOT_NUC_IMPACTS")	  
-			{ss >> VTK_PLOT_NUC_IMPACTS;} 
-
-        else if (tag == "VTK_MAX_NODE_DIST") 
-			{ss >> buff2; if (buff2=="TRUE") VTK_MAX_NODE_DIST = true; else VTK_MAX_NODE_DIST = false;}
+        else if (tag == "VTK_MAX_NODE_DIST")	  
+			{ss >> VTK_MAX_NODE_DIST;} 
+                                                  
+        else if (tag == "VTK_PLOT_NUC_IMPACTS") 
+			{ss >> buff2; if (buff2=="TRUE") VTK_PLOT_NUC_IMPACTS = true; else VTK_PLOT_NUC_IMPACTS = false;}
 
         else if (tag == "SYM_BREAK_TO_RIGHT") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_BREAK_TO_RIGHT = true; else SYM_BREAK_TO_RIGHT = false;}
@@ -1055,6 +1059,12 @@ int main(int argc, char* argv[])
 
 		    else if (tag == "IMPOSED_NUC_ROT") 
 			    {ss >> buff2; if(buff2=="TRUE") IMPOSED_NUC_ROT = true; else IMPOSED_NUC_ROT = false;}
+
+            else if (tag == "IMPOSED_NUC_DISP_SPEED")  
+			    {ss >> IMPOSED_NUC_DISP_SPEED;} 
+
+		    else if (tag == "IMPOSED_NUC_DISP") 
+			    {ss >> buff2; if(buff2=="TRUE") IMPOSED_NUC_DISP = true; else IMPOSED_NUC_DISP = false;}
 
             else if (tag == "TEST_SQUASH") 
 			    {ss >> buff2; if(buff2=="TRUE") TEST_SQUASH = true; else TEST_SQUASH = false;}
@@ -2370,6 +2380,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 
     return true;
 }
+
 
 int save_data(actin &theactin, int iteration)
 {

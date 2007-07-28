@@ -80,6 +80,7 @@
 #include "vtkStructuredGrid.h"
 #include "vtkHedgeHog.h"
 #include "vtkStreamLine.h"
+#include "vtkStreamTracer.h"
 #include "vtkTubeFilter.h"
 #include "vtkRungeKutta4.h"
 
@@ -246,7 +247,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
         iren = vtkRenderWindowInteractor::New();
         iren->SetRenderWindow(render_win);
         iren->Initialize();   
-    } else
+    } 
+    else
     {
         if(VTK_HIGHQUAL)	 // increase quality for non-interactive
         {
@@ -254,6 +256,13 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
         }
 
     }
+
+    // scale linewidths by aa factor unless rendering to screen
+    if (VIEW_VTK)
+        linewidths = (double)VTK_AA_FACTOR * VIS_LINETHICKNESS;
+    else
+        linewidths = 1.0;
+
 
     // write the colourmap file
     // this is kind of slow, so only write if doesn't already exist
@@ -474,34 +483,37 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     {
         cout << "Starting interactive mode" << endl;
         
-       
         iren->Start();
     } 
     else 
     {
-//#ifndef __APPLE__
-//        render_win->Render();
-//#else
-//        iren->Render();
-//#endif
+        if (OptVIEW_VTK)
+        {
+            // render to screen
+            iren->Render();
+        }
+
+        // render to file
         saveImage(framenumber);
-        //saveVRML(framenumber);
+        //saveVRML(framenumber); // save vrml last (have to change lighting before vrml save for some reason)
+
     }
+
+
     
     // clear all actors from the renderer
-    //renderer->RemoveAllProps();
-    // this reuse of renderer seems to cause segfaults in vtk.
-    //renderer->Delete();
-    // CHECK: order matters in deletion of these objects
-    // otherwise too many X Servers error.
-    //render_win->RemoveRenderer(renderer);
 
 #if VTK_MAJOR_VERSION < 5
     renderer->RemoveAllProps();
 #else
     renderer->RemoveAllViewProps();
 #endif
-    
+        
+    // this reuse of renderer seems to cause segfaults in vtk.
+    // CHECK: order matters in deletion of these objects
+    // otherwise too many X Servers error.
+
+    //render_win->RemoveRenderer(renderer);
     
     //renderer->Delete();
 }
@@ -605,7 +617,7 @@ void CometVtkVis::saveImage(int framenumber)
     sprintf(tmpfilename , "%s%s_%05i.bmp", TEMPDIR, file_prefix.c_str(), framenumber );
     sprintf(filename    , "%s%s_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, BMP_OUTPUT_FILETYPE.c_str());
 
-    cout << "Saving " << filename << endl;
+    //cout << "Saving " << filename << endl;
   
 
     //vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
@@ -704,6 +716,15 @@ void CometVtkVis::saveVRML(int framenumber)
     sprintf(vrmltmpfilename , "%s%s_%05i.wrl", TEMPDIR, file_prefix.c_str(), framenumber );
     sprintf(vrmlfilename , "%s%s_%05i.wrz", VRMLDIR, file_prefix.c_str(), framenumber );
 
+
+    // for some reason directional lights don't seem to work for vrml
+    // so remove them and switch on ambient lighting:
+
+    renderer->GetLights()->RemoveAllItems();
+
+    renderer->SetAmbient(0.8,0.8,0.8);
+
+
     cout << "Saving " << vrmlfilename << endl;
 
 	vtkVRMLExporter *VRMLExporter = vtkVRMLExporter::New();
@@ -711,10 +732,11 @@ void CometVtkVis::saveVRML(int framenumber)
 	VRMLExporter->SetInput( render_win );
     VRMLExporter->SetFileName( vrmltmpfilename );
     VRMLExporter->Write();    
+
     VRMLExporter->Delete();
   
     char command1[1024];
-    sprintf(command1 , "gzip %s; mv %s.gz %s ", vrmltmpfilename, vrmltmpfilename, vrmlfilename );
+    sprintf(command1 , "gzip -f -c %s > %s ", vrmltmpfilename, vrmlfilename );
     system(command1);
 }
 
@@ -829,9 +851,9 @@ void CometVtkVis::add_capsule_to_assembly(vtkAssembly* nucleator_actor, bool wir
         endcap2_actor->GetProperty()->SetColor(0, 0, 0);
         body_actor->GetProperty()->SetColor(0, 0, 0);
 
-        endcap1_actor->GetProperty()->SetLineWidth((double)VTK_AA_FACTOR * VIS_LINETHICKNESS / 2.0);
-        endcap2_actor->GetProperty()->SetLineWidth((double)VTK_AA_FACTOR * VIS_LINETHICKNESS / 2.0);
-        body_actor->GetProperty()->SetLineWidth((double)VTK_AA_FACTOR * VIS_LINETHICKNESS / 2.0);
+        endcap1_actor->GetProperty()->SetLineWidth(linewidths / 2);
+        endcap2_actor->GetProperty()->SetLineWidth(linewidths / 2);
+        body_actor->GetProperty()->SetLineWidth(linewidths / 2);
     }
     
     //assemble nucleator from parts
@@ -1386,16 +1408,13 @@ void CometVtkVis::addflow()
     hedgehog->SetInput(sgrid);
     hedgehog->SetScaleFactor(10);   
 
-    //vtkPolyData * data = vtkPolyData::New();
-    //data->SetSource(sgrid->Get);
-
 
 
     //vtkRungeKutta4 *integ = vtkRungeKutta4::New();
 
-    //vtkStreamLine *flowStreamer = vtkStreamLine::New();
+    //vtkStreamTracer *flowStreamer = vtkStreamTracer::New();
 
-    //flowStreamer->SetInput(hedgehog->GetOutput());
+    //flowStreamer->SetInput(sgrid->GetO);
     //flowStreamer->SetSource(hedgehog->GetOutput());
     //flowStreamer->SetStartPosition(RADIUS, RADIUS, RADIUS);
     //flowStreamer->SetMaximumPropagationTime(500);
@@ -1419,7 +1438,7 @@ void CometVtkVis::addflow()
 
     //renderer->AddActor(flowtubeactor);
 
-     //flowtubeactor->Delete();
+    //flowtubeactor->Delete();
     
     vtkPolyDataMapper *sgridMapper = vtkPolyDataMapper::New();
     sgridMapper->SetInput(hedgehog->GetOutput());
@@ -2030,7 +2049,7 @@ void CometVtkVis::addLinks()
   //lines_actor->GetProperty()->SetAmbient(2.0);
   //lines_actor->GetProperty()->SetDiffuse(2.0);
   //lines_actor->GetProperty()->SetSpecular(2.0);
-  lines_actor->GetProperty()->SetLineWidth((double)VTK_AA_FACTOR * VIS_LINETHICKNESS);
+  lines_actor->GetProperty()->SetLineWidth(linewidths);
   lines_actor->SetMapper(map);
   map->Delete();
   //render

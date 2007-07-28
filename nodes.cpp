@@ -186,8 +186,8 @@ int nodes::save_data(ofstream &ostr)
 	 << x << " " << y << " " << z << " " 
      << delta << " "
      << delta_sum << " "
-     << unit_vec_posn << " "
-     << pos_in_nuc_frame << " "
+//     << unit_vec_posn << " "
+//     << pos_in_nuc_frame << " "
 //     << previous_pos_in_nuc_frame << " "
 	 << linkforce_transverse << " " 
 	 << linkforce_radial << " " 
@@ -231,8 +231,8 @@ bool nodes::load_data(ifstream &istrm)
      >> x >> y >> z 
      >> delta
      >> delta_sum
-     >> unit_vec_posn
-     >> pos_in_nuc_frame
+//     >> unit_vec_posn
+//     >> pos_in_nuc_frame
 //     >> previous_pos_in_nuc_frame
 	 >> linkforce_transverse 
 	 >> linkforce_radial 
@@ -322,6 +322,8 @@ bool nodes::load_data(ifstream &istrm)
     if( ch!=')' ){
 	cout << "error in checkpoint file, xlinkdelays 'NN)' expected" 
 	     << endl;
+
+    setunitvec();
 
 	return false;
     }

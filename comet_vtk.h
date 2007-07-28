@@ -73,6 +73,7 @@ class CometVtkVis {
   vtkJPEGReader *tx_reader;
 
   double radius_pixels, capsule_length_pixels;
+  double linewidths;
   
   //bool OptsInteractive;    // changed to POST_VTK_VIEW
   bool OptsRenderNucleator;
