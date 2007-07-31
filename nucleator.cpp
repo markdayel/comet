@@ -803,7 +803,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
         // but this is a good approximation)
 
         // so, point on surface if infinite friction, i.e. project last node position onto surface
-        
+            
         inffrictionpoint = eject_point(nodepos);
 
         // point on surface if zero friction, i.e. project current position onto surface

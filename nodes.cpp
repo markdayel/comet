@@ -54,7 +54,9 @@ links_broken(0)
 
     posnoflastgridupdate.zero();
 
+    listoflinks.resize(0);
     listoflinks.reserve(MAX_EXPECTED_LINKS);
+    
 
 	//colour.setcol(0);
  
@@ -88,7 +90,9 @@ links_broken(0)
 
 	clearstats();
 
+    listoflinks.resize(0);
 	listoflinks.reserve(MAX_EXPECTED_LINKS);
+    
 
 	//colour.setcol(0);
     
@@ -475,6 +479,7 @@ void nodes::setgridcoords(void)
 
 void nodes::addlink(nodes& linkto, const double& dist)
 {
+    assert( &linkto != 0);
 
 	listoflinks.push_back(links(linkto,dist));
 	ptheactin->linksformed++;
@@ -494,7 +499,7 @@ void nodes::removelink(const nodes* linkednode)
 		                          i != listoflinks.end() ;
 							    ++i )
 	{	 
-		if (i->linkednodeptr == linkednode)
+		if ( (i->linkednodeptr == linkednode) || ( i->linkednodeptr == 0) )
 		{
 			listoflinks.erase(i);
             

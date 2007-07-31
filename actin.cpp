@@ -200,21 +200,24 @@ actin::actin(void)
 
 	for (int i = 0; i < NUM_THREAD_DATA_CHUNKS; ++i)
 	{
-		recti_near_nodes[i].reserve(1024);
-		nodes_on_same_gridpoint[i].reserve(1024);
-        nodes_by_thread[i].reserve(2 * MAXNODES / NUM_THREAD_DATA_CHUNKS);  // poss should / by NUM_THREAD_DATA_CHUNKS
-        linkremovefrom[i].reserve(128);
-        linkremoveto[i].reserve(128);
-
         recti_near_nodes[i].resize(0);
         nodes_on_same_gridpoint[i].resize(0);
         nodes_by_thread[i].resize(0);
         linkremovefrom[i].resize(0);
         linkremoveto[i].resize(0);
+        
+        recti_near_nodes[i].reserve(1024);
+		nodes_on_same_gridpoint[i].reserve(1024);
+        nodes_by_thread[i].reserve(2 * MAXNODES / NUM_THREAD_DATA_CHUNKS);  // poss should / by NUM_THREAD_DATA_CHUNKS
+        linkremovefrom[i].reserve(128);
+        linkremoveto[i].reserve(128);
 	}
 
 	//nodes_within_nucleator.reserve(10000);
-	linkformto.reserve(128);
+
+    linkformto.resize(0);
+    linkformto.reserve(128);
+
 
 	//cout << "Memory for Grid : " << (sizeof(nodes*)*GRIDSIZE*GRIDSIZE*GRIDSIZE/(1024*1024)) << " MB" << endl;
 
@@ -314,7 +317,9 @@ actin::actin(void)
 
     for(int i = 0; i != NUM_THREAD_DATA_CHUNKS; ++i)
     {
+        gridpointsbythread[i].resize(0);
         gridpointsbythread[i].reserve(2048);
+        
     }
     currentsmallestgridthread = 0;
 
@@ -331,9 +336,15 @@ actin::actin(void)
 
     node_tracks.resize(3);
 
+    node_tracks[xaxis].resize(0);
+    node_tracks[yaxis].resize(0);
+    node_tracks[zaxis].resize(0);
+
     node_tracks[xaxis].reserve(10240);
     node_tracks[yaxis].reserve(10240);
     node_tracks[zaxis].reserve(10240);
+
+
 
 } 
 
@@ -670,6 +681,12 @@ void actin::iterate()  // this is the main iteration loop call
         }
     }
 
+    if (highestnodecount == lowestnodetoupdate)
+    {
+        iteration_num++;
+        return;  // nothing to do
+    }
+
 
 	if ((lastsorthighestnode != highestnodecount)) // && ((iteration_num % 10) == 0))
 	{    // only do full sort periodically, if we have new nodes
@@ -702,7 +719,7 @@ void actin::iterate()  // this is the main iteration loop call
 
     // applyforces() moves the nodes and nucleator and updates the grid
     // also calls setunitvec() for the nodes, which notes the last node position (for friction)
-    applyforces();              
+    //applyforces();              
 	
     if (!TEST_SQUASH)
         nucleator_node_interactions();	    // do forcable node ejection	
@@ -711,6 +728,9 @@ void actin::iterate()  // this is the main iteration loop call
 	    squash(COVERSLIPGAP);	 
 
 	iteration_num++;
+
+    //cout << "Iternum " << iteration_num << "   nodecount " << highestnodecount << endl;
+    //cout.flush();
 
 	return;
 }
@@ -731,6 +751,7 @@ void actin::testforces_setup()
     {
         testnodes[i].resize(0);
         testnodes[i].reserve(1024);
+        
     }
 
     testforces_select_nodes(0,0);  // select *all* nodes within test section, and put into 'surface 0'
@@ -986,39 +1007,11 @@ bool actin::addlinks(nodes& linknode1, nodes& linknode2) const
 	if (linknode1.unit_vec_posn.dot( linknode2 - linknode1 ) < - 0.1)
 	   return false;
 
-	// crosslink poisson distribution (max probability at XLINK_NODE_RANGE/5)
-
-	//pxlink = ((double)2.7*dist/(XLINK_NODE_RANGE/(double)5))
-	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5));
-
-	// divide by dist*dist to compensate for increase numbers of nodes at larger distances
-
-
-
-	//pxlink = ((( (double) 2.7 / (XLINK_NODE_RANGE/(double)5) )
-	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5) ) ));
-
-	// normal distrib with center around 1/2 of XLINK_NODE_RANGE
-	// and scale magnitude by 1/(XLINK_NODE_RANGE^2) to compensate for increased
-	// number of nodes at this distance shell
-
-	//if ((node[linknode1].z <0) || (node[linknode2].z <0))
- 	//	return 0;
-
-	// was using this one before 28 march:
-	// (poissonian with max at XLINK_NODE_RANGE/5):
-	//pxlink = ((( (double) 2.7 / (XLINK_NODE_RANGE/(double)5) )
-	//						*exp(-dist/(XLINK_NODE_RANGE/(double)5) ) )/dist);
-
-
-	// was using this (gaussian with max at XLINK_NODE_RANGE/2) for a bit:
-	//pxlink = exp( -40*(dist-(XLINK_NODE_RANGE/2))*(dist-(XLINK_NODE_RANGE/2)))/(dist*dist*XLINK_NODE_RANGE*XLINK_NODE_RANGE);
-	
-	//double pxlink = 1;
+    // find distance
 
 	double dist = calcdist(linknode1,linknode2);
 
-	//double pxlink = P_XLINK * exp(-4*dist/XLINK_NODE_RANGE);
+	// calculate probability whether to link or not
 	
     double pxlink;
     
@@ -1026,6 +1019,7 @@ bool actin::addlinks(nodes& linknode1, nodes& linknode2) const
         pxlink = P_XLINK * (1 - dist / XLINK_NODE_RANGE);
     else
         pxlink = P_XLINK;
+
 
 	if ( prob_to_bool(pxlink) )
     {
@@ -1127,6 +1121,9 @@ void actin::nucleator_node_interactions()
 void actin::collisiondetection(void)
 {  
 
+    if (highestnodecount == lowestnodetoupdate)
+        return; // nothing to do
+
     fill(donenode.begin(), donenode.begin()+highestnodecount, false);
     
     // do collision detection
@@ -1226,6 +1223,9 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 {	
     // cast arg
     const thread_data* const dat = (thread_data*) arg;
+
+    if (nodes_by_thread[dat->threadnum].size() == 0)
+        return NULL; // nothing to do
 
 	const double local_NODE_REPULSIVE_RANGEsqared = NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE;
 
@@ -1631,6 +1631,9 @@ void actin::addapplyforcesthreads(const int threadnumoffset, const int &lowestno
         if (end > highestnodenum)
             end = highestnodenum;
 
+        if (start == end)
+            continue;
+
         applyforces_thread_data_array[threadnumoffset + i].startnode = node.begin() + start;
         applyforces_thread_data_array[threadnumoffset + i].endnode = node.begin() + end;
         applyforces_thread_data_array[threadnumoffset + i].threadnum = threadnumoffset + i;
@@ -1705,6 +1708,7 @@ void* actin::applyforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 
 void actin::linkforces()
 {
+   
 
     // remove the links that were broken last time
     for(int threadnum=0; threadnum<NUM_THREAD_DATA_CHUNKS; ++threadnum)
@@ -1719,16 +1723,22 @@ void actin::linkforces()
         linkremoveto[threadnum].resize(0);
     }
    
+    if (highestnodecount == lowestnodetoupdate)
+        return;  // nothing to do
+
 
     // parcel out the work for the threads
 
     int numthreadnodes, start, end;
+
 
     numthreadnodes = (highestnodecount-lowestnodetoupdate) / NUM_THREAD_DATA_CHUNKS;
 
     // if there is a remainder, distribute it between the threads
     if (((highestnodecount-lowestnodetoupdate) % NUM_THREAD_DATA_CHUNKS) != 0)
         numthreadnodes += 1;
+
+
 
     if (currentlyusingthreads && USETHREAD_LINKFORCES)
     {
@@ -1741,6 +1751,9 @@ void actin::linkforces()
             // allocation will overrun end of nodes, so truncate
             if (end > highestnodecount)
                 end = highestnodecount;
+
+            if (start == end)
+                continue; // nothing to do
 
             //if (i==NUM_THREAD_DATA_CHUNKS-1)
 	        //{	// put remainder in last thread (cludge for now)
@@ -1775,6 +1788,10 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
     // cast arg
     const thread_data* const dat = (thread_data*) arg;
  
+
+    if (dat->startnode == dat->endnode)
+        return NULL;    // nothing to do
+
     double dist, force;
     vect nodeposvec, disp;
     vect forcevec;
@@ -1787,15 +1804,21 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 //    vect energyvec;
 #endif
 
+    assert( &(*(dat->startnode)) != 0);
 
     // go through all nodes
     for(vector <nodes>::iterator i_node  = dat->startnode;
                                  i_node != dat->endnode;
                                ++i_node)
     {   
+        assert( &(*(i_node)) != 0);
+
         // make sure they have links and are polymers
-	    if ((i_node->listoflinks.size() == 0) || (!i_node->polymer))
+        if ((i_node->listoflinks.empty() ) || (!i_node->polymer))
 	        continue;
+
+        cout << "Thread " << dat->threadnum << " List size " << (int)i_node->listoflinks.size() << endl;
+            cout.flush();
 
     	// store the node position for later calculation of link lengths
 	    nodeposvec = *i_node;
@@ -1804,8 +1827,21 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 		for (vector <links>::iterator i_link  = i_node->listoflinks.begin();
                                       i_link != i_node->listoflinks.end();
                                     ++i_link )
-		{	 
-			assert( !i_link->broken ); // if link not broken  (shouldn't be here if broken anyway)
+		{	
+            cout << "Link Thread " << dat->threadnum << " " << endl;
+            cout.flush();
+
+            assert( &(*(i_link)) != 0);
+
+       //     if (( i_link->linkednodeptr == 0) || (i_link->broken))
+       //     {
+       //     	linkremovefrom[dat->threadnum].push_back(&(*i_node));
+			    //linkremoveto[dat->threadnum].push_back(i_link->linkednodeptr);
+       //         continue;
+       //     }
+
+            assert( i_link->linkednodeptr != 0);
+            assert( !i_link->broken ); // if link not broken  (shouldn't be here if broken anyway)
 
 			disp = nodeposvec - *(i_link->linkednodeptr);
 			dist = disp.length();
@@ -1869,7 +1905,7 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
 				linkremoveto[dat->threadnum].push_back(i_link->linkednodeptr);
 			} 
 
-		}
+        }
 		
 
     }

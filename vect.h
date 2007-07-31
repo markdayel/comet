@@ -18,6 +18,7 @@ removed without prior written permission from the author.
 //#include "stdafx.h"
 
 
+                                                                                 
 
 class vect
 {

@@ -101,6 +101,7 @@ void TaskQueue::create_threads(const int num_workerthreads)
 
 void TaskQueue::start_tasks()
 {
+    
     // ! ! ! ! REVISIT: add a wait if there are threads working ??  
     assert(ready == false);
   
@@ -110,11 +111,15 @@ void TaskQueue::start_tasks()
     
     // set predicate and start the team
     ntasks_todo = (int) tasks.size(); // number in the queue
-    ready = true;
-    int err = pthread_cond_broadcast(&start);
-    if(err != 0){
-	std::cerr << "error starting the team" << std::endl;
-    }
+
+    //if (ntasks_todo > 0)
+    //{
+        ready = true;
+        int err = pthread_cond_broadcast(&start);
+        if(err != 0){
+	    std::cerr << "error starting the team" << std::endl;
+        }
+    //}
     
     unlockteam();
 }
@@ -141,6 +146,9 @@ void TaskQueue::wait_to_finish_tasks()
 
 void TaskQueue::complete_queued_tasks()
 {
+    //if (tasks.size() == 0)
+    //    return;  // nothing to do
+
     start_tasks();
     wait_to_finish_tasks();
 }

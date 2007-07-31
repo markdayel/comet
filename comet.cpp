@@ -2748,19 +2748,21 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 			    actin::processfgbg xfg, yfg, zfg;
 
-			    xfg = yfg = zfg = actin::runbg;
-    			
-			    if (Z_BMP)
-			    {
-				    zfg = actin::runfg;
-			    }
-			    else 
-			    {
-				    if (Y_BMP)
-					    yfg = actin::runfg;
-                    else
-   					    xfg = actin::runfg;
-			    }
+			    //xfg = yfg = zfg = actin::runbg;
+    			//
+			    //if (Z_BMP)
+			    //{
+				   // zfg = actin::runfg;
+			    //}
+			    //else 
+			    //{
+				   // if (Y_BMP)
+					  //  yfg = actin::runfg;
+       //             else
+   				//	    xfg = actin::runfg;
+			    //}
+
+                xfg = yfg = zfg = actin::runfg;
 
 			    theactin.savebmp(filenum, xaxis, xfg, true); 
 			    theactin.savebmp(filenum, yaxis, yfg, true); 
