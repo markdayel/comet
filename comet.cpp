@@ -626,7 +626,7 @@ int main(int argc, char* argv[])
 	}
 
 	if (USE_THREADS)
-		cout << "Running in multithreaded mode with " << NUM_THREADS << " threads (including parent)" << endl;
+		cout << "Running in multithreaded mode with " << NUM_THREADS << " threads" << endl;
 	else
 		cout << "Running in Single Threaded mode" << endl;
 
@@ -635,6 +635,7 @@ int main(int argc, char* argv[])
 	collision_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
 	linkforces_thread_data_array.resize(NUM_THREAD_DATA_CHUNKS);
 	applyforces_thread_data_array.resize(4 * NUM_THREAD_DATA_CHUNKS);
+
 
 
 

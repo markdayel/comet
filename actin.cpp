@@ -323,6 +323,22 @@ actin::actin(void)
     }
     currentsmallestgridthread = 0;
 
+    for (int i=0; i != NUM_THREAD_DATA_CHUNKS; ++i)
+    {
+        collision_thread_data_array[i].endnode = node.begin();
+        collision_thread_data_array[i].startnode = node.begin();
+        collision_thread_data_array[i].threadnum = i;
+
+        linkforces_thread_data_array[i].endnode = node.begin();
+        linkforces_thread_data_array[i].startnode = node.begin();
+        linkforces_thread_data_array[i].threadnum = i;
+
+        applyforces_thread_data_array[i].endnode = node.begin();
+        applyforces_thread_data_array[i].startnode = node.begin();
+        applyforces_thread_data_array[i].threadnum = i;
+
+    }
+
 
     lasttestsurfacesavedposn = testsurfaceposn = DBL_MAX;
     testsurfacerotation = 0;
@@ -624,7 +640,7 @@ void actin::iterate()  // this is the main iteration loop call
 {
 	if (USE_THREADS)   // only use threads when we have enough nodes
 	{
-		if (highestnodecount > 400)
+		if (highestnodecount > 0)
 			currentlyusingthreads = true;
 		else
 			currentlyusingthreads = false;
@@ -719,7 +735,7 @@ void actin::iterate()  // this is the main iteration loop call
 
     // applyforces() moves the nodes and nucleator and updates the grid
     // also calls setunitvec() for the nodes, which notes the last node position (for friction)
-    //applyforces();              
+    applyforces();              
 	
     if (!TEST_SQUASH)
         nucleator_node_interactions();	    // do forcable node ejection	
@@ -1631,7 +1647,7 @@ void actin::addapplyforcesthreads(const int threadnumoffset, const int &lowestno
         if (end > highestnodenum)
             end = highestnodenum;
 
-        if (start == end)
+        if (start >= end)
             continue;
 
         applyforces_thread_data_array[threadnumoffset + i].startnode = node.begin() + start;
@@ -1752,13 +1768,15 @@ void actin::linkforces()
             if (end > highestnodecount)
                 end = highestnodecount;
 
-            if (start == end)
+            if (start >= end)
                 continue; // nothing to do
 
             //if (i==NUM_THREAD_DATA_CHUNKS-1)
 	        //{	// put remainder in last thread (cludge for now)
 		       // end += highestnodecount % NUM_THREAD_DATA_CHUNKS;
 	        //}
+
+            //cout << "Adding Links job " << start << " to " << end << " in thread " << i << endl;
 
 	        linkforces_thread_data_array[i].startnode = node.begin() + start;
 	        linkforces_thread_data_array[i].endnode = node.begin() + end;
@@ -1817,8 +1835,8 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
         if ((i_node->listoflinks.empty() ) || (!i_node->polymer))
 	        continue;
 
-        cout << "Thread " << dat->threadnum << " List size " << (int)i_node->listoflinks.size() << endl;
-            cout.flush();
+        //cout << "Thread " << dat->threadnum << " List size " << (int)i_node->listoflinks.size() << endl;
+        //cout.flush();
 
     	// store the node position for later calculation of link lengths
 	    nodeposvec = *i_node;
@@ -1828,18 +1846,10 @@ void * actin::linkforcesdowork(void* arg)//, pthread_mutex_t *mutex)
                                       i_link != i_node->listoflinks.end();
                                     ++i_link )
 		{	
-            cout << "Link Thread " << dat->threadnum << " " << endl;
-            cout.flush();
+            //cout << "Link Thread " << dat->threadnum << " " << endl;
+            //cout.flush();
 
             assert( &(*(i_link)) != 0);
-
-       //     if (( i_link->linkednodeptr == 0) || (i_link->broken))
-       //     {
-       //     	linkremovefrom[dat->threadnum].push_back(&(*i_node));
-			    //linkremoveto[dat->threadnum].push_back(i_link->linkednodeptr);
-       //         continue;
-       //     }
-
             assert( i_link->linkednodeptr != 0);
             assert( !i_link->broken ); // if link not broken  (shouldn't be here if broken anyway)
 
