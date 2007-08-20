@@ -40,13 +40,14 @@ removed without prior written permission from the author.
 // #define NON_RANDOM 1   // keep nucleating from same places
 
 #if defined (__SSE__) 
-//#define USE_SSE_APPROX_SQRT 1
+#define USE_SSE_APPROX_SQRT 1
 #endif
 
 //#define TIMERCPUTIME  // timers report cpu time instead of wall time
 
-// mersennetwister.h is causing bus error for some reason...
-//#define USE_MERSENNE 1
+// we use gnu scientific library for uniform random number generation
+// comment out this line to default to using the system's rand()
+#define USE_GSL_RANDOM 1
 
 
 // test optimizations
@@ -185,13 +186,15 @@ enum projection
 #include "semaphore.h"
 #include "threadedtaskqueue.h"
 
-#ifdef USE_MERSENNE
+#ifdef USE_GSL_RANDOM
 
-#include "MersenneTwister.h"
+#include <gsl/gsl_rng.h>
 
-extern vector <MTRand> mers_rand;
+//extern const gsl_rng_type * randomnumT;
+extern gsl_rng * randomnum;
 
 #endif
+
 
 //class actin;
 
@@ -271,13 +274,13 @@ extern bool NOBGIMAGEMAGICK;
 
 	//#define MYDOUBLE float	// set precision
 
-	#define SQRT_ACCURACY_LOSS (double) 0.000000000001
+	#define SQRT_ACCURACY_LOSS  0.000000000001f
 
 #else
 
 	//#define MYDOUBLE double	// set precision
 
-	#define SQRT_ACCURACY_LOSS (double) 0.0000000000000000001
+	#define SQRT_ACCURACY_LOSS  0.0000000000000000001
 
 #endif
 
@@ -462,6 +465,7 @@ extern int NODE_XLINK_GRIDSEARCH;
 extern short int GRIDSIZE;
 
 extern bool BMP_TRACKS;
+extern bool TRACKS_NO_STATIONARY_NODE;
 
 extern double TRACK_MIN_RANGE;
 extern double TRACK_MAX_RANGE;
@@ -567,35 +571,48 @@ extern actin *ptheactin;
          return x;
  }
 
- inline double SSErsqrt(double & x)
+ inline double SSErsqrt(const double & x)
  {
      return (double) SSErsqrt((float)x);
  }
 
- inline double SSEsqrt(double & x)
+ inline double SSEsqrt(const double & x)
  {
-     return (double) SSEsqrt((float)x);
+     //return (double) SSEsqrt((float)x);
+     return x * (double) SSErsqrt((float)x);
  }
+
+ //inline double SSErsqrt(double x)
+ //{
+ //    return (double) SSErsqrt((float)x);
+ //}
+
+ //inline double SSEsqrt(double x)
+ //{
+ //    //return (double) SSEsqrt((float)x);
+ //    return x * (double) SSErsqrt((float)x);
+ //}
 
 #else
 
- inline float SSErsqrt(float x) {
-
+ inline float SSErsqrt(const float &x) 
+ {
          return 1 / sqrt(x);  
  }
   
- inline float SSEsqrt(float x) {
+ inline float SSEsqrt(const float &x) 
+ {
  
          return sqrt(x);  
 
  }
 
- inline double SSErsqrt(double & x)
+ inline double SSErsqrt(const double & x)
  {
      return 1 / sqrt(x);
  }
 
- inline double SSEsqrt(double & x)
+ inline double SSEsqrt(const double & x)
  {
      return sqrt(x);
  }
@@ -604,17 +621,22 @@ extern actin *ptheactin;
 #endif
 
 
+//inline double calcdist(const double & xdist, const double & ydist, const double & zdist)
+//{
+//	double sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
+//	if (sqr < SQRT_ACCURACY_LOSS)
+//	{
+//		//cout << "Accuracy loss: 3D dist close to zero. Increase math accuracy or reduce DELTA_T" << endl;
+//		//cout.flush();
+//		return SQRT_ACCURACY_LOSS;
+//	}
+//	else
+//		return SSEsqrt(sqr);
+//}
+
 inline double calcdist(const double & xdist, const double & ydist, const double & zdist)
 {
-	double sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
-	if (sqr < SQRT_ACCURACY_LOSS)
-	{
-		//cout << "Accuracy loss: 3D dist close to zero. Increase math accuracy or reduce DELTA_T" << endl;
-		//cout.flush();
-		return SQRT_ACCURACY_LOSS;
-	}
-	else
-		return SSEsqrt(sqr);
+		return SSEsqrt(xdist*xdist + ydist*ydist + zdist*zdist);
 }
 
 inline double calcdist(const double & xdist, const double & ydist) 
@@ -679,22 +701,21 @@ inline void endian_swap(unsigned int& x)
 	    (x<<24);
 }
 
-#ifdef USE_MERSENNE
+#ifdef USE_GSL_RANDOM
 
 inline bool prob_to_bool(const double & prob)
 {
-    return (mers_rand[0].rand() < prob);
+    return (gsl_rng_uniform(randomnum) < prob);
 }
 
-// version for threads
-inline bool prob_to_bool(const double & prob, const unsigned int & thread)
+inline bool prob_to_bool(const double & prob, const unsigned int & )
 {
-    return (mers_rand[thread].rand() < prob);
+    return (gsl_rng_uniform(randomnum) < prob);
 }
 
 inline double rand_0to1()
 {
-    return (mers_rand[0].rand());
+    return gsl_rng_uniform(randomnum);
 }
 
 #else

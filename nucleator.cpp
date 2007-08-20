@@ -792,6 +792,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
         //vect rotated_last_delta_position = last_delta_position;
         //ptheactin->world_to_nuc_rot.rotate(rotated_last_delta_position);
 
+        //nodepos = eject_point(nodepos);
         nodepos += last_delta_position;  // move by the nucleator motion
 
         // the combination of these two rotations brings the point into the nucleator frame
@@ -845,7 +846,7 @@ bool nucleator::collision(nodes &node_world)//(double &x, double &y, double &z)
 
 #ifndef SEED_INSIDE
 
-    //node_world.pos_in_nuc_frame -= node_disp / inertia;  // move the node *back* scaled by movibility (since nucleator should move this much)
+    node_world.pos_in_nuc_frame -= node_disp / inertia;  // move the node *back* scaled by movibility (since nucleator should move this much)
 
     move_nuc(oldpos,node_disp);  // move the nucleator
 

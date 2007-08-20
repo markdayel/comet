@@ -50,63 +50,86 @@ class vect
 	    return;
 	}
 
-    inline vect operator+(const vect &param) const
-	{
-	    vect tmp;
-	    
-	    tmp.x = x + param.x;
-	    tmp.y = y + param.y;
-	    tmp.z = z + param.z;
-	    
-	    return tmp;
-	}
+ //   inline vect operator+(const vect &param) const
+	//{
+	//    vect tmp;
+	//    
+	//    tmp.x = x + param.x;
+	//    tmp.y = y + param.y;
+	//    tmp.z = z + param.z;
+	//    
+	//    return tmp;
+	//}
 
     
+ //   inline vect operator-(const vect &param) const
+	//{
+	//    vect tmp;
+	//    
+	//    tmp.x = x - param.x;
+	//    tmp.y = y - param.y;
+	//    tmp.z = z - param.z;
+	//    
+	//    return tmp;
+	//}
+
+
+
     inline vect operator-(const vect &param) const
 	{
-	    vect tmp;
-	    
-	    tmp.x = x - param.x;
-	    tmp.y = y - param.y;
-	    tmp.z = z - param.z;
-	    
-	    return tmp;
-	}
-    
-    inline vect operator-(void) const
-	{
-	    vect tmp;
-	    
-	    tmp.x = -x;
-	    tmp.y = -y;
-	    tmp.z = -z;
-	    
-	    return tmp;
-	}
-    
-    
-    inline vect operator*(const double &scale) const
-	{
-	    vect tmp;
-	    
-	    tmp.x = x * scale;
-	    tmp.y = y * scale;
-	    tmp.z = z * scale;
-	    
-	    return tmp;
+        return vect (*this) -= param;
 	}
 
-	inline vect operator/(const double &scale) const
+    inline vect operator+(const vect &param) const
 	{
-	    vect tmp;
-		double recip_scale = 1/scale;
-	    
-	    tmp.x = x * recip_scale;
-	    tmp.y = y * recip_scale;
-	    tmp.z = z * recip_scale;
-	    
-	    return tmp;
+        return vect (*this) += param;
 	}
+
+    inline vect operator*(const double &param) const
+	{
+        return vect (*this) *= param;
+	}
+
+    inline vect operator/(const double &param) const
+	{
+        return vect (*this) /= param;
+	}
+
+    
+ //   inline vect operator-(void) const
+	//{
+	//    vect tmp;
+	//    
+	//    tmp.x = -x;
+	//    tmp.y = -y;
+	//    tmp.z = -z;
+	//    
+	//    return tmp;
+	//}
+    
+    
+ //   inline vect operator*(const double &scale) const
+	//{
+	//    vect tmp;
+	//    
+	//    tmp.x = x * scale;
+	//    tmp.y = y * scale;
+	//    tmp.z = z * scale;
+	//    
+	//    return tmp;
+	//}
+
+	//inline vect operator/(const double &scale) const
+	//{
+	//    vect tmp;
+	//	double recip_scale = 1/scale;
+	//    
+	//    tmp.x = x * recip_scale;
+	//    tmp.y = y * recip_scale;
+	//    tmp.z = z * recip_scale;
+	//    
+	//    return tmp;
+	//}
     
     
     inline vect& operator+=(const vect &param)

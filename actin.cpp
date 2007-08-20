@@ -1099,7 +1099,7 @@ void actin::nucleator_node_interactions()
                 forcevec = disp * (force/dist);  // '(disp/dist)' is just to get the unit vector
                                                  // note this vector in nucleator frame!
                 
-                vect tomove = -forcevec * NODE_FORCE_TO_DIST;  // convert force to distance
+                vect tomove = forcevec * -NODE_FORCE_TO_DIST  ;  // convert force to distance
 
 				p_nuc->move_nuc(nodepos,tomove);		// add to nucleator movement vector
 
@@ -1314,7 +1314,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                 {
                     recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
 
-                    if ( recipdist < (1.0/0.05) )
+                    if ( recipdist < 1.0/0.05 )  // 1.0/0.05 (i.e. if less than dist of 0.05)
                        rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
 //                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
@@ -1328,7 +1328,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                 {
                     recipdist = 1.0 / ( - p_sameGPnode->x - COVERSLIPGAP );
 
-                    if ( recipdist < (1.0/0.05) )
+                    if ( recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
                        rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
 //                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
@@ -1348,6 +1348,8 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 			// of these nodes, calculate euclidian dist
 			nodeposvec = *p_sameGPnode;	// get xyz of our node
 
+		
+
             // loop over adjacent gridpoints
 	        for (x = minx; x != maxx; ++x)
             {
@@ -1356,8 +1358,11 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
 	                for (z = minz; z != maxz; ++z) 
                     {
-			            for(NODEGRIDTYPE <nodes*>::iterator nearnode  = NODEGRID(x,y,z).begin(); 
-									                        nearnode != NODEGRID(x,y,z).end();
+						const NODEGRIDTYPE <nodes*>::iterator nearnode_begin  = NODEGRID(x,y,z).begin();
+						const NODEGRIDTYPE <nodes*>::iterator nearnode_end    = NODEGRID(x,y,z).end();
+						
+			            for(NODEGRIDTYPE <nodes*>::iterator nearnode  = nearnode_begin; 
+									                        nearnode != nearnode_end;
 		                                                  ++nearnode) 
 			            {
                             p_nearnode = *nearnode;
@@ -1388,7 +1393,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
                                 // n.b. if you change this function, also change the energy function below to be the integral
                                // F_R = M_R (( \frac{d_R}{d} )^{P_R} -1)
-                               if (recipdist < (1.0/0.05) )
+                               if (recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
                                    rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
                                    //rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                                else
@@ -1989,7 +1994,7 @@ void actin::set_nodes_to_track(const projection & proj)
                 (node[i].creation_iter_num < TRACK_MAX_RANGE * InterRecordIterations))  // is within range?
             {
                 nodes_to_track.push_back(i);
-                if (furthest_node_posn < tempposn.z)
+                if (furthest_node_posn > tempposn.z)
                 {
                     furthest_node_posn = tempposn.z;
                     stationary_node_number = i;
@@ -1999,8 +2004,13 @@ void actin::set_nodes_to_track(const projection & proj)
 
     }
 
+
     cout << "Tracking " << (int) nodes_to_track.size() << " nodes" << endl;
-    cout << "Node #" << stationary_node_number << " chosen to be stationary" << endl;
+
+    if (TRACKS_NO_STATIONARY_NODE)
+        stationary_node_number = 0;
+    else
+        cout << "Node #" << stationary_node_number << " chosen to be stationary" << endl;
 
 }
 
@@ -2059,6 +2069,9 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     //if (!BMP_FIX_BEAD_ROTATION)
     //    projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
     
+
+    //cout << "Projection Rotation :" << endl << projection_rotation << endl;
+
 
     // create copy of the node positions
 
@@ -2785,7 +2798,9 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
         vector <int> temptracknodenumbers, tracknodenumbers;
         temptracknodenumbers.resize(0);
-        tracknodenumbers.resize(0);     
+        tracknodenumbers.resize(0); 
+                
+        //cout << "Tot Nodes to track: " << node_tracks[proj].size() << endl;
 
         for (vector <tracknodeinfo>::iterator i_trackpoint  = node_tracks[proj].begin(); 
                                               i_trackpoint != node_tracks[proj].end(); 
@@ -2794,6 +2809,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             if (i_trackpoint->frame % TRACKFRAMESTEP == 0)   // only plot points *added* every trackframestep frames
                 temptracknodenumbers.push_back(i_trackpoint->nodenum);
         }
+
+        //cout << "Selected Nodes to track: " << temptracknodenumbers.size() << endl;
 
         for (vector <int>::iterator i_pointnodenum  = temptracknodenumbers.begin(); 
                                     i_pointnodenum != temptracknodenumbers.end(); 
@@ -2808,6 +2825,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             }
         }
 
+        //cout << "ReSelected Nodes to track: " << tracknodenumbers.size() << endl;
 
         // go through node by node
 
@@ -2839,6 +2857,9 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
                     x = i_trackpoint->x;
                     y = i_trackpoint->y;
+
+                    //x = pixels(i_trackpoint->y - origin.y) + bmpcenterx + movex;                      
+		            //y = pixels(i_trackpoint->z - origin.z) + bmpcentery + movey;
 
                     //x = xgmax + movex + pixels(tmp_nodepos.y - temp_nuc_posn.y) +  bmpcenterx;                      
 		            //y = ygmax + movey + pixels(tmp_nodepos.z - temp_nuc_posn.z) + bmpcentery;
@@ -2953,7 +2974,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     }
 
-    // opruninfo << command3 << endl;
+    //opruninfo << command3 << endl;
 
 	p_outbmpfile->flush();  // must flush the bitmap file buffer before calling imagemagick
 

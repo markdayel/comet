@@ -94,6 +94,7 @@ bool POST_VTK = false;
 bool POST_STATS = false;
 bool POST_REPORTS = false;
 bool BMP_TRACKS = false;
+bool TRACKS_NO_STATIONARY_NODE = true;
 bool BMP_LINKS_BROKEN = false;
 bool BMP_TRANSVERSELINKSONLY = false;
 bool BMP_RADIALLINKSONLY = false;
@@ -337,13 +338,15 @@ vector<struct thread_data>  applyforces_thread_data_array;
 
 actin *ptheactin;
 
-#ifdef USE_MERSENNE
+#ifdef USE_GSL_RANDOM
 
-#include "MersenneTwister.h"
+#include <gsl/gsl_rng.h>
 
-vector <MTRand> mers_rand;
+//const gsl_rng_type * randomnumT;
+gsl_rng * randomnum;
 
 #endif
+
 
 vector <nodes>	actin::node;
 vector <bool>   actin::donenode;	
@@ -599,6 +602,17 @@ int main(int argc, char* argv[])
 
 #endif
 
+    #ifdef USE_GSL_RANDOM
+
+    gsl_rng_env_setup();
+
+    //randomnumT = gsl_rng_default;  // gsl_rng_mt19937 is the default anyway
+    //randomnumT = gsl_rng_mt19937;  // Mersenne Twister
+    //randomnum = gsl_rng_alloc (randomnumT);
+
+    randomnum = gsl_rng_alloc (gsl_rng_mt19937);
+
+    #endif
 
   	NUM_THREADS = atoi(argv[1]);
 
@@ -890,7 +904,10 @@ int main(int argc, char* argv[])
         else if (tag == "BMP_TRACKS") 
 			{ss >> buff2; if (buff2=="TRUE") BMP_TRACKS = true; else BMP_TRACKS = false;}
 
-        else if (tag == "TRACK_MIN_RANGE") 
+        else if (tag == "TRACKS_NO_STATIONARY_NODE") 
+			{ss >> buff2; if (buff2=="TRUE") TRACKS_NO_STATIONARY_NODE = true; else TRACKS_NO_STATIONARY_NODE = false;}
+
+        else if (tag == "TRACK_MIN_RANGE")       
 			{ss >> TRACK_MIN_RANGE;} 
 
         else if (tag == "TRACK_MAX_RANGE") 
@@ -1313,6 +1330,13 @@ int main(int argc, char* argv[])
 	}
 
 
+    if (BMP_TRACKS)
+    {
+    	POST_PROCESS = true;
+		POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
+        POST_BMP = true;
+        POST_VTK = false;
+    }
     
     // change bitmap directory if outputting links
     if (BMP_LINKS_BROKEN)
@@ -1678,16 +1702,30 @@ int main(int argc, char* argv[])
 
 	srand(rand_num_seed);
 
-#ifdef USE_MERSENNE
+#ifdef USE_GSL_RANDOM
 
-    mers_rand.resize(NUM_THREAD_DATA_CHUNKS);
+    cerr << "Using Gnu Scientific Library Mersenne Twister for random number generation" << endl;
 
-    for (int i=0; i !=  NUM_THREAD_DATA_CHUNKS; ++i)
-    {
-        mers_rand[NUM_THREAD_DATA_CHUNKS].seed( rand_num_seed + NUM_THREAD_DATA_CHUNKS );
-    }
+gsl_rng_set(randomnum, rand_num_seed);
+
+#else
+
+    cerr << "Warning: Gnu Scientific Library not enabled.  Using rand() for random number generation." << endl;
 
 #endif
+
+
+
+//#ifdef USE_MERSENNE_THREADS
+//
+//    mers_rand.resize(NUM_THREAD_DATA_CHUNKS);
+//
+//    for (int i=0; i !=  NUM_THREAD_DATA_CHUNKS; ++i)
+//    {
+//        mers_rand[NUM_THREAD_DATA_CHUNKS].seed( rand_num_seed + NUM_THREAD_DATA_CHUNKS );
+//    }
+//
+//#endif
 
 	int filenum = 0;
 	double polrate = 0;
@@ -2251,7 +2289,14 @@ srand( rand_num_seed );
 		<< ((endtime-starttime) / 60) % 60 << "m " 
 		<< ((endtime-starttime) % 60) << "s " << endl;
 
-          
+	#ifdef USE_GSL_RANDOM
+
+	gsl_rng_env_setup();
+
+	gsl_rng_free (randomnum);
+
+	#endif
+			  
 	
 	exit(EXIT_SUCCESS);
 }

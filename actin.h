@@ -168,7 +168,7 @@ public:
 	void writebitmapfile(ofstream& outbmpfile, const Dbl2d& imageR, const Dbl2d& imageG, const Dbl2d& imageB);
 	void writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, const int & bitmapheight);
 	
-	void savebmp(const int &filenum, const projection & proj, const processfgbg& fgbg, bool writefile);
+    void savebmp(const int &filenum, const projection & proj, const processfgbg& fgbg, bool writefile);
 
     double getvaluetoplot(nodes & mynode, links & mylink);
     double getvaluetoplot(nodes & mynode);
