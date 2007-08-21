@@ -38,7 +38,7 @@ removed without prior written permission from the author.
                         // but is required if we want force/energy graphs)
 
 // #define NON_RANDOM 1   // keep nucleating from same places
-
+                                             
 #if defined (__SSE__) 
 #define USE_SSE_APPROX_SQRT 1
 #endif
@@ -553,21 +553,23 @@ extern actin *ptheactin;
 
  inline float SSErsqrt(float x) {
  
-         __asm {
+     __asm {
             movss xmm0, x
             rsqrtss xmm0, xmm0
             movss x, xmm0
-         }
+     }
+
          return x;
  }
   
  inline float SSEsqrt(float x) {
 
-         __asm {
+     __asm {
             movss xmm0, x
             sqrtss xmm0, xmm0
             movss x, xmm0
-         }
+     }
+
          return x;
  }
 
@@ -621,23 +623,23 @@ extern actin *ptheactin;
 #endif
 
 
-//inline double calcdist(const double & xdist, const double & ydist, const double & zdist)
-//{
-//	double sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
-//	if (sqr < SQRT_ACCURACY_LOSS)
-//	{
-//		//cout << "Accuracy loss: 3D dist close to zero. Increase math accuracy or reduce DELTA_T" << endl;
-//		//cout.flush();
-//		return SQRT_ACCURACY_LOSS;
-//	}
-//	else
-//		return SSEsqrt(sqr);
-//}
-
 inline double calcdist(const double & xdist, const double & ydist, const double & zdist)
 {
-		return SSEsqrt(xdist*xdist + ydist*ydist + zdist*zdist);
+	double sqr = (xdist*xdist + ydist*ydist + zdist*zdist);
+	if (sqr < SQRT_ACCURACY_LOSS)
+	{   // we need this check.  Else NaN's propegate through the program
+		//cout << "Accuracy loss: 3D dist close to zero. Increase math accuracy or reduce DELTA_T" << endl;
+		//cout.flush();
+		return SQRT_ACCURACY_LOSS;
+	}
+	else
+		return SSEsqrt(sqr);
 }
+
+//inline double calcdist(const double & xdist, const double & ydist, const double & zdist)
+//{
+//		return SSEsqrt(xdist*xdist + ydist*ydist + zdist*zdist);
+//}
 
 inline double calcdist(const double & xdist, const double & ydist) 
 {
@@ -732,7 +734,7 @@ inline bool prob_to_bool(const double & prob, const unsigned int & )
 
 inline double rand_0to1()
 {
-    return ((double)rand() * (double) RECIP_RAND_MAX);
+    return ((double)rand() * RECIP_RAND_MAX);
 }
 
 #endif

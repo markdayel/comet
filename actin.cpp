@@ -1358,6 +1358,9 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
 	                for (z = minz; z != maxz; ++z) 
                     {
+                        // this loop is where all the computational time is taken...
+
+
 						const NODEGRIDTYPE <nodes*>::iterator nearnode_begin  = NODEGRID(x,y,z).begin();
 						const NODEGRIDTYPE <nodes*>::iterator nearnode_end    = NODEGRID(x,y,z).end();
 						
@@ -1394,7 +1397,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                                 // n.b. if you change this function, also change the energy function below to be the integral
                                // F_R = M_R (( \frac{d_R}{d} )^{P_R} -1)
                                if (recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
-                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
+                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE * recipdist * recipdist - 1 );
                                    //rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                                else
                                    rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
