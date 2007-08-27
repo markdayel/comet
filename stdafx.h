@@ -40,7 +40,12 @@ removed without prior written permission from the author.
 // #define NON_RANDOM 1   // keep nucleating from same places
                                              
 #if defined (__SSE__) 
-#define USE_SSE_APPROX_SQRT 1
+    // only define for GCC4, because my SSE asm instruction don't compile on gcc3
+    // (i.e. I don't know the gcc3 syntax...)
+    #if __GNUC__ > 3
+    //    #define USE_SSE_APPROX_SQRT 1
+    #endif
+
 #endif
 
 //#define TIMERCPUTIME  // timers report cpu time instead of wall time

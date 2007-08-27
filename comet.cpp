@@ -1332,6 +1332,8 @@ int main(int argc, char* argv[])
 
     if (BMP_TRACKS)
     {
+        cout << "Plotting Bitmap Tracks.  Post processing will use one thread only." << endl;
+
     	POST_PROCESS = true;
 		POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
         POST_BMP = true;
@@ -1704,7 +1706,7 @@ int main(int argc, char* argv[])
 
 #ifdef USE_GSL_RANDOM
 
-    cerr << "Using Gnu Scientific Library Mersenne Twister for random number generation" << endl;
+    cerr << "Using Mersenne Twister (Gnu Scientific Library) for random number generation" << endl;
 
 gsl_rng_set(randomnum, rand_num_seed);
 
@@ -2566,6 +2568,7 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
 // otherwise I've lumped it with the bitmap processing here
 // the frame counting is seperated, but consider unifying 
 // this once we are happy with how it all works.
+
 void postprocess(nucleator& nuc_object, actin &theactin, 
 		 vector<int> &postprocess_iterations, char* argv[], const vector<vect> & nodeposns)
 {
@@ -2728,6 +2731,8 @@ void postprocess(nucleator& nuc_object, actin &theactin,
             theactin.set_nodes_to_track(xaxis); // only track x-axis for now
 
             theactin.savebmp(filenum, xaxis, actin::runfg, false);  // sets the initial offset position
+
+            theactin.node_tracks[xaxis].resize(0); // clear the node tracks (after the last bmp call)
 
             POST_PROC_ORDER = 1;  // must go forwards for tracks
         }

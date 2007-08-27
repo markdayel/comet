@@ -223,6 +223,8 @@ bool nodes::load_data(ifstream &istrm)
     // read in from the stream to our private data
     char ch;
 
+    ifstream::pos_type filepos = istrm.tellg();
+
     istrm >> nodenum 
 	 >> harbinger 
 	 >> polymer 
@@ -275,6 +277,8 @@ bool nodes::load_data(ifstream &istrm)
 
     if (nodenum < 0)
     {
+ 
+
         cout << "Nodenum < 0 : " << nodenum << endl;
         cout << "Read: " << nodenum << " " 
 	         << x << " " << y << " " << z << " " 
@@ -298,10 +302,32 @@ bool nodes::load_data(ifstream &istrm)
 
     // check we are ready to read links
     if(ch!=':' ){
-	cout << "error in checkpoint file, end of node ':' expected" 
+	cout << endl << "error in checkpoint file at pos " << filepos << ", end of node ':' expected" 
 	     << endl;
 
-            cout << "Read: " << nodenum << " " 
+
+            if (!istrm.seekg(filepos, ios::beg))
+                cout << "Unable to report text of line (seek failed)" << endl;
+            else
+            {
+
+                char line1[16480];//,line2[16480],line3[16480];
+
+                istrm.getline(line1, 16480, '\n');
+                ifstream::pos_type pos1= istrm.tellg();
+                //istrm.getline(line2, 16480, '\n');
+                //ifstream::pos_type pos2= istrm.tellg();
+                //istrm.getline(line3, 16480, '\n');
+                //ifstream::pos_type pos3= istrm.tellg();
+
+                cout << "Read the following line:" << endl
+                     << pos1 << " " << line1 << endl;
+                     //<< pos2 << " " << line2 << endl
+                     //<< pos3 << " " << line3 << endl;
+            
+            }
+
+            cout << "Interpreted as follows: " << nodenum << " " 
 	         << x << " " << y << " " << z << " " 
 	         << harbinger << " " 
 	         << polymer << " " 

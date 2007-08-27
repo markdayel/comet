@@ -1244,6 +1244,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
         return NULL; // nothing to do
 
 	const double local_NODE_REPULSIVE_RANGEsqared = NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE;
+    const double local_NODE_REPULSIVE_MAGscaled = 0.06 * NODE_REPULSIVE_MAG;
 
     vect nodeposvec;
     double distsqr;
@@ -1315,7 +1316,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                     recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
 
                     if ( recipdist < 1.0/0.05 )  // 1.0/0.05 (i.e. if less than dist of 0.05)
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( local_NODE_REPULSIVE_RANGEsqared * recipdist * recipdist - 1 );
 //                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
                        rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * (  NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05)  - 1 ) ;
@@ -1329,10 +1330,10 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                     recipdist = 1.0 / ( - p_sameGPnode->x - COVERSLIPGAP );
 
                     if ( recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
+                       rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
 //                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
+                       rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
 //                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
 
                     p_sameGPnode->rep_force_vec.x += 2*rep_force_mag ;
@@ -1397,10 +1398,10 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                                 // n.b. if you change this function, also change the energy function below to be the integral
                                // F_R = M_R (( \frac{d_R}{d} )^{P_R} -1)
                                if (recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
-                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE * recipdist * recipdist - 1 );
+                                   rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared * recipdist * recipdist - 1 );
                                    //rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                                else
-                                   rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
+                                   rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared / (0.05 * 0.05) - 1 ) ;
                                    //rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
  
 
@@ -1961,7 +1962,11 @@ void actin::set_axisrotation(const projection &  proj, rotationmatrix & axisrota
 
 void actin::set_nodes_to_track(const projection & proj)
 {
+
     nodes_to_track.resize(0);
+
+    vector <int> temp_nodes_to_track;
+    temp_nodes_to_track.resize(0);
 
     rotationmatrix axisrotation;
     set_axisrotation(proj, axisrotation);
@@ -1979,6 +1984,9 @@ void actin::set_nodes_to_track(const projection & proj)
     //if (!BMP_FIX_BEAD_ROTATION)
     //    projection_rotation.rotatematrix(nuc_to_world_rot); // compensates for bead rotation
 
+    vect nucposn = ptheactin->p_nuc->position;
+    //projection_rotation.rotate(nucposn);
+
     cout << "Selecting nodes from frame " << TRACK_MIN_RANGE << " to " << TRACK_MAX_RANGE << endl;
 
     vect tempposn;
@@ -1986,27 +1994,92 @@ void actin::set_nodes_to_track(const projection & proj)
     stationary_node_number = 0;    // node to lock the bitmap to (opposite the sym break direction)
     double furthest_node_posn = 0;
 
+    
+
     for(int i=0; i != highestnodecount; ++i)
     {
-        tempposn = node[i];
+        if (node[i].dist_from_surface < 0.1)  // skip ones in contact with surface
+            continue;
+
+        if ((node[i].creation_iter_num < TRACK_MIN_RANGE * InterRecordIterations) || 
+            (node[i].creation_iter_num > TRACK_MAX_RANGE * InterRecordIterations))  // is within range?
+            continue;
+
+        tempposn = node[i] - nucposn;
         projection_rotation.rotate(tempposn);
 
-        if (fabs(tempposn.x) * 4 < RADIUS)  // if within RADIUS/2
+        if (fabs(tempposn.x) * 8 < RADIUS)  // if within RADIUS/4
         {
-            if ((node[i].creation_iter_num > TRACK_MIN_RANGE * InterRecordIterations) && 
-                (node[i].creation_iter_num < TRACK_MAX_RANGE * InterRecordIterations))  // is within range?
+
+            temp_nodes_to_track.push_back(i);
+            if (furthest_node_posn > tempposn.z)
             {
-                nodes_to_track.push_back(i);
-                if (furthest_node_posn > tempposn.z)
-                {
-                    furthest_node_posn = tempposn.z;
-                    stationary_node_number = i;
-                 }
-            }
+                furthest_node_posn = tempposn.z;
+                stationary_node_number = i;
+             }
+
         }
 
     }
 
+    //nodes_to_track.push_back(stationary_node_number);
+
+    //vect lastpos = node[stationary_node_number];
+    //projection_rotation.rotate(lastpos);
+
+ 
+
+    for(unsigned int i = 0; i != temp_nodes_to_track.size(); ++i)
+    {   // this number of nodes to track
+        
+        if (i == 20)
+            break;         // limit to 20 nodes
+
+
+        int max_dist_posn = 0;
+        double temp_max_dist = -1.0;
+
+        for(unsigned int j = 0; j != temp_nodes_to_track.size(); ++j)
+        {  
+            vect curpos = node[temp_nodes_to_track[j]];
+            projection_rotation.rotate(curpos);
+
+            // find how far (dist squared) from all the current nodes
+
+            double tot_dist_sq = 0.0;
+
+            for(vector<int>::iterator i_nodenum2  = nodes_to_track.begin(); 
+			                          i_nodenum2 != nodes_to_track.end();
+			                        ++i_nodenum2)
+            {
+                // make sure node not already in list
+                if ( find(nodes_to_track.begin(), nodes_to_track.end(), temp_nodes_to_track[j]) != nodes_to_track.end() )
+                    continue;
+
+                if ( *i_nodenum2 == temp_nodes_to_track[j])
+                    continue;
+
+                vect topos = node[*i_nodenum2];
+                projection_rotation.rotate(topos);
+
+                tot_dist_sq+=(curpos-topos).sqrlength();
+            }
+
+            if (tot_dist_sq > temp_max_dist)
+            {
+                temp_max_dist =tot_dist_sq;
+                max_dist_posn = j;
+            }
+            
+        }
+
+        nodes_to_track.push_back(temp_nodes_to_track[max_dist_posn]);
+
+    }
+
+
+
+    //nodes_to_track.assign(temp_nodes_to_track.begin(), temp_nodes_to_track.end());
 
     cout << "Tracking " << (int) nodes_to_track.size() << " nodes" << endl;
 
@@ -2482,7 +2555,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         if (POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
             ( find(nodes_to_track.begin(), nodes_to_track.end(), i) != nodes_to_track.end() ))  // is node in the track list?
         {
-            node_tracks[proj].push_back(tracknodeinfo(i, x, y, filenum));
+            //if (filenum > TRACK_MIN_RANGE) // start plotting after this point
+                node_tracks[proj].push_back(tracknodeinfo(i, x, y, filenum));
         }
 
 	}
