@@ -39,6 +39,8 @@
 
 #include "comet_vtk.h"
 
+#include "tracknodeinfo.h"
+
 // vtk
 #include "vtkCubeSource.h"
 //
@@ -76,6 +78,8 @@
 #include "vtkTransformPolyDataFilter.h"
 
 //#include "vtkSmartPointer.h"
+
+#include "vtkCardinalSpline.h"
 
 #include "vtkStructuredGrid.h"
 #include "vtkHedgeHog.h"
@@ -462,7 +466,7 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     }
 
     if(OptsRenderAxes)
-	    addflow();
+	    addTracks();
         //addAxes();
        
     // if(OptsRenderText)        
@@ -1674,6 +1678,164 @@ void CometVtkVis::addNodes()
     
     map->Delete();
 }
+
+void CometVtkVis::addTracks()
+{
+    
+
+
+    //double lastx = 0, lasty = 0, lastz = 0;
+    VTK_FLOAT_PRECISION x,y,z;
+
+    //const int TRACKFRAMESTEP = 5;
+
+    // not the most efficient algorythm, but good enough...
+
+    // find the track node numbers, make sure more than two of each
+
+    vector <int> temptracknodenumbers, tracknodenumbers;
+    temptracknodenumbers.resize(0);
+    tracknodenumbers.resize(0); 
+            
+    //cout << "Tot Nodes to track: " << node_tracks[proj].size() << endl;
+
+    for (vector <tracknodeinfo>::iterator i_trackpoint  = ptheactin->node_tracks[xaxis].begin(); 
+                                          i_trackpoint != ptheactin->node_tracks[xaxis].end(); 
+                                        ++i_trackpoint)
+    {
+        if (i_trackpoint->frame % TRACKFRAMESTEP == 0)   // only plot points *added* every trackframestep frames
+            temptracknodenumbers.push_back(i_trackpoint->nodenum);
+    }
+
+    //cout << "Selected Nodes to track: " << temptracknodenumbers.size() << endl;
+
+    for (vector <int>::iterator i_pointnodenum  = temptracknodenumbers.begin(); 
+                                i_pointnodenum != temptracknodenumbers.end(); 
+                              ++i_pointnodenum)
+    {
+        if (count(temptracknodenumbers.begin(), temptracknodenumbers.end(), *i_pointnodenum) > 2)
+        { // make sure more than 3 points for the line
+            if (find(tracknodenumbers.begin(), tracknodenumbers.end(), *i_pointnodenum) == tracknodenumbers.end())
+            {   // if node not already there, add it
+                tracknodenumbers.push_back(*i_pointnodenum);  
+            }
+        }
+    }
+
+    //cout << "ReSelected Nodes to track: " << tracknodenumbers.size() << endl;
+
+    // go through node by node
+
+    for (vector <int>::iterator i_pointnodenum  = tracknodenumbers.begin(); 
+                                i_pointnodenum != tracknodenumbers.end(); 
+                              ++i_pointnodenum)
+    {
+
+        // we do this for each line...
+     
+        // add the track points
+
+        vtkCardinalSpline *aSplineX = vtkCardinalSpline::New();
+        vtkCardinalSpline *aSplineY = vtkCardinalSpline::New();
+        vtkCardinalSpline *aSplineZ = vtkCardinalSpline::New();
+
+        vtkPoints *inputPoints = vtkPoints::New();
+
+        vtkPoints *outputPoints = vtkPoints::New();
+
+
+        int time = 0;
+
+        for (vector <tracknodeinfo>::iterator i_trackpoint  = ptheactin->node_tracks[xaxis].begin(); 
+                                              i_trackpoint != ptheactin->node_tracks[xaxis].end(); 
+                                            ++i_trackpoint)
+        {   
+            if (i_trackpoint->nodenum == *i_pointnodenum)
+            {
+                x=i_trackpoint->x + ptheactin->p_nuc->position.x;
+                y=i_trackpoint->y + ptheactin->p_nuc->position.y;
+                z=i_trackpoint->z + ptheactin->p_nuc->position.z;
+
+                convert_to_vtkcoord(x, y, z);
+
+                aSplineX->AddPoint(time, x);
+                aSplineY->AddPoint(time, y);
+                aSplineZ->AddPoint(time, z);
+
+                inputPoints->InsertPoint(time, x, y, z); 
+
+                ++time;
+
+            }
+        }
+
+        int numberOfInputPoints = time;
+
+        // now have the track points for the line, interpolate...
+
+        int numberOfOutputPoints = 20 * numberOfInputPoints; // spline will have 20 times as many points
+
+        vtkPolyData *profileData = vtkPolyData::New();
+
+        vtkCellArray *lines = vtkCellArray::New();
+        lines->InsertNextCell(numberOfOutputPoints);
+        
+        //cout << "Line" << endl;
+
+        for (int i = 0; i < numberOfOutputPoints; ++i)
+        {
+            double time = (double)(numberOfInputPoints - 1) / (double)(numberOfOutputPoints - 1) * (double)i;
+            outputPoints->InsertPoint(i, aSplineX->Evaluate(time), aSplineY->Evaluate(time), aSplineZ->Evaluate(time));
+            
+            //cout << "Point:" << aSplineX->Evaluate(time) << "," << aSplineY->Evaluate(time) << "," << aSplineZ->Evaluate(time) << endl;
+
+            lines->InsertCellPoint(i);
+        }
+
+        profileData->SetPoints(outputPoints);
+        profileData->SetLines(lines);
+            
+        // Add thickness to the resulting line.
+        vtkTubeFilter *profileTubes = vtkTubeFilter::New();
+        profileTubes->SetNumberOfSides(8);
+        profileTubes->SetInput(profileData);
+        profileTubes->SetRadius(0.2);
+  
+
+        vtkPolyDataMapper *profileMapper = vtkPolyDataMapper::New();
+        profileMapper->SetInput(profileTubes->GetOutput());
+
+        vtkActor *profile = vtkActor::New();
+
+        profile->SetMapper(profileMapper);
+        profile->GetProperty()->SetDiffuseColor(1.0,0.0,0.0);
+        profile->GetProperty()->SetSpecular(.3);
+        profile->GetProperty()->SetSpecularPower(30);
+
+        renderer->AddActor(profile);
+
+        profile->Delete();
+        profileMapper->Delete();
+        profileTubes->Delete();
+        profileData->Delete();
+        lines->Delete();
+
+        aSplineX->Delete();
+        aSplineY->Delete();
+        aSplineZ->Delete();
+
+        inputPoints->Delete();
+        outputPoints->Delete();
+    }
+
+
+
+
+}
+
+
+
+
 
 bool CometVtkVis::convert_to_vtkcoord(VTK_FLOAT_PRECISION &x, VTK_FLOAT_PRECISION &y, VTK_FLOAT_PRECISION &z)
 {

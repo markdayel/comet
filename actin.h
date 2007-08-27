@@ -40,6 +40,9 @@ typedef vector<Dbl1d> Dbl2d;
 class nodes;
 class links;
 
+
+#include "tracknodeinfo.h"
+
 struct int_vect 
 {
 	int x,y,z;
@@ -56,26 +59,28 @@ public:
     vect origunitvec;
 };
 
-class tracknodeinfo
-{
-public:
-    tracknodeinfo(){};
-    ~tracknodeinfo(){};
-    //tracknodeinfo(int const & setnodenum, const vect & setposn, const vect & setnucposn, const rotationmatrix & setrotation, int const & setframe ):
-    tracknodeinfo(int const & setnodenum, const int & setx, const int & sety, int const & setframe ):
-    nodenum(setnodenum),frame(setframe),x(setx),y(sety)
-    {
-        //posn = setposn;
-        //nucposn = setnucposn;
-        //rotation = setrotation;
-    }  
-
-    int nodenum;
-    //vect posn, nucposn;
-    //rotationmatrix rotation;
-    int frame;
-    int x,y;
-};
+//class tracknodeinfo
+//{
+//public:
+//    tracknodeinfo(){};
+//    ~tracknodeinfo(){};
+//    //tracknodeinfo(int const & setnodenum, const vect & setposn, const vect & setnucposn, const rotationmatrix & setrotation, int const & setframe ):
+//    tracknodeinfo(int const & setnodenum, const double &setx, const double &sety, const double &setz,
+//        const int & setBMPx, const int & setBMPy, int const & setframe ):
+//    nodenum(setnodenum),frame(setframe),x(setx), y(sety), z(setz), BMPx(setBMPx), BMPy(setBMPy)
+//    {
+//        //posn = setposn;
+//        //nucposn = setnucposn;
+//        //rotation = setrotation;
+//    }  
+//
+//    int nodenum;
+//    //vect posn, nucposn;
+//    //rotationmatrix rotation;
+//    int frame;
+//    int BMPx,BMPy;
+//    double x,y,z;
+//};
 
 class linkform
 {

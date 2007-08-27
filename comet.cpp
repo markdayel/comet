@@ -1337,7 +1337,9 @@ int main(int argc, char* argv[])
     	POST_PROCESS = true;
 		POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
         POST_BMP = true;
-        POST_VTK = false;
+        //POST_VTK = false;
+        
+        VTK_MOVE_WITH_BEAD = true;
     }
     
     // change bitmap directory if outputting links

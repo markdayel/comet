@@ -1993,11 +1993,23 @@ void actin::set_nodes_to_track(const projection & proj)
 
     stationary_node_number = 0;    // node to lock the bitmap to (opposite the sym break direction)
     double furthest_node_posn = 0;
+    double restrictrange = DBL_MAX;
 
-    
+    unsigned int MAX_NODES_TO_TRACK = 60;
+
+    if (!POST_VTK) // only restrict if not plotting vtk tracks
+    {
+        restrictrange = RADIUS / 2;
+        MAX_NODES_TO_TRACK = 30;
+    }
+                      
+
 
     for(int i=0; i != highestnodecount; ++i)
-    {
+    {       
+        if (temp_nodes_to_track.size() == MAX_NODES_TO_TRACK)   // this should be in later loop (if we do the redistribute loop)
+                break;         // limit to 20 nodes
+        
         if (node[i].dist_from_surface < 0.1)  // skip ones in contact with surface
             continue;
 
@@ -2008,7 +2020,7 @@ void actin::set_nodes_to_track(const projection & proj)
         tempposn = node[i] - nucposn;
         projection_rotation.rotate(tempposn);
 
-        if (fabs(tempposn.x) * 8 < RADIUS)  // if within RADIUS/4
+        if (fabs(tempposn.x) < restrictrange)  // if within range
         {
 
             temp_nodes_to_track.push_back(i);
@@ -2029,57 +2041,57 @@ void actin::set_nodes_to_track(const projection & proj)
 
  
 
-    for(unsigned int i = 0; i != temp_nodes_to_track.size(); ++i)
-    {   // this number of nodes to track
-        
-        if (i == 20)
-            break;         // limit to 20 nodes
+    //for(unsigned int i = 0; i != temp_nodes_to_track.size(); ++i)
+    //{   // this number of nodes to track
+    //    
+    //    if (i == MAX_NODES_TO_TRACK)
+    //        break;         // limit to 20 nodes
 
 
-        int max_dist_posn = 0;
-        double temp_max_dist = -1.0;
+    //    int max_dist_posn = 0;
+    //    double temp_max_dist = -1.0;
 
-        for(unsigned int j = 0; j != temp_nodes_to_track.size(); ++j)
-        {  
-            vect curpos = node[temp_nodes_to_track[j]];
-            projection_rotation.rotate(curpos);
+    //    for(unsigned int j = 0; j != temp_nodes_to_track.size(); ++j)
+    //    {  
+    //        vect curpos = node[temp_nodes_to_track[j]];
+    //        projection_rotation.rotate(curpos);
 
-            // find how far (dist squared) from all the current nodes
+    //        // find how far (dist squared) from all the current nodes
 
-            double tot_dist_sq = 0.0;
+    //        double tot_dist_sq = 0.0;
 
-            for(vector<int>::iterator i_nodenum2  = nodes_to_track.begin(); 
-			                          i_nodenum2 != nodes_to_track.end();
-			                        ++i_nodenum2)
-            {
-                // make sure node not already in list
-                if ( find(nodes_to_track.begin(), nodes_to_track.end(), temp_nodes_to_track[j]) != nodes_to_track.end() )
-                    continue;
+    //        for(vector<int>::iterator i_nodenum2  = nodes_to_track.begin(); 
+			 //                         i_nodenum2 != nodes_to_track.end();
+			 //                       ++i_nodenum2)
+    //        {
+    //            // make sure node not already in list
+    //            if ( find(nodes_to_track.begin(), nodes_to_track.end(), temp_nodes_to_track[j]) != nodes_to_track.end() )
+    //                continue;
 
-                if ( *i_nodenum2 == temp_nodes_to_track[j])
-                    continue;
+    //            if ( *i_nodenum2 == temp_nodes_to_track[j])
+    //                continue;
 
-                vect topos = node[*i_nodenum2];
-                projection_rotation.rotate(topos);
+    //            vect topos = node[*i_nodenum2];
+    //            projection_rotation.rotate(topos);
 
-                tot_dist_sq+=(curpos-topos).sqrlength();
-            }
+    //            tot_dist_sq+=(curpos-topos).sqrlength();
+    //        }
 
-            if (tot_dist_sq > temp_max_dist)
-            {
-                temp_max_dist =tot_dist_sq;
-                max_dist_posn = j;
-            }
-            
-        }
+    //        if (tot_dist_sq > temp_max_dist)
+    //        {
+    //            temp_max_dist =tot_dist_sq;
+    //            max_dist_posn = j;
+    //        }
+    //        
+    //    }
 
-        nodes_to_track.push_back(temp_nodes_to_track[max_dist_posn]);
+    //    nodes_to_track.push_back(temp_nodes_to_track[max_dist_posn]);
 
-    }
+    //}
 
 
 
-    //nodes_to_track.assign(temp_nodes_to_track.begin(), temp_nodes_to_track.end());
+    nodes_to_track.assign(temp_nodes_to_track.begin(), temp_nodes_to_track.end());
 
     cout << "Tracking " << (int) nodes_to_track.size() << " nodes" << endl;
 
@@ -2555,8 +2567,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         if (POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
             ( find(nodes_to_track.begin(), nodes_to_track.end(), i) != nodes_to_track.end() ))  // is node in the track list?
         {
+            vect temppos=node[i] - p_nuc->position;
+
             //if (filenum > TRACK_MIN_RANGE) // start plotting after this point
-                node_tracks[proj].push_back(tracknodeinfo(i, x, y, filenum));
+                node_tracks[proj].push_back(tracknodeinfo(i, temppos.x, temppos.y, temppos.z,
+                                                        x, y, filenum));
         }
 
 	}
@@ -2932,8 +2947,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
                     // convert to pixels
 
-                    x = i_trackpoint->x;
-                    y = i_trackpoint->y;
+                    x = i_trackpoint->BMPx;
+                    y = i_trackpoint->BMPy;
 
                     //x = pixels(i_trackpoint->y - origin.y) + bmpcenterx + movex;                      
 		            //y = pixels(i_trackpoint->z - origin.z) + bmpcentery + movey;
