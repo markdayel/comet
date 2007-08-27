@@ -2720,24 +2720,45 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         theactin.node_tracks[yaxis].resize(0);
         theactin.node_tracks[zaxis].resize(0);
 
+
+
+        theactin.savenodetracks = true;  // save new nodetracks if not exist
+
+
         if (BMP_TRACKS)
         {
-            // load the first tracking frame
-            
-            iter = InterRecordIterations * (int)ceil(TRACK_MAX_RANGE);
+            // try to load existing tracks file
 
-            cout << "Loading frame " << (int)ceil(TRACK_MAX_RANGE) << " for track node selection" << endl;
+            theactin.savenodetracks = !theactin.load_nodetracks();  // if load fails, we will make new tracks
 
-            load_data(theactin, iter, false);
+            //cout << "Tot Nodes to track... " << ptheactin->node_tracks[xaxis].size() << endl;
 
-            theactin.set_nodes_to_track(xaxis); // only track x-axis for now
+            if (theactin.savenodetracks)    // make new tracks
+            {
+                // load the first tracking frame to choose new nodes
+                
+                iter = InterRecordIterations * (int)ceil(TRACK_MAX_RANGE);
 
-            theactin.savebmp(filenum, xaxis, actin::runfg, false);  // sets the initial offset position
+                cout << "Loading frame " << (int)ceil(TRACK_MAX_RANGE) << " for track node selection" << endl;
 
-            theactin.node_tracks[xaxis].resize(0); // clear the node tracks (after the last bmp call)
+                load_data(theactin, iter, false);
 
-            POST_PROC_ORDER = 1;  // must go forwards for tracks
+                theactin.set_nodes_to_track(xaxis); // only track x-axis for now
+
+                theactin.savebmp(filenum, xaxis, actin::runfg, false);  // sets the initial offset position
+
+                theactin.node_tracks[xaxis].resize(0); // clear the node tracks (after the last bmp call)
+
+                POST_PROC_ORDER = 1;  // must go forwards for tracks
+            }
+            else
+            {
+                cout << "'nodetracks.txt' file found,  old tracks loaded" << endl;
+            }                                          
+    
         }
+
+        //cout << "Tot Nodes to track... " << ptheactin->node_tracks[xaxis].size() << endl;
 
         // we can't create the vkt object here because we can't reuse the renderer without
         // causing segfaults for some reason
@@ -2822,6 +2843,11 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 			    theactin.savebmp(filenum, zaxis, zfg, true);
 
 			    cout << endl;
+
+                if (BMP_TRACKS && theactin.savenodetracks)
+                {
+                    theactin.save_nodetracks();  // save the node tracks
+                }
 
 		    }
 

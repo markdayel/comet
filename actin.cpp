@@ -360,6 +360,7 @@ actin::actin(void)
     node_tracks[yaxis].reserve(10240);
     node_tracks[zaxis].reserve(10240);
 
+    savenodetracks = true;
 
 
 } 
@@ -2102,6 +2103,87 @@ void actin::set_nodes_to_track(const projection & proj)
 
 }
 
+bool actin::load_nodetracks()
+{
+    /// load the node tracks already chosen
+
+    ifstream nodetrackfile("nodetracks.txt", ios::in);
+    
+    if (!nodetrackfile)
+        return false;
+
+
+    unsigned int numnodestotrack, numnodetracks;
+
+    nodetrackfile >> numnodestotrack;
+
+    nodes_to_track.resize(numnodestotrack);
+
+    cout << "Loading " << numnodestotrack << " nodes to track" << endl;
+    cout.flush();
+
+    for (unsigned int i=0; i != numnodestotrack; ++i)
+    {
+        nodetrackfile >> nodes_to_track[i];
+    }
+
+    //cout << "Loading node_tracks" << endl;
+    //cout.flush();
+
+    for (int axis = xaxis; axis <= zaxis; ++axis)
+    {
+        nodetrackfile >> numnodetracks;
+
+        node_tracks[axis].resize(numnodetracks);
+
+        for (unsigned int i=0; i != numnodetracks; ++i)
+        {
+            nodetrackfile >> node_tracks[axis][i];
+        }
+    }
+
+    nodetrackfile.close();
+
+    return true;
+}
+
+bool actin::save_nodetracks()
+{
+     /// save the node tracks already chosen
+
+    ofstream nodetrackfile("nodetracks.txt", ios::out | ios::trunc);
+    
+    if (!nodetrackfile)
+        return false;
+
+
+    nodetrackfile << nodes_to_track.size() << endl;
+
+    for (unsigned int i=0; i != nodes_to_track.size(); ++i)
+    {
+        nodetrackfile << nodes_to_track[i] << " ";
+    }
+
+    nodetrackfile << endl;
+
+    for (int axis = xaxis; axis <= zaxis; ++axis)
+    {
+        nodetrackfile << node_tracks[axis].size() << endl;
+
+        for (unsigned int i=0; i != node_tracks[axis].size(); ++i)
+        {
+            nodetrackfile << node_tracks[axis][i] << endl;
+        }
+    }
+
+    nodetrackfile.close();
+
+    return true;
+
+}
+
+
+
 void actin::savebmp(const int &filenum, const projection & proj, const processfgbg& fgbg, bool writefile)
 { 
 	// choose projection letter for filename etc.
@@ -2564,7 +2646,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
         // add the tracks data:
 
-        if (POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
+        if (savenodetracks && POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
             ( find(nodes_to_track.begin(), nodes_to_track.end(), i) != nodes_to_track.end() ))  // is node in the track list?
         {
             vect temppos=node[i] - p_nuc->position;

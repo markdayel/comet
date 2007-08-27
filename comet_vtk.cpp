@@ -1697,7 +1697,7 @@ void CometVtkVis::addTracks()
     temptracknodenumbers.resize(0);
     tracknodenumbers.resize(0); 
             
-    //cout << "Tot Nodes to track: " << node_tracks[proj].size() << endl;
+    //cout << "Tot Nodes to track: " << ptheactin->node_tracks[xaxis].size() << endl;
 
     for (vector <tracknodeinfo>::iterator i_trackpoint  = ptheactin->node_tracks[xaxis].begin(); 
                                           i_trackpoint != ptheactin->node_tracks[xaxis].end(); 

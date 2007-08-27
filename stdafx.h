@@ -346,6 +346,8 @@ extern int BMP_AA_FACTOR;
 
 extern double ELLIPSOID_STRETCHFACTOR;
 
+extern int SAVE_DATA_PRECISION;
+
 extern bool VTK_NUC_WIREFRAME;
 extern double VTK_MAX_NODE_DIST;
 extern bool VTK_PLOT_NUC_IMPACTS;

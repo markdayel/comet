@@ -127,6 +127,7 @@ public:
 
     vector <int> nodes_to_track;
     vector <vector <tracknodeinfo> > node_tracks;
+    bool savenodetracks; // whether we are creating new node tracks as we go
 
     static int lowestnodetoupdate;
 	int highestnodecount;
@@ -167,6 +168,10 @@ public:
 	void addapplyforcesthreads(const int threadnumoffset, const int &lowestnodenum, const int &highestnodenum);
 
     void set_nodes_to_track(const projection &  proj);
+
+    bool load_nodetracks();
+    bool save_nodetracks();
+
     void set_axisrotation(const projection &  proj, rotationmatrix & axisrotation);
 	
 
