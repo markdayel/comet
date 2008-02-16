@@ -114,7 +114,7 @@ class CometVtkVis {
 
   void set_mean_posns();
 
-  void buildVTK(int framenumber, vect & cameraposition, vect & cameratarget);
+  void buildVTK(const int &framenumber, vect & cameraposition, vect & cameratarget);
 
   void RestartRenderWindow();
   void addNucleator(bool wireframe);
@@ -133,14 +133,14 @@ class CometVtkVis {
   void addAxes();
   void addVoxelBound();
 
-  void addTracks();
+  void addTracks(const int &framenumber);
 
   void addflow();
 
   void set_transform_matrix(vtkMatrix4x4 * vtkmat, const rotationmatrix & rotmat) const;
 
   void SetFocalDepthPlanes(vtkPolyDataMapper *map);
-  void saveVRML(int framenumber);
+  void saveVRML(const int &framenumber);
   
   void setOptions();
   void reportOptions();
@@ -148,7 +148,7 @@ class CometVtkVis {
   void setProjection();
   void setProjection(vect & cameraposition,vect & cameratarget);
   void fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx);// ,double vd, double* min);
-  void saveImage(int framenumber);
+  void saveImage(const int &framenumber);
   void renderProjections(vtkRenderWindow *render_win, string base_filename);
   double getMeanNodeLinkForce(const int node_i);
 };

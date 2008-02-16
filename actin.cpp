@@ -154,13 +154,10 @@ actin::actin(void)
 
 	double x1, x2, w, y1; //, y2;
 
-	for (int i=0; i<speckle_array_size; i++)
-	{
-		// gaussian random numbers (see http://www.taygeta.com/random/gaussian.html)
-
+	for (int i=0; i !=speckle_array_size; ++i)
+	{   // gaussian random numbers for intensities
 		do
 		{
-
 			do
 			{
 				x1 = 2.0 * rand_0to1() - 1.0;
@@ -171,7 +168,6 @@ actin::actin(void)
 			w = sqrt( (-2.0 * log( w ) ) / w );
 
 			y1 = x1 * w;
-			//y2 = x2 * w;
 
 			y1 *= (1.0/7.0);
 			y1 += 0.5;
@@ -1080,6 +1076,7 @@ void actin::nucleator_node_interactions()
 
         if (i_node->stucktonucleator)
 		{
+       
             vect nodepos = *i_node;      // get the node position in world coords  
             world_to_nuc_frame(nodepos); // change to nucleator frame
 
@@ -1088,7 +1085,7 @@ void actin::nucleator_node_interactions()
 
             force = NUC_LINK_FORCE * dist;
     	    	        
-            if (force > NUC_LINK_BREAKAGE_FORCE)
+            if ((force > NUC_LINK_BREAKAGE_FORCE) || (i_node->nodenum < lowestnodetoupdate))
             {
                 //node[n].nucleator_link_force.zero();
                 i_node->stucktonucleator = false;   // no longer stuck
@@ -1102,7 +1099,7 @@ void actin::nucleator_node_interactions()
                 
                 vect tomove = forcevec * -NODE_FORCE_TO_DIST  ;  // convert force to distance
 
-				p_nuc->move_nuc(nodepos,tomove);		// add to nucleator movement vector
+				p_nuc->move_nuc(nodepos,tomove);		// add to nucleator movement vector in the nucleator frame
 
 
 
@@ -1454,6 +1451,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
             #ifdef PROXIMITY_VISCOSITY
                                 // do proximity-based viscosity
+
 					            if ((VISCOSITY) && (distsqr < VISC_DIST * VISC_DIST))
 					            {
 						            viscfactor = mymin(MAX_VISC_WEIGHTING,recipdist);
@@ -1996,20 +1994,20 @@ void actin::set_nodes_to_track(const projection & proj)
     double furthest_node_posn = 0;
     double restrictrange = DBL_MAX;
 
-    unsigned int MAX_NODES_TO_TRACK = 60;
+    
 
     if (!POST_VTK) // only restrict if not plotting vtk tracks
     {
         restrictrange = RADIUS / 2;
-        MAX_NODES_TO_TRACK = 30;
+        //MAX_NODES_TO_TRACK = 30;
     }
                       
 
 
     for(int i=0; i != highestnodecount; ++i)
     {       
-        if (temp_nodes_to_track.size() == MAX_NODES_TO_TRACK)   // this should be in later loop (if we do the redistribute loop)
-                break;         // limit to 20 nodes
+        //if (temp_nodes_to_track.size() == MAX_NODES_TO_TRACK)   // this should be in later loop (if we do the redistribute loop)
+        //        break;         // limit to 20 nodes
         
         if (node[i].dist_from_surface < 0.1)  // skip ones in contact with surface
             continue;
@@ -2035,64 +2033,100 @@ void actin::set_nodes_to_track(const projection & proj)
 
     }
 
-    //nodes_to_track.push_back(stationary_node_number);
+    cout << "There are " << (int) temp_nodes_to_track.size() << " nodes with the frame range given" << endl;
+
+    // start with the middle node furthest back:
+
+    nodes_to_track.push_back(stationary_node_number);
 
     //vect lastpos = node[stationary_node_number];
     //projection_rotation.rotate(lastpos);
 
  
 
-    //for(unsigned int i = 0; i != temp_nodes_to_track.size(); ++i)
-    //{   // this number of nodes to track
-    //    
-    //    if (i == MAX_NODES_TO_TRACK)
-    //        break;         // limit to 20 nodes
+    for(unsigned int i = 0; i != temp_nodes_to_track.size(); ++i)
+    {   // this number of nodes to track
+        
+        if (i == MAX_NODES_TO_TRACK)
+            break;         // limit to 20 nodes
 
 
-    //    int max_dist_posn = 0;
-    //    double temp_max_dist = -1.0;
+//        int max_dist_posn = 0;
+       
+        vector <int> nodeslist;
+        vector <double> closestdist;
 
-    //    for(unsigned int j = 0; j != temp_nodes_to_track.size(); ++j)
-    //    {  
-    //        vect curpos = node[temp_nodes_to_track[j]];
-    //        projection_rotation.rotate(curpos);
+        //nodeslist.resize(temp_nodes_to_track.size());
+        closestdist.resize(temp_nodes_to_track.size());
 
-    //        // find how far (dist squared) from all the current nodes
+        for(unsigned int j = 0; j != temp_nodes_to_track.size(); ++j)
+        {  
+            // make sure node not already in list
+            if ( find(nodes_to_track.begin(), nodes_to_track.end(), temp_nodes_to_track[j]) != nodes_to_track.end() )
+                continue;
 
-    //        double tot_dist_sq = 0.0;
+            vect curpos = node[temp_nodes_to_track[j]];
+            projection_rotation.rotate(curpos);
 
-    //        for(vector<int>::iterator i_nodenum2  = nodes_to_track.begin(); 
-			 //                         i_nodenum2 != nodes_to_track.end();
-			 //                       ++i_nodenum2)
-    //        {
-    //            // make sure node not already in list
-    //            if ( find(nodes_to_track.begin(), nodes_to_track.end(), temp_nodes_to_track[j]) != nodes_to_track.end() )
-    //                continue;
+            // find how far (dist squared) from all the current nodes
 
-    //            if ( *i_nodenum2 == temp_nodes_to_track[j])
-    //                continue;
+//            double tot_dist_sq = 0.0;
 
-    //            vect topos = node[*i_nodenum2];
-    //            projection_rotation.rotate(topos);
+            double closest_dist = DBL_MAX;
+            //vector<int>::iterator closest = nodes_to_track.begin(); 
 
-    //            tot_dist_sq+=(curpos-topos).sqrlength();
-    //        }
+            for(vector<int>::iterator i_nodenum2  = nodes_to_track.begin(); 
+			                          i_nodenum2 != nodes_to_track.end();
+			                        ++i_nodenum2)
+            {
 
-    //        if (tot_dist_sq > temp_max_dist)
-    //        {
-    //            temp_max_dist =tot_dist_sq;
-    //            max_dist_posn = j;
-    //        }
-    //        
-    //    }
+                if ( *i_nodenum2 == temp_nodes_to_track[j])
+                    continue;   // make sure not self
 
-    //    nodes_to_track.push_back(temp_nodes_to_track[max_dist_posn]);
+                vect topos = node[*i_nodenum2];
+                projection_rotation.rotate(topos);
 
-    //}
+                double dist = (curpos-topos).length();
+
+                if (dist < closest_dist)
+                {
+                    closest_dist = dist;
+                    //closest = i_nodenum2;
+                }
+
+            }
+
+            closestdist[j] = closest_dist;   // distance
+            //nodeslist[j] = *closest;      // nodenum
+            
+        }
+
+        // find node with the highest closest distance (i.e. the furthest from the others)
+
+        double high_closest_dist = 0;
+        int   high_closest_dist_inx = 0;
+
+        for(unsigned int j = 0; j != temp_nodes_to_track.size(); ++j)
+        {
+            if (closestdist[j] > high_closest_dist)
+            {
+                high_closest_dist = closestdist[j];
+                high_closest_dist_inx = j;
+            }
+
+        }
+         
+        // add the node to the list
+
+        nodes_to_track.push_back(temp_nodes_to_track[high_closest_dist_inx]);
+
+        //cout << "Adding node " << high_closest_dist_inx << " ";
+
+    }
 
 
 
-    nodes_to_track.assign(temp_nodes_to_track.begin(), temp_nodes_to_track.end());
+    //nodes_to_track.assign(temp_nodes_to_track.begin(), temp_nodes_to_track.end());
 
     cout << "Tracking " << (int) nodes_to_track.size() << " nodes" << endl;
 
@@ -2646,10 +2680,13 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
         // add the tracks data:
 
-        if (savenodetracks && POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
+    if ((node[i].dist_from_surface > 0.01) && savenodetracks && POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
             ( find(nodes_to_track.begin(), nodes_to_track.end(), i) != nodes_to_track.end() ))  // is node in the track list?
         {
-            vect temppos=node[i] - p_nuc->position;
+           
+            vect temppos=node[i];// - p_nuc->position;
+
+            world_to_nuc_frame(temppos); // we add the node positions relative to the nucleator
 
             //if (filenum > TRACK_MIN_RANGE) // start plotting after this point
                 node_tracks[proj].push_back(tracknodeinfo(i, temppos.x, temppos.y, temppos.z,
@@ -2804,6 +2841,9 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     if (!writefile)
         return;
 
+    
+
+
 	double cagedispy = nucposn.y;
 	double cagedispz = nucposn.z;
 	int cagemovex = movex;
@@ -2815,6 +2855,11 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		cagemovex = p_nuc->segs.centerx - bmpcenterx - xgmax;
 		cagemovey = p_nuc->segs.centery - bmpcentery - ygmax + BMP_HEIGHT/4;
 	}
+
+    if (BMP_FIX_BEAD_MOVEMENT)
+    {
+        cagedispy = cagedispz = 0.0;
+    }
 
     const int CAGE_POINT_EXTENT = 4;
                                                        
@@ -2829,7 +2874,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 		    rot = *point;
 
-            nuc_to_world_rot.rotate(rot);
+            if (!BMP_FIX_BEAD_ROTATION)     
+                nuc_to_world_rot.rotate(rot);
 
             //sym_break_rotation_to_xy_plane.rotate(rot);        // rotates for the symmetry breaking direction
             //axisrotation.rotate(rot);           // and the projection
@@ -2980,7 +3026,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
                                               i_trackpoint != node_tracks[proj].end(); 
                                             ++i_trackpoint)
         {
-            if (i_trackpoint->frame % TRACKFRAMESTEP == 0)   // only plot points *added* every trackframestep frames
+            if ((i_trackpoint->frame % TRACKFRAMESTEP == 0) &&   // only plot points *added* every trackframestep frames
+                (filenum > i_trackpoint->frame))
                 temptracknodenumbers.push_back(i_trackpoint->nodenum);
         }
 
@@ -3788,6 +3835,15 @@ void actin::setdontupdates(void)
 	{
 		lowestnodetoupdate = 0;
 	}
+
+    for(vector <nodes>::iterator	i_node  = node.begin(); 
+									i_node != node.begin()+lowestnodetoupdate;
+							      ++i_node)
+    {
+        if (i_node->stucktonucleator) // must not allow the non-updated nodes to stay attached!
+            i_node->stucktonucleator = false;
+
+    }
 }
 
 void actin::set_sym_break_axes(bool constrain_to_zy_plane, vect sym_break_direction)

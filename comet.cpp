@@ -94,6 +94,9 @@ bool POST_VTK = false;
 bool POST_STATS = false;
 bool POST_REPORTS = false;
 bool BMP_TRACKS = false;
+
+unsigned int MAX_NODES_TO_TRACK = 30;
+
 bool TRACKS_NO_STATIONARY_NODE = true;
 bool BMP_LINKS_BROKEN = false;
 bool BMP_TRANSVERSELINKSONLY = false;
@@ -441,16 +444,31 @@ int main(int argc, char* argv[])
 
     cout << endl; 
 
+    cout << "               comet --- a bead motility simulator" << endl << endl;
+
+    //char BOLD[255];
+    //sprintf(BOLD,"%c%c%c",27,'[', 'A'
+
     if(argc < 2 || argc > 4) 
 	{
-	    cerr << "Usage:" << endl << endl << argv[0] << " numThreads" << endl << endl;
-	    cerr << "where numThreads is the number of threads to use" << endl;
-	    cerr << "Set numThreads to 1 to run in single threaded mode" << endl;
-	    cerr << "or to postprocess, specify files in terms of filenumber" 
-		 << endl << "./comet post 1:2:10" << endl
-         << "./comet post 0:0  <- use 0:0 to process all frames, multi thread if POST_PROCESS_CPUS > 1" << endl
-         << "./comet vtk 100:100  postprocess vtk for given frames" << endl;
-	    cerr << endl;
+        cerr << "For a new simulation setup the parameter file 'cometparams.ini'" << endl 
+             << "in current directory and type:" << endl 
+             //<< endl 
+             << "       " << argv[0] << " <numThreads>" << endl 
+             //<< endl
+	         << "where <numThreads> is the number of CPUs to use" << endl
+             << endl
+             << "To process an existing dataset type:" << endl 
+             <<  "       " << argv[0] << " <command> <frame range>" << endl 
+             //<< endl 
+		     << "where <command> is 'post' to write bitmap images" << endl 
+             << "                   'vtk' to write 3D images " << endl
+             << "                   'view' to enter 3D interactive mode" << endl
+             //<< "e.g.   " << endl 
+             << "e.g    " <<argv[0] << " post 1:300      <- write bitmaps for frame 1--300" << endl
+             << "       " <<argv[0] << " view 300:300    <- 3D interactive view for frame 300"   << endl
+             << "[the range '0:0' can be used to process all frames]" << endl
+	         << endl;
 
 	    exit(EXIT_FAILURE);
 	}
@@ -910,11 +928,14 @@ int main(int argc, char* argv[])
         else if (tag == "TRACK_MIN_RANGE")       
 			{ss >> TRACK_MIN_RANGE;} 
 
-        else if (tag == "TRACK_MAX_RANGE") 
+        else if (tag == "TRACK_MAX_RANGE")   
 			{ss >> TRACK_MAX_RANGE;}
 
         else if (tag == "TRACKFRAMESTEP")     
 			{ss >> TRACKFRAMESTEP;}
+
+        else if (tag == "MAX_NODES_TO_TRACK")       
+			{ss >> MAX_NODES_TO_TRACK;} 
 
         else if (tag == "REFERENCEFRAME")     
 			{ss >> REFERENCEFRAME;} 
@@ -1325,21 +1346,34 @@ int main(int argc, char* argv[])
 			}	
 
 		}
-#endif
+#endif                                             
 
 	}
 
 
-    if (BMP_TRACKS)
+    if (BMP_TRACKS && POST_PROCESS) 
     {
-        cout << "Plotting Bitmap Tracks.  Post processing will use one thread only." << endl;
-
-    	POST_PROCESS = true;
-		POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
-        POST_BMP = true;
+        //POST_BMP = true;
         //POST_VTK = false;
         
         VTK_MOVE_WITH_BEAD = true;
+    
+        // check if nodetrack file exists, if so use it (and so we don't need to go single thread)
+        // else switch to single thread for post processing
+
+        ifstream nodetrackfile("nodetracks.txt", ios::in);
+        
+        if (!nodetrackfile)
+        {
+            cout << "Creating Bitmap Tracks.  Post processing will use one thread only." << endl;
+		    POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
+            POST_BMP = true;  
+        }
+        else
+        {
+            nodetrackfile.close();
+  
+        }
     }
     
     // change bitmap directory if outputting links

@@ -472,6 +472,9 @@ extern int NODE_XLINK_GRIDSEARCH;
 extern short int GRIDSIZE;
 
 extern bool BMP_TRACKS;
+
+extern unsigned int MAX_NODES_TO_TRACK;
+
 extern bool TRACKS_NO_STATIONARY_NODE;
 
 extern double TRACK_MIN_RANGE;

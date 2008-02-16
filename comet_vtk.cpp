@@ -423,7 +423,7 @@ void CometVtkVis::RestartRenderWindow()
 
 }
 
-void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & cameratarget)
+void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect & cameratarget)
 {
     
     setProjection(cameraposition,cameratarget);  // also sets the rotation of the objects, so comes before actors:
@@ -466,7 +466,7 @@ void CometVtkVis::buildVTK(int framenumber, vect & cameraposition, vect & camera
     }
 
     if(OptsRenderAxes)
-	    addTracks();
+	    addTracks(framenumber);
         //addAxes();
        
     // if(OptsRenderText)        
@@ -615,7 +615,7 @@ void CometVtkVis::addVoxelBound()
     line_actor3->Delete();
 }
 
-void CometVtkVis::saveImage(int framenumber)
+void CometVtkVis::saveImage(const int &framenumber)
 {
     char tmpfilename[1024],filename[1024];
     sprintf(tmpfilename , "%s%s_%05i.bmp", TEMPDIR, file_prefix.c_str(), framenumber );
@@ -712,7 +712,7 @@ void CometVtkVis::saveImage(int framenumber)
 
 }
 
-void CometVtkVis::saveVRML(int framenumber)
+void CometVtkVis::saveVRML(const int &framenumber)
 {   // for some reason this produces *huge* files (>16MB) when nucleator texture is turned on
     // it also doesn't seem to work at all...(lighting problem?)
 
@@ -1650,7 +1650,11 @@ void CometVtkVis::addNodes()
         }
         else 
         {              
-            if ( ptheactin->node[i].harbinger )
+            if ( i < ptheactin->lowestnodetoupdate )
+            {
+	            node_actor->GetProperty()->SetColor(1.0,1.0,0.0); // plot harbinger red
+	        } 
+            else if ( ptheactin->node[i].harbinger )
             {
 	            node_actor->GetProperty()->SetColor(1.0,0.0,0.0); // plot harbinger red
 	        } 
@@ -1679,7 +1683,7 @@ void CometVtkVis::addNodes()
     map->Delete();
 }
 
-void CometVtkVis::addTracks()
+void CometVtkVis::addTracks(const int & framenumber)
 {
     
 
@@ -1703,8 +1707,12 @@ void CometVtkVis::addTracks()
                                           i_trackpoint != ptheactin->node_tracks[xaxis].end(); 
                                         ++i_trackpoint)
     {
-        if (i_trackpoint->frame % TRACKFRAMESTEP == 0)   // only plot points *added* every trackframestep frames
+        if ((i_trackpoint->frame % TRACKFRAMESTEP == 0) &&           // only plot points *added* every trackframestep frames
+            (framenumber > i_trackpoint->frame))  // and only if we're in a frame in which they exist!  
+        {        
             temptracknodenumbers.push_back(i_trackpoint->nodenum);
+            //cout << "Adding track point: frame " << i_trackpoint->frame << " itternum " << ptheactin->iteration_num << endl;
+        }
     }
 
     //cout << "Selected Nodes to track: " << temptracknodenumbers.size() << endl;
@@ -1773,7 +1781,7 @@ void CometVtkVis::addTracks()
 
         // now have the track points for the line, interpolate...
 
-        int numberOfOutputPoints = 20 * numberOfInputPoints; // spline will have 20 times as many points
+        int numberOfOutputPoints = 5 * numberOfInputPoints; // spline will have 20 times as many points
 
         vtkPolyData *profileData = vtkPolyData::New();
 
@@ -1797,7 +1805,7 @@ void CometVtkVis::addTracks()
             
         // Add thickness to the resulting line.
         vtkTubeFilter *profileTubes = vtkTubeFilter::New();
-        profileTubes->SetNumberOfSides(8);
+        profileTubes->SetNumberOfSides(6);
         profileTubes->SetInput(profileData);
         profileTubes->SetRadius(0.2);
   
