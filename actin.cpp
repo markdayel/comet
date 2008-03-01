@@ -3396,7 +3396,7 @@ void actin::writebitmapfile(ofstream& outbmpfile, const Dbl2d& myimageR, const D
 	RGB *line;
     line = new RGB[width];
 
-	outbmpfile.seekp(bitmap_start); // move to start
+	outbmpfile.seekp(bitmap_start); // move to start                          
 
 	// write out the data, line by line (note: y is backwards)
 	for (int y = (height-1); y>=0; y--)
