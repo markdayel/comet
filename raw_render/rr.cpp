@@ -86,7 +86,7 @@ void renderCallback(vtkObject *caller, unsigned long eid,
 
 int main(int argc, char *argv[])
 {
-    bool render_vol = false;
+    bool render_vol = true;
     bool render_iso = false;    
     double isothreshold = 0.5;
     
@@ -129,7 +129,7 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     createStructuredPointRepresentation(raw_data, vspacing, spoints);
     
     vtkRenderer *ren = vtkRenderer::New();
-    ren->SetBackground( 1.0, 1.0, 1.0 );
+    ren->SetBackground( 0.0, 0.0, 0.0 );
 
     if(render_iso) {
 	cout << "Rendering iso surface, threshold:" 
@@ -143,7 +143,7 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     
     vtkRenderWindow *renWin = vtkRenderWindow::New();
     renWin->AddRenderer( ren );
-    renWin->SetSize( 400, 400 );
+    renWin->SetSize( 800, 800 );
     
     vtkRenderWindowInteractor *iren =  vtkRenderWindowInteractor::New();
     iren->SetRenderWindow(renWin);
@@ -222,13 +222,13 @@ void addIsoRender(vtkRenderer *renderer,
     vtkWindowedSincPolyDataFilter *smooth 
 	= vtkWindowedSincPolyDataFilter::New();
     smooth->SetInput(iso_surf->GetOutput());
-    smooth->SetNumberOfIterations( 20 );
+    smooth->SetNumberOfIterations( 200 );
     //smooth->SetFeatureAngle(45);
     smooth->BoundarySmoothingOn();  
     
     vtkPolyDataNormals *normals = vtkPolyDataNormals::New();
     normals->SetInput( smooth->GetOutput());
-    //normals->SetFeatureAngle(45);
+    normals->SetFeatureAngle(45);
     //normals->FlipNormalsOn();
    
     

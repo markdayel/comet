@@ -1,0 +1,31 @@
+PROG = rr
+VTKSRCS = rr.cpp
+
+VTKOBJS = $(VTKSRCS:.cpp=.o)
+
+#LIBS = -lm `Magick++-config --cppflags --cxxflags --ldflags --libs`
+LIBS = -lpthread -framework AppKit -framework OpenGL \
+ -lm `Magick++-config --cppflags --cxxflags --ldflags --libs`
+
+# vtk 
+VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild/include/vtk-5.1/
+VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild/lib/
+#VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics -lvtkVolumeRendering
+VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
+              -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
+              -lvtkHybrid -lvtkVolumeRendering -lvtkjpeg -lvtktiff -lvtksys -lvtkzlib
+
+
+CXXFLAGS = -O3 -ffast-math
+
+CXX = g++
+
+$(PROG):$(VTKOBJS)
+	$(CXX) $(CXXFLAGS) \
+	-o $(PROG) $(VTKOBJS) $(VTKLIBPATH) $(VTKINCLUDES) $(LIBS) \
+	$(VTKLIBS)
+
+rr.o:rr.cpp
+	$(CXX) $(CXXFLAGS) $(VTKINCLUDES) \
+	-c -o $@ $<
+
