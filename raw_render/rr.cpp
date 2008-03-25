@@ -1,5 +1,3 @@
-// First include the required header files for the VTK classes we are using.
-#include "vtkConeSource.h"
 #include "vtkPolyDataMapper.h"
 #include "vtkRenderWindow.h"
 #include "vtkRenderWindowInteractor.h"
@@ -39,6 +37,7 @@ using namespace std;
 
 #define RAWTYPE float
 
+// REVISIT, move to header file
 void createStructuredPointRepresentation(const vector<vector<vector<RAWTYPE> > > 
 					 &raw_data, 
 					 const double vspacing[3],
@@ -53,6 +52,8 @@ void getMinMax(const std::vector<std::vector<std::vector<RAWTYPE> > >
 	       &raw_data, 
 	       double &min, double &max);
 void renderBead(bool render_vol, bool render_iso, double isothreshold);
+void filterRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
+	       int ksz);
 
 // ---
 void saveCurrentImage(vtkRenderWindow* ren_win)
@@ -78,15 +79,16 @@ void renderCallback(vtkObject *caller, unsigned long eid,
 {
     vtkRenderWindowInteractor *iren = 
     	reinterpret_cast<vtkRenderWindowInteractor *>(caller);
-    vtkRenderWindow* ren_win = iren->GetRenderWindow();
 
+    vtkRenderWindow* ren_win = iren->GetRenderWindow();
+    
     if(iren->GetKeyCode()=='s' || iren->GetKeyCode()=='S' )
 	saveCurrentImage(ren_win);
 }
 
 int main(int argc, char *argv[])
 {
-    bool render_vol = true;
+    bool render_vol = false;
     bool render_iso = false;    
     double isothreshold = 0.5;
     
@@ -119,8 +121,11 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
 {
     std::vector<std::vector<std::vector<RAWTYPE> > > raw_data;
     double nm_per_pixel, nm_per_slice;
-    loadRaw(raw_data, nm_per_pixel, nm_per_slice);
-    
+
+    loadRaw(raw_data, nm_per_pixel, nm_per_slice);    
+    filterRaw(raw_data, 3);
+
+    // convert to structured points to render via vtk
     vtkStructuredPoints *spoints = vtkStructuredPoints::New();
     double vspacing[3];
     vspacing[0] = nm_per_slice;
@@ -128,8 +133,9 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     vspacing[2] = nm_per_pixel;
     createStructuredPointRepresentation(raw_data, vspacing, spoints);
     
+    // create render context
     vtkRenderer *ren = vtkRenderer::New();
-    ren->SetBackground( 0.0, 0.0, 0.0 );
+    ren->SetBackground( 1.0, 1.0, 1.0 );
 
     if(render_iso) {
 	cout << "Rendering iso surface, threshold:" 
@@ -143,7 +149,7 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     
     vtkRenderWindow *renWin = vtkRenderWindow::New();
     renWin->AddRenderer( ren );
-    renWin->SetSize( 800, 800 );
+    renWin->SetSize( 600, 600 );
     
     vtkRenderWindowInteractor *iren =  vtkRenderWindowInteractor::New();
     iren->SetRenderWindow(renWin);
@@ -193,6 +199,7 @@ void createStructuredPointRepresentation(
     
     // loop over voxel set converting to structured points suitable for 
     // vtk volume rendering
+    // NB: min val is assumed 0
     int offset = 0;
     for(int k=0; k<nk; ++k) {	
 	for(int j=0; j<nj; ++j) {	
@@ -222,13 +229,14 @@ void addIsoRender(vtkRenderer *renderer,
     vtkWindowedSincPolyDataFilter *smooth 
 	= vtkWindowedSincPolyDataFilter::New();
     smooth->SetInput(iso_surf->GetOutput());
-    smooth->SetNumberOfIterations( 200 );
+    smooth->SetNumberOfIterations( 40 );
     //smooth->SetFeatureAngle(45);
     smooth->BoundarySmoothingOn();  
     
     vtkPolyDataNormals *normals = vtkPolyDataNormals::New();
     normals->SetInput( smooth->GetOutput());
-    normals->SetFeatureAngle(45);
+    //normals->SetInput( iso_surf->GetOutput());
+    //normals->SetFeatureAngle(45);
     //normals->FlipNormalsOn();
    
     
@@ -273,7 +281,7 @@ void addVolumeRender(vtkRenderer *renderer, vtkStructuredPoints *vx)
     volume_map->SetVolumeRayCastFunction(mip);
     // really important for small spacing
     // adjust to be comparable to vd
-    volume_map->SetSampleDistance(100); // important
+    volume_map->SetSampleDistance(50); // important
     
     // map the actual data
     // using Gaussian cast
@@ -293,8 +301,148 @@ void addVolumeRender(vtkRenderer *renderer, vtkStructuredPoints *vx)
     opacity_tf->Delete();
 }
 
+void writeKernel(vector<vector<vector<RAWTYPE> > > &kernel)
+{
+  int ni = kernel.size(); // z
+  int nj = kernel[0].size(); // height
+  int nk = kernel[0][0].size(); // width
+  int mj = (nj-1)/2;
+  int mk = (nk-1)/2;
+  std::ofstream os("k.dat" );
+  for(int i=0; i<ni; ++i){
+    os << i << " " << kernel[i][mj][mk] << endl;
+  }
+  os.close();
+  
+}
+
+void gaussianKernel(vector<vector<vector<RAWTYPE> > > &kernel, int sz)
+{
+    // REVISIT: check and adjust values to get desired extent
+    int ex = sz*2+1;
+    double sigma  = ex/(2*2.3); // FWHM
+    
+    kernel.resize(ex);    
+    for(int i=0; i<ex; i++) {
+	kernel[i].resize(ex);	
+	for(int j=0; j<ex; j++){
+	    kernel[i][j].resize(ex);	    
+	}
+    }
+    // loop calculating kernel value
+    double x2;
+    double ksum = 0;
+    for(int i=0; i<ex; i++) {
+	for(int j=0; j<ex; j++) {
+	    for(int k=0; k<ex; k++) {
+		x2 = ( (i-sz)*(i-sz) + (j-sz)*(j-sz) + (k-sz)*(k-sz) );
+		kernel[i][j][k] = (1/(sigma*sqrt(2*M_PI)))
+		    *exp( -(x2)/(2.0*sigma*sigma) );
+		ksum += kernel[i][j][k];
+	    }
+	}
+    }
+    // normalise
+    for(int i=0; i<ex; i++) {
+	for(int j=0; j<ex; j++) {
+	    for(int k=0; k<ex; k++) {
+		kernel[i][j][k] = kernel[i][j][k]/ksum;
+	    }
+	}
+    }
+    writeKernel(kernel);
+    
+}
+
+RAWTYPE medianFilter(vector<RAWTYPE> &kernel_data)
+{
+    sort(kernel_data.begin(), kernel_data.end());
+    return kernel_data[(kernel_data.size()/2) + 1];
+}
+
+// ksz is kernel size, ie [-ksz..0..+ksz]
+void filterRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
+	       int ksz)
+{
+    int nkn = ksz*2 + 1; // kernel is odd
+    cout << "extent of the kernel, nkn: " << nkn << endl;
+
+    vector<RAWTYPE> kernel_data;
+    kernel_data.resize(nkn*nkn*nkn);
+    
+    int ni = raw_data.size(); // z
+    int nj = raw_data[0].size(); // height
+    int nk = raw_data[0][0].size(); // width
+    
+    // create temporary volume for filtered data
+    std::vector<std::vector<std::vector<RAWTYPE> > > filtered_data;
+    filtered_data.resize(ni);    
+    for(int i=0; i<ni; i++) {
+	filtered_data[i].resize(nj);	
+	for(int j=0; j<nj; j++){
+	    filtered_data[i][j].resize(nk);	    
+	}
+    }
+    
+    // create kernel
+    std::vector<std::vector<std::vector<RAWTYPE> > > kernel;
+    gaussianKernel(kernel, ksz);
+
+    // apply kernel
+    // loop over raw data filling filtered data
+    for(int i=0; i<ni; i++) {
+	for(int j=0; j<nj; j++){
+	    for (int k=0; k<nk; k++){
+
+	 
+		double fd = 0;
+		for(int ki=0; ki<kernel.size(); ki++) {
+		    for(int kj=0; kj<kernel[0].size(); kj++){
+			for (int kk=0; kk<kernel[0][0].size(); kk++){
+			    int dki= (i-ksz)+ki;
+			    int dkj= (j-ksz)+kj;			    
+			    int dkk= (k-ksz)+kk;
+			    
+			    if(dki<0)
+				dki=0;
+			    else if(dki>(ni-1))
+				dki = ni-1;
+			    
+			    if(dkj<0)
+				dkj=0;
+			    else if(dkj>(nj-1))
+				dkj = nj-1;
+			    
+			    if(dkk<0)
+				dkk=0;
+			    else if(dkk>(nk-1))
+				dkk = nk-1;
+
+			    // kernel_data[kdi++] = raw_data[dki][dkj][dkk];
+			    fd += raw_data[dki][dkj][dkk]*kernel[ki][kj][kk];
+			}
+		    }
+		}
+		// filter the kernel data
+		// filtered_data[i][j][k] = medianFilter(kernel_data);
+		filtered_data[i][j][k] = fd;
+	    }
+	}
+    }
+
+    // copy filtered data back to raw data
+    for(int i=0; i<ni; i++) {
+	for(int j=0; j<nj; j++){
+	    for (int k=0; k<nk; k++){
+		raw_data[i][j][k] = filtered_data[i][j][k];
+	    }
+	}
+    }
+    return;
+}
+
 int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
-    double &nm_per_pixel, double &nm_per_slice)
+	    double &nm_per_pixel, double &nm_per_slice)
 {   
     // bit ugly right now---just read in images from 'raw' dir  
     int raw_width, raw_height;
