@@ -19,6 +19,11 @@
 #include "vtkImageCast.h"
 #include "vtkShepardMethod.h"
 
+#include "vtkRenderLargeImage.h"
+#include "vtkJPEGWriter.h"
+#include "vtkPNGWriter.h"
+#include "vtkBMPWriter.h"
+
 // iso
 #include "vtkContourFilter.h"
 #include "vtkWindowedSincPolyDataFilter.h"
@@ -56,22 +61,75 @@ void filterRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	       int ksz);
 
 // ---
+// ---
 void saveCurrentImage(vtkRenderWindow* ren_win)
 {
-    // might want to use large image methods?
-    vtkWindowToImageFilter *to_image = vtkWindowToImageFilter::New();
-    vtkJPEGWriter *writer = vtkJPEGWriter::New();
+   // might want to use large image methods?
+   vtkWindowToImageFilter *to_image = vtkWindowToImageFilter::New();
+   vtkJPEGWriter *writer = vtkJPEGWriter::New();
+   
+   to_image->SetInput(ren_win);
+   writer->SetInput(to_image->GetOutput());
+   ren_win->Render();
+   to_image->Modified();
+   writer->SetFileName("grab.jpeg");
+   writer->Write();
+   cout << "wrote current window to 'grab.jpeg'" << endl;
+   
+   writer->Delete();
+   to_image->Delete();
+}    
+
+void saveBigImage(vtkRenderer* ren, int framenum)
+{
+
+    int MAGFACTOR=4;
+
+    char filename[1024];
+	char tmpfilename[1024];
+	
+	
+
+	#define IMAGEMAGICKCONVERT "convert"
+    #define BMP_COMPRESSION 95
+
+    sprintf(filename  , "vtk_%05i.jpg",  framenum );
+	sprintf(tmpfilename  , "tmp_vtk_%05i.jpg",  framenum );
+
+    //cout << "Saving " << filename << endl;
+  
+
+    //vtkWindowToImageFilter *rwin_to_image = vtkWindowToImageFilter::New();
+    //rwin_to_image->SetInput(render_win);
+
+    vtkRenderLargeImage *renderLarge = vtkRenderLargeImage::New();
+    renderLarge->SetInput(ren);
+    renderLarge->SetMagnification(MAGFACTOR);
+
+    // vtkBMPWriter seems a bit faster than vtkPNGWriter, and we're compressing with IM to png anyway later
+    // so use BMP here
+    vtkBMPWriter *imagewriter = vtkBMPWriter::New();
     
-    to_image->SetInput(ren_win);
-    writer->SetInput(to_image->GetOutput());
-    ren_win->Render();
-    to_image->Modified();
-    writer->SetFileName("grab.jpeg");
-    writer->Write();
-    cout << "wrote current window to 'grab.jpeg'" << endl;
+    imagewriter->SetInput( renderLarge->GetOutput() ); //rwin_to_image->GetOutput() );
+    imagewriter->SetFileName( tmpfilename );
+    imagewriter->Write();    
     
-    writer->Delete();
-    to_image->Delete();
+    imagewriter->Delete();
+
+    //rwin_to_image->Delete();
+    renderLarge->Delete();
+
+    if (MAGFACTOR!=1)
+    {
+        char command1[1024];
+        sprintf(command1, 
+            "(%s -quality %i -resize %f%% %s %s ; rm %s ) &",
+            IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)MAGFACTOR,  
+              tmpfilename, filename, tmpfilename);
+        //cout << command1 << endl;
+        system(command1);
+    }
+
 }
 
 void renderCallback(vtkObject *caller, unsigned long eid, 
@@ -131,11 +189,16 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     vspacing[0] = nm_per_slice;
     vspacing[1] = nm_per_pixel;
     vspacing[2] = nm_per_pixel;
+
+	double x_center = (nm_per_slice * raw_data.size()) / 2.0;
+	double y_center = (nm_per_pixel * raw_data[0].size()) / 2.0;
+	double z_center = (nm_per_pixel * raw_data[0][0].size()) / 2.0;
+
     createStructuredPointRepresentation(raw_data, vspacing, spoints);
     
     // create render context
     vtkRenderer *ren = vtkRenderer::New();
-    ren->SetBackground( 1.0, 1.0, 1.0 );
+    ren->SetBackground( 0.0, 0.0, 0.0 );
 
     if(render_iso) {
 	cout << "Rendering iso surface, threshold:" 
@@ -149,17 +212,34 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     
     vtkRenderWindow *renWin = vtkRenderWindow::New();
     renWin->AddRenderer( ren );
-    renWin->SetSize( 600, 600 );
+    renWin->SetSize( 800, 800 );
     
+
+	ren->GetActiveCamera()->SetViewUp(1,0,0);
+    ren->GetActiveCamera()->SetFocalPoint(x_center,y_center,z_center);
+	ren->GetActiveCamera()->SetPosition(x_center*3,y_center*3,z_center*3);
+	ren->GetActiveCamera()->ParallelProjectionOff();
+	
+	ren->GetActiveCamera()->ViewingRaysModified();
+	
+	//ren->GetActiveCamera()->SetViewAngle(60);
+	//ren->GetActiveCamera()->ComputeViewPlaneNormal();
+	//ren->ResetCameraClippingRange();
+
     vtkRenderWindowInteractor *iren =  vtkRenderWindowInteractor::New();
     iren->SetRenderWindow(renWin);
-    vtkCallbackCommand *keypress = vtkCallbackCommand::New();
-    keypress->SetCallback(renderCallback);
-    iren->AddObserver(vtkCommand::KeyPressEvent,keypress);
-
-    cout << "Rendering... press 's' to grab image." << endl;     
-    iren->Initialize();
+    //vtkCallbackCommand *keypress = vtkCallbackCommand::New();
+    //keypress->SetCallback(renderCallback);
+    //iren->AddObserver(vtkCommand::KeyPressEvent,keypress);
+    //cout << "Rendering... press 's' to grab image." << endl;     
+    
+	iren->Initialize();
     iren->Start();
+	
+	
+	iren->Render();	
+
+	//saveBigImage(ren, 1);
 
     spoints->Delete();       
     ren->Delete();
@@ -204,7 +284,7 @@ void createStructuredPointRepresentation(
     for(int k=0; k<nk; ++k) {	
 	for(int j=0; j<nj; ++j) {	
 	    for(int i=0; i<ni; ++i) {
-		double val = raw_data[i][j][k];
+		double val = fabs( raw_data[i][j][k] - 1.5 * min_val) ;
 		int vval = int(255*val/max_val);
 		vxdata->InsertValue(offset, int(255*val/max_val));	  
 		offset++;		
@@ -251,7 +331,8 @@ void addIsoRender(vtkRenderer *renderer,
     
     iso_actor->GetProperty()->SetOpacity(opacity);
     iso_actor->GetProperty()->SetColor(0.3, 0.6, 0.3);
-    
+	iso_actor->SetPosition(0,0,0);
+
     renderer->AddActor(iso_actor);
     iso_actor->Delete();
     smooth->Delete();
@@ -603,6 +684,9 @@ void getMinMax(const vector<vector<vector<RAWTYPE> > > &raw_data,
 	    {
 		if(raw_data[f][i][j]>max_val)
 		    max_val = raw_data[f][i][j];
+		
+		if(raw_data[f][i][j]<min_val)
+		    min_val = raw_data[f][i][j];
 	    }
 	}
     }
