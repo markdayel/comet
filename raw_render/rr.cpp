@@ -39,6 +39,7 @@
 #include <vector>
 using namespace std;
 
+#define PI 3.14159
 
 #define RAWTYPE float
 
@@ -80,10 +81,30 @@ void saveCurrentImage(vtkRenderWindow* ren_win)
    to_image->Delete();
 }    
 
+void saveCurrentImage(vtkRenderWindow* ren_win, int framenum)
+{
+   // might want to use large image methods?
+   vtkWindowToImageFilter *to_image = vtkWindowToImageFilter::New();
+   vtkJPEGWriter *writer = vtkJPEGWriter::New();
+   
+   char filename[1024];
+   sprintf(filename  , "vtk_%05i.jpg",  framenum );
+
+   to_image->SetInput(ren_win);
+   writer->SetInput(to_image->GetOutput());
+   ren_win->Render();
+   to_image->Modified();
+   writer->SetFileName(filename);
+   writer->Write();
+   
+   writer->Delete();
+   to_image->Delete();
+}
+
 void saveBigImage(vtkRenderer* ren, int framenum)
 {
 
-    int MAGFACTOR=4;
+    int MAGFACTOR=2;
 
     char filename[1024];
 	char tmpfilename[1024];
@@ -106,12 +127,21 @@ void saveBigImage(vtkRenderer* ren, int framenum)
     renderLarge->SetInput(ren);
     renderLarge->SetMagnification(MAGFACTOR);
 
+
+
     // vtkBMPWriter seems a bit faster than vtkPNGWriter, and we're compressing with IM to png anyway later
     // so use BMP here
     vtkBMPWriter *imagewriter = vtkBMPWriter::New();
     
     imagewriter->SetInput( renderLarge->GetOutput() ); //rwin_to_image->GetOutput() );
-    imagewriter->SetFileName( tmpfilename );
+	if (MAGFACTOR==1)    
+		imagewriter->SetFileName( filename );
+	else
+		imagewriter->SetFileName( tmpfilename );
+
+	//renderLarge->Modified();
+	//renderLarge->Update();
+
     imagewriter->Write();    
     
     imagewriter->Delete();
@@ -129,6 +159,7 @@ void saveBigImage(vtkRenderer* ren, int framenum)
         //cout << command1 << endl;
         system(command1);
     }
+
 
 }
 
@@ -181,6 +212,7 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     double nm_per_pixel, nm_per_slice;
 
     loadRaw(raw_data, nm_per_pixel, nm_per_slice);    
+
     filterRaw(raw_data, 3);
 
     // convert to structured points to render via vtk
@@ -200,6 +232,12 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     vtkRenderer *ren = vtkRenderer::New();
     ren->SetBackground( 0.0, 0.0, 0.0 );
 
+    vtkRenderWindow *renWin = vtkRenderWindow::New();
+    renWin->SetSize( 800, 800 );
+	renWin->AddRenderer( ren );
+
+	renWin->Modified();
+
     if(render_iso) {
 	cout << "Rendering iso surface, threshold:" 
 	     << isothreshold << endl;
@@ -210,36 +248,62 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
 	addVolumeRender(ren, spoints);  
     }
     
-    vtkRenderWindow *renWin = vtkRenderWindow::New();
-    renWin->AddRenderer( ren );
-    renWin->SetSize( 800, 800 );
+	//ren->SetAmbient(0.8,0.8,0.8);
     
-
-	ren->GetActiveCamera()->SetViewUp(1,0,0);
-    ren->GetActiveCamera()->SetFocalPoint(x_center,y_center,z_center);
-	ren->GetActiveCamera()->SetPosition(x_center*3,y_center*3,z_center*3);
-	ren->GetActiveCamera()->ParallelProjectionOff();
-	
-	ren->GetActiveCamera()->ViewingRaysModified();
-	
-	//ren->GetActiveCamera()->SetViewAngle(60);
-	//ren->GetActiveCamera()->ComputeViewPlaneNormal();
-	//ren->ResetCameraClippingRange();
-
     vtkRenderWindowInteractor *iren =  vtkRenderWindowInteractor::New();
     iren->SetRenderWindow(renWin);
+
+	//renWin->Render();
+    
+
     //vtkCallbackCommand *keypress = vtkCallbackCommand::New();
     //keypress->SetCallback(renderCallback);
     //iren->AddObserver(vtkCommand::KeyPressEvent,keypress);
     //cout << "Rendering... press 's' to grab image." << endl;     
     
-	iren->Initialize();
-    iren->Start();
+	//iren->Initialize();
+    //iren->Start();
+	//iren->Enable();
+	//ren->Modified();
+	//iren->Modified();
+	//iren->Render();
 	
 	
-	iren->Render();	
+    ren->GetActiveCamera()->SetFocalPoint(x_center,y_center,z_center);
+	
+	ren->GetActiveCamera()->SetViewUp(1,0,0);
+	
+	ren->GetActiveCamera()->Modified();
+	ren->GetActiveCamera()->ParallelProjectionOff();
+	
+	ren->GetActiveCamera()->ViewingRaysModified();
+	
+	//ren->GetActiveCamera()->SetViewAngle(60);
+	
+	double steps = 180;
+	
+	double camerax = x_center*2;
+	double cameralen = y_center * 2.5;
+	
+	double step = 360 / steps;
+	
+	
+	for (int frame = 1; frame <= steps ; ++frame)
+	{
+		double angle = 2 * PI * step * (double) frame / 360.0;
+		
+		ren->GetActiveCamera()->SetPosition(x_center + cameralen * cos(angle), y_center + cameralen * cos(angle), z_center + cameralen * sin(angle)  );
+	
+		ren->GetActiveCamera()->ComputeViewPlaneNormal();
+		ren->ResetCameraClippingRange();
 
-	//saveBigImage(ren, 1);
+		cout << "Rendering Frame " << frame << " of " << steps << endl;
+		cout.flush();
+
+		//saveBigImage(ren, frame);
+		saveCurrentImage(renWin, frame);
+	
+	}
 
     spoints->Delete();       
     ren->Delete();
@@ -310,7 +374,7 @@ void addIsoRender(vtkRenderer *renderer,
 	= vtkWindowedSincPolyDataFilter::New();
     smooth->SetInput(iso_surf->GetOutput());
     smooth->SetNumberOfIterations( 40 );
-    //smooth->SetFeatureAngle(45);
+    smooth->SetFeatureAngle(45);
     smooth->BoundarySmoothingOn();  
     
     vtkPolyDataNormals *normals = vtkPolyDataNormals::New();
@@ -332,6 +396,8 @@ void addIsoRender(vtkRenderer *renderer,
     iso_actor->GetProperty()->SetOpacity(opacity);
     iso_actor->GetProperty()->SetColor(0.3, 0.6, 0.3);
 	iso_actor->SetPosition(0,0,0);
+
+	//iso_actor->SetOrientation(PI/2,PI/2,PI/2);
 
     renderer->AddActor(iso_actor);
     iso_actor->Delete();
@@ -519,6 +585,8 @@ void filterRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	    }
 	}
     }
+
+
     return;
 }
 
@@ -535,7 +603,7 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
     // read data settings in from raw files instead 
     // of previously calculated data
     
-    ifstream raw_info("raw/frameinfo.txt", ios::in);
+    ifstream raw_info("frameinfo.txt", ios::in);
     
     if (!raw_info) { 
 	cout << "Unable to open file 'frameinfo.txt' for input" << endl;
@@ -610,10 +678,10 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
     for(filenum = raw_firstframe; filenum <= raw_lastframe ; filenum++ ) {
 	
 	sprintf(buff, raw_filepattern, filenum);
-	sprintf(filename, "raw/%s", buff);
+	sprintf(filename, "%s", buff);
 	
-	cout << "Reading file " << filename << "...";
-	cout.flush();
+	//cout << "Reading file " << filename << "...";
+	//cout.flush();
 	
 	ifstream raw_in(filename, ios::in);
 	
@@ -650,10 +718,10 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	else
 	    if(posn != file_size)
 	    {
-		cout << endl 
-		     << "Warning: Finished reading " 
-		     <<  file_size - posn 
-		     << " bytes short of end of file " << endl;
+	//	cout << endl 
+	//	     << "Warning: Finished reading " 
+	//	     <<  file_size - posn 
+	//	     << " bytes short of end of file " << endl;
 	    }
 	    else
 	    {
