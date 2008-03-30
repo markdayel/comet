@@ -731,7 +731,29 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	cout.flush();
 	
 	raw_in.close();
-    }   
+    }  
+	
+	cout << "Writing sum.raw" << endl;
+	 
+	ofstream raw_out("sum.raw", ios::out);
+	
+	for (int y=0; y!=raw_height; y++)  // allocate data grid
+	{
+		for (int x=0; x!=raw_width; x++)  // allocate data grid
+		{
+		double dblsum = 0;
+			for(int z = 0; z != totframes ; z++ )
+			{
+				dblsum += raw_data[z][y][x];
+			}
+		RAWTYPE sum = (RAWTYPE)	(dblsum);
+		raw_out.write((char*)(&sum),sizeof(RAWTYPE));	
+		}
+	
+	}
+	
+	raw_out.close();
+	    
 }
     
 void getMinMax(const vector<vector<vector<RAWTYPE> > > &raw_data, 
