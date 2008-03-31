@@ -4,8 +4,8 @@ VTKSRCS = rr.cpp
 VTKOBJS = $(VTKSRCS:.cpp=.o)
 
 #LIBS = -lm `Magick++-config --cppflags --cxxflags --ldflags --libs`
-LIBS = -lpthread -framework AppKit -framework OpenGL -lm
-#  `Magick++-config --cppflags --cxxflags --ldflags --libs`
+LIBS = -lpthread -framework AppKit -framework OpenGL -lm \
+  `Magick++-config --cppflags --cxxflags --ldflags --libs`
 
 
 

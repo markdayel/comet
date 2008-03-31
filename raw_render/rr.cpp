@@ -37,7 +37,11 @@
 #include "vtkWindowToImageFilter.h"
 
 #include <vector>
+
+#include <Magick++.h>
+
 using namespace std;
+using namespace Magick;
 
 #define PI 3.14159
 
@@ -51,7 +55,7 @@ void createStructuredPointRepresentation(const vector<vector<vector<RAWTYPE> > >
 void addVolumeRender(vtkRenderer *renderer,
 		     vtkStructuredPoints *vx);
 void addIsoRender(vtkRenderer *renderer, vtkStructuredPoints *sp, 
-		  const double threshold, const double opacity);
+		  const double threshold, const double opacity, double R, double G, double B);
 int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	    double &nm_per_pixel, double &nm_per_slice);
 void getMinMax(const std::vector<std::vector<std::vector<RAWTYPE> > > 
@@ -208,6 +212,9 @@ int main(int argc, char *argv[])
 
 void renderBead(bool render_vol, bool render_iso, double isothreshold)
 {
+	
+	bool INTERACTIVE = true;
+	
     std::vector<std::vector<std::vector<RAWTYPE> > > raw_data;
     double nm_per_pixel, nm_per_slice;
 
@@ -236,12 +243,15 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     renWin->SetSize( 800, 800 );
 	renWin->AddRenderer( ren );
 
-	renWin->Modified();
+	//renWin->SetAAFrames(7);
+
+	//renWin->Modified();
 
     if(render_iso) {
 	cout << "Rendering iso surface, threshold:" 
 	     << isothreshold << endl;
-	addIsoRender(ren, spoints, isothreshold, 1.0 );
+	addIsoRender(ren, spoints, isothreshold, 1.0, 0.3, 0.6, 0.3);
+	addIsoRender(ren, spoints, isothreshold / 1.5, 0.3, 0.3, 0.3, 0.3);
     }
     if(render_vol) {
 	cout << "Rendering volume." << endl; 
@@ -260,49 +270,60 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     //keypress->SetCallback(renderCallback);
     //iren->AddObserver(vtkCommand::KeyPressEvent,keypress);
     //cout << "Rendering... press 's' to grab image." << endl;     
-    
-	//iren->Initialize();
-    //iren->Start();
+
+	if (INTERACTIVE) 
+	{   
+
+		iren->Initialize();
+    	iren->Start();
+	}
+	else
+	{
+	
 	//iren->Enable();
 	//ren->Modified();
 	//iren->Modified();
 	//iren->Render();
-	
-	
-    ren->GetActiveCamera()->SetFocalPoint(x_center,y_center,z_center);
-	
-	ren->GetActiveCamera()->SetViewUp(1,0,0);
-	
-	ren->GetActiveCamera()->Modified();
-	ren->GetActiveCamera()->ParallelProjectionOff();
-	
-	ren->GetActiveCamera()->ViewingRaysModified();
-	
-	//ren->GetActiveCamera()->SetViewAngle(60);
-	
-	double steps = 180;
-	
-	double camerax = x_center*2;
-	double cameralen = y_center * 2.5;
-	
-	double step = 360 / steps;
-	
-	
-	for (int frame = 1; frame <= steps ; ++frame)
-	{
-		double angle = 2 * PI * step * (double) frame / 360.0;
-		
-		ren->GetActiveCamera()->SetPosition(x_center + cameralen * cos(angle), y_center + cameralen * cos(angle), z_center + cameralen * sin(angle)  );
-	
-		ren->GetActiveCamera()->ComputeViewPlaneNormal();
-		ren->ResetCameraClippingRange();
+		if(render_iso)
+			renWin->SetAAFrames(7);
 
-		cout << "Rendering Frame " << frame << " of " << steps << endl;
-		cout.flush();
+		ren->GetActiveCamera()->SetFocalPoint(x_center,y_center,z_center);
+
+		ren->GetActiveCamera()->SetViewUp(1,0,0);
+
+		ren->GetActiveCamera()->Modified();
+		ren->GetActiveCamera()->ParallelProjectionOff();
+
+		ren->GetActiveCamera()->ViewingRaysModified();
+
+	//ren->GetActiveCamera()->SetViewAngle(60);
+
+		double steps     = 270;
+
+		double camerax   = x_center * 2;
+		double cameralen = y_center * 2.7;
+
+		double step      = 360 / steps;
+
+
+		for (int frame   = 1; frame <= steps ; ++frame)
+		{
+			double angle    = 2 * PI * step * (double) frame / 360.0;
+
+			ren->GetActiveCamera()->SetPosition(x_center + cameralen * sin(angle), y_center + cameralen * cos(angle), z_center + cameralen * sin(angle)  );
+
+			ren->GetActiveCamera()->ComputeViewPlaneNormal();
+			ren->ResetCameraClippingRange();
+
+			cout << "Rendering Frame " << frame << " of " << steps << endl;
+			cout.flush();
 
 		//saveBigImage(ren, frame);
-		saveCurrentImage(renWin, frame);
-	
+			saveCurrentImage(renWin, frame);
+
+		}
+
+
 	}
 
     spoints->Delete();       
@@ -348,8 +369,8 @@ void createStructuredPointRepresentation(
     for(int k=0; k<nk; ++k) {	
 	for(int j=0; j<nj; ++j) {	
 	    for(int i=0; i<ni; ++i) {
-		double val = fabs( raw_data[i][j][k] - 1.5 * min_val) ;
-		int vval = int(255*val/max_val);
+		double val = fabs( raw_data[i][j][k] - min_val) ;
+		int vval = int(255*val/(max_val - min_val));
 		vxdata->InsertValue(offset, int(255*val/max_val));	  
 		offset++;		
 	    }
@@ -362,7 +383,8 @@ void createStructuredPointRepresentation(
 void addIsoRender(vtkRenderer *renderer,
 		  vtkStructuredPoints *sp, 
 		  const double threshold, 
-		  const double opacity)
+		  const double opacity,
+		  double R, double G, double B)
 {
     // render using an iso-surface
     vtkContourFilter *iso_surf = vtkContourFilter::New();
@@ -394,7 +416,7 @@ void addIsoRender(vtkRenderer *renderer,
     iso_mapper->Delete();
     
     iso_actor->GetProperty()->SetOpacity(opacity);
-    iso_actor->GetProperty()->SetColor(0.3, 0.6, 0.3);
+    iso_actor->GetProperty()->SetColor(R, G, B);
 	iso_actor->SetPosition(0,0,0);
 
 	//iso_actor->SetOrientation(PI/2,PI/2,PI/2);
@@ -600,6 +622,8 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
     char raw_filepattern[2048], filename[2048], buff[2048];
     int filenum;
     
+	int padding=30;
+
     // read data settings in from raw files instead 
     // of previously calculated data
     
@@ -623,7 +647,7 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	raw_info.close();  
 	
 	cout << setprecision(2);
-	cout << "File info: "
+	cout << "File info: " << endl << endl 
 	     << "Width:       " << raw_width << endl
 	     << "Height:      " << raw_height << endl
 	     << "nm/pixel:    " << nm_per_pixel << endl
@@ -654,15 +678,18 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	     <<  ((memreq / 1024) / 1024) << " MB" << endl;
 	
 	
-	raw_data.resize(totframes);
 	
-	for (int z=0; z!=totframes; z++)
+	
+	
+	raw_data.resize(totframes+2*padding);
+	
+	for (int z=0; z!=totframes+2*padding; z++)
 	{
-	    raw_data[z].resize(raw_height);
+	    raw_data[z].resize(raw_height+2*padding);
 	    
-	    for (int x=0; x!=raw_height; x++)  // allocate data grid
+	    for (int x=0; x!=raw_height+2*padding; x++)  // allocate data grid
 	    {
-		raw_data[z][x].resize(raw_width);
+		raw_data[z][x].resize(raw_width+2*padding);
 		
 		//for (int y=0; y!=raw_height; y++)
 		//{
@@ -697,6 +724,11 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	    exit(EXIT_FAILURE);
 	}
 	
+	// for some reason, we start 2 pixels off, so discard those two pixels:
+	
+	RAWTYPE temp;
+	raw_in.read((char*)(&temp),sizeof(RAWTYPE));
+	raw_in.read((char*)(&temp),sizeof(RAWTYPE));
 	
 	for (int y=0; y!=raw_height; y++)  // allocate data grid
 	{
@@ -704,7 +736,7 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	    //{
 	    //for (int z=0; z!=raw_height; z++)
 	    //{
-	    raw_in.read((char*)(&raw_data[z][y][0]),raw_width*sizeof(RAWTYPE));
+	    raw_in.read((char*)(&raw_data[z+padding][y+padding][padding]),raw_width*sizeof(RAWTYPE));
 	    //}
 	    //}
 	}	
@@ -732,8 +764,26 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	
 	raw_in.close();
     }  
+
+
+
+	vector < vector < double > > averaged_image;
+
+	averaged_image.resize(raw_width);
+	    
+	for (int x=0; x!=raw_width; x++)  // allocate data grid
+	{
+		averaged_image[x].resize(raw_height);
+	}
+
 	
-	cout << "Writing sum.raw" << endl;
+	cout << "Writing sum.jpg" << endl;
+	
+
+	
+	double minval=100000.0;
+	double maxval=0.0;
+	
 	 
 	ofstream raw_out("sum.raw", ios::out);
 	
@@ -742,15 +792,43 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 		for (int x=0; x!=raw_width; x++)  // allocate data grid
 		{
 		double dblsum = 0;
-			for(int z = 0; z != totframes ; z++ )
-			{
-				dblsum += raw_data[z][y][x];
-			}
-		RAWTYPE sum = (RAWTYPE)	(dblsum);
-		raw_out.write((char*)(&sum),sizeof(RAWTYPE));	
+		
+		for(int z = 0; z != totframes ; z++ )
+		{
+			dblsum += raw_data[z+padding][y+padding][x+padding];
+		}
+		
+		//RAWTYPE sum = (RAWTYPE)	(dblsum);
+	
+		if (dblsum > maxval)
+			maxval = dblsum;
+		
+		if (dblsum < minval)
+			minval = dblsum;
+	
+		averaged_image[x][y]= dblsum;
+		
+		//raw_out.write((char*)(&sum),sizeof(RAWTYPE));	
 		}
 	
 	}
+	
+	Image image(Geometry(raw_width,raw_height),"white");
+	
+	for (int y=0; y!=raw_height; y++)  // allocate data grid
+	{
+		for (int x=0; x!=raw_width; x++)  // allocate data grid
+		{
+		
+			double col = ( ( averaged_image[x][y] - minval ) / (maxval - minval));
+		
+			image.pixelColor(x, y, ColorGray(col));	
+			
+		}
+	}
+	
+	
+	image.write("sum.jpg");
 	
 	raw_out.close();
 	    
