@@ -36,6 +36,8 @@
 #include "vtkJPEGWriter.h"
 #include "vtkWindowToImageFilter.h"
 
+#include "vtkVRMLExporter.h"
+
 #include <vector>
 
 #include <Magick++.h>
@@ -46,6 +48,8 @@ using namespace Magick;
 #define PI 3.14159
 
 #define RAWTYPE float
+
+#define MAX(a,b) ((a) < (b) ? (b) : (a))
 
 // REVISIT, move to header file
 void createStructuredPointRepresentation(const vector<vector<vector<RAWTYPE> > > 
@@ -58,12 +62,16 @@ void addIsoRender(vtkRenderer *renderer, vtkStructuredPoints *sp,
 		  const double threshold, const double opacity, double R, double G, double B);
 int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	    double &nm_per_pixel, double &nm_per_slice);
-void getMinMax(const std::vector<std::vector<std::vector<RAWTYPE> > > 
-	       &raw_data, 
-	       double &min, double &max);
+void getMinMax(const vector<vector<vector<RAWTYPE> > > &raw_data, 
+		double &min_val, double &max_val, double &totx, double &toty, double &totz  );
+		
 void renderBead(bool render_vol, bool render_iso, double isothreshold);
 void filterRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	       int ksz);
+
+
+// Todo:  Fix the mess of x,y,z i,j,k etc.  Order and naming is messed up.  Z should be stack dimention
+// Todo: fix save filenames to use file pattern
 
 // ---
 // ---
@@ -213,7 +221,7 @@ int main(int argc, char *argv[])
 void renderBead(bool render_vol, bool render_iso, double isothreshold)
 {
 	
-	bool INTERACTIVE = true;
+	bool INTERACTIVE = false;
 	
     std::vector<std::vector<std::vector<RAWTYPE> > > raw_data;
     double nm_per_pixel, nm_per_slice;
@@ -229,9 +237,18 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     vspacing[1] = nm_per_pixel;
     vspacing[2] = nm_per_pixel;
 
-	double x_center = (nm_per_slice * raw_data.size()) / 2.0;
-	double y_center = (nm_per_pixel * raw_data[0].size()) / 2.0;
-	double z_center = (nm_per_pixel * raw_data[0][0].size()) / 2.0;
+    double max_val, min_val;
+	double totx, toty, totz;
+	 
+    getMinMax(raw_data, min_val, max_val, totx, toty, totz);
+
+	double x_len = (nm_per_slice * raw_data.size()) ;
+	double y_len = (nm_per_pixel * raw_data[0].size()) ;
+	double z_len = (nm_per_pixel * raw_data[0][0].size()) ;
+	
+	double x_center = nm_per_slice * totz;
+	double y_center = nm_per_pixel * toty;
+	double z_center = nm_per_pixel * totx;
 
     createStructuredPointRepresentation(raw_data, vspacing, spoints);
     
@@ -263,8 +280,17 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
     vtkRenderWindowInteractor *iren =  vtkRenderWindowInteractor::New();
     iren->SetRenderWindow(renWin);
 
-	//renWin->Render();
+	renWin->Render();
     
+	cout << "Writing vrml" << endl;
+	
+	vtkVRMLExporter *VRML = vtkVRMLExporter::New();
+	VRML->SetInput(renWin);
+	VRML->SetFileName("vrml.wrl");
+	VRML->Update();
+	VRML->Write();
+	VRML->Delete();
+
 
     //vtkCallbackCommand *keypress = vtkCallbackCommand::New();
     //keypress->SetCallback(renderCallback);
@@ -301,16 +327,21 @@ void renderBead(bool render_vol, bool render_iso, double isothreshold)
 		double steps     = 270;
 
 		double camerax   = x_center * 2;
-		double cameralen = y_center * 2.7;
+		double cameralen = MAX(z_len , (MAX( x_len , y_len))) * 1.5;
 
 		double step      = 360 / steps;
 
+
+		double tilt = 45 * (2 * PI / 360);
+		
+		double tiltxscale = cos (tilt);
+		double tiltzscale = sin (tilt);
 
 		for (int frame   = 1; frame <= steps ; ++frame)
 		{
 			double angle    = 2 * PI * step * (double) frame / 360.0;
 
-			ren->GetActiveCamera()->SetPosition(x_center + cameralen * sin(angle), y_center + cameralen * cos(angle), z_center + cameralen * sin(angle)  );
+			ren->GetActiveCamera()->SetPosition(x_center + (tiltxscale * cameralen * cos(angle)), y_center + tiltzscale * cameralen * cos(angle), z_center + cameralen * sin(angle)  );
 
 			ren->GetActiveCamera()->ComputeViewPlaneNormal();
 			ren->ResetCameraClippingRange();
@@ -360,7 +391,9 @@ void createStructuredPointRepresentation(
     double iscale = 1.0;
     
     double max_val, min_val;
-    getMinMax(raw_data, min_val, max_val);
+	double totx, toty, totz;
+	 
+    getMinMax(raw_data, min_val, max_val, totx, toty, totz);
     
     // loop over voxel set converting to structured points suitable for 
     // vtk volume rendering
@@ -622,7 +655,7 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
     char raw_filepattern[2048], filename[2048], buff[2048];
     int filenum;
     
-	int padding=30;
+	int padding=5;
 
     // read data settings in from raw files instead 
     // of previously calculated data
@@ -646,7 +679,7 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	
 	raw_info.close();  
 	
-	cout << setprecision(2);
+	//cout << setprecision(2);
 	cout << "File info: " << endl << endl 
 	     << "Width:       " << raw_width << endl
 	     << "Height:      " << raw_height << endl
@@ -781,8 +814,8 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	
 
 	
-	double minval=100000.0;
-	double maxval=0.0;
+	RAWTYPE minval=100000.0;
+	RAWTYPE maxval=0.0;
 	
 	 
 	ofstream raw_out("sum.raw", ios::out);
@@ -813,6 +846,7 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	
 	}
 	
+	
 	Image image(Geometry(raw_width,raw_height),"white");
 	
 	for (int y=0; y!=raw_height; y++)  // allocate data grid
@@ -831,33 +865,97 @@ int loadRaw(std::vector<std::vector<std::vector<RAWTYPE > > > &raw_data,
 	image.write("sum.jpg");
 	
 	raw_out.close();
+	
+	minval=100000.0;
+	maxval=0.0;
+	
+	RAWTYPE val;
+	
+	for(int z = padding; z != totframes + padding ; ++z )
+	{
+		for (int y= padding; y!=raw_height + padding; ++y) 
+		{
+			for (int x= padding; x!=raw_width + padding; ++x) 
+			{	
+				val = raw_data[z][y][x];
+				
+				if (val > maxval)
+					maxval = val;
+
+				if (val < minval)
+					minval = val;
+			}
+
+		}
+	
+	}
+	
+	// bring floor to zero
+	
+	for(int z = padding; z != totframes + padding ; ++z )
+	{
+		for (int y= padding; y!=raw_height + padding; ++y) 
+		{
+			for (int x= padding; x!=raw_width + padding; ++x)
+			{
+				raw_data[z][y][x] -= minval;
+			}
+		}
+	}
+	
+	
+	
 	    
 }
     
 void getMinMax(const vector<vector<vector<RAWTYPE> > > &raw_data, 
-	       double &min_val, double &max_val)
+	       double &min_val, double &max_val, double &totx, double &toty, double &totz  )
 {
-    min_val = raw_data[0][0][0];
-    max_val = raw_data[0][0][0];
+    min_val = 100000;
+    max_val = 0;
 
     int ni = raw_data.size(); // z
     int nj = raw_data[0].size(); // height
     int nk = raw_data[0][0].size(); // width
 
+	double valtot;
+	
+	totx = toty = totz = 0.0;
+	valtot = 0.0;
+
     for(int f=0; f<ni; f++)
     {
-	for(int i=0; i<nj; i++)
-	{
-	    for(int j=0; j<nk; j++)
-	    {
-		if(raw_data[f][i][j]>max_val)
-		    max_val = raw_data[f][i][j];
+		for(int i=0; i<nj; i++)
+		{
+	    	for(int j=0; j<nk; j++)
+	    	{
+				if(raw_data[f][i][j]>max_val)
+		    		max_val = raw_data[f][i][j];
 		
-		if(raw_data[f][i][j]<min_val)
-		    min_val = raw_data[f][i][j];
-	    }
-	}
+				if(raw_data[f][i][j]<min_val)
+		    		min_val = raw_data[f][i][j];
+		
+				totz += raw_data[f][i][j] * (double) f;
+				toty += raw_data[f][i][j] * (double) i;
+				totx += raw_data[f][i][j] * (double) j;
+				
+				valtot += raw_data[f][i][j];
+	
+	    	}
+		}
     }
+
+	totz /=  valtot;
+	toty /=  valtot;
+	totx /=  valtot;
+	
+
     cout << "min val:"<< min_val << ", "
 	 << "max val:"<< max_val << endl;
+
+	cout << "Center: " 
+	<< totx << ","
+	<< toty << ","
+	<< totz << endl; 
+
 }
