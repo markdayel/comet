@@ -288,7 +288,10 @@ int CROSSLINKDELAY = 200;  // number of interations before crosslinking
 						  //  (to allow position to be equilibrated to something
 						  //       reasonable before locking node in place)
 
-//double NODE_REPULSIVE_POWER = 2.7;
+#ifndef FORCE_REPULSIVE_POWER_TO_TWO
+double NODE_REPULSIVE_POWER = 1.9;
+#endif
+
 double NODE_REPULSIVE_MAG =  1.5;
 double NODE_REPULSIVE_RANGE = 1.0;
 double NODE_REPULSIVE_BUCKLE_RANGE = NODE_REPULSIVE_RANGE * 0.3;
@@ -1152,8 +1155,10 @@ int main(int argc, char* argv[])
 		    else if (tag == "NODE_REPULSIVE_MAG") 
 			    {ss >> NODE_REPULSIVE_MAG;}
     		
-		    //else if (tag == "NODE_REPULSIVE_POWER") 
-			//    {ss >> NODE_REPULSIVE_POWER;}
+#ifndef FORCE_REPULSIVE_POWER_TO_TWO
+		    else if (tag == "NODE_REPULSIVE_POWER") 
+			    {ss >> NODE_REPULSIVE_POWER;}
+#endif
     		
 		    else if (tag == "NODE_REPULSIVE_RANGE") 
 			    {ss >> NODE_REPULSIVE_RANGE;}
@@ -3054,71 +3059,71 @@ void render_raw(actin &theactin)
 
     }
 
-        CometVtkVis vtkvis(false); // should this be false? (i.e. no render window)
+    // read in the raw data
+
+    for(filenum = raw_firstframe; filenum <= raw_lastframe ; filenum++ )
+	{
+
+        sprintf(buff, raw_filepattern, filenum);
+        sprintf(filename, "raw/%s", buff);
 
 
-        for(filenum = raw_firstframe; filenum <= raw_lastframe ; filenum++ )
-		{
+        cout << "Reading file " << filename << "...";
+        cout.flush();
 
-            sprintf(buff, raw_filepattern, filenum);
-            sprintf(filename, "raw/%s", buff);
+        ifstream raw_in(filename, ios::in);
 
+        // find filesize
 
-            cout << "Reading file " << filename << "...";
-            cout.flush();
+        raw_in.seekg(0,ios::end);
+        int file_size=raw_in.tellg();
+        raw_in.seekg(0);
 
-            ifstream raw_in(filename, ios::in);
+        int z = filenum - raw_firstframe;  // index from zero
 
-            // find filesize
-
-            raw_in.seekg(0,ios::end);
-            int file_size=raw_in.tellg();
-            raw_in.seekg(0);
-
-            int z = filenum - raw_firstframe;  // index from zero
-
-            if ((z < 0) || (z > raw_lastframe))
-            {
-                cout << "Z out of range" << endl;
-                exit(EXIT_FAILURE);
-            }
-
-
-            for (int y=0; y!=raw_height; y++)  // allocate data grid
-            {
-                //for (int y=0; y!=raw_height; y++)
-	            //{
-                    //for (int z=0; z!=raw_height; z++)
-	                //{
-                        raw_in.read((char*)(&raw_data[z][y][0]),raw_width*sizeof(RAWTYPE));
-	                //}
-                //}
-            }
-
-            
-
-            int posn = (int)raw_in.tellg();
-            if (posn == -1)
-            {
-                cout << endl << "Warning: End of file reached before data read in!" << endl;
-            }
-            else
-            if  (posn != file_size)
-            {
-                cout << endl << "Warning: Finished reading " <<  file_size - posn << " bytes short of end of file " << endl;
-            }
-            else
-            {
-                cout << "read OK." << endl;
-            }
-
-            cout.flush();
-
-            raw_in.close();
+        if ((z < 0) || (z > raw_lastframe))
+        {
+            cout << "Z out of range" << endl;
+            exit(EXIT_FAILURE);
         }
 
 
-    //CometVtkVis vtkvis(false); // should this be false? (i.e. no render window)
+        for (int y=0; y!=raw_height; y++)  // allocate data grid
+        {
+            //for (int y=0; y!=raw_height; y++)
+            //{
+                //for (int z=0; z!=raw_height; z++)
+                //{
+                    raw_in.read((char*)(&raw_data[z][y][0]),raw_width*sizeof(RAWTYPE));
+                //}
+            //}
+        }
+
+        
+
+        int posn = (int)raw_in.tellg();
+        if (posn == -1)
+        {
+            cout << endl << "Warning: End of file reached before data read in!" << endl;
+        }
+        else
+        if  (posn != file_size)
+        {
+            cout << endl << "Warning: Finished reading " <<  file_size - posn << " bytes short of end of file " << endl;
+        }
+        else
+        {
+            cout << "read OK." << endl;
+        }
+
+        cout.flush();
+
+        raw_in.close();
+    }
+
+
+
+    CometVtkVis vtkvis(false); // should this be false? (i.e. no render window)
 
 
 }

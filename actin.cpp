@@ -1309,16 +1309,16 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
             if (COVERSLIPGAP > 0)
             {
 
+#ifdef FORCE_REPULSIVE_POWER_TO_TWO
+
                 if (p_sameGPnode->x >   COVERSLIPGAP - NODE_REPULSIVE_RANGE)
                 {
                     recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
 
                     if ( recipdist < 1.0/0.05 )  // 1.0/0.05 (i.e. if less than dist of 0.05)
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( local_NODE_REPULSIVE_RANGEsqared * recipdist * recipdist - 1 );
-//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                       rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared * recipdist * recipdist - 1 );
                     else
-                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * (  NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05)  - 1 ) ;
-//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+                       rep_force_mag = local_NODE_REPULSIVE_MAGscaled * (  NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE * 20 * 20  - 1 ) ;
 
                     p_sameGPnode->rep_force_vec.x -= 2*rep_force_mag ;
                 }
@@ -1329,13 +1329,43 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
                     if ( recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
                        rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( NODE_REPULSIVE_RANGE * recipdist * NODE_REPULSIVE_RANGE * recipdist - 1 );
-//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
                     else
-                       rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE / (0.05 * 0.05) - 1 ) ;
-//                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+                       rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE * 20 * 20 - 1 ) ;
 
                     p_sameGPnode->rep_force_vec.x += 2*rep_force_mag ;
                 }
+
+
+#else
+
+                if (p_sameGPnode->x >   COVERSLIPGAP - NODE_REPULSIVE_RANGE)
+                {
+                    recipdist = 1.0 / ( p_sameGPnode->x - COVERSLIPGAP );
+
+                    if ( recipdist < 1.0/0.05 )  // 1.0/0.05 (i.e. if less than dist of 0.05)
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                    else
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * 20 , NODE_REPULSIVE_POWER ) - 1 ) ;
+
+                    p_sameGPnode->rep_force_vec.x -= 2*rep_force_mag ;
+                }
+
+                if (p_sameGPnode->x < - COVERSLIPGAP + NODE_REPULSIVE_RANGE)
+                {
+                    recipdist = 1.0 / ( - p_sameGPnode->x - COVERSLIPGAP );
+
+                    if ( recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                    else
+                       rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE * 20 , NODE_REPULSIVE_POWER ) - 1 ) ;
+
+                    p_sameGPnode->rep_force_vec.x += 2*rep_force_mag ;
+                }
+
+
+
+#endif
+
 
             }
 
@@ -1392,6 +1422,8 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                                 // this was the old function
 					            //rep_force_mag = 13 * NODE_REPULSIVE_MAG * (exp ((-7.0*dist/NODE_REPULSIVE_RANGE)) - exp (-7.0));
 
+                              
+#ifdef FORCE_REPULSIVE_POWER_TO_TWO
 
                                 // n.b. if you change this function, also change the energy function below to be the integral
                                // F_R = M_R (( \frac{d_R}{d} )^{P_R} -1)
@@ -1402,6 +1434,16 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                                    rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared / (0.05 * 0.05) - 1 ) ;
                                    //rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
  
+#else                                                         
+                                if (recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
+                                   //rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared * recipdist * recipdist - 1 );
+                                   rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                               else
+                                   //rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared / (0.05 * 0.05) - 1 ) ;
+                                   rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+
+#endif
+
 
 						   // if harbinger, ramp up the repulsive forces gradually (linearly with itter no):
 
@@ -3350,6 +3392,8 @@ void actin::writebitmapheader(ofstream& outbmpfile, const int & bitmapwidth, con
 
 #endif
 
+
+
 	for (int i=0;i!=255;++i)
 	{ // the bitmap palette  (not used for 24 bit, of course)
 		fileInfo->bmiColors[i].rgbBlue = (BYTE) i;
@@ -3587,9 +3631,9 @@ void actin::compressfilesdowork(const int & filenum)
                                        
 	// wrl file
 
-	sprintf(command1 , "(gzip -9 -f -c %snodes%05i.wrl > %snodes%05i.wrz 2>/dev/null) &",
-						TEMPDIR, filenum,  VRMLDIR,filenum);
-	system(command1);
+	//sprintf(command1 , "(gzip -9 -f -c %snodes%05i.wrl > %snodes%05i.wrz 2>/dev/null) &",
+	//					TEMPDIR, filenum,  VRMLDIR,filenum);
+	//system(command1);
 
 #else
 

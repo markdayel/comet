@@ -213,6 +213,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     renderer = vtkRenderer::New();
 	renderer->SetBackground(0, 0, 0);
 
+    
+
     OptVIEW_VTK = VIEW_VTK;
 
     //cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
@@ -453,10 +455,11 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
         if(OptsVolumeRenderNodes)
 	        addStructuredPointVolumeRender(spoints);        
-                            
+                                                                                   
         if(OptsIsoRenderNodes)
         {
-	        addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
+            addStructuredPointIsoRender(spoints, 240.0, Colour( 0.3, 0.6, 0.3), 1.0 );
+	        //addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
             //addStructuredPointIsoRender(spoints, 150.0, Colour( 0.6, 0.3, 0.2), 0.5 );
             //addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
         }
@@ -499,11 +502,12 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
         // render to file
         saveImage(framenumber);
-        //saveVRML(framenumber); // save vrml last (have to change lighting before vrml save for some reason)
+        saveVRML(framenumber); 
 
     }
 
 
+    
     
     // clear all actors from the renderer
 
@@ -631,6 +635,7 @@ void CometVtkVis::saveImage(const int &framenumber)
     renderLarge->SetInput(renderer);
     renderLarge->SetMagnification(VTK_AA_FACTOR);
 
+
     // vtkBMPWriter seems a bit faster than vtkPNGWriter, and we're compressing with IM to png anyway later
     // so use BMP here
     vtkBMPWriter *imagewriter = vtkBMPWriter::New();
@@ -640,6 +645,7 @@ void CometVtkVis::saveImage(const int &framenumber)
     imagewriter->Write();    
     
     imagewriter->Delete();
+
 
     //rwin_to_image->Delete();
     renderLarge->Delete();
@@ -724,21 +730,22 @@ void CometVtkVis::saveVRML(const int &framenumber)
     // for some reason directional lights don't seem to work for vrml
     // so remove them and switch on ambient lighting:
 
-    renderer->GetLights()->RemoveAllItems();
+    //renderer->GetLights()->RemoveAllItems();
 
-    renderer->SetAmbient(0.8,0.8,0.8);
+    //renderer->SetAmbient(0.8,0.8,0.8);
 
 
-    cout << "Saving " << vrmlfilename << endl;
 
-	vtkVRMLExporter *VRMLExporter = vtkVRMLExporter::New();
+    cout << "Writing vrml file " << vrmltmpfilename << endl;
+	
+	vtkVRMLExporter *VRML = vtkVRMLExporter::New();
+	VRML->SetInput(render_win);
+	VRML->SetFileName( vrmltmpfilename );
+	VRML->Update();
+	VRML->Write();
+	VRML->Delete();
 
-	VRMLExporter->SetInput( render_win );
-    VRMLExporter->SetFileName( vrmltmpfilename );
-    VRMLExporter->Write();    
-
-    VRMLExporter->Delete();
-  
+    cout << "Compressing vrml file " << vrmlfilename << endl;
     char command1[1024];
     sprintf(command1 , "gzip -f -c %s > %s ", vrmltmpfilename, vrmlfilename );
     system(command1);
@@ -1017,7 +1024,10 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
   
     // move to static
     // Gaussian splat
-    double gaussmax = (double) GAUSSFWHM * 3/2.0;  
+    //double gaussmax = (double) GAUSSFWHM * 3/2.0;  
+    
+    double gaussmax = 1.5;
+
     // full extent of gaussian radius -  fwhm is 2/3 this
   
     const int splat_sz = (int)(voxelscalefactor * gaussmax) ; // as in actin 
@@ -1219,7 +1229,7 @@ void CometVtkVis::createGaussianVoxelRepresentation(vtkStructuredPoints *sp)
 		        } 
                 else 
                 {
-			        vxdata->InsertValue(offset, (int)(value*255) );
+			        vxdata->InsertValue(offset, (unsigned char)(value*255) );
 		        }
 		    } 
             else 
@@ -1529,13 +1539,18 @@ void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp, const dou
     iso_mapper->ScalarVisibilityOff();
     iso_surf->Delete();
     
+ 
+
     vtkActor *iso_actor = vtkActor::New();
     iso_actor->SetMapper(iso_mapper);
     iso_mapper->Delete();
     
     iso_actor->GetProperty()->SetOpacity(opacity);
     iso_actor->GetProperty()->SetColor(col.r, col.g, col.b);
-    
+
+   
+
+
     renderer->AddActor(iso_actor);
     iso_actor->Delete();
     smooth->Delete();
@@ -2316,13 +2331,16 @@ void CometVtkVis::addLight()
     vect campos;
 
     renderer->GetActiveCamera()->GetPosition(campos.x,campos.y,campos.z);
-
+    renderer->GetActiveCamera()->ViewingRaysModified();
     campos-= ptheactin->p_nuc->position;
 
+
+    
     vect l1pos=campos * 1.3;
     vect l2pos=campos * 1.3;
+    vect l3pos=campos * -2.6;
 
-    rotationmatrix rot1, rot2;
+    rotationmatrix rot1, rot2, rot3;
     
     rot1.rotatematrix(-40 * PI / 180 , zaxis);
     rot1.rotatematrix(50 * PI / 180 , yaxis);
@@ -2332,22 +2350,35 @@ void CometVtkVis::addLight()
     rot2.rotatematrix(-10 * PI / 180 , yaxis);
     rot2.rotate(l2pos);
 
+    rot3.rotatematrix(40 * PI / 180 , zaxis);
+    rot3.rotatematrix(-10 * PI / 180 , yaxis);
+    rot3.rotate(l3pos);
+
     l1pos += ptheactin->p_nuc->position;
     l2pos += ptheactin->p_nuc->position;
+    l3pos += ptheactin->p_nuc->position;
+
 
 	vtkLight *light1 = vtkLight::New();
-	light1->SetIntensity(0.8);
-	light1->SetColor(1,0.9,0.8);
+	light1->SetIntensity(0.9);
+	light1->SetColor(1,0.7,0.7);
     light1->SetPosition(l1pos.x, l1pos.y, l1pos.z);
     renderer->AddLight(light1);
     light1->Delete();
 
     vtkLight *light2 = vtkLight::New();                                                       
 	light2->SetIntensity(0.8);
-	light2->SetColor(0.8,0.8,1.0);
+	light2->SetColor(0.6,0.6,1.0);
     light2->SetPosition(l2pos.x, l2pos.y, l2pos.z);
     renderer->AddLight(light2);
     light2->Delete();
+
+    vtkLight *light3 = vtkLight::New();                                                       
+	light3->SetIntensity(0.8);
+	light3->SetColor(0.4,0.4,1.0);
+    light3->SetPosition(l3pos.x, l3pos.y, l3pos.z);
+    renderer->AddLight(light3);
+    light3->Delete();
 
 }
 
@@ -2390,7 +2421,6 @@ void CometVtkVis::setProjection(vect & cameraposition,vect & cameratarget)
     renderer->GetActiveCamera()->SetParallelScale(p_scale);
     //renderer->ResetCamera();
   
-    
     // this sets where camera is relative to the bead
 
     viewupvect = vect(0,0,-1);

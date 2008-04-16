@@ -55,6 +55,8 @@ removed without prior written permission from the author.
 #define USE_GSL_RANDOM 1
 
 
+//#define FORCE_REPULSIVE_POWER_TO_TWO 1
+
 // test optimizations
 #ifdef NODEGRIDTYPELIST
     #define NODEGRIDTYPE list
@@ -441,7 +443,9 @@ extern int CROSSLINKDELAY;
 extern int NODES_TO_UPDATE;
 extern double DISTANCE_TO_UPDATE;
 
-// extern double NODE_REPULSIVE_POWER;
+#ifndef FORCE_REPULSIVE_POWER_TO_TWO
+extern double NODE_REPULSIVE_POWER;
+#endif
 extern double NODE_REPULSIVE_MAG;
 extern double NODE_REPULSIVE_RANGE;
 extern double NODE_REPULSIVE_BUCKLE_RANGE;

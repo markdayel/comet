@@ -50,7 +50,7 @@ using namespace Magick;
 #define RAWTYPE float
 
 #define MAX(a,b) ((a) < (b) ? (b) : (a))
-
+                                                               
 // REVISIT, move to header file
 void createStructuredPointRepresentation(const vector<vector<vector<RAWTYPE> > > 
 					 &raw_data, 
