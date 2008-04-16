@@ -155,12 +155,55 @@ public:
 	//vector <int_vect> nucleatorgrid;
 	vector <int> crosslinknodesdelay;
 
+    static vector <double> repulsiveforcelookup;
+    static double maxrepulsivemag;
+
     ofstream::pos_type bitmap_start;
 
 
 	bool CompareDistance ( linkform* elem1, linkform* elem2 );
 	
 	void collisiondetection(void);
+
+    
+    static double collisiondetection_getrepforce(const double & dist);
+
+    void collisiondetection_setrepforcelookup();
+
+    //static double collisiondetection_repforcelookup(const double & dist );
+
+    inline static double collisiondetection_repforcelookup(const double & dist)
+    {   /// interpolate repulsive force from lookup table
+
+        const static double recip_NODE_REPULSIVE_RANGE_lookup_scale = 1.0 / (NODE_REPULSIVE_RANGE - MIN_REPULSION_DIST);
+
+        double distin = (dist - MIN_REPULSION_DIST) * recip_NODE_REPULSIVE_RANGE_lookup_scale ;
+
+        unsigned int lowpoint = (unsigned int)floor(distin * REPULSIVE_LOOKUP_DIVISIONS);
+        double offset = (distin * REPULSIVE_LOOKUP_DIVISIONS) - (double)lowpoint;
+
+        double lowval = repulsiveforcelookup[lowpoint];
+        double highval = repulsiveforcelookup[lowpoint+1];
+
+        return lowval + (highval - lowval) * offset ;
+
+    }
+
+    //inline static double collisiondetection_repforcelookup(const double & dist)
+    //{   /// get next lowest value
+
+    //    const static double recip_NODE_REPULSIVE_RANGE_lookup_scale = 1.0 / (NODE_REPULSIVE_RANGE - MIN_REPULSION_DIST);
+
+    //    //unsigned int lowpoint = (unsigned int)floor((dist - MIN_REPULSION_DIST) * recip_NODE_REPULSIVE_RANGE_lookup_scale * REPULSIVE_LOOKUP_DIVISIONS);
+    //    //double offset = (distin * REPULSIVE_LOOKUP_DIVISIONS) - (double)lowpoint;
+
+    //    //double lowval = repulsiveforcelookup[lowpoint];
+    //    //double highval = repulsiveforcelookup[lowpoint+1];
+
+    //    return repulsiveforcelookup[(unsigned int)floor((dist - MIN_REPULSION_DIST) * recip_NODE_REPULSIVE_RANGE_lookup_scale * REPULSIVE_LOOKUP_DIVISIONS)] ;
+
+    //}
+
 	void nucleator_node_interactions(void);
 	//void move_and_rotate(void);
 

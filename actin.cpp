@@ -359,6 +359,8 @@ actin::actin(void)
     savenodetracks = true;
 
 
+    collisiondetection_setrepforcelookup();
+
 } 
 
 actin::~actin(void)
@@ -1233,6 +1235,39 @@ size_t actin::findnearbynodes(const nodes& ournode, const int& adjgridpoints, co
     return p_recti_near_nodeslist->size();
 }
 
+inline double actin::collisiondetection_getrepforce(const double & dist)
+{
+    return 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / dist, NODE_REPULSIVE_POWER ) - 1 );
+}
+
+void actin::collisiondetection_setrepforcelookup()
+{   	
+    
+    repulsiveforcelookup.resize(REPULSIVE_LOOKUP_DIVISIONS+1);
+
+    for (int i = 0; i < REPULSIVE_LOOKUP_DIVISIONS+1; ++i)
+    {
+        double dist = MIN_REPULSION_DIST + i * ( (NODE_REPULSIVE_RANGE - MIN_REPULSION_DIST) / REPULSIVE_LOOKUP_DIVISIONS );
+        repulsiveforcelookup[i]=collisiondetection_getrepforce( dist );
+
+        //cout << i << "    " << dist << "   " << repulsiveforcelookup[i] << "   " << endl; 
+
+    }
+
+    maxrepulsivemag = collisiondetection_getrepforce( MIN_REPULSION_DIST );
+
+    // // check
+    //for (int i = 0; i < REPULSIVE_LOOKUP_DIVISIONS+1; ++i)
+    //{
+    //    double dist = MIN_REPULSION_DIST + i * ( (NODE_REPULSIVE_RANGE - MIN_REPULSION_DIST) / REPULSIVE_LOOKUP_DIVISIONS );
+    //    cout << i << "    " << dist << "   " << repulsiveforcelookup[i] << "   " << collisiondetection_repforcelookup(dist) << endl; 
+    //}
+
+}
+
+
+
+
 void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 {	
     // cast arg
@@ -1242,7 +1277,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
         return NULL; // nothing to do
 
 	const double local_NODE_REPULSIVE_RANGEsqared = NODE_REPULSIVE_RANGE * NODE_REPULSIVE_RANGE;
-    const double local_NODE_REPULSIVE_MAGscaled = 0.06 * NODE_REPULSIVE_MAG;
+//    const double local_NODE_REPULSIVE_MAGscaled = 0.06 * NODE_REPULSIVE_MAG;
 
     vect nodeposvec;
     double distsqr;
@@ -1272,6 +1307,8 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
 
     int sameGPnodenum;
+
+    double dist;
 
     // loop over all the nodes given to this thread
     for(vector <nodes*>::iterator	i_node  = nodes_by_thread[dat->threadnum].begin(); 
@@ -1363,6 +1400,42 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                 }
 
 
+                if (p_sameGPnode->x >  COVERSLIPGAP - NODE_REPULSIVE_RANGE)
+                {
+                    dist = p_sameGPnode->x - COVERSLIPGAP ;
+
+                    if (dist < MIN_REPULSION_DIST )
+                        rep_force_mag = maxrepulsivemag;
+                    else
+                    {
+#ifdef USE_REPULSIVE_LOOKUP
+                                   rep_force_mag = collisiondetection_repforcelookup(dist); 
+#else
+                                   rep_force_mag = collisiondetection_getrepforce(dist);
+#endif
+                    }
+
+                    p_sameGPnode->rep_force_vec.x -= 2*rep_force_mag ;
+                }
+
+                if (p_sameGPnode->x < - COVERSLIPGAP + NODE_REPULSIVE_RANGE)
+                {
+                    dist = - p_sameGPnode->x - COVERSLIPGAP ;
+
+                    if (dist < MIN_REPULSION_DIST) 
+                        rep_force_mag = maxrepulsivemag;
+                    else
+                    {
+#ifdef USE_REPULSIVE_LOOKUP
+                                   rep_force_mag = collisiondetection_repforcelookup(dist); 
+#else
+                                   rep_force_mag = collisiondetection_getrepforce(dist);
+#endif
+                    }
+
+                    p_sameGPnode->rep_force_vec.x += 2*rep_force_mag ;
+                }
+
 
 #endif
 
@@ -1417,6 +1490,7 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
 
 				                //dist = SSEsqrt(distsqr);  
                                 recipdist = SSErsqrt(distsqr);
+                                dist = 1.0/recipdist;
                                 // calculate repulsive force
   
                                 // this was the old function
@@ -1434,13 +1508,25 @@ void * actin::collisiondetectiondowork(void* arg)//, pthread_mutex_t *mutex)
                                    rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared / (0.05 * 0.05) - 1 ) ;
                                    //rep_force_mag = 0.06 * NODE_REPULSIVE_MAG * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
  
-#else                                                         
-                                if (recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
-                                   //rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared * recipdist * recipdist - 1 );
-                                   rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+#else                          
+                               if (dist < MIN_REPULSION_DIST) 
+                                   rep_force_mag = maxrepulsivemag;
                                else
-                                   //rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared / (0.05 * 0.05) - 1 ) ;
-                                   rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
+                               {
+#ifdef USE_REPULSIVE_LOOKUP
+                                   rep_force_mag = collisiondetection_repforcelookup(dist); 
+#else
+                                   rep_force_mag = collisiondetection_getrepforce(dist);
+#endif
+                               }
+
+  
+                               // if (recipdist < 1.0/0.05 )   // 1.0/0.05 (i.e. if less than dist of 0.05)
+                               //    //rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared * recipdist * recipdist - 1 );
+                               //    rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( pow( NODE_REPULSIVE_RANGE * recipdist, NODE_REPULSIVE_POWER ) - 1 );
+                               //else
+                               //    //rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( local_NODE_REPULSIVE_RANGEsqared / (0.05 * 0.05) - 1 ) ;
+                               //    rep_force_mag = local_NODE_REPULSIVE_MAGscaled * ( pow( NODE_REPULSIVE_RANGE / 0.05 , NODE_REPULSIVE_POWER ) - 1 ) ;
 
 #endif
 

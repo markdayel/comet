@@ -144,6 +144,8 @@ using namespace std; // REVISIT only iostream probably temporary -- remove later
 CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to create a viewing window
                                         // does it need to be true for off-screen as well?
 {
+    cout << "Initialising VTK..." << endl;
+    cout.flush();
 
     voxel_scale = 4.0;
     p_scale = 100;
@@ -376,6 +378,9 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
 
 
 #endif
+
+    cout << "VTK initialization finished" << endl;
+    cout.flush();
  
 }
 

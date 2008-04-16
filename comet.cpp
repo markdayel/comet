@@ -362,6 +362,9 @@ Nodes2d actin::nodes_on_same_gridpoint;
 vector<vector<NODEGRIDTYPE<nodes*>*> > actin::gridpointsbythread;
 vector <int> actin::nearby_collision_gridpoint_offsets;
 
+vector <double> actin::repulsiveforcelookup;
+double actin::maxrepulsivemag;
+
 vector <nodes> referencenodes;   // used for bitmaps/vtk to normalise energies etc.
 
 
@@ -387,7 +390,7 @@ Nodes2d actin::linkremoveto;
 
 bool REWRITESYMBREAK = false;
 bool POST_PROCESS = false;
-bool READ_RAW = false;
+//bool READ_RAW = false;
 bool POST_PROCESSSINGLECPU = false;
 unsigned int POST_PROCESS_CPUS = 1;
 bool VIEW_VTK = false;
@@ -409,7 +412,7 @@ string get_datafilename(const int iteration);
 void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_iterations, const int& lastframedone);
 void postprocess(nucleator& nuc_object, actin &theactin, 
 		 vector<int> &postprocess_iterations, char* argv[], const vector<vect> & nodeposns);
-void render_raw(actin &theactin);
+//void render_raw(actin &theactin);
 // void rewrite_symbreak_bitmaps(nucleator& nuc_object, actin &theactin);
 
 // keyboard monitoring function
@@ -469,7 +472,7 @@ int main(int argc, char* argv[])
 		     << "where <command> is 'post' to write bitmap images" << endl 
              << "                   'vtk' to write 3D images " << endl
              << "                   'view' to enter 3D interactive mode" << endl
-             << "                   'read_raw' to read 3D raw data (experimental)" << endl
+             //<< "                   'read_raw' to read 3D raw data (experimental)" << endl
              //<< "e.g.   " << endl 
              << "e.g    " <<argv[0] << " post 1:300      <- write bitmaps for frame 1--300" << endl
              << "       " <<argv[0] << " view 300:300    <- 3D interactive view for frame 300"   << endl
@@ -523,15 +526,15 @@ int main(int argc, char* argv[])
             POST_VTK = true;
 		}
         else
-        if (strcmp(argv[1], "read_raw") == 0 )   
-		{
-			POST_PROCESS = true;
-			POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
-            POST_BMP = false;
-            POST_VTK = true;
-            READ_RAW = true;
-		}
-        else
+  //      if (strcmp(argv[1], "read_raw") == 0 )   
+		//{
+		//	POST_PROCESS = true;
+		//	POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
+  //          POST_BMP = false;
+  //          POST_VTK = true;
+  //          READ_RAW = true;
+		//}
+  //      else
         {
 
         }
@@ -1645,11 +1648,11 @@ int main(int argc, char* argv[])
 	theactin.opruninfo.fill(' ');
 	theactin.opruninfo.setf(ios::fixed);
 
-    if (READ_RAW)
-    {
-        render_raw(theactin);
-        exit(EXIT_SUCCESS);
-    }
+    //if (READ_RAW)
+    //{
+    //    render_raw(theactin);
+    //    exit(EXIT_SUCCESS);
+    //}
 
 
 	if (REWRITESYMBREAK)
@@ -2954,179 +2957,179 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 
 
-void render_raw(actin &theactin)
-{   
-    // bit ugly right now---just read in images from 'raw' dir
-
-#define RAWTYPE float
-
-    
-
-    vector<vector<vector<RAWTYPE> > > raw_data;
-
-    int raw_width, 
-	    raw_height;
-
-	double	nm_per_pixel,
-            nm_per_slice;
-
-    int raw_firstframe,
-        raw_lastframe;
-
-    int totframes;
-
-    char raw_filepattern[2048], filename[2048], buff[2048];
-
-
-    int filenum;
-
-    // read data settings in from raw files instead of previously calculated data
-
- 	ifstream raw_info("raw/frameinfo.txt", ios::in);
-
-    if (!raw_info) 
-    { 
-	    cout << "Unable to open file 'frameinfo.txt' for input" << endl;
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        string line;
-        getline(raw_info,line);
-
-        //cout << line;
-
-	    raw_info    >> raw_width 
-				    >> raw_height
-				    >> nm_per_pixel
-                    >> nm_per_slice
-                    >> raw_firstframe
-                    >> raw_lastframe
-                    >> raw_filepattern;
-
-	    raw_info.close();  
-
-        cout << setprecision(2);
-        cout << "File info: "
-            << "Width:       " << raw_width << endl
-			<< "Height:      " << raw_height << endl
-			<< "nm/pixel:    " << nm_per_pixel << endl
-            << "nm/slice:    " << nm_per_slice << endl
-            << "First frame: " << raw_firstframe << endl
-            << "Last Frame:  " << raw_lastframe << endl
-            << "Filepattern: " << raw_filepattern << endl;
-
-        
-        
-        if ((( raw_width < 1 ) || (raw_width > 2000)) ||
-            (( raw_height < 1 ) || (raw_height > 2000)) || 
-            (( raw_lastframe < 1 ) || (raw_lastframe > 2000)))
-        {
-            cout << " Parameters out of range.  Aborting read. " << endl;
-            exit(EXIT_FAILURE);
-        }
-
-        cout << endl;
-
-
-        totframes = (raw_lastframe - raw_firstframe) + 1;
-
-        cout << "Raw type is set to " << sizeof(RAWTYPE) * 8 << " bits per pixel" << endl;
-
-        double memreq=sizeof(RAWTYPE) * raw_width * raw_height * raw_lastframe;
-
-        cout << "Allocating memory required for image : " <<  ((memreq / 1024) / 1024) << " MB" << endl;
-
-        
-        raw_data.resize(totframes);
-
-        for (int z=0; z!=totframes; z++)
-	    {
-            raw_data[z].resize(raw_height);
-
-            for (int x=0; x!=raw_height; x++)  // allocate data grid
-            {
-	            raw_data[z][x].resize(raw_width);
-    	        
-                //for (int y=0; y!=raw_height; y++)
-	            //{
-		        //    raw_data[z][x][y].resize(raw_lastframe);
-	            //}
-            }
-        }
-
-        cout << "Memory allocated" << endl;
-
-    }
-
-    // read in the raw data
-
-    for(filenum = raw_firstframe; filenum <= raw_lastframe ; filenum++ )
-	{
-
-        sprintf(buff, raw_filepattern, filenum);
-        sprintf(filename, "raw/%s", buff);
-
-
-        cout << "Reading file " << filename << "...";
-        cout.flush();
-
-        ifstream raw_in(filename, ios::in);
-
-        // find filesize
-
-        raw_in.seekg(0,ios::end);
-        int file_size=raw_in.tellg();
-        raw_in.seekg(0);
-
-        int z = filenum - raw_firstframe;  // index from zero
-
-        if ((z < 0) || (z > raw_lastframe))
-        {
-            cout << "Z out of range" << endl;
-            exit(EXIT_FAILURE);
-        }
-
-
-        for (int y=0; y!=raw_height; y++)  // allocate data grid
-        {
-            //for (int y=0; y!=raw_height; y++)
-            //{
-                //for (int z=0; z!=raw_height; z++)
-                //{
-                    raw_in.read((char*)(&raw_data[z][y][0]),raw_width*sizeof(RAWTYPE));
-                //}
-            //}
-        }
-
-        
-
-        int posn = (int)raw_in.tellg();
-        if (posn == -1)
-        {
-            cout << endl << "Warning: End of file reached before data read in!" << endl;
-        }
-        else
-        if  (posn != file_size)
-        {
-            cout << endl << "Warning: Finished reading " <<  file_size - posn << " bytes short of end of file " << endl;
-        }
-        else
-        {
-            cout << "read OK." << endl;
-        }
-
-        cout.flush();
-
-        raw_in.close();
-    }
-
-
-
-    CometVtkVis vtkvis(false); // should this be false? (i.e. no render window)
-
-
-}
+//void render_raw(actin &theactin)
+//{   
+//    // bit ugly right now---just read in images from 'raw' dir
+//
+//#define RAWTYPE float
+//
+//    
+//
+//    vector<vector<vector<RAWTYPE> > > raw_data;
+//
+//    int raw_width, 
+//	    raw_height;
+//
+//	double	nm_per_pixel,
+//            nm_per_slice;
+//
+//    int raw_firstframe,
+//        raw_lastframe;
+//
+//    int totframes;
+//
+//    char raw_filepattern[2048], filename[2048], buff[2048];
+//
+//
+//    int filenum;
+//
+//    // read data settings in from raw files instead of previously calculated data
+//
+// 	ifstream raw_info("raw/frameinfo.txt", ios::in);
+//
+//    if (!raw_info) 
+//    { 
+//	    cout << "Unable to open file 'frameinfo.txt' for input" << endl;
+//        exit(EXIT_FAILURE);
+//    }
+//    else
+//    {
+//        string line;
+//        getline(raw_info,line);
+//
+//        //cout << line;
+//
+//	    raw_info    >> raw_width 
+//				    >> raw_height
+//				    >> nm_per_pixel
+//                    >> nm_per_slice
+//                    >> raw_firstframe
+//                    >> raw_lastframe
+//                    >> raw_filepattern;
+//
+//	    raw_info.close();  
+//
+//        cout << setprecision(2);
+//        cout << "File info: "
+//            << "Width:       " << raw_width << endl
+//			<< "Height:      " << raw_height << endl
+//			<< "nm/pixel:    " << nm_per_pixel << endl
+//            << "nm/slice:    " << nm_per_slice << endl
+//            << "First frame: " << raw_firstframe << endl
+//            << "Last Frame:  " << raw_lastframe << endl
+//            << "Filepattern: " << raw_filepattern << endl;
+//
+//        
+//        
+//        if ((( raw_width < 1 ) || (raw_width > 2000)) ||
+//            (( raw_height < 1 ) || (raw_height > 2000)) || 
+//            (( raw_lastframe < 1 ) || (raw_lastframe > 2000)))
+//        {
+//            cout << " Parameters out of range.  Aborting read. " << endl;
+//            exit(EXIT_FAILURE);
+//        }
+//
+//        cout << endl;
+//
+//
+//        totframes = (raw_lastframe - raw_firstframe) + 1;
+//
+//        cout << "Raw type is set to " << sizeof(RAWTYPE) * 8 << " bits per pixel" << endl;
+//
+//        double memreq=sizeof(RAWTYPE) * raw_width * raw_height * raw_lastframe;
+//
+//        cout << "Allocating memory required for image : " <<  ((memreq / 1024) / 1024) << " MB" << endl;
+//
+//        
+//        raw_data.resize(totframes);
+//
+//        for (int z=0; z!=totframes; z++)
+//	    {
+//            raw_data[z].resize(raw_height);
+//
+//            for (int x=0; x!=raw_height; x++)  // allocate data grid
+//            {
+//	            raw_data[z][x].resize(raw_width);
+//    	        
+//                //for (int y=0; y!=raw_height; y++)
+//	            //{
+//		        //    raw_data[z][x][y].resize(raw_lastframe);
+//	            //}
+//            }
+//        }
+//
+//        cout << "Memory allocated" << endl;
+//
+//    }
+//
+//    // read in the raw data
+//
+//    for(filenum = raw_firstframe; filenum <= raw_lastframe ; filenum++ )
+//	{
+//
+//        sprintf(buff, raw_filepattern, filenum);
+//        sprintf(filename, "raw/%s", buff);
+//
+//
+//        cout << "Reading file " << filename << "...";
+//        cout.flush();
+//
+//        ifstream raw_in(filename, ios::in);
+//
+//        // find filesize
+//
+//        raw_in.seekg(0,ios::end);
+//        int file_size=raw_in.tellg();
+//        raw_in.seekg(0);
+//
+//        int z = filenum - raw_firstframe;  // index from zero
+//
+//        if ((z < 0) || (z > raw_lastframe))
+//        {
+//            cout << "Z out of range" << endl;
+//            exit(EXIT_FAILURE);
+//        }
+//
+//
+//        for (int y=0; y!=raw_height; y++)  // allocate data grid
+//        {
+//            //for (int y=0; y!=raw_height; y++)
+//            //{
+//                //for (int z=0; z!=raw_height; z++)
+//                //{
+//                    raw_in.read((char*)(&raw_data[z][y][0]),raw_width*sizeof(RAWTYPE));
+//                //}
+//            //}
+//        }
+//
+//        
+//
+//        int posn = (int)raw_in.tellg();
+//        if (posn == -1)
+//        {
+//            cout << endl << "Warning: End of file reached before data read in!" << endl;
+//        }
+//        else
+//        if  (posn != file_size)
+//        {
+//            cout << endl << "Warning: Finished reading " <<  file_size - posn << " bytes short of end of file " << endl;
+//        }
+//        else
+//        {
+//            cout << "read OK." << endl;
+//        }
+//
+//        cout.flush();
+//
+//        raw_in.close();
+//    }
+//
+//
+//
+//    CometVtkVis vtkvis(false); // should this be false? (i.e. no render window)
+//
+//
+//}
 
 
 
