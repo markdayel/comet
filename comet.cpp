@@ -31,14 +31,15 @@ class tracknodeinfo;
 
 const int default_nice_level = 15;   // v. low priority, but above screesaver :)
 
-// these are fixed compile time limits, so make sure they are well above what will be used (else will core dump)
+//  make sure they are well above what will be used (else will core dump)
 
-double GRIDBOUNDS =  50.0;	  // size of grid in um (i.e. bead can move half of this from origin)
-double GRIDRES    =   0.8;	  // low res grid range
-int MAXNODES = 50000;
+double GRIDBOUNDS =  100.0;	  // size of grid in um (i.e. bead can move half of this from origin)
+int MAXNODES = 200000;
+
+
+double GRIDRES    =   0.8;	  // low res grid range.  This is reset later anyway
 
 // calc GRIDSIZE from above
-
 short int GRIDSIZE = (int) (2*GRIDBOUNDS/GRIDRES);
 
 // these are the default values for parameters that can be overridden by the cometparams.ini file
@@ -743,7 +744,6 @@ int main(int argc, char* argv[])
     sprintf(TEMPDIR,"%s\\temp\\", path);
     sprintf(VTKDIR,"%s\\vtk\\", path);
     sprintf(STATSDIR,"%s\\statistics\\", path);
-
     
 
 #endif
@@ -1542,8 +1542,11 @@ int main(int argc, char* argv[])
     if (!REWRITESYMBREAK  && !POST_PROCESS)
 	{	// not re-writing symmetry breaking bitmaps or post-processing
 		// so this is a new calculation and no other process is using temp bmp files
-		// and can clear them
+		// and can clear them and the velocities file
 		sprintf(command1, "rm -f %s*.bmp 2>/dev/null", TEMPDIR);
+		system(command1);
+
+        sprintf(command1, "rm -f %s 2>/dev/null", VELOCITIESFILE);
 		system(command1);
 	}
 

@@ -42,7 +42,7 @@ actin::actin(void)
 
     if (!REWRITESYMBREAK && !POST_PROCESS) // don't clobber if just doing post-process
     {
-	    opvelocityinfo.open("velocities.txt", ios::out | ios::trunc);
+	    opvelocityinfo.open( VELOCITIESFILE , ios::out | ios::app);  // (doesn't work) don't truncate---append (in case continuing a run)
 	    if (!opvelocityinfo) 
 	    {
 	        cout << "Unable to open file " << "velocities.txt" << " for output";

@@ -443,13 +443,7 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
     if(OptsRenderLinks)        
 	    addLinks();
 
-    if(OptsRenderNucleator)
-    {   
-        addNucleator(false); // render a solid nucleator
-        
-        if (VTK_NUC_WIREFRAME)
-	        addNucleator(true);  // if wireframe, add another nucleator, in wireframe and slightly bigger
-    }
+
 
     if(OptsVolumeRenderNodes || OptsIsoRenderNodes)
     {
@@ -467,10 +461,19 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 	        //addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
             //addStructuredPointIsoRender(spoints, 150.0, Colour( 0.6, 0.3, 0.2), 0.5 );
             //addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
+            addStructuredPointIsoRender(spoints, 240.0 / 1.5, Colour(0.3, 0.3, 0.3), 0.3);
         }
         
         spoints->Delete();
 
+    }
+
+    if(OptsRenderNucleator)
+    {   
+        addNucleator(false); // render a solid nucleator
+        
+        if (VTK_NUC_WIREFRAME)
+	        addNucleator(true);  // if wireframe, add another nucleator, in wireframe and slightly bigger
     }
 
     if(OptsRenderAxes)
@@ -507,7 +510,7 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
         // render to file
         saveImage(framenumber);
-        saveVRML(framenumber); 
+        //saveVRML(framenumber); 
 
     }
 
@@ -727,9 +730,10 @@ void CometVtkVis::saveVRML(const int &framenumber)
 {   // for some reason this produces *huge* files (>16MB) when nucleator texture is turned on
     // it also doesn't seem to work at all...(lighting problem?)
 
-    char vrmltmpfilename[1024],vrmlfilename[1024];
-    sprintf(vrmltmpfilename , "%s%s_%05i.wrl", TEMPDIR, file_prefix.c_str(), framenumber );
-    sprintf(vrmlfilename , "%s%s_%05i.wrz", VRMLDIR, file_prefix.c_str(), framenumber );
+    //char vrmltmpfilename[1024];
+    char vrmlfilename[1024];
+    //sprintf(vrmltmpfilename , "%s%s_%05i.wrl", TEMPDIR, file_prefix.c_str(), framenumber );
+    sprintf(vrmlfilename , "%s%s_%05i.wrl", VRMLDIR, file_prefix.c_str(), framenumber );
 
 
     // for some reason directional lights don't seem to work for vrml
@@ -741,18 +745,19 @@ void CometVtkVis::saveVRML(const int &framenumber)
 
 
 
-    cout << "Writing vrml file " << vrmltmpfilename << endl;
+    cout << "Writing vrml file " << vrmlfilename << endl;
 	
 	vtkVRMLExporter *VRML = vtkVRMLExporter::New();
 	VRML->SetInput(render_win);
-	VRML->SetFileName( vrmltmpfilename );
+	VRML->SetFileName( vrmlfilename );
 	VRML->Update();
 	VRML->Write();
 	VRML->Delete();
 
-    cout << "Compressing vrml file " << vrmlfilename << endl;
+    //cout << "Compressing vrml file " << vrmlfilename << endl;
     char command1[1024];
-    sprintf(command1 , "gzip -f -c %s > %s ", vrmltmpfilename, vrmlfilename );
+
+    sprintf(command1 , "%s %s &", COMPRESSCOMMAND, vrmlfilename );
     system(command1);
 }
 
@@ -769,6 +774,12 @@ void CometVtkVis::addNucleator(bool wireframe)
     else 
 	    add_sphere_to_assembly(nucleator_actor, wireframe);  // sphere or ellipsoid
 
+
+    //rotationmatrix tmp_rotmatrix;
+
+    //tmp_rotmatrix = ptheactin->nuc_to_world_rot;
+
+    //tmp_rotmatrix.inverse();
 
     // set nucleator rotation and translation matrix
 
@@ -1089,9 +1100,12 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
         
 	    // node centre in local voxel coords (nuc at centre) 
 	    // REVISIT: check why we need to add one here
-	    x = int(voxelscalefactor * node_pos.x + ni/2 + 1); 
+
+        // NOTE THE ORDER!  X and Z are swapped!!
+
+	    x = int(voxelscalefactor * node_pos.z + ni/2 + 1); 
 	    y = int(voxelscalefactor * node_pos.y + nj/2 + 1);
-	    z = int(voxelscalefactor * node_pos.z + nk/2 + 1);
+	    z = int(voxelscalefactor * node_pos.x + nk/2 + 1);
         
         
 	    if((x<0) || (x>=ni) ||
@@ -1544,17 +1558,12 @@ void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp, const dou
     iso_mapper->ScalarVisibilityOff();
     iso_surf->Delete();
     
- 
-
     vtkActor *iso_actor = vtkActor::New();
     iso_actor->SetMapper(iso_mapper);
     iso_mapper->Delete();
     
     iso_actor->GetProperty()->SetOpacity(opacity);
     iso_actor->GetProperty()->SetColor(col.r, col.g, col.b);
-
-   
-
 
     renderer->AddActor(iso_actor);
     iso_actor->Delete();

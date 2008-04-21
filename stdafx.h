@@ -78,6 +78,7 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 #define COMET_PARAMS_FILE "cometparams.ini"
 #define NODESUPDATEFILE "nodesupdate.txt"
 #define TESTNODESFILE "testnodes.txt"
+#define VELOCITIESFILE "velocities.txt"
 
 #define USEBZIP2 1
 
