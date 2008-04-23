@@ -141,22 +141,38 @@ using namespace std; // REVISIT only iostream probably temporary -- remove later
 // whatever is requested will be added to the visualisation, it's up to the user to set 
 // sensible and compatible options.
 
-CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to create a viewing window
+CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *should* be whether to create a viewing window
                                         // does it need to be true for off-screen as well?
 {
+
+    if (dummy_vtk)
+        return;
+
     cout << "Initialising VTK..." << endl;
     cout.flush();
+
 
     voxel_scale = 4.0;
     p_scale = 100;
     nuc_opacity = 0.4;
     vx_intensity_scale = 1.0;
     file_prefix = "vtk";
+
+    bool BIGISOSURFACERANGE=false;  // set to increase the array size if need to render large isosurfaces (slow)
         
     // find out data size
+
     ni = int(BMP_HEIGHT/voxel_scale) ;
     nj = int(BMP_HEIGHT/voxel_scale) ;
     nk = int(BMP_HEIGHT/voxel_scale) ;
+
+    if (BIGISOSURFACERANGE)
+    {
+       ni*=3;
+       nj*=3;
+       nk*=3;
+    }
+
     
     //OptsInteractive         = true;
     OptsRenderNucleator     = true;
@@ -271,6 +287,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK) // this parameter *should* be whether to
     else
         linewidths = 1.0;
 
+    
 
     // write the colourmap file
     // this is kind of slow, so only write if doesn't already exist
@@ -391,6 +408,9 @@ CometVtkVis::~CometVtkVis()
     // iren->Delete();
     //render_win->Delete();
     
+    if (!render_win)
+        return;
+
     render_win->RemoveRenderer(renderer);
 
     render_win->Delete();
@@ -457,11 +477,12 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
                                                                                    
         if(OptsIsoRenderNodes)
         {
+
             addStructuredPointIsoRender(spoints, 240.0, Colour( 0.3, 0.6, 0.3), 1.0 );
 	        //addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
             //addStructuredPointIsoRender(spoints, 150.0, Colour( 0.6, 0.3, 0.2), 0.5 );
             //addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
-            addStructuredPointIsoRender(spoints, 240.0 / 1.5, Colour(0.3, 0.3, 0.3), 0.3);
+            addStructuredPointIsoRender(spoints, 240.0 / 2.5, Colour(0.3, 0.3, 0.3), 0.3);
         }
         
         spoints->Delete();
@@ -510,7 +531,13 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
         // render to file
         saveImage(framenumber);
-        //saveVRML(framenumber); 
+        
+        // render rotation set
+        //saveImageRotationSet(framenumber);
+
+        // save vrml every 20 frames
+        //if (framenumber % 20 == 0)
+            saveVRML(framenumber); 
 
     }
 
@@ -625,13 +652,81 @@ void CometVtkVis::addVoxelBound()
     line3->Delete();
     map3->Delete();
     line_actor3->Delete();
+}     
+
+void CometVtkVis::saveImageRotationSet(const int &framenumber)
+{
+	double steps     = 270;
+
+    vect focalpoint;
+    vect cameraorigpos;
+
+    // read the current positions
+
+    renderer->GetActiveCamera()->GetFocalPoint(focalpoint.x, focalpoint.y, focalpoint.z);
+    renderer->GetActiveCamera()->GetPosition(cameraorigpos.x,cameraorigpos.y,cameraorigpos.z);
+ 
+    vect camera_orig_vec =  focalpoint-cameraorigpos;
+
+    double cameralen= camera_orig_vec.length();
+
+	double step      = 360 / steps;
+
+
+	double tilt = 45 * (2 * PI / 360);
+	
+	double tiltxscale = cos (tilt);
+	double tiltzscale = sin (tilt);
+
+
+    char filename[1024], command[1024];
+    //sprintf(tmpfilename , "%s%s_%05i.bmp", TEMPDIR, file_prefix.c_str(), framenumber );
+    sprintf(command    , "mkdir -p %s%s_%05i", VTKDIR, file_prefix.c_str(), framenumber);
+    system(command);
+
+
+	for (int frame   = 1; frame <= steps ; ++frame)
+	{
+		double angle    = 2 * PI * step * (double) frame / 360.0;
+
+        vect campos;
+
+        campos.x = focalpoint.x + (tiltxscale * cameralen * cos(angle));
+        campos.y = focalpoint.y + tiltzscale * cameralen * cos(angle);
+        campos.z = focalpoint.z + cameralen * sin(angle);
+
+		renderer->GetActiveCamera()->SetPosition(campos.x, campos.y, campos.z );
+
+		renderer->GetActiveCamera()->ComputeViewPlaneNormal();
+		renderer->ResetCameraClippingRange();
+
+		cout << "Rendering Frame " << frame << " of " << steps << endl;
+		cout.flush();
+
+	//saveBigImage(ren, frame);
+
+        sprintf(filename    , "%s%s_%05i/%s_%05i_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, file_prefix.c_str(), framenumber, frame, BMP_OUTPUT_FILETYPE.c_str());
+        saveImage(frame, filename);
+
+	}
 }
 
 void CometVtkVis::saveImage(const int &framenumber)
 {
-    char tmpfilename[1024],filename[1024];
-    sprintf(tmpfilename , "%s%s_%05i.bmp", TEMPDIR, file_prefix.c_str(), framenumber );
+
+    char filename[1024];
+    //sprintf(tmpfilename , "%s%s_%05i.bmp", TEMPDIR, file_prefix.c_str(), framenumber );
     sprintf(filename    , "%s%s_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, BMP_OUTPUT_FILETYPE.c_str());
+
+    saveImage(framenumber, filename);
+
+}
+
+void CometVtkVis::saveImage(const int &framenumber, char* filename)
+{
+    char tmpfilename[1024];//,filename[1024];
+    sprintf(tmpfilename , "%s%s_%05i.bmp", TEMPDIR, file_prefix.c_str(), framenumber );
+    //sprintf(filename    , "%s%s_%05i.%s", VTKDIR, file_prefix.c_str(), framenumber, BMP_OUTPUT_FILETYPE.c_str());
 
     //cout << "Saving " << filename << endl;
   
@@ -675,7 +770,7 @@ void CometVtkVis::saveImage(const int &framenumber)
             int(framenumber * InterRecordIterations * DELTA_T) );
     }
 
-    if (NO_COLBAR)
+    if (NO_COLBAR || !OptsRenderLinks)   // don't need the colorbar if not plotting links
     {
         if (VTK_AA_FACTOR!=1)
         {
@@ -1730,7 +1825,7 @@ void CometVtkVis::addTracks(const int & framenumber)
     temptracknodenumbers.resize(0);
     tracknodenumbers.resize(0); 
             
-    //cout << "Tot Nodes to track: " << ptheactin->node_tracks[xaxis].size() << endl;
+    cout << "Tot Nodes to track: " << ptheactin->node_tracks[xaxis].size() << endl;
 
     for (vector <tracknodeinfo>::iterator i_trackpoint  = ptheactin->node_tracks[xaxis].begin(); 
                                           i_trackpoint != ptheactin->node_tracks[xaxis].end(); 
@@ -1744,7 +1839,7 @@ void CometVtkVis::addTracks(const int & framenumber)
         }
     }
 
-    //cout << "Selected Nodes to track: " << temptracknodenumbers.size() << endl;
+    cout << "Selected Nodes to track: " << temptracknodenumbers.size() << endl;
 
     for (vector <int>::iterator i_pointnodenum  = temptracknodenumbers.begin(); 
                                 i_pointnodenum != temptracknodenumbers.end(); 
@@ -1759,7 +1854,12 @@ void CometVtkVis::addTracks(const int & framenumber)
         }
     }
 
-    //cout << "ReSelected Nodes to track: " << tracknodenumbers.size() << endl;
+    cout << "ReSelected Nodes to track: " << tracknodenumbers.size() << endl;
+
+
+    int point_skip_factor=1;
+
+    cout << "Plotting every " <<  point_skip_factor << " point(s)" << endl;
 
     // go through node by node
 
@@ -1783,28 +1883,49 @@ void CometVtkVis::addTracks(const int & framenumber)
 
         int time = 0;
 
+
+
+        int skip = 0;  
+
+        int max_track_length = 150;
+
         for (vector <tracknodeinfo>::iterator i_trackpoint  = ptheactin->node_tracks[xaxis].begin(); 
                                               i_trackpoint != ptheactin->node_tracks[xaxis].end(); 
                                             ++i_trackpoint)
         {   
+
+
             if (i_trackpoint->nodenum == *i_pointnodenum)
             {
-                x=i_trackpoint->x + ptheactin->p_nuc->position.x;
-                y=i_trackpoint->y + ptheactin->p_nuc->position.y;
-                z=i_trackpoint->z + ptheactin->p_nuc->position.z;
+                skip++;
 
-                convert_to_vtkcoord(x, y, z);
+                if ( (skip % point_skip_factor) == 0 || 
+                    (i_trackpoint == ptheactin->node_tracks[xaxis].end() - 1 ) || 
+                    (i_trackpoint == ptheactin->node_tracks[xaxis].begin()) )
+                {
 
-                aSplineX->AddPoint(time, x);
-                aSplineY->AddPoint(time, y);
-                aSplineZ->AddPoint(time, z);
+                    x=i_trackpoint->x + ptheactin->p_nuc->position.x;
+                    y=i_trackpoint->y + ptheactin->p_nuc->position.y;
+                    z=i_trackpoint->z + ptheactin->p_nuc->position.z;
 
-                inputPoints->InsertPoint(time, x, y, z); 
+                    convert_to_vtkcoord(x, y, z);
 
-                ++time;
+                    aSplineX->AddPoint(time, x);
+                    aSplineY->AddPoint(time, y);
+                    aSplineZ->AddPoint(time, z);
 
+                    inputPoints->InsertPoint(time, x, y, z); 
+
+                    ++time;
+
+                    if (time > max_track_length)
+                        break;
+
+                }
             }
         }
+
+        //cout << "Using " << time << " points per line" << endl;
 
         int numberOfInputPoints = time;
 
@@ -1845,7 +1966,12 @@ void CometVtkVis::addTracks(const int & framenumber)
         vtkActor *profile = vtkActor::New();
 
         profile->SetMapper(profileMapper);
-        profile->GetProperty()->SetDiffuseColor(1.0,0.0,0.0);
+
+        Colour col;
+        
+        col.setcol(rand_0to1());
+
+        profile->GetProperty()->SetDiffuseColor(col.r,col.g,col.b);
         profile->GetProperty()->SetSpecular(.3);
         profile->GetProperty()->SetSpecularPower(30);
 

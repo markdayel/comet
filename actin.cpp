@@ -2124,11 +2124,11 @@ void actin::set_nodes_to_track(const projection & proj)
 
     
 
-    if (!POST_VTK) // only restrict if not plotting vtk tracks
-    {
-        restrictrange = RADIUS / 2;
-        //MAX_NODES_TO_TRACK = 30;
-    }
+    //if (!POST_VTK) // only restrict if not plotting vtk tracks
+    //{
+    //    restrictrange = RADIUS / 2;
+    //    //MAX_NODES_TO_TRACK = 30;
+    //}
                       
 
 
@@ -2806,7 +2806,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
 #endif
 
-        // add the tracks data:
+        // add the tracks data:                                           
 
     if ((node[i].dist_from_surface > 0.01) && savenodetracks && POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
             ( find(nodes_to_track.begin(), nodes_to_track.end(), i) != nodes_to_track.end() ))  // is node in the track list?
@@ -3184,7 +3184,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         {
             // and draw a line for each
 
-            drawcmd << "\" -stroke magenta -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \" polyline ";
+            drawcmd << "\" -stroke gray -strokewidth " << BMP_AA_FACTOR + 1 << " -draw \" polyline ";
 
             int linepoints = 0;
 
@@ -3845,8 +3845,9 @@ bool actin::load_data(ifstream &ifstr)
 
     nuc_to_world_rot = world_to_nuc_rot.inverse();
 
+ 
 
-    // load nucleator
+        // load nucleator
     ifstr >> str;
     if(str.compare("nucleator:") !=0 )
     {
@@ -3923,6 +3924,7 @@ bool actin::load_data(ifstream &ifstr)
     {
 	    ifstr >> (*i) ;
     }
+
 
 
     

@@ -19,7 +19,7 @@
 
 class CometVtkVis {
  public:
-  CometVtkVis(bool) {};
+  CometVtkVis(bool,bool) {};
   ~CometVtkVis() {};
   
   void buildVTK(int, vect&, vect&);

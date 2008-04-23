@@ -105,7 +105,7 @@ class CometVtkVis {
   OptProjectionType getProjectionOpt(const std::string &value);
   
  public:
-  CometVtkVis(bool VIEW_VTK);//actin * theactin);
+  CometVtkVis(bool VIEW_VTK, bool dummy_vtk);//actin * theactin);
   ~CometVtkVis();
   
   char VTK_colmap_filename[1024];
@@ -149,6 +149,8 @@ class CometVtkVis {
   void setProjection(vect & cameraposition,vect & cameratarget);
   void fillVoxelSetFromActinNodes(vector< vector< vector<double > > >  &vx);// ,double vd, double* min);
   void saveImage(const int &framenumber);
+  void saveImageRotationSet(const int &framenumber);
+  void saveImage(const int &framenumber, char* filename);
   void renderProjections(vtkRenderWindow *render_win, string base_filename);
   double getMeanNodeLinkForce(const int node_i);
 };

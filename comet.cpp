@@ -797,6 +797,7 @@ int main(int argc, char* argv[])
 	if(!param) 
 	{
 		cerr << "Cannot open " << COMET_PARAMS_FILE << endl << endl;
+        system("stty sane 2>/dev/null");   // fix for something that messes the terminal up (kbhit?)
 		exit(EXIT_FAILURE);
 	}
 
@@ -1807,7 +1808,12 @@ gsl_rng_set(randomnum, rand_num_seed);
 
     char last_symbreak_bmp_filename[1024] = "";
 
-    CometVtkVis vtkvis(VIEW_VTK);   // create vtk object
+
+    bool dummy_vtk;
+
+    dummy_vtk = !POST_VTK; 
+
+    CometVtkVis vtkvis(VIEW_VTK, dummy_vtk);   // create vtk object
 
 	cout << endl;
 	cout << "Starting iterations..." << endl << endl; 
@@ -2836,7 +2842,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         // workaround is to create the vtk object within the loop, so that
         // the destructor clears out and we recreate the object every time
 
-        CometVtkVis vtkvis(false); // should this be false? (i.e. no render window)
+        CometVtkVis vtkvis(false, false); // should this be false? (i.e. no render window)
 
 
         vector<int>::iterator start = postprocess_iterations.begin();

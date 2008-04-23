@@ -250,12 +250,16 @@ int nucleator::addnodessphere(void) const
 
         ptheactin->nuc_to_world_frame(worldframepos);
 
+        double COVERSLIP_DIST_NO_POL = RADIUS / 5.0; // shut off polymerization within 1/10 diameter of coverslip
+
         if ((COVERSLIPGAP > 0) &&
-            ((worldframepos.x * 2 >  COVERSLIPGAP) ||
-             (worldframepos.x * 2 < -COVERSLIPGAP)) )  
+            ((worldframepos.x * 2.0 >   (COVERSLIPGAP - COVERSLIP_DIST_NO_POL) ) ||
+             (worldframepos.x * 2.0 < - (COVERSLIPGAP - COVERSLIP_DIST_NO_POL) )) )  
         {   // skip of outside coverslip
             continue;
         }
+
+
 
 
         // add the new node:

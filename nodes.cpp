@@ -225,6 +225,8 @@ bool nodes::load_data(ifstream &istrm)
 
     ifstream::pos_type filepos = istrm.tellg();
 
+    
+
     istrm >> nodenum 
 	 >> harbinger 
 	 >> polymer 
@@ -248,6 +250,8 @@ bool nodes::load_data(ifstream &istrm)
 	 >> nucleator_stuck_position 
      >> nucleator_link_force
 	 >> ch;
+
+    
 
    // istrm >> nodenum 
 	  //>> x >> y >> z 
@@ -277,8 +281,6 @@ bool nodes::load_data(ifstream &istrm)
 
     if (nodenum < 0)
     {
- 
-
         cout << "Nodenum < 0 : " << nodenum << endl;
         cout << "Read: " << nodenum << " " 
 	         << x << " " << y << " " << z << " " 
