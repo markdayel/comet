@@ -552,14 +552,29 @@ void segments::addnode(const nodes& node)
 
 	// check this, may not be right
 
-	surfacestuckforce[0][xseg][0] += xfactor * (rot_nuc_link_force.y + rot_nuc_impacts.y); 
-	surfacestuckforce[0][xseg][1] += xfactor * (rot_nuc_link_force.z + rot_nuc_impacts.z);
 
-	surfacestuckforce[1][yseg][0] += yfactor * (rot_nuc_link_force.x + rot_nuc_impacts.x);
-	surfacestuckforce[1][yseg][1] += yfactor * (rot_nuc_link_force.z + rot_nuc_impacts.z); 
+    // add the nucleator link forces
 
-	surfacestuckforce[2][zseg][0] += zfactor * (rot_nuc_link_force.x + rot_nuc_impacts.x);
-	surfacestuckforce[2][zseg][1] += zfactor * (rot_nuc_link_force.y + rot_nuc_impacts.y);
+	surfacestuckforce[0][xseg][0] += xfactor * (rot_nuc_link_force.y ); 
+	surfacestuckforce[0][xseg][1] += xfactor * (rot_nuc_link_force.z );
+
+	surfacestuckforce[1][yseg][0] += yfactor * (rot_nuc_link_force.x );
+	surfacestuckforce[1][yseg][1] += yfactor * (rot_nuc_link_force.z ); 
+
+	surfacestuckforce[2][zseg][0] += zfactor * (rot_nuc_link_force.x );
+	surfacestuckforce[2][zseg][1] += zfactor * (rot_nuc_link_force.y );
+
+    // add the impact forces
+
+ //   surfacestuckforce[0][xseg][0] += xfactor * ( rot_nuc_impacts.y); 
+	//surfacestuckforce[0][xseg][1] += xfactor * ( rot_nuc_impacts.z);
+
+	//surfacestuckforce[1][yseg][0] += yfactor * ( rot_nuc_impacts.x);
+	//surfacestuckforce[1][yseg][1] += yfactor * ( rot_nuc_impacts.z); 
+
+	//surfacestuckforce[2][zseg][0] += zfactor * ( rot_nuc_impacts.x);
+	//surfacestuckforce[2][zseg][1] += zfactor * ( rot_nuc_impacts.y);
+
 
 
 	if (xdist!=-1)
@@ -740,6 +755,8 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
     const double scalefactor = scale * NODE_DIST_TO_FORCE / 
                                (surfaceimpacts_scalefactor * (double) InterRecordIterations);
 
+    // temp change max line length:
+
     const double maxlinelength = 0.9 * RADIUS;
 	
 	for (int i=0; i != segstodraw; ++i)
@@ -867,6 +884,7 @@ int segments::drawline(ostream& drawcmd ,
 
 void segments::addallnodes()
 {
+    // uncomment this line to make stats cumulative over frames
     clearbins();
 
 	for (int i=0; i != ptheactin->highestnodecount; ++i)

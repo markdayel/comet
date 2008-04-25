@@ -2578,250 +2578,257 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     //  main loop over nodes:
 
-    for(int i=0; i != highestnodecount; ++i)
+    if (!VECTOR_NOT_BITMAP)
     {
-       if (!node[i].polymer)
-			continue;
 
-        // calculate position in pixels 
-        // with displacement to bring bead back in bounds
-
-        x = pixels(rotatednodepositions[i].y - origin.y) + bmpcenterx + movex;                      
-		y = pixels(rotatednodepositions[i].z - origin.z) + bmpcentery + movey;
-
-
-        // skip if out of focal depth
-        if (fabs(rotatednodepositions[i].x - nucposn.x) > FOCALDEPTH)
-            continue;
-
-        //mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
-       
-        // skip if off of the edge of the picture
-
-        if ((x+xgmax < 0) || 
-            (x-xgmax >= BMP_WIDTH) ||
-            (y+ygmax < 0) || 
-            (y-ygmax >= BMP_HEIGHT))
-            continue;
-
-        // set speckle magnitude for this point
-
-       mult = 1.0;
-       double specmult = 0.0;
-
-		if (SPECKLE)
+        for(int i=0; i != highestnodecount; ++i)
         {
-            if (SPECKLEGRID)
+           if (!node[i].polymer)
+			    continue;
+
+            // calculate position in pixels 
+            // with displacement to bring bead back in bounds
+
+            x = pixels(rotatednodepositions[i].y - origin.y) + bmpcenterx + movex;                      
+		    y = pixels(rotatednodepositions[i].z - origin.z) + bmpcentery + movey;
+
+
+            // skip if out of focal depth
+            if (fabs(rotatednodepositions[i].x - nucposn.x) > FOCALDEPTH)
+                continue;
+
+            //mult *= exp(-3.0 * fabs(rotatednodepositions[i].x) / FOCALDEPTH);
+           
+            // skip if off of the edge of the picture
+
+            if ((x+xgmax < 0) || 
+                (x-xgmax >= BMP_WIDTH) ||
+                (y+ygmax < 0) || 
+                (y-ygmax >= BMP_HEIGHT))
+                continue;
+
+            // set speckle magnitude for this point
+
+           mult = 1.0;
+           double specmult = 0.0;
+
+		    if (SPECKLE)
             {
-                // find position of node on original surface
-                // and rotate into observation frame, (without the bead rotation of course)
-                // to define thickness for speckle slice
-                originalpos = node[i].nucleator_stuck_position;
-                
-                
-                if (!SPECKLE_NO_ROTATE)
-                    nuc_to_world_rot.rotate(originalpos);
-
-                vect posincameraframe = originalpos;
-
-                  
-                sym_break_rotation_to_xy_plane.rotate(originalpos);
-                sym_break_rotation_to_xy_plane.rotate(posincameraframe);
-
-                axisrotation.rotate(posincameraframe);
-
-                double segnum;
-
-                if (fabs(posincameraframe.x) > RADIUS /2 ) // FOCALDEPTH )  // if outside focal depth then black
+                if (SPECKLEGRID)
                 {
-                    specmult = 0;
-                }
-                else
-                {
-                    if ( ((node[i].creation_iter_num + SPECKLEGRIDPERIODiter/2) % SPECKLEGRIDPERIODiter) < SPECKLEGRIDTIMEWIDTHiter)
+                    // find position of node on original surface
+                    // and rotate into observation frame, (without the bead rotation of course)
+                    // to define thickness for speckle slice
+                    originalpos = node[i].nucleator_stuck_position;
+                    
+                    
+                    if (!SPECKLE_NO_ROTATE)
+                        nuc_to_world_rot.rotate(originalpos);
+
+                    vect posincameraframe = originalpos;
+
+                      
+                    sym_break_rotation_to_xy_plane.rotate(originalpos);
+                    sym_break_rotation_to_xy_plane.rotate(posincameraframe);
+
+                    axisrotation.rotate(posincameraframe);
+
+                    double segnum;
+
+                    if (fabs(posincameraframe.x) > RADIUS /2 ) // FOCALDEPTH )  // if outside focal depth then black
                     {
-                        specmult = 1.0;  // if within time stripe, then white
+                        specmult = 0;
                     }
                     else
                     {
-                        //if ( ((int)(10 * 360 * (atan2(originalpos.y,originalpos.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
-                        //      < (10 * 360 * 2 * PI * (SPECKLEGRIDSTRIPEWIDTH/360)))
-
-
-                        //if (SPECKLE_NO_ROTATE)
-                        //    segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position, proj);
-                        //else
-                        //    segnum = ptheactin->p_nuc->segs.getsegmentnum(originalpos, proj);
-
-
-                        // note should we pass projection::xaxis, because we've already done the rotation above
-                        if (SPECKLE_NO_ROTATE)
-                            segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position, proj);
+                        if ( ((node[i].creation_iter_num + SPECKLEGRIDPERIODiter/2) % SPECKLEGRIDPERIODiter) < SPECKLEGRIDTIMEWIDTHiter)
+                        {
+                            specmult = 1.0;  // if within time stripe, then white
+                        }
                         else
-                            segnum = ptheactin->p_nuc->segs.getsegmentnum(originalpos, proj);
+                        {
+                            //if ( ((int)(10 * 360 * (atan2(originalpos.y,originalpos.z)+PI)) % ((int)(10 * 360 * 2 * PI / RADIAL_SEGMENTS))) 
+                            //      < (10 * 360 * 2 * PI * (SPECKLEGRIDSTRIPEWIDTH/360)))
 
 
-                        if ( fabs(segnum + 0.5 - (double)((int)segnum + 0.5)) < SPECKLEGRIDSTRIPEWIDTH )
-                            specmult = 1.0;  // if on spoke then white
-                        else
-                            specmult = 0.0;  // else black
+                            //if (SPECKLE_NO_ROTATE)
+                            //    segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position, proj);
+                            //else
+                            //    segnum = ptheactin->p_nuc->segs.getsegmentnum(originalpos, proj);
+
+
+                            // note should we pass projection::xaxis, because we've already done the rotation above
+                            if (SPECKLE_NO_ROTATE)
+                                segnum = ptheactin->p_nuc->segs.getsegmentnum(node[i].nucleator_stuck_position, proj);
+                            else
+                                segnum = ptheactin->p_nuc->segs.getsegmentnum(originalpos, proj);
+
+
+                            if ( fabs(segnum + 0.5 - (double)((int)segnum + 0.5)) < SPECKLEGRIDSTRIPEWIDTH )
+                                specmult = 1.0;  // if on spoke then white
+                            else
+                                specmult = 0.0;  // else black
+                        }
                     }
+
                 }
-
-            }
-            else                                                           
-            {
-                specmult = speckle_array[node[i].creation_iter_num % speckle_array_size];
-            }
-        }
-        else
-        {
-            specmult = 1.0;
-        }
-
-        specmult *= 10.0;
-
-
-
-
-#ifdef BMPS_USING_LINKS   
-
-        for(vector<links>::iterator link_i  = node[i].listoflinks.begin(); 
-	                                link_i != node[i].listoflinks.end();
-	                              ++link_i)
-        {
-
-        // for the links, take the position as the midpoint of the link
-
-        double posy = (rotatednodepositions[i].y + rotatednodepositions[link_i->linkednodenumber].y) / 2.0;
-        double posz = (rotatednodepositions[i].z + rotatednodepositions[link_i->linkednodenumber].z) / 2.0;
-
-        x = pixels(posy - origin.y) + bmpcenterx;                      
-		y = pixels(posz - origin.z) + bmpcentery;
-
-
-#endif 
-  
-        double value;
-
-#ifdef BMPS_USING_LINKS
-
-        if (REFERENCEFRAME)
-            value = getvaluetoplot(node[i], *link_i) - getvaluetoplot(referencenodes[i], *link_i);
-        else
-            value = getvaluetoplot(node[i], *link_i);
-
-#else
-        if (REFERENCEFRAME)
-            value = getvaluetoplot(node[i]) - getvaluetoplot(referencenodes[i]);
-        else
-            value = getvaluetoplot(node[i]);
-
-#endif
-
-        //if (value < 0.01)   // do we want this? messes up the reference stuff
-        //    continue;
-
-        if (COL_NODE_BY_STRAIN)
-        {
-            //if (prob_to_bool(0.01))
-            //    cout << " " << value;
-
-            if (COL_INDIVIDUAL_NODES)
-            {
-                nodecol.setcol(value);
+                else                                                           
+                {
+                    specmult = speckle_array[node[i].creation_iter_num % speckle_array_size];
+                }
             }
             else
             {
-                mult = value;
-                   
+                specmult = 1.0;
             }
-        
-        }
 
-        
+            specmult *= 10.0;
 
-  
-        // add the gaussian
-		for(xg = -xgmax; xg != xgmax+1; ++xg)
-        {
-			for(yg = -ygmax; yg != ygmax+1; ++yg)
-			{
-				if ((xg*xg+yg*yg)>(xgmax*ygmax))
-					continue;  // don't do corners
 
-                if ((x+xg < 0) || 
-                    (x+xg >= BMP_WIDTH) ||
-                    (y+yg < 0) || 
-                    (y+yg >= BMP_HEIGHT))
-                    continue;   // skip if outside image bounds
-				
-                
 
-                if (COL_NODE_BY_STRAIN)
-                {   // just store magnitudes in R, color at the end
-                    if (!COL_INDIVIDUAL_NODES)
-                    {
-                    imageR[x+xg][y+yg] += 10 * mult * GaussMat[xg+xgmax][yg+ygmax];
-                    }
 
-                    if (COL_GREY_BGND)
-                    {
-                        imageG[x+xg][y+yg] += GaussMat[xg+xgmax][yg+ygmax];
-                    }
+    #ifdef BMPS_USING_LINKS   
 
-                    if (COL_INDIVIDUAL_NODES)
-                    {
-                    imageR[x+xg][y+yg] += mult * 10 * nodecol.r * GaussMat[xg+xgmax][yg+ygmax];
-                    imageG[x+xg][y+yg] += mult * 10 * nodecol.g * GaussMat[xg+xgmax][yg+ygmax];
-                    imageB[x+xg][y+yg] += mult * 10 * nodecol.b * GaussMat[xg+xgmax][yg+ygmax];
-                    }
+            for(vector<links>::iterator link_i  = node[i].listoflinks.begin(); 
+	                                    link_i != node[i].listoflinks.end();
+	                                  ++link_i)
+            {
+
+            // for the links, take the position as the midpoint of the link
+
+            double posy = (rotatednodepositions[i].y + rotatednodepositions[link_i->linkednodenumber].y) / 2.0;
+            double posz = (rotatednodepositions[i].z + rotatednodepositions[link_i->linkednodenumber].z) / 2.0;
+
+            x = pixels(posy - origin.y) + bmpcenterx;                      
+		    y = pixels(posz - origin.z) + bmpcentery;
+
+
+    #endif 
+      
+            double value;
+
+    #ifdef BMPS_USING_LINKS
+
+            if (REFERENCEFRAME)
+                value = getvaluetoplot(node[i], *link_i) - getvaluetoplot(referencenodes[i], *link_i);
+            else
+                value = getvaluetoplot(node[i], *link_i);
+
+    #else
+            if (REFERENCEFRAME)
+                value = getvaluetoplot(node[i]) - getvaluetoplot(referencenodes[i]);
+            else
+                value = getvaluetoplot(node[i]);
+
+    #endif
+
+            //if (value < 0.01)   // do we want this? messes up the reference stuff
+            //    continue;
+
+            if (COL_NODE_BY_STRAIN)
+            {
+                //if (prob_to_bool(0.01))
+                //    cout << " " << value;
+
+                if (COL_INDIVIDUAL_NODES)
+                {
+                    nodecol.setcol(value);
                 }
                 else
                 {
-				    imageG[x+xg][y+yg] += mult *
-						        GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
-    				
-				    if (SPECKLE)
-                    {
-					    imageR[x+xg][y+yg] += specmult *
-						        GaussMat2[xg+xgmax][yg+ygmax];  // GaussMat2 is narrower than GaussMat
-                    }
-
-                    if (node[i].testnode)
-                    {
-                        imageB[x+xg][y+yg] += mult *
-							    GaussMat2[xg+xgmax][yg+ygmax];
-
-                        imageR[x+xg][y+yg] += mult * node[i].testsurface *
-						        GaussMat2[xg+xgmax][yg+ygmax];
-                    }
+                    mult = value;
+                       
                 }
-			}
+            
+            }
+
+            
+
+      
+            // add the gaussian
+		    for(xg = -xgmax; xg != xgmax+1; ++xg)
+            {
+			    for(yg = -ygmax; yg != ygmax+1; ++yg)
+			    {
+				    if ((xg*xg+yg*yg)>(xgmax*ygmax))
+					    continue;  // don't do corners
+
+                    if ((x+xg < 0) || 
+                        (x+xg >= BMP_WIDTH) ||
+                        (y+yg < 0) || 
+                        (y+yg >= BMP_HEIGHT))
+                        continue;   // skip if outside image bounds
+    				
+                    
+
+                    if (COL_NODE_BY_STRAIN)
+                    {   // just store magnitudes in R, color at the end
+                        if (!COL_INDIVIDUAL_NODES)
+                        {
+                        imageR[x+xg][y+yg] += 10 * mult * GaussMat[xg+xgmax][yg+ygmax];
+                        }
+
+                        if (COL_GREY_BGND)
+                        {
+                            imageG[x+xg][y+yg] += GaussMat[xg+xgmax][yg+ygmax];
+                        }
+
+                        if (COL_INDIVIDUAL_NODES)
+                        {
+                        imageR[x+xg][y+yg] += mult * 10 * nodecol.r * GaussMat[xg+xgmax][yg+ygmax];
+                        imageG[x+xg][y+yg] += mult * 10 * nodecol.g * GaussMat[xg+xgmax][yg+ygmax];
+                        imageB[x+xg][y+yg] += mult * 10 * nodecol.b * GaussMat[xg+xgmax][yg+ygmax];
+                        }
+                    }
+                    else
+                    {
+				        imageG[x+xg][y+yg] += mult *
+						            GaussMat[xg+xgmax][yg+ygmax];  // amount of actin
+        				
+				        if (SPECKLE)
+                        {
+					        imageR[x+xg][y+yg] += specmult *
+						            GaussMat2[xg+xgmax][yg+ygmax];  // GaussMat2 is narrower than GaussMat
+                        }
+
+                        if (node[i].testnode)
+                        {
+                            imageB[x+xg][y+yg] += mult *
+							        GaussMat2[xg+xgmax][yg+ygmax];
+
+                            imageR[x+xg][y+yg] += mult * node[i].testsurface *
+						            GaussMat2[xg+xgmax][yg+ygmax];
+                        }
+                    }
+			    }
+            }
+
+           
+
+    #ifdef BMPS_USING_LINKS
+
         }
 
-#ifdef BMPS_USING_LINKS
+    #endif
+
+            // add the tracks data:                                           
+
+        if ((node[i].dist_from_surface > 0.01) && savenodetracks && POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
+                ( find(nodes_to_track.begin(), nodes_to_track.end(), i) != nodes_to_track.end() ))  // is node in the track list?
+            {
+               
+                vect temppos=node[i];// - p_nuc->position;
+
+                world_to_nuc_frame(temppos); // we add the node positions relative to the nucleator
+
+                //if (filenum > TRACK_MIN_RANGE) // start plotting after this point
+                    node_tracks[proj].push_back(tracknodeinfo(i, temppos.x, temppos.y, temppos.z,
+                                                            x, y, filenum));
+            }
+
+	    }
 
     }
-
-#endif
-
-        // add the tracks data:                                           
-
-    if ((node[i].dist_from_surface > 0.01) && savenodetracks && POST_PROCESS && BMP_TRACKS && ( stationary_node_number != i) &&
-            ( find(nodes_to_track.begin(), nodes_to_track.end(), i) != nodes_to_track.end() ))  // is node in the track list?
-        {
-           
-            vect temppos=node[i];// - p_nuc->position;
-
-            world_to_nuc_frame(temppos); // we add the node positions relative to the nucleator
-
-            //if (filenum > TRACK_MIN_RANGE) // start plotting after this point
-                node_tracks[proj].push_back(tracknodeinfo(i, temppos.x, temppos.y, temppos.z,
-                                                        x, y, filenum));
-        }
-
-	}
 
     if (BMP_intensity_scaling)
     {
@@ -3118,15 +3125,19 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
         // note the values are already scaled to have a max of 1 from the symmetry breaking
         // so we're scaling the 3 colors mainly to show the range of small values
     	
-        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj,axisrotation, 4 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke blue   -strokewidth " << BMP_AA_FACTOR * strokewidth / 4 << " -draw \"" << tmp_drawcmd1.str();
 
-        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,axisrotation, 0.8 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke red    -strokewidth " << BMP_AA_FACTOR * strokewidth / 2 << " -draw \"" << tmp_drawcmd2.str();
 
-	    if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj,axisrotation, 0.16 * FORCE_BAR_SCALE) > 0)	
-		    drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR * strokewidth     << " -draw \"" << tmp_drawcmd3.str();	
+        if (!VECTOR_NOT_BITMAP)
+        {
+            if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd1,proj,axisrotation, 4 * FORCE_BAR_SCALE) > 0)	
+		        drawcmd << "\" -stroke blue   -strokewidth " << BMP_AA_FACTOR * strokewidth / 4 << " -draw \"" << tmp_drawcmd1.str();
 
+            if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd2,proj,axisrotation, 0.8 * FORCE_BAR_SCALE) > 0)	
+		        drawcmd << "\" -stroke red    -strokewidth " << BMP_AA_FACTOR * strokewidth / 2 << " -draw \"" << tmp_drawcmd2.str();
+        }
+
+        if (p_nuc->segs.drawsurfaceimpacts(tmp_drawcmd3,proj,axisrotation, 0.16 * FORCE_BAR_SCALE) > 0)	
+		        drawcmd << "\" -stroke yellow -strokewidth " << BMP_AA_FACTOR * strokewidth     << " -draw \"" << tmp_drawcmd3.str();
     }
 
     vect temp_nuc_posn;
@@ -3257,10 +3268,16 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     char sourceimage[1024];
 
-    if (BLANK_BMP)
+    if (VECTOR_NOT_BITMAP)
+    {
+        BMP_AA_FACTOR = 1 ; // set to 1 since no bitmap, no point in resizing
         sprintf(sourceimage, " -size %ix%i xc:white ", BMP_WIDTH , BMP_HEIGHT); // or 'transparent' or 'black'
+        BMP_OUTPUT_FILETYPE = "svg";
+    }
     else
+    {
         sprintf(sourceimage, " %s ", temp_BMP_filename );
+    }
 
     if (NO_IMAGE_TEXT)
     {	

@@ -153,7 +153,7 @@ void rotationmatrix::rotatematrixrevorder(const double& x_angle, const double& y
     rotatematrix(x_angle, xaxis);
 }
 
-void rotationmatrix::getangles(double& x_angle, double& y_angle, double& z_angle)
+void rotationmatrix::getangles(double& x_angle, double& y_angle, double& z_angle) const 
 {  // todo: check these are right way around
     y_angle = -atan2(zx,calcdist(xx,yx));
     z_angle =  atan2(yx/cos(y_angle),xx/cos(y_angle));

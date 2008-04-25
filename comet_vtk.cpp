@@ -145,6 +145,8 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
                                         // does it need to be true for off-screen as well?
 {
 
+    vtk_dummy_object = dummy_vtk;
+
     if (dummy_vtk)
         return;
 
@@ -408,7 +410,7 @@ CometVtkVis::~CometVtkVis()
     // iren->Delete();
     //render_win->Delete();
     
-    if (!render_win)
+    if (vtk_dummy_object)
         return;
 
     render_win->RemoveRenderer(renderer);
@@ -456,7 +458,15 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
     setProjection(cameraposition,cameratarget);  // also sets the rotation of the objects, so comes before actors:
     
     // add objects to renderer
-                 
+    
+    if(OptsRenderNucleator)
+    {   
+        addNucleator(false); // render a solid nucleator
+        
+        if (VTK_NUC_WIREFRAME)
+	        addNucleator(true);  // if wireframe, add another nucleator, in wireframe and slightly bigger
+    }
+
     if(OptsRenderNodes)
 	    addNodes();
   
@@ -489,13 +499,7 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
     }
 
-    if(OptsRenderNucleator)
-    {   
-        addNucleator(false); // render a solid nucleator
-        
-        if (VTK_NUC_WIREFRAME)
-	        addNucleator(true);  // if wireframe, add another nucleator, in wireframe and slightly bigger
-    }
+
 
     if(OptsRenderAxes)
 	    addTracks(framenumber);
@@ -537,7 +541,7 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
         // save vrml every 20 frames
         //if (framenumber % 20 == 0)
-            saveVRML(framenumber); 
+           saveVRML(framenumber); 
 
     }
 
@@ -825,9 +829,9 @@ void CometVtkVis::saveVRML(const int &framenumber)
 {   // for some reason this produces *huge* files (>16MB) when nucleator texture is turned on
     // it also doesn't seem to work at all...(lighting problem?)
 
-    //char vrmltmpfilename[1024];
+    char vrmltmpfilename[1024];
     char vrmlfilename[1024];
-    //sprintf(vrmltmpfilename , "%s%s_%05i.wrl", TEMPDIR, file_prefix.c_str(), framenumber );
+    sprintf(vrmltmpfilename , "%s%s_%05i.wrl", TEMPDIR, file_prefix.c_str(), framenumber );
     sprintf(vrmlfilename , "%s%s_%05i.wrl", VRMLDIR, file_prefix.c_str(), framenumber );
 
 
@@ -838,21 +842,55 @@ void CometVtkVis::saveVRML(const int &framenumber)
 
     //renderer->SetAmbient(0.8,0.8,0.8);
 
+    // render_win->Render();
+
+
+
+    rotationmatrix rotmat = ptheactin->nuc_to_world_rot;
+
+    double theta, phy, gamma;
+
+    rotmat.getangles(theta, phy, gamma);
+
+    cout << setprecision(3) ;
+    cout << "Nucleator rotation:" <<  theta << " " <<  phy << " "<<  gamma << endl;
+    cout << "Nucleator displacement:" <<  ptheactin->p_nuc->position.x * voxelscalefactor << " " 
+        <<  ptheactin->p_nuc->position.y * voxelscalefactor << " " 
+        <<  ptheactin->p_nuc->position.z * voxelscalefactor << endl;
+
+    // if(OptsRenderNucleator)
 
 
     cout << "Writing vrml file " << vrmlfilename << endl;
 	
+    // something may be wrong here.  Links don't seem to render, and the sphere position doesn't move from the origin.
+
 	vtkVRMLExporter *VRML = vtkVRMLExporter::New();
 	VRML->SetInput(render_win);
-	VRML->SetFileName( vrmlfilename );
-	VRML->Update();
+	VRML->SetFileName( vrmltmpfilename );
+	//VRML->Update();
 	VRML->Write();
 	VRML->Delete();
+
+    // vtk vrml export fails to set the nucleator position/rotation from the transformation matrix
+    // we can search/replace the position with gsed
+
+    char command5[1024];
+	sprintf(command5, "gsed '0,/translation 0 0 0/s//translation %f %f %f/' %s " // > %s "
+			,ptheactin->p_nuc->position.x * voxelscalefactor
+            ,ptheactin->p_nuc->position.y * voxelscalefactor
+            ,ptheactin->p_nuc->position.z * voxelscalefactor
+            ,vrmltmpfilename);
+            //,vrmlfilename);
+
+    //cout << command5;
+	//system(command5);
+
 
     //cout << "Compressing vrml file " << vrmlfilename << endl;
     char command1[1024];
 
-    sprintf(command1 , "%s %s &", COMPRESSCOMMAND, vrmlfilename );
+    sprintf(command1 , "( %s | %s > %s%s ; rm %s ) &", command5, COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
     system(command1);
 }
 
@@ -861,7 +899,7 @@ void CometVtkVis::saveVRML(const int &framenumber)
 void CometVtkVis::addNucleator(bool wireframe)
 {
 
-    // creat assembly and add nucleator
+    // create assembly and add nucleator
     vtkAssembly *nucleator_actor=vtkAssembly::New();
 
     if (NUCSHAPE == nucleator::capsule) 
@@ -1112,6 +1150,15 @@ void CometVtkVis::set_transform_matrix(vtkMatrix4x4 * vtkmat, const rotationmatr
     vtkmat->SetElement(1,3,ptheactin->p_nuc->position.y * voxelscalefactor);
     vtkmat->SetElement(2,3,ptheactin->p_nuc->position.z * voxelscalefactor);
     vtkmat->SetElement(3,3,1);
+
+    //double theta, phy, gamma;
+
+    //rotmat.getangles(theta, phy, gamma);
+
+    //cout << "Nucleator rotation:" <<  theta << " " <<  phy << " "<<  gamma << endl;
+    //cout << "Nucleator displacement:" <<  ptheactin->p_nuc->position.x * voxelscalefactor << " " 
+    //    <<  ptheactin->p_nuc->position.y * voxelscalefactor << " " 
+    //    <<  ptheactin->p_nuc->position.z * voxelscalefactor << endl;
 
 }
 

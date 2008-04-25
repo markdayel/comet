@@ -62,6 +62,8 @@ class CometVtkVis {
 
   VTK_FLOAT_PRECISION meanx, meany, meanz;
 
+  bool vtk_dummy_object;
+
   int movex,movey,movez;
 
   rotationmatrix vtk_cam_rot;

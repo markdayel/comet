@@ -103,7 +103,7 @@ bool BMP_LINKS_BROKEN = false;
 bool BMP_TRANSVERSELINKSONLY = false;
 bool BMP_RADIALLINKSONLY = false;
 
-bool BLANK_BMP = false;
+bool VECTOR_NOT_BITMAP = false;
 
 bool PLOTFORCES = true;
 
@@ -883,8 +883,8 @@ int main(int argc, char* argv[])
         else if (tag == "BMP_CENTER_ON_LEFT") 
 			{ss >> buff2; if (buff2=="TRUE") BMP_CENTER_ON_LEFT = true; else BMP_CENTER_ON_LEFT = false;}
 
-        else if (tag == "BLANK_BMP")  
-			{ss >> buff2; if (buff2=="TRUE") BLANK_BMP = true; else BLANK_BMP = false;}
+        else if (tag == "VECTOR_NOT_BITMAP")  
+			{ss >> buff2; if (buff2=="TRUE") VECTOR_NOT_BITMAP = true; else VECTOR_NOT_BITMAP = false;}
 
         else if (tag == "SYM_IN_COVERSLIP_PLANE") 
 			{ss >> buff2; if (buff2=="TRUE") SYM_IN_COVERSLIP_PLANE = true; else SYM_IN_COVERSLIP_PLANE = false;}   
@@ -2842,7 +2842,11 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         // workaround is to create the vtk object within the loop, so that
         // the destructor clears out and we recreate the object every time
 
-        CometVtkVis vtkvis(false, false); // should this be false? (i.e. no render window)
+        bool dummy_vtk;
+
+        dummy_vtk = !POST_VTK; 
+
+        CometVtkVis vtkvis(VIEW_VTK, dummy_vtk);  // should this be false? (i.e. no render window)
 
 
         vector<int>::iterator start = postprocess_iterations.begin();
@@ -2959,7 +2963,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 		char command5[1024];
 		sprintf(command5, "(%s %s*report*.txt 2>/dev/null; mv %s*report*%s %s 2>/dev/null) &"
 			,COMPRESSCOMMAND, TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
-		system(command1);
+		system(command5);
 	}
 
 }

@@ -339,7 +339,7 @@ extern bool POST_STATS;
 
 extern bool DRAW_COMPRESSIVE_FORCES;
 
-extern bool BLANK_BMP;
+extern bool VECTOR_NOT_BITMAP;
 
 extern int BMP_WIDTH,BMP_HEIGHT;
 extern int VTK_WIDTH;
