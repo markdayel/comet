@@ -481,7 +481,17 @@ int main(int argc, char* argv[])
 	         << endl;
 
 	    exit(EXIT_FAILURE);
+	}         
+
+    ifstream param(COMET_PARAMS_FILE); 
+	if(!param) 
+	{
+		cerr << "Cannot open " << COMET_PARAMS_FILE << endl << endl;
+        system("stty sane 2>/dev/null");   // fix for something that messes the terminal up (kbhit?)
+		exit(EXIT_FAILURE);
 	}
+
+    int nicelevel = 0;
 
     if (argc > 1) 
 	{
@@ -493,6 +503,7 @@ int main(int argc, char* argv[])
 			POST_PROCESS = true;
             POST_BMP = true;
             POST_VTK = false;
+            nicelevel = 3;  // slightly nice
         }                                         
         else
         if (strcmp(argv[1], "view") == 0 )
@@ -501,6 +512,7 @@ int main(int argc, char* argv[])
             POST_BMP = false;
             POST_VTK = true;
             POST_VTK_VIEW = true;
+            nicelevel = 0;
         }
         else
         if (strcmp(argv[1], "vtk") == 0 )
@@ -509,6 +521,7 @@ int main(int argc, char* argv[])
             POST_BMP = false;
             POST_VTK = true;
             POST_VTK_VIEW = false;
+            nicelevel = 3;  // slightly nice
         }
         else
 		if (strcmp(argv[1], "psingleb") == 0 )
@@ -517,6 +530,7 @@ int main(int argc, char* argv[])
 			POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
             POST_BMP = true;
             POST_VTK = false;
+            nicelevel = 3;  // slightly nice
 		}
         else
         if (strcmp(argv[1], "psinglev") == 0 )
@@ -525,6 +539,7 @@ int main(int argc, char* argv[])
 			POST_PROCESSSINGLECPU = true;  // this is used for when the multicpu post process calls the worker threads
             POST_BMP = false;
             POST_VTK = true;
+            nicelevel = 3;  // slightly nice
 		}
         else
   //      if (strcmp(argv[1], "read_raw") == 0 )   
@@ -610,7 +625,7 @@ int main(int argc, char* argv[])
     }
 
 
-    int nicelevel = 0;
+    
 
 	if (!POST_PROCESS && !REWRITESYMBREAK)
 	{	// don't drop priority if re-writing bitmaps
@@ -627,6 +642,7 @@ int main(int argc, char* argv[])
 			nicelevel = default_nice_level;
         }
     }
+
 
 
     if (CLUSTER)
@@ -793,13 +809,7 @@ int main(int argc, char* argv[])
 
 	//cout << endl << "Parsing parameters file..." << endl;
 
-	ifstream param(COMET_PARAMS_FILE); 
-	if(!param) 
-	{
-		cerr << "Cannot open " << COMET_PARAMS_FILE << endl << endl;
-        system("stty sane 2>/dev/null");   // fix for something that messes the terminal up (kbhit?)
-		exit(EXIT_FAILURE);
-	}
+
 
 	string buffer;
 	string unrecognisedlines;
@@ -2748,10 +2758,20 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     else
         ptheactin->set_sym_break_axes(false,sym_break_direction);
 
-    if (!POST_PROCESSSINGLECPU)
-    {   // prevent race condition when doing the mulit cpu post process---the caller thread does the symmetry breaking save
-        ptheactin->save_sym_break_axes();
+    bool DONT_RECALC_SYMBREAK_AXIS = false;
+
+    if (!DONT_RECALC_SYMBREAK_AXIS)
+    {
+        if (!POST_PROCESSSINGLECPU)
+        {   // prevent race condition when doing the mulit cpu post process---the caller thread does the symmetry breaking save
+            ptheactin->save_sym_break_axes();
+        }
     }
+    else
+    {   // fix the break axis to the loaded one
+        ptheactin->load_sym_break_axes();
+    }
+
 
     char command1[1024];
 

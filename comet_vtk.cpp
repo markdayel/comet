@@ -852,11 +852,17 @@ void CometVtkVis::saveVRML(const int &framenumber)
 
     rotmat.getangles(theta, phy, gamma);
 
+    double x,y,z,angle;
+
+    rotmat.getaxis_and_angle(x,y,z,angle);
+
     cout << setprecision(3) ;
     cout << "Nucleator rotation:" <<  theta << " " <<  phy << " "<<  gamma << endl;
     cout << "Nucleator displacement:" <<  ptheactin->p_nuc->position.x * voxelscalefactor << " " 
         <<  ptheactin->p_nuc->position.y * voxelscalefactor << " " 
         <<  ptheactin->p_nuc->position.z * voxelscalefactor << endl;
+
+    
 
     // if(OptsRenderNucleator)
 
@@ -872,15 +878,21 @@ void CometVtkVis::saveVRML(const int &framenumber)
 	VRML->Write();
 	VRML->Delete();
 
-    // vtk vrml export fails to set the nucleator position/rotation from the transformation matrix
-    // we can search/replace the position with gsed
+    // vtk vrml export (for vtk 5.1 at least) fails to apply the transformation matrix to the nucleator
+    // so to set the nucleator position/rotation 
+    // we write out the vrml, then search/replace the position and rotation of the nucleator using gsed
+    // note the algorithm for the rotation axis/angle may not be robust
 
     char command5[1024];
-	sprintf(command5, "gsed '0,/translation 0 0 0/s//translation %f %f %f/' %s " // > %s "
+	sprintf(command5, "gsed '0,/translation 0 0 0/s//translation %f %f %f/' %s | gsed '0,/rotation 0 0 1 0/s//rotation %f %f %f %f/' " // > %s "
 			,ptheactin->p_nuc->position.x * voxelscalefactor
             ,ptheactin->p_nuc->position.y * voxelscalefactor
             ,ptheactin->p_nuc->position.z * voxelscalefactor
-            ,vrmltmpfilename);
+            ,vrmltmpfilename 
+            ,x
+            ,y
+            ,z
+            ,angle);
             //,vrmlfilename);
 
     //cout << command5;
@@ -1910,6 +1922,9 @@ void CometVtkVis::addTracks(const int & framenumber)
 
     // go through node by node
 
+
+    //int trackno = 0;
+
     for (vector <int>::iterator i_pointnodenum  = tracknodenumbers.begin(); 
                                 i_pointnodenum != tracknodenumbers.end(); 
                               ++i_pointnodenum)
@@ -2014,9 +2029,16 @@ void CometVtkVis::addTracks(const int & framenumber)
 
         profile->SetMapper(profileMapper);
 
+        // color by order of tracks
+
         Colour col;
         
-        col.setcol(rand_0to1());
+        //col.setcol(rand_0to1());
+
+        double colfract=  (double) (i_pointnodenum - tracknodenumbers.begin()) / (double) tracknodenumbers.size();
+        //cout << colfract << endl;
+
+        col.setcol(colfract);
 
         profile->GetProperty()->SetDiffuseColor(col.r,col.g,col.b);
         profile->GetProperty()->SetSpecular(.3);
@@ -2036,6 +2058,8 @@ void CometVtkVis::addTracks(const int & framenumber)
 
         inputPoints->Delete();
         outputPoints->Delete();
+
+        //trackno++;
     }
 
 

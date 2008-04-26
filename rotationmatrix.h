@@ -109,7 +109,8 @@ class rotationmatrix
 	    return tmp;
 	}
     
-    void getangles(double& x_angle, double& y_angle, double& z_angle) const;    
+    void getangles(double& x_angle, double& y_angle, double& z_angle) const; 
+    void getaxis_and_angle(double& x, double& y, double& z, double& angle) const;
 };
 
 // hmm, we don't need to be a friend (as data is public) but bear it in mind if we 
