@@ -550,7 +550,8 @@ void segments::addnode(const nodes& node)
 	//if ((xseg==11))
 	//	cout << "node.nucleator_impacts: "  << setw(30) << setprecision(20) << node.nucleator_impacts << endl;
 
-	// check this, may not be right
+	
+    // to only plot link or impact forces, comment out one of the below sections
 
 
     // add the nucleator link forces
@@ -566,14 +567,14 @@ void segments::addnode(const nodes& node)
 
     // add the impact forces
 
- //   surfacestuckforce[0][xseg][0] += xfactor * ( rot_nuc_impacts.y); 
-	//surfacestuckforce[0][xseg][1] += xfactor * ( rot_nuc_impacts.z);
+    surfacestuckforce[0][xseg][0] += xfactor * ( rot_nuc_impacts.y); 
+	surfacestuckforce[0][xseg][1] += xfactor * ( rot_nuc_impacts.z);
 
-	//surfacestuckforce[1][yseg][0] += yfactor * ( rot_nuc_impacts.x);
-	//surfacestuckforce[1][yseg][1] += yfactor * ( rot_nuc_impacts.z); 
+	surfacestuckforce[1][yseg][0] += yfactor * ( rot_nuc_impacts.x);
+	surfacestuckforce[1][yseg][1] += yfactor * ( rot_nuc_impacts.z); 
 
-	//surfacestuckforce[2][zseg][0] += zfactor * ( rot_nuc_impacts.x);
-	//surfacestuckforce[2][zseg][1] += zfactor * ( rot_nuc_impacts.y);
+	surfacestuckforce[2][zseg][0] += zfactor * ( rot_nuc_impacts.x);
+	surfacestuckforce[2][zseg][1] += zfactor * ( rot_nuc_impacts.y);
 
 
 
@@ -757,7 +758,7 @@ int segments::drawsurfaceimpacts(ostream& drawcmd, const projection & axis, cons
 
     // temp change max line length:
 
-    const double maxlinelength = 0.9 * RADIUS;
+    const double maxlinelength = 2.0 * 0.9 * RADIUS;
 	
 	for (int i=0; i != segstodraw; ++i)
 	{
@@ -884,7 +885,7 @@ int segments::drawline(ostream& drawcmd ,
 
 void segments::addallnodes()
 {
-    // uncomment this line to make stats cumulative over frames
+    // comment out this line to make stats cumulative over frames
     clearbins();
 
 	for (int i=0; i != ptheactin->highestnodecount; ++i)

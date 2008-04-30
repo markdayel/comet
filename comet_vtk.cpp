@@ -289,68 +289,71 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
     else
         linewidths = 1.0;
 
-    
+    if (!NO_COLBAR && OptsRenderLinks)
+    { // slow, so only generate colorbar if we need to
 
-    // write the colourmap file
-    // this is kind of slow, so only write if doesn't already exist
-   
-    sprintf(VTK_colmap_filename, "%stempVTKcolmap.png", TEMPDIR);
+        // write the colourmap file
+        // this is kind of slow, so only write if doesn't already exist
+       
+        sprintf(VTK_colmap_filename, "%stempVTKcolmap.png", TEMPDIR);
 
-    ifstream isthere(VTK_colmap_filename);
-    
-    if (isthere)
-    {
-         isthere.close();
-    }
-    else
-    {   // colourmap file doesn't exist, so create
+        ifstream isthere(VTK_colmap_filename);
         
-        char tmpfilename[1024];
+        if (isthere)
+        {
+             isthere.close();
+        }
+        else
+        {   // colourmap file doesn't exist, so create
+            
+            char tmpfilename[1024];
 
-        sprintf(tmpfilename,         "%stempVTKcolmap.bmp", TEMPDIR);
-        ofstream outbmpfile;
-        // write out file with colourmap
+            sprintf(tmpfilename,         "%stempVTKcolmap.bmp", TEMPDIR);
+            ofstream outbmpfile;
+            // write out file with colourmap
 
-        Dbl2d imageR, imageG, imageB;
+            Dbl2d imageR, imageG, imageB;
 
-        const int width  = VTK_WIDTH * VTK_AA_FACTOR;
-        const int height = VTK_HEIGHT * VTK_AA_FACTOR;
+            const int width  = VTK_WIDTH * VTK_AA_FACTOR;
+            const int height = VTK_HEIGHT * VTK_AA_FACTOR;
 
-        imageR.resize(width);
-	    imageG.resize(width);
-	    imageB.resize(width);
+            imageR.resize(width);
+	        imageG.resize(width);
+	        imageB.resize(width);
 
-	    for (int x = 0; x<width; x++)
-	    {
-		    imageR[x].resize(height);
-		    imageG[x].resize(height);
-		    imageB[x].resize(height);
+	        for (int x = 0; x<width; x++)
+	        {
+		        imageR[x].resize(height);
+		        imageG[x].resize(height);
+		        imageB[x].resize(height);
 
-            fill(imageR[x].begin(),imageR[x].end(),0.0);
-            fill(imageG[x].begin(),imageG[x].end(),0.0);
-            fill(imageB[x].begin(),imageB[x].end(),0.0);
-	    }
+                fill(imageR[x].begin(),imageR[x].end(),0.0);
+                fill(imageG[x].begin(),imageG[x].end(),0.0);
+                fill(imageB[x].begin(),imageB[x].end(),0.0);
+	        }
 
-        ptheactin->p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB); //, VTK_AA_FACTOR); 
-    
-	    outbmpfile.open(tmpfilename, ios::out | ios::binary | ios::trunc);
+            ptheactin->p_nuc->segs.write_colourmap_bitmap(imageR, imageG, imageB); //, VTK_AA_FACTOR); 
+        
+	        outbmpfile.open(tmpfilename, ios::out | ios::binary | ios::trunc);
 
-        ptheactin->writebitmapheader(outbmpfile, width, height);
-	    ptheactin->writebitmapfile(outbmpfile, imageR, imageG, imageB);
+            ptheactin->writebitmapheader(outbmpfile, width, height);
+	        ptheactin->writebitmapfile(outbmpfile, imageR, imageG, imageB);
 
-        outbmpfile.close();
+            outbmpfile.close();
 
-        // change the black background to transparent, and convert to png:
+            // change the black background to transparent, and convert to png:
 
-        char command1[1024];
-        sprintf(command1, 
-            "%s -transparent black %s %s",
-            IMAGEMAGICKCONVERT, tmpfilename, VTK_colmap_filename);
-        system(command1);
+            char command1[1024];
+            sprintf(command1, 
+                "%s -transparent black %s %s",
+                IMAGEMAGICKCONVERT, tmpfilename, VTK_colmap_filename);
+            system(command1);
 
-        // remove the temp bitmap
-        sprintf(command1, "rm %s", tmpfilename);
-        system(command1);
+            // remove the temp bitmap
+            sprintf(command1, "rm %s", tmpfilename);
+            system(command1);
+        }
+
     }
 
     texturereadOK = false;
@@ -541,7 +544,9 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
         // save vrml every 20 frames
         //if (framenumber % 20 == 0)
-           saveVRML(framenumber); 
+           
+        if (!POST_PROCESSSINGLECPU)   // don't make vrml unless rendering only one frame (POST_PROCESSSINGLECPU is set when multithreading)
+            saveVRML(framenumber); 
 
     }
 
@@ -780,7 +785,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
         {
             char command1[1024];
             sprintf(command1, 
-                "(%s -quality %i -resize %f%% %s %s %s ; rm %s ) &",
+                "(%s -quality %i -resize %f%% -density 300x300 %s %s %s ; rm %s ) &",
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
                   tmpfilename, filename, tmpfilename);
             //cout << command1 << endl;
@@ -791,7 +796,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
             char command1[1024];
             
             sprintf(command1, 
-                "(%s -quality %i %s %s %s ; rm %s ) &",
+                "(%s -quality %i -density 300x300 %s %s %s ; rm %s ) &",
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, textstring,
                 tmpfilename, filename, tmpfilename);
 
@@ -805,7 +810,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
         {
             char command1[1024];
             sprintf(command1, 
-                "(%s -compose Dst_Over -composite -quality %i -resize %f%% %s %s %s %s ; rm %s ) &",
+                "(%s -compose Dst_Over -composite -quality %i -resize %f%% -density 300x300 %s %s %s %s ; rm %s ) &",
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
                  VTK_colmap_filename, tmpfilename, filename, tmpfilename);
             //cout << command1 << endl;
@@ -864,12 +869,14 @@ void CometVtkVis::saveVRML(const int &framenumber)
 
     
 
-    // if(OptsRenderNucleator)
+   
 
 
     cout << "Writing vrml file " << vrmlfilename << endl;
 	
-    // something may be wrong here.  Links don't seem to render, and the sphere position doesn't move from the origin.
+    // something may be wrong here?  Links don't seem to work in the resulting vrml 
+    // (co-ords are present, but links don't show up in vrml viewer)
+    // nucleator, isosurfaces and tracks seem OK
 
 	vtkVRMLExporter *VRML = vtkVRMLExporter::New();
 	VRML->SetInput(render_win);
@@ -902,7 +909,11 @@ void CometVtkVis::saveVRML(const int &framenumber)
     //cout << "Compressing vrml file " << vrmlfilename << endl;
     char command1[1024];
 
-    sprintf(command1 , "( %s | %s > %s%s ; rm %s ) &", command5, COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
+    if(OptsRenderNucleator)  // only replace rotation/translation if we actually have a nucleator!
+        sprintf(command1 , "( %s | %s > %s%s ; rm %s ) &", command5, COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
+    else
+        sprintf(command1 , "( %s | %s > %s%s ; rm %s ) &", "cat", COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
+
     system(command1);
 }
 
@@ -1060,6 +1071,7 @@ void CometVtkVis::add_sphere_to_assembly(vtkAssembly* nucleator_actor, bool wire
     nuc_actor->GetProperty()->SetAmbient(0.3);
     nuc_actor->GetProperty()->SetSpecular(1.0);
     nuc_actor->GetProperty()->SetSpecularPower(5.0);
+    nuc_actor->GetProperty()->SetSpecularColor(1.0,1.0,1.0);
     
     vtkTransform *ellipseTransform = vtkTransform::New();
     vtkTransformPolyDataFilter *ellipseFilter = vtkTransformPolyDataFilter::New();
@@ -1196,12 +1208,14 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
     // Gaussian splat
     //double gaussmax = (double) GAUSSFWHM * 3/2.0;  
     
-    double gaussmax = 1.5;
+    double gaussmax = 1.5; // 1.5
+
+    double gauss_scale = pow(1.5,3) / pow(gaussmax,3);  // keep volume constant by scaling the height by width^3
 
     // full extent of gaussian radius -  fwhm is 2/3 this
   
     const int splat_sz = (int)(voxelscalefactor * gaussmax) ; // as in actin 
-    cout << "  gaussian splat extent: "<< splat_sz << endl;
+    //cout << "  gaussian splat extent: "<< splat_sz << endl;
   
     vector< vector< vector<double > > >  splat;
     splat.resize(2*splat_sz+1);
@@ -1228,7 +1242,7 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
 		        continue;
     	
 		    splat[i+splat_sz][j+splat_sz][k+splat_sz]
-		        = exp(-3*((double)(i*i+j*j+k*k)) / 
+		        = gauss_scale * exp(-3*((double)(i*i+j*j+k*k)) / 
 			      (double)(splat_sz*splat_sz*splat_sz) );
 	        }
 	    }
@@ -1308,8 +1322,8 @@ void CometVtkVis::fillVoxelSetFromActinNodes(vector< vector< vector<double > > >
         
     } // loop over nodes
 
-    cout << "  max gausian intensity: "  << vx_imax << endl;
-    cout << "  mean gausian intensity: " << vx_isum/n_isums << endl;
+    //cout << "  max gausian intensity: "  << vx_imax << endl;
+    //cout << "  mean gausian intensity: " << vx_isum/n_isums << endl;
   
     if(OptsNormaliseFrames)
     {
@@ -1356,7 +1370,7 @@ void CometVtkVis::createGaussianVoxelRepresentation(vtkStructuredPoints *sp)
     }
   
     // fill voxel set from the actin node data
-    cout << "  filling vtk voxel data " << endl;
+    //cout << "  filling vtk voxel data " << endl;
     const double vd = 1;
     VTK_FLOAT_PRECISION vx_orig[3] = {-ni/2.0-1, -nj/2.0-1, -nk/2.0-1};
     fillVoxelSetFromActinNodes(vx); //, vd, vx_orig);
@@ -1375,11 +1389,11 @@ void CometVtkVis::createGaussianVoxelRepresentation(vtkStructuredPoints *sp)
     
     if(OptsNormaliseFrames) 
     {
-	    cout << "  normalised frame" << endl;
+	    //cout << "  normalised frame" << endl;
     } 
     else 
     {
-	    cout << "  using fixed intensity scale:" << vx_intensity_scale << endl;
+	    //cout << "  using fixed intensity scale:" << vx_intensity_scale << endl;
 	    iscale = vx_intensity_scale;
     }
     
@@ -1688,11 +1702,21 @@ void CometVtkVis::addStructuredPointVolumeRender(vtkStructuredPoints *vx)
 
 void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp, const double threshold, const Colour col, const double opacity)
 {
+    
     // render using an iso-surface
     vtkContourFilter *iso_surf = vtkContourFilter::New();
     iso_surf->SetInput( sp );
     iso_surf->SetValue(0, threshold);
     iso_surf->ComputeNormalsOn();
+
+    iso_surf->Update();
+
+    // check if data within the isosurface threshold
+
+    if (iso_surf->GetOutput()->GetNumberOfPoints() < 1)
+    { // nothing to do!
+        return;
+    }
 
 	vtkWindowedSincPolyDataFilter *smooth = vtkWindowedSincPolyDataFilter::New();
     smooth->SetInput(iso_surf->GetOutput());
@@ -1718,6 +1742,10 @@ void CometVtkVis::addStructuredPointIsoRender(vtkStructuredPoints *sp, const dou
     
     iso_actor->GetProperty()->SetOpacity(opacity);
     iso_actor->GetProperty()->SetColor(col.r, col.g, col.b);
+    iso_actor->GetProperty()->SetDiffuseColor(col.r,col.g,col.b);
+    iso_actor->GetProperty()->SetSpecular(.1);
+    iso_actor->GetProperty()->SetSpecularPower(100);
+    iso_actor->GetProperty()->SetSpecularColor(1.0,1.0,1.0);
 
     renderer->AddActor(iso_actor);
     iso_actor->Delete();
@@ -1869,7 +1897,7 @@ void CometVtkVis::addNodes()
 void CometVtkVis::addTracks(const int & framenumber)
 {
     
-
+    int max_track_length = 150;
 
     //double lastx = 0, lasty = 0, lastz = 0;
     VTK_FLOAT_PRECISION x,y,z;
@@ -1949,7 +1977,7 @@ void CometVtkVis::addTracks(const int & framenumber)
 
         int skip = 0;  
 
-        int max_track_length = 150;
+        
 
         for (vector <tracknodeinfo>::iterator i_trackpoint  = ptheactin->node_tracks[xaxis].begin(); 
                                               i_trackpoint != ptheactin->node_tracks[xaxis].end(); 
@@ -2043,6 +2071,7 @@ void CometVtkVis::addTracks(const int & framenumber)
         profile->GetProperty()->SetDiffuseColor(col.r,col.g,col.b);
         profile->GetProperty()->SetSpecular(.3);
         profile->GetProperty()->SetSpecularPower(30);
+        profile->GetProperty()->SetSpecularColor(1.0,1.0,1.0);
 
         renderer->AddActor(profile);
 
@@ -2445,6 +2474,7 @@ void CometVtkVis::addLinks()
   //lines_actor->GetProperty()->SetAmbient(2.0);
   //lines_actor->GetProperty()->SetDiffuse(2.0);
   //lines_actor->GetProperty()->SetSpecular(2.0);
+  //lines_actor->GetProperty()->SetSpecularColor(1.0,1.0,1.0);
   lines_actor->GetProperty()->SetLineWidth(linewidths);
   lines_actor->SetMapper(map);
   map->Delete();

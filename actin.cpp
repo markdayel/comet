@@ -3287,7 +3287,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		//	 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
         sprintf(command1,
-		"%s -quality %i %s %s %s%s_proj_%05i.%s", 
+		"%s -quality %i -density 300x300 %s %s %s%s_proj_%05i.%s", 
         IMAGEMAGICKCONVERT, BMP_COMPRESSION, sourceimage, drawcmd.str().c_str(), BITMAPDIR, 
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
@@ -3295,7 +3295,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     {
 
 		sprintf(command1,
-		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%ium' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" %s %s%s_proj_%05i.%s", 
+		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%ium' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" -density 300x300 %s %s%s_proj_%05i.%s", 
             IMAGEMAGICKCONVERT, sourceimage, BMP_COMPRESSION,   // command and bitmap quality
             TEXT_POINTSIZE * BMP_AA_FACTOR,                           // font size
             5 * BMP_AA_FACTOR, BMP_HEIGHT - 5 * BMP_AA_FACTOR, scalebarmicrons,   // scale bar text
@@ -3319,7 +3319,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     }
     else
     {
-        sprintf(command2,"%s -quality %i -resize %f%% %s%s_proj_%05i.%s ",
+        sprintf(command2,"%s -quality %i -resize %f%% -density 300x300 %s%s_proj_%05i.%s ",
              IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)BMP_AA_FACTOR, BITMAPDIR,
 		     projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 

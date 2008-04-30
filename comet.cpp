@@ -244,7 +244,7 @@ bool RESTICK_TO_NUCLEATOR = true;
 
 bool VTK_SCALECOLOPACITY = false;
 
-double VTK_RIP_Z_ANGLE = 80;
+double VTK_RIP_Z_ANGLE = 70;
 
 double LINK_FORCE = 0.1;
 double P_XLINK =  0.5;
@@ -750,6 +750,7 @@ int main(int argc, char* argv[])
     sprintf(TEMPDIR,"%s/",TEMPDIR);
 
     cout << "Temp dir: " << TEMPDIR << endl;
+    cout << "PID: " << getpid() << endl;
 
 #else
 	
@@ -2445,6 +2446,8 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 #ifdef _WIN32
         cout << "Note that on windows, you must manually unzip any gzipped data files" << endl;
 #endif
+	    cout.flush();
+        abort();
 	    return false;
     }
 
@@ -2455,6 +2458,8 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
     if(str.compare("comet:") !=0 )
     {
 	    cout << "error in checkpoint file, 'comet:' expected" << endl;
+        cout.flush();
+        abort();
 	    return false;
     }
     
@@ -2471,6 +2476,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
         cout << "Load data failed" << endl;
         cout.flush();
         abort();
+        return false;
     }
 
     theactin.setdontupdates();
