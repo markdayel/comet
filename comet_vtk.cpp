@@ -97,6 +97,8 @@
 #include "vtkPlane.h"
 //#include "vtkPoints.h"
 //#include "vtkNormals.h"
+#include "vtkVectorText.h"
+#include "vtkFollower.h"
 
 #include "vtkLightCollection.h"
 // vol rend
@@ -160,20 +162,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
     vx_intensity_scale = 1.0;
     file_prefix = "vtk";
 
-    bool BIGISOSURFACERANGE=false;  // set to increase the array size if need to render large isosurfaces (slow)
-        
-    // find out data size
 
-    ni = int(BMP_HEIGHT/voxel_scale) ;
-    nj = int(BMP_HEIGHT/voxel_scale) ;
-    nk = int(BMP_HEIGHT/voxel_scale) ;
-
-    if (BIGISOSURFACERANGE)
-    {
-       ni*=3;
-       nj*=3;
-       nk*=3;
-    }
 
     
     //OptsInteractive         = true;
@@ -284,10 +273,10 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
     }
 
     // scale linewidths by aa factor unless rendering to screen
-    if (VIEW_VTK)
+    if (!POST_VTK_VIEW)
         linewidths = (double)VTK_AA_FACTOR * VIS_LINETHICKNESS;
     else
-        linewidths = 1.0;
+        linewidths = VIS_LINETHICKNESS;
 
     if (!NO_COLBAR && OptsRenderLinks)
     { // slow, so only generate colorbar if we need to
@@ -401,6 +390,9 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
 
 #endif
 
+
+
+
     cout << "VTK initialization finished" << endl;
     cout.flush();
  
@@ -457,7 +449,43 @@ void CometVtkVis::RestartRenderWindow()
 
 void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect & cameratarget)
 {
-    
+     //
+    // this doesn't work: makes it wobble (rounding problem with the int conversion)
+    //
+ //   double minx, miny, minz;
+	//double maxx, maxy, maxz;
+	//int existantnodes;
+
+ //   ptheactin->getnodeextents(minx, miny, minz,maxx, maxy, maxz, existantnodes);
+
+ //   ni = int( mymax(-minz, maxz) * 2 * voxelscalefactor + 10);
+ //   nj = int( mymax(-miny, maxy) * 2 * voxelscalefactor + 10);
+ //   nk = int( mymax(-minx, maxx) * 2 * voxelscalefactor + 10);
+
+ //   // we must've mixed up ni nj and nk somewhere---workaround to make them equal.
+
+ //   ni = nj = nk = mymax( mymax ( ni , nj ) , nk);
+
+
+    bool BIGISOSURFACERANGE=true;  // set to increase the array size if need to render large isosurfaces (slow)
+        
+    // find out data size
+
+    ni = int(BMP_HEIGHT/voxel_scale) ;
+    nj = int(BMP_HEIGHT/voxel_scale) ;
+    nk = int(BMP_HEIGHT/voxel_scale) ;
+
+    if (BIGISOSURFACERANGE)   // increase the range
+    {
+       ni*=2;
+       nj*=2;
+       nk*=2;
+    }
+
+    //cout << "  render win (nx, ny) = " << renderwin_npx << " " << renderwin_npy << endl;
+    //cout << "  voxel    (ni nj nk) = " << ni<<" " << nj << " " << nk << endl;
+
+
     setProjection(cameraposition,cameratarget);  // also sets the rotation of the objects, so comes before actors:
     
     // add objects to renderer
@@ -491,7 +519,7 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
         if(OptsIsoRenderNodes)
         {
 
-            addStructuredPointIsoRender(spoints, 240.0, Colour( 0.3, 0.6, 0.3), 1.0 );
+            addStructuredPointIsoRender(spoints, 240.0, Colour( 0.3, 0.6, 0.3), 0.3 ); // was 1.0
 	        //addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
             //addStructuredPointIsoRender(spoints, 150.0, Colour( 0.6, 0.3, 0.2), 0.5 );
             //addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
@@ -505,8 +533,13 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
 
     if(OptsRenderAxes)
-	    addTracks(framenumber);
+    {
+        if (TRACKS_LENGTHS)
+            addTrackDistances();
+        else
+	        addTracks(framenumber);
         //addAxes();
+    }
        
     // if(OptsRenderText)        
     // addVoxelBound(renderer);
@@ -904,6 +937,16 @@ void CometVtkVis::saveVRML(const int &framenumber)
 
     //cout << command5;
 	//system(command5);
+
+   // capsule ends
+   // need to replace second and third positions with these:
+   //vect endcap1(0,0,CAPSULE_HALF_LINEAR*voxelscalefactor);
+   //vect endcap2(0,0,-CAPSULE_HALF_LINEAR*voxelscalefactor);
+   //rotmat.rotate(endcap1);
+   //rotmat.rotate(endcap2);
+
+
+
 
 
     //cout << "Compressing vrml file " << vrmlfilename << endl;
@@ -2097,7 +2140,182 @@ void CometVtkVis::addTracks(const int & framenumber)
 }
 
 
+void CometVtkVis::addTrackDistances()
+{
+    /// add track distance bars (when using TRACKS_LENGTHS)  
+   
+  
 
+  set_mean_posns();
+  
+  const int numcol = 256;
+
+  // only used for strain coloring
+  vtkLookupTable *lut = vtkLookupTable::New();
+  lut->SetNumberOfTableValues(numcol);
+  lut->SetRange(0.7, 1.0);
+  lut->Build();
+  
+  Colour col;
+  
+  VTK_FLOAT_PRECISION rgba[4];
+  
+
+  for(int i=0; i<numcol; i++) 
+  {
+    double value = (double)i/(double)(numcol-1);
+    col.setcol(value);
+
+    rgba[0] = col.r;
+    rgba[1] = col.g;
+    rgba[2] = col.b;
+
+    if (VTK_SCALECOLOPACITY)
+        rgba[3] = value;
+    else
+        rgba[3] = 1.0;	
+
+    lut->SetTableValue(i, rgba);
+  }
+
+  
+  // loop over the nodes
+  VTK_FLOAT_PRECISION ncx,ncy,ncz; //n_pt[3];
+  VTK_FLOAT_PRECISION lptx, lpty, lptz; //l_pt[3];
+  vect testpos;
+  vect nodeposvec;
+  
+  // use a cell array to store line data 
+  vtkCellArray *cellarray = vtkCellArray::New();
+  // with scalars
+  vtkFloatArray *cellscalars = vtkFloatArray::New();  
+  // made up of lines
+  vtkPolyData *linedata = vtkPolyData::New();
+  vtkPoints *linepts = vtkPoints::New();
+
+
+  //bool firstpointinfocus, secondpointinfocus; // used to reject links if both points are out of focal planes
+  
+    for (unsigned int i=0; i != ( ptheactin->nodes_to_track.size() / 2)  ; ++i)
+    { 
+
+        int firstnodenum = ptheactin->nodes_to_track[i];
+        int secondnodenum = ptheactin->nodes_to_track[i + (ptheactin->nodes_to_track.size() / 2) ];
+
+        if (( firstnodenum > ptheactin->highestnodecount) ||         
+            ( secondnodenum > ptheactin->highestnodecount))
+            continue;
+
+        vect firstpos = ptheactin->node[firstnodenum];
+        vect secondpos = ptheactin->node[secondnodenum];
+
+        ncx = firstpos.x;
+        ncy = firstpos.y;
+        ncz = firstpos.z;		
+    
+        convert_to_vtkcoord(ncx, ncy, ncz);
+
+        lptx = secondpos.x;
+        lpty = secondpos.y;        
+        lptz = secondpos.z;
+
+        //secondpointinfocus = 
+        convert_to_vtkcoord(lptx, lpty, lptz);
+
+        //if (!firstpointinfocus && !secondpointinfocus)
+        //    continue;  // both points out of focus, so skip link
+
+        vect distvec = firstpos - secondpos;
+
+//        double magcol = 0.9;
+        double magcol = 0.1 + (double (ptheactin->node[i].creation_iter_num % 20)) / 18;
+        
+
+        
+
+        // create line for the link
+
+        vtkIdType linept_ids[2];	
+        linept_ids[0] = linepts->InsertNextPoint( ncx, ncy, ncz );
+        linept_ids[1] = linepts->InsertNextPoint( lptx, lpty, lptz );
+        vtkIdType cell_id = cellarray->InsertNextCell(2, linept_ids);
+
+
+        // Set scalar for the line
+        if(OptsShadeLinks && !ptheactin->node[i].testnode) // colour testnodes white
+        {    
+            cellscalars->InsertValue(cell_id, magcol);
+        } 
+        else 
+        {
+            cellscalars->InsertValue(cell_id, 0.7);   // also see the colour mapping above
+        }
+
+        char nodenumberstring[1024];
+        
+        //sprintf(nodenumberstring,"%d",firstnodenum);
+        sprintf(nodenumberstring,"%d",i+1);
+
+        vtkVectorText *text = vtkVectorText::New();
+        text->SetText(nodenumberstring);
+
+        vtkPolyDataMapper *textmapper = vtkPolyDataMapper::New();
+        textmapper->SetInput(text->GetOutput());
+
+        Colour textcol;
+        textcol.setcol(magcol);
+
+        vtkFollower *textActor = vtkFollower::New(); 
+        textActor->SetMapper(textmapper);
+        textActor->SetScale(2,2,2);
+        textActor->AddPosition( ncx, ncy, ncz );
+        textActor->SetCamera(renderer->GetActiveCamera());
+        textActor->GetProperty()->SetAmbient(0.9); // make text visible even if not lit
+        textActor->GetProperty()->SetColor(textcol.r, textcol.g, textcol.b);
+
+        renderer->AddActor(textActor);
+
+        text->Delete();
+        textmapper->Delete();
+        textActor->Delete();
+
+
+
+    } // node loop
+
+  linedata->SetPoints(linepts);
+  linepts->Delete();
+  linedata->SetLines(cellarray);
+  
+  cellarray->Delete();
+  linedata->GetCellData()->SetScalars(cellscalars);
+  // mapper
+  vtkPolyDataMapper *map = vtkPolyDataMapper::New();
+  
+  SetFocalDepthPlanes(map);
+ 
+  map->SetLookupTable( lut );
+  map->SetInput( linedata );
+
+  linedata->Delete();
+  // actor
+  vtkActor *lines_actor = vtkActor::New();
+  //lines_actor->GetProperty()->SetAmbient(2.0);
+  //lines_actor->GetProperty()->SetDiffuse(2.0);
+  //lines_actor->GetProperty()->SetSpecular(2.0);
+  //lines_actor->GetProperty()->SetSpecularColor(1.0,1.0,1.0);
+  lines_actor->GetProperty()->SetLineWidth(linewidths);
+  lines_actor->SetMapper(map);
+  map->Delete();
+  //render
+  renderer->AddActor(lines_actor);
+  
+  lut->Delete();
+  lines_actor->Delete();
+
+  
+
+}
 
 
 bool CometVtkVis::convert_to_vtkcoord(VTK_FLOAT_PRECISION &x, VTK_FLOAT_PRECISION &y, VTK_FLOAT_PRECISION &z)

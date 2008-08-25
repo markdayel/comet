@@ -152,8 +152,16 @@ bool X_BMP = true;
 bool Y_BMP = true;
 bool Z_BMP = true;                 
 
-double TRACK_MIN_RANGE = 0.0;  // frame numbers, can be floating point
-double TRACK_MAX_RANGE = 1.0;
+double TRACK_MIN_RANGE = 100.0;  // frame numbers, can be floating point
+double TRACK_MAX_RANGE = 110.0;
+
+double TRACK_MIN_RANGE2 = 10;
+double TRACK_MAX_RANGE2 = 30;
+
+double TRACK_TARGET_DIST = 2.5;
+
+bool TRACKS_LENGTHS=true;
+bool SECOND_SHELL=false;
 
 int TRACKFRAMESTEP = 5;
 
@@ -627,7 +635,7 @@ int main(int argc, char* argv[])
 
     
 
-	if (!POST_PROCESS && !REWRITESYMBREAK)
+	if (!POST_PROCESS && !REWRITESYMBREAK)                                                             
 	{	// don't drop priority if re-writing bitmaps
 		// because calling thread already has low priority
 		// and this would drop it further
@@ -784,19 +792,19 @@ int main(int argc, char* argv[])
 	system(command1);
 #else
 	
-	sprintf(command1, "mkdir %s", VRMLDIR  );
+	sprintf(command1, "mkdir \"%s\" 2>NULL", VRMLDIR  );
 	system(command1);
-	sprintf(command1, "mkdir %s", DATADIR  );
+	sprintf(command1, "mkdir \"%s\" 2>NULL", DATADIR  );
 	system(command1);
-	sprintf(command1, "mkdir %s", REPORTDIR  );
+	sprintf(command1, "mkdir \"%s\" 2>NULL", REPORTDIR  );
 	system(command1);
-	sprintf(command1, "mkdir %s", BITMAPDIR  );
+	sprintf(command1, "mkdir \"%s\" 2>NULL", BITMAPDIR  );
 	system(command1);
-	sprintf(command1, "mkdir %s", TEMPDIR  );
+	sprintf(command1, "mkdir \"%s\" 2>NULL", TEMPDIR  );
 	system(command1);
-	sprintf(command1, "mkdir %s", VTKDIR  );
+	sprintf(command1, "mkdir \"%s\" 2>NULL", VTKDIR  );
 	system(command1);
-	sprintf(command1, "mkdir %s", STATSDIR  );
+	sprintf(command1, "mkdir \"%s\" 2>NULL", STATSDIR  );
 	system(command1);
 #endif
 
@@ -953,27 +961,6 @@ int main(int argc, char* argv[])
 
 		else if (tag == "POST_REPORTS") 
 			{ss >> buff2; if (buff2=="TRUE") POST_REPORTS = true; else POST_REPORTS = false;}
-
-        else if (tag == "BMP_TRACKS") 
-			{ss >> buff2; if (buff2=="TRUE") BMP_TRACKS = true; else BMP_TRACKS = false;}
-
-        else if (tag == "TRACKS_NO_STATIONARY_NODE") 
-			{ss >> buff2; if (buff2=="TRUE") TRACKS_NO_STATIONARY_NODE = true; else TRACKS_NO_STATIONARY_NODE = false;}
-
-        else if (tag == "TRACK_MIN_RANGE")       
-			{ss >> TRACK_MIN_RANGE;} 
-
-        else if (tag == "TRACK_MAX_RANGE")   
-			{ss >> TRACK_MAX_RANGE;}
-
-        else if (tag == "TRACKFRAMESTEP")     
-			{ss >> TRACKFRAMESTEP;}
-
-        else if (tag == "MAX_NODES_TO_TRACK")       
-			{ss >> MAX_NODES_TO_TRACK;} 
-
-        else if (tag == "REFERENCEFRAME")     
-			{ss >> REFERENCEFRAME;} 
 
         else if (tag == "NO_SYMBREAK_ROTATION") 
 			{ss >> buff2; if (buff2=="TRUE") NO_SYMBREAK_ROTATION = true; else NO_SYMBREAK_ROTATION = false;}
@@ -1319,6 +1306,44 @@ int main(int argc, char* argv[])
             else if (tag == "ELLIPSOID_STRETCHFACTOR") 
 			    {ss >> ELLIPSOID_STRETCHFACTOR;}
 
+            
+            else if (tag == "BMP_TRACKS") 
+			    {ss >> buff2; if (buff2=="TRUE") BMP_TRACKS = true; else BMP_TRACKS = false;}
+
+            else if (tag == "TRACKS_LENGTHS") 
+			    {ss >> buff2; if (buff2=="TRUE") TRACKS_LENGTHS = true; else TRACKS_LENGTHS = false;}
+
+            else if (tag == "SECOND_SHELL") 
+            {ss >> buff2; if (buff2=="TRUE") SECOND_SHELL = true; else SECOND_SHELL = false;}
+
+            else if (tag == "TRACKS_NO_STATIONARY_NODE") 
+			    {ss >> buff2; if (buff2=="TRUE") TRACKS_NO_STATIONARY_NODE = true; else TRACKS_NO_STATIONARY_NODE = false;}
+
+            else if (tag == "TRACK_MIN_RANGE")       
+			    {ss >> TRACK_MIN_RANGE;} 
+
+            else if (tag == "TRACK_MAX_RANGE")   
+			    {ss >> TRACK_MAX_RANGE;}
+
+            else if (tag == "TRACK_MIN_RANGE2")       
+			    {ss >> TRACK_MIN_RANGE2;} 
+
+            else if (tag == "TRACK_MAX_RANGE2")   
+			    {ss >> TRACK_MAX_RANGE2;} 
+
+            else if (tag == "TRACK_TARGET_DIST")   
+			    {ss >> TRACK_TARGET_DIST;}
+
+
+            else if (tag == "TRACKFRAMESTEP")     
+			    {ss >> TRACKFRAMESTEP;}
+
+            else if (tag == "MAX_NODES_TO_TRACK")       
+			    {ss >> MAX_NODES_TO_TRACK;} 
+
+            else if (tag == "REFERENCEFRAME")     
+			    {ss >> REFERENCEFRAME;} 
+
             else if (tag == "CLUSTER") 
 			    {ss >> buff2;if(buff2=="TRUE") CLUSTER = true; else CLUSTER = false;}
 
@@ -1623,21 +1648,21 @@ int main(int argc, char* argv[])
 		sprintf(command1, "rm -f %s*.* 2>/dev/null", STATSDIR );
 		system(command1);        
 #else
-		sprintf(command1, "del /q %s*_0*.%s", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
+		sprintf(command1, "del /q %s*_0*.%s 2>NULL", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
 		system(command1);
-		sprintf(command1, "del /q %s*.wrz", VRMLDIR );
+		sprintf(command1, "del /q %s*.wrz 2>NULL", VRMLDIR );
 		system(command1);
-		sprintf(command1, "del /q %s*%s", REPORTDIR, COMPRESSEDEXTENSION );
+		sprintf(command1, "del /q %s*%s 2>NULL", REPORTDIR, COMPRESSEDEXTENSION );
 		system(command1);
-		sprintf(command1, "del /q %s*%s", DATADIR, COMPRESSEDEXTENSION );
+		sprintf(command1, "del /q %s*%s 2>NULL", DATADIR, COMPRESSEDEXTENSION );
 		system(command1);
-		sprintf(command1, "del /q %s*.wrl %s*.txt", TEMPDIR, TEMPDIR );
+		sprintf(command1, "del /q %s*.wrl %s*.txt 2>NULL", TEMPDIR, TEMPDIR );
 		system(command1);
-		sprintf(command1, "del /q %s", SYM_BREAK_FILE );
+		sprintf(command1, "del /q %s 2>NULL", SYM_BREAK_FILE );
 		system(command1);
-		sprintf(command1, "del /q %s*.*", VTKDIR );
+		sprintf(command1, "del /q %s*.* 2>NULL", VTKDIR );
 		system(command1);
-		sprintf(command1, "del /q %s*.*", STATSDIR );
+		sprintf(command1, "del /q %s*.* 2>NULL", STATSDIR );
 		system(command1);
 #endif
 
@@ -1837,7 +1862,7 @@ gsl_rng_set(randomnum, rand_num_seed);
 	if (QUIET)
 	{
 		cout << "Running in quiet mode (no continual progress display)" << endl
-			<< "Use kill " << getpid() << " to terminate"<< endl;
+			<< "Use 'kill " << getpid() << "' to terminate"<< endl;
 	}
 	else
 	{
@@ -2831,10 +2856,10 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         if (BMP_TRACKS)
         {
             // try to load existing tracks file
+            // if load fails, we will make new tracks
 
-            theactin.savenodetracks = !theactin.load_nodetracks();  // if load fails, we will make new tracks
+            theactin.savenodetracks = !theactin.load_nodetracks();  
 
-            //cout << "Tot Nodes to track... " << ptheactin->node_tracks[xaxis].size() << endl;
 
             if (theactin.savenodetracks)    // make new tracks
             {
@@ -2850,6 +2875,12 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
                 theactin.savebmp(filenum, xaxis, actin::runfg, false);  // sets the initial offset position
 
+                // clear the node distances file
+                ofstream nodetrackdist("nodedistances.txt", ios::out | ios::trunc);
+                
+                if (nodetrackdist)
+                    nodetrackdist.close();
+
                 theactin.node_tracks[xaxis].resize(0); // clear the node tracks (after the last bmp call)
 
                 POST_PROC_ORDER = 1;  // must go forwards for tracks
@@ -2862,11 +2893,6 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         }
 
         //cout << "Tot Nodes to track... " << ptheactin->node_tracks[xaxis].size() << endl;
-
-        // we can't create the vkt object here because we can't reuse the renderer without
-        // causing segfaults for some reason
-        // workaround is to create the vtk object within the loop, so that
-        // the destructor clears out and we recreate the object every time
 
         bool dummy_vtk;
 

@@ -226,6 +226,8 @@ public:
     double getvaluetoplot(nodes & mynode, links & mylink);
     double getvaluetoplot(nodes & mynode);
 
+    void getnodeextents(double & minx,double & miny,double & minz,
+	                       double & maxx,double & maxy,double & maxz, int & existantnodes) const;
 
 	nucleator* p_nuc;
 	void linkforces();

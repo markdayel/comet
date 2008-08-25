@@ -279,11 +279,15 @@ actin::actin(void)
 	sprintf(temp_BMP_filename_z, "%sz_temp_%u_%u.bmp", TEMPDIR, filepidnum, filetidnum);
 
 	outbmpfile_x.open(temp_BMP_filename_x, ios::out | ios::binary | ios::trunc);
-	outbmpfile_y.open(temp_BMP_filename_y, ios::out | ios::binary | ios::trunc);
+	outbmpfile_y.open(temp_BMP_filename_x, ios::out | ios::binary | ios::trunc);
 	outbmpfile_z.open(temp_BMP_filename_z, ios::out | ios::binary | ios::trunc);
 
 	if ((!outbmpfile_x) || (!outbmpfile_y) || (!outbmpfile_z)) 
-	{ cout << "Unable to open file temp bitmap file for output"; return;}
+	{ 
+        cout << "Unable to open temp bitmap file for output" << endl;
+        cout << temp_BMP_filename_x << " " << temp_BMP_filename_y << " "<< temp_BMP_filename_z << endl;
+        return;
+    }
 
 	// we write the header now, and just keep changing the pixel part as we write the frames
 
@@ -499,30 +503,13 @@ void actin::crosslinknewnodes(const int &numnewnodes)
 }
 
 
-int actin::saveinfo()
+void actin::getnodeextents(double & minx,double & miny,double & minz,
+	                       double & maxx,double & maxy,double & maxz, int & existantnodes) const
 {
-	//char filename[1024];
-	double minx, miny, minz;
-	double maxx, maxy, maxz; 
-	//char time[1024], date[1024];
-
-    //_strtime( time );
-    //_strdate( date );
-
-	//sprintf ( filename , "nodes%05i.txt", filenum );
-
-	// write header
-	//opactindata << "Data Output " << date << " " << time << endl;
-	//opruninfo << "Nodes Data Itteration Number: " << filenum << endl;
-	opruninfo << "Highest Node Count: " << highestnodecount << endl;
-	cout << "Highest Node Count: " << highestnodecount << endl;
-	//opruninfo << "x,y,z,polymer " << endl;
-	
-	// find grid range:
 
 	minx = miny = minz =   GRIDBOUNDS * 2;
 	maxx = maxy = maxz = - GRIDBOUNDS * 2;
-	int existantnodes = 0;
+	existantnodes = 0;
 
 	for (int i=0; i<highestnodecount; i++)
 	{
@@ -539,6 +526,35 @@ int actin::saveinfo()
 			existantnodes++;
 		}
 	}
+
+}
+
+int actin::saveinfo()
+{
+	//char filename[1024];
+ 
+	//char time[1024], date[1024];
+
+    //_strtime( time );
+    //_strdate( date );
+
+	//sprintf ( filename , "nodes%05i.txt", filenum );
+
+	// write header
+	//opactindata << "Data Output " << date << " " << time << endl;
+	//opruninfo << "Nodes Data Itteration Number: " << filenum << endl;
+	opruninfo << "Highest Node Count: " << highestnodecount << endl;
+	cout << "Highest Node Count: " << highestnodecount << endl;
+	//opruninfo << "x,y,z,polymer " << endl;
+	
+	// find grid range:
+
+
+    double minx, miny, minz;
+	double maxx, maxy, maxz;
+	int existantnodes;
+
+    getnodeextents(minx, miny, minz,maxx, maxy, maxz, existantnodes);
 
     // write info
 
@@ -2124,12 +2140,14 @@ void actin::set_nodes_to_track(const projection & proj)
 
     
 
-    //if (!POST_VTK) // only restrict if not plotting vtk tracks
-    //{
-    //    restrictrange = RADIUS / 2;
-    //    //MAX_NODES_TO_TRACK = 30;
-    //}
+    if (!POST_VTK) // only restrict if not plotting vtk tracks
+    {
+        restrictrange = RADIUS / 2;
+        //MAX_NODES_TO_TRACK = 30;
+    }
                       
+
+    // first we find all the nodes within the frame range and put them into temp_nodes_to_track
 
 
     for(int i=0; i != highestnodecount; ++i)
@@ -2170,13 +2188,15 @@ void actin::set_nodes_to_track(const projection & proj)
     //vect lastpos = node[stationary_node_number];
     //projection_rotation.rotate(lastpos);
 
- 
+
+
+    // now we select a subset of these nodes distributed as evenly as we can over the sphere
 
     for(unsigned int i = 0; i != temp_nodes_to_track.size(); ++i)
     {   // this number of nodes to track
         
         if (i == MAX_NODES_TO_TRACK)
-            break;         // limit to 20 nodes
+            break;         // limit to certain number of nodes
 
 
 //        int max_dist_posn = 0;
@@ -2254,6 +2274,136 @@ void actin::set_nodes_to_track(const projection & proj)
 
 
 
+
+    // Now we have the nodes to track within the main selection shell
+    // optionally we also want to track corresponding nodes within the original shell (frames 10--30)
+    // so we go through these nodes and find the nearest node (by radial angle) to the ones already selected
+
+    // fixme: this is a clunky copy-paste-edit from above
+
+    
+
+    
+//    double TRACK_MIN_RANGE2 = 10;
+//    double TRACK_MAX_RANGE2 = 30;
+
+//    double TRACK_TARGET_DIST = RADIUS * 1.5;
+
+    if  (TRACKS_LENGTHS)
+    {
+
+     // first we find all the nodes within the frame range and put them into temp_nodes_to_track
+
+        if (SECOND_SHELL)
+        {   // overwrite the temp nodes array with the second shell if we're using it
+
+            temp_nodes_to_track.resize(0);
+
+            for(int i=0; i != highestnodecount; ++i)
+            {       
+                //if (temp_nodes_to_track.size() == MAX_NODES_TO_TRACK)   // this should be in later loop (if we do the redistribute loop)
+                //        break;         // limit to 20 nodes
+                
+                if (node[i].dist_from_surface < 0.1)  // skip ones in contact with surface
+                    continue;
+
+                if ((node[i].creation_iter_num < TRACK_MIN_RANGE2 * InterRecordIterations) || 
+                    (node[i].creation_iter_num > TRACK_MAX_RANGE2 * InterRecordIterations))  // is within range?
+                    continue;
+
+                tempposn = node[i] - nucposn;
+                projection_rotation.rotate(tempposn);
+
+                if (fabs(tempposn.x) < restrictrange)  // if within range
+                {
+
+                    temp_nodes_to_track.push_back(i);                                         
+                }
+
+            }
+
+            cout << "There are " << (int) temp_nodes_to_track.size() << " nodes with the second frame range given" << endl;
+
+
+        }
+
+        size_t num_nodes = nodes_to_track.size(); // how many nodes have we got to find pairs for?
+
+
+
+        // now we select the closest one in this shell to each of the first selected nodes
+
+        for(unsigned int i = 0; i != num_nodes; ++i)
+        {   // this number of nodes to track
+            
+            vect curpos = node[nodes_to_track[i]];
+            projection_rotation.rotate(curpos);
+
+
+            double closest_dist = DBL_MAX;
+            double best_score = DBL_MAX;
+            double score = 0;
+            unsigned int best_nodenum = 0;
+
+            // go through temp list, looking for best match
+
+            for(unsigned int j = 0; j != temp_nodes_to_track.size(); ++j)
+            {  
+                // make sure node not already in list
+                if ( find(nodes_to_track.begin(), nodes_to_track.end(), temp_nodes_to_track[j]) != nodes_to_track.end() )
+                    continue;
+
+                vect topos = node[temp_nodes_to_track[j]];
+                projection_rotation.rotate(topos);
+
+                if (SECOND_SHELL)
+                {   // the experiment only measures in the symmetry breaking plane, 
+                    // so we weight our node choices to favor in plane distance measures
+
+                    score = fabs(curpos.x - topos.x) / 10 + // weak weighing towards the plane
+                        fabs( acos( curpos.unitvec().dot( topos.unitvec() ) ) );  // find min angle
+
+                    if ( score < best_score)
+                    {
+                        best_score = score;
+                        best_nodenum = temp_nodes_to_track[j];
+                        closest_dist = fabs( acos( curpos.unitvec().dot( topos.unitvec() ) ) );
+                    }
+                }
+                else
+                {
+                    score = (fabs(curpos.x - topos.x) / RADIUS ) * 2 * TRACK_TARGET_DIST   // weighing towards the plane
+                        + fabs( node[nodes_to_track[i]].dist_from_surface - node[temp_nodes_to_track[j]].dist_from_surface ) * 2 * TRACK_TARGET_DIST // weighting towards const radius
+                        + fabs( (curpos-topos).length() - TRACK_TARGET_DIST);  // find min distance from targetdist range
+
+                    if ( score < best_score)
+                    {
+                        best_score = score;
+                        best_nodenum = temp_nodes_to_track[j];
+                        closest_dist = (curpos-topos).length();
+                    }
+
+                }
+
+
+            }
+
+            
+
+            if (best_nodenum)
+            {
+                // found closest, so add it to the list
+
+                nodes_to_track.push_back(best_nodenum);
+
+                cout << "Initial Length: " << closest_dist << endl;
+
+            }
+
+        }
+
+    }
+
     //nodes_to_track.assign(temp_nodes_to_track.begin(), temp_nodes_to_track.end());
 
     cout << "Tracking " << (int) nodes_to_track.size() << " nodes" << endl;
@@ -2262,6 +2412,19 @@ void actin::set_nodes_to_track(const projection & proj)
         stationary_node_number = 0;
     else
         cout << "Node #" << stationary_node_number << " chosen to be stationary" << endl;
+
+    cout << "Node track distances from surface: " ;
+        
+    for (unsigned int i=0; i != nodes_to_track.size(); ++i)
+    {
+        cout << node[nodes_to_track[i]].dist_from_surface << " ";
+    }
+
+    cout << endl;
+
+
+
+
 
 }
 
@@ -2445,7 +2608,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 	{
 		GaussMat[xg+xgmax].resize(2*ygmax+1,0.0);
 		GaussMat2[xg+xgmax].resize(2*ygmax+1,0.0);
-
+                                                                
 		for(yg = -ygmax; yg != ygmax+1; yg++)
 		{
 			if ( (xg*xg + yg*yg) > (xgmax*ygmax) )
@@ -2573,7 +2736,37 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     Colour nodecol;
     nodecol.setwhite();
 
+    // write out the track lengths
 
+    if (BMP_TRACKS && TRACKS_LENGTHS)
+    {
+    
+        ofstream nodetrackdist("nodedistances.txt", ios::out | ios::app);
+
+        for (unsigned int i=0; i != (nodes_to_track.size() / 2)  ; ++i)
+        { 
+            if ((unsigned int) highestnodecount <= i)
+                break;
+
+
+            vect firstpos = ptheactin->node[nodes_to_track[i]];
+            vect secondpos = ptheactin->node[nodes_to_track[i + (nodes_to_track.size() / 2) ]];
+
+            nodetrackdist << (iteration_num / InterRecordIterations) << " " 
+                //<< nodes_to_track[i] << " "
+                << i+1 << " "
+                << (firstpos-secondpos).length() << " "
+                << firstpos << " "
+                << secondpos << " ";
+
+            nodetrackdist << endl;
+        
+        }
+
+        nodetrackdist.close();
+    }
+
+   
 
 
     //  main loop over nodes:
@@ -3720,7 +3913,9 @@ void actin::compressfilesdowork(const int & filenum)
 		
 	sprintf(command1, "(%s %s*report*.txt 2>/dev/null; mv %s*report*%s %s 2>/dev/null) &"
 		,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
-	system(command1);
+	sprintf(command1, "(%s %s*report*.txt ; mv %s*report*%s %s ) &"
+		,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
+    system(command1);
 
 	// save data file
 

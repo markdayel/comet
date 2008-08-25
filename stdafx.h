@@ -86,7 +86,7 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
  #define COMPRESSCOMMAND "bzip2 -9 -f"
  #define DECOMPRESSCOMMAND "bzip2 -d"
  #define COMPRESSEDEXTENSION ".bz2"
-#else
+#else                                                                                          
  #define COMPRESSCOMMAND "gzip -9 -f"                                     
  #define DECOMPRESSCOMMAND "gunzip"
  #define COMPRESSEDEXTENSION ".gz"
@@ -482,6 +482,8 @@ extern int NODE_XLINK_GRIDSEARCH;
 extern short int GRIDSIZE;
 
 extern bool BMP_TRACKS;
+extern bool TRACKS_LENGTHS;
+extern bool SECOND_SHELL;
 
 extern unsigned int MAX_NODES_TO_TRACK;
 
@@ -489,6 +491,11 @@ extern bool TRACKS_NO_STATIONARY_NODE;
 
 extern double TRACK_MIN_RANGE;
 extern double TRACK_MAX_RANGE;
+
+extern double TRACK_MIN_RANGE2;
+extern double TRACK_MAX_RANGE2;
+
+extern double TRACK_TARGET_DIST;
 
 extern int TRACKFRAMESTEP;
 

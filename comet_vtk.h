@@ -16,7 +16,7 @@
 #include "stdafx.h"
 
 #include "Colour.h"
-
+                                                                   
 #include "vtkVersion.h"
 
 #include "vtkRenderWindow.h"
@@ -136,6 +136,7 @@ class CometVtkVis {
   void addVoxelBound();
 
   void addTracks(const int &framenumber);
+  void addTrackDistances();
 
   void addflow();
 
