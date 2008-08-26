@@ -165,7 +165,7 @@ void saveBigImage(vtkRenderer* ren, int framenum)
     {
         char command1[1024];
         sprintf(command1, 
-            "(%s -quality %i -resize %f%% %s %s ; rm %s ) &",
+            "(%s -quality %i -resize %f%% \"%s\" \"%s\" ; rm \"%s\" ) &",
             IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)MAGFACTOR,  
               tmpfilename, filename, tmpfilename);
         //cout << command1 << endl;

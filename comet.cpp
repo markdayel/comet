@@ -1442,7 +1442,7 @@ int main(int argc, char* argv[])
     if (BMP_LINKS_BROKEN)
     {
         sprintf(BITMAPDIR,"%s/bitmaps_links/", path);
-    	sprintf(command1, "mkdir %s 2>/dev/null", BITMAPDIR  );
+    	sprintf(command1, "mkdir \"%s\" 2>/dev/null", BITMAPDIR  );
 	    system(command1);
     }
 
@@ -2455,7 +2455,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
         ifstrm.clear();
 #ifndef _WIN32
 	    char command1[1024];
-        sprintf(command1, "%s -c %s%s > %s", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
+        sprintf(command1, "%s -c \"%s%s\" > \"%s\"", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
         //cout << command1 << endl;
         system(command1);
 
@@ -3013,7 +3013,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 	if (POST_REPORTS)
 	{
 		char command5[1024];
-		sprintf(command5, "(%s %s*report*.txt 2>/dev/null; mv %s*report*%s %s 2>/dev/null) &"
+		sprintf(command5, "(%s \"%s*report*.txt\" 2>/dev/null; mv \"%s*report*%s\" \"%s\" 2>/dev/null) &"
 			,COMPRESSCOMMAND, TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
 		system(command5);
 	}

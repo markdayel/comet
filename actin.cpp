@@ -3480,7 +3480,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 		//	 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
         sprintf(command1,
-		"%s -quality %i -density 300x300 %s %s %s%s_proj_%05i.%s", 
+		"%s -quality %i -density 300x300 \"%s\" %s \"%s%s_proj_%05i.%s\"", 
         IMAGEMAGICKCONVERT, BMP_COMPRESSION, sourceimage, drawcmd.str().c_str(), BITMAPDIR, 
 			 projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
     }
@@ -3488,7 +3488,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     {
 
 		sprintf(command1,
-		"%s %s -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%ium' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" -density 300x300 %s %s%s_proj_%05i.%s", 
+		"%s \"%s\" -quality %i -font helvetica -fill white -pointsize %i -draw \"text %i %i '%ium' rectangle %i %i %i %i text +%i+%i '%s-projection' text +%i+%i 'Frame % 6i' text +%i+%i 'Time % 6i'\" -density 300x300 %s \"%s%s_proj_%05i.%s\"", 
             IMAGEMAGICKCONVERT, sourceimage, BMP_COMPRESSION,   // command and bitmap quality
             TEXT_POINTSIZE * BMP_AA_FACTOR,                           // font size
             5 * BMP_AA_FACTOR, BMP_HEIGHT - 5 * BMP_AA_FACTOR, scalebarmicrons,   // scale bar text
@@ -3512,7 +3512,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     }
     else
     {
-        sprintf(command2,"%s -quality %i -resize %f%% -density 300x300 %s%s_proj_%05i.%s ",
+        sprintf(command2,"%s -quality %i -resize %f%% -density 300x300 \"%s%s_proj_%05i.%s\" ",
              IMAGEMAGICKMOGRIFY, BMP_COMPRESSION, 100/(double)BMP_AA_FACTOR, BITMAPDIR,
 		     projletter, filenum, BMP_OUTPUT_FILETYPE.c_str());
 
@@ -3911,9 +3911,9 @@ void actin::compressfilesdowork(const int & filenum)
 	char command1[1024];
 	// report files
 		
-	sprintf(command1, "(%s %s*report*.txt 2>/dev/null; mv %s*report*%s %s 2>/dev/null) &"
+	sprintf(command1, "(%s \"%s*report*.txt\" 2>/dev/null; mv \"%s*report*%s\" \"%s\" 2>/dev/null) &"
 		,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
-	sprintf(command1, "(%s %s*report*.txt ; mv %s*report*%s %s ) &"
+	sprintf(command1, "(%s \"%s*report*.txt\" ; mv \"%s*report*%s\" \"%s\" ) &"
 		,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
     system(command1);
 
@@ -3921,7 +3921,7 @@ void actin::compressfilesdowork(const int & filenum)
 
     if (COMPRESSDATAFILES)
     {
-	sprintf(command1 , "(%s %s*data*.txt 2>/dev/null; mv %s*data*%s %s 2>/dev/null) &",
+	sprintf(command1 , "(%s \"%s*data*.txt\" 2>/dev/null; mv \"%s*data*%s\" \"%s\" 2>/dev/null) &",
 	     COMPRESSCOMMAND, TEMPDIR, TEMPDIR, COMPRESSEDEXTENSION, DATADIR);
 	system(command1);
     }
@@ -3929,7 +3929,7 @@ void actin::compressfilesdowork(const int & filenum)
                                        
 	// wrl file
 
-	//sprintf(command1 , "(gzip -9 -f -c %snodes%05i.wrl > %snodes%05i.wrz 2>/dev/null) &",
+	//sprintf(command1 , "(gzip -9 -f -c \"%snodes%05i.wrl\" > \"%snodes%05i.wrz\" 2>/dev/null) &",
 	//					TEMPDIR, filenum,  VRMLDIR,filenum);
 	//system(command1);
 
@@ -3937,16 +3937,16 @@ void actin::compressfilesdowork(const int & filenum)
 
 	char command2[1024];
 
-	//sprintf(command1, "%s %s*report*.txt",COMPRESSCOMMAND, TEMPDIR);
-	sprintf(command2, "move %s*report%05i.txt %s",TEMPDIR,filenum,REPORTDIR);
+	//sprintf(command1, "%s \"%s*report*.txt\"",COMPRESSCOMMAND, TEMPDIR);
+	sprintf(command2, "move \"%s*report%05i.txt\" \"%s\"",TEMPDIR,filenum,REPORTDIR);
 	//system(command1);
 	system(command2);
 
 	// save data file
 
-	//sprintf(command1, "%s %s*data*.txt",COMPRESSCOMMAND, TEMPDIR2);
-	//sprintf(command2, "move %s*data*%s %s >NUL",TEMPDIR,COMPRESSEDEXTENSION, DATADIR);
-	sprintf(command2, "move %s*data*.txt %s >NUL",TEMPDIR,DATADIR);
+	//sprintf(command1, "%s \"%s*data*.txt\"",COMPRESSCOMMAND, TEMPDIR2);
+	//sprintf(command2, "move \"%s*data*%s\" \"%s\" >NUL",TEMPDIR,COMPRESSEDEXTENSION, DATADIR);
+	sprintf(command2, "move \"%s*data*.txt\" \"%s\" >NUL",TEMPDIR,DATADIR);
 	//system(command1);
 	system(command2);
 	//cout << command1 << endl << command2 << endl;

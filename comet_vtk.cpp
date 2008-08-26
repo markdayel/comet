@@ -334,12 +334,12 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
 
             char command1[1024];
             sprintf(command1, 
-                "%s -transparent black %s %s",
+                "%s -transparent black \"%s\" \"%s\"",
                 IMAGEMAGICKCONVERT, tmpfilename, VTK_colmap_filename);
             system(command1);
 
             // remove the temp bitmap
-            sprintf(command1, "rm %s", tmpfilename);
+            sprintf(command1, "rm \"%s\"", tmpfilename);
             system(command1);
         }
 
@@ -818,7 +818,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
         {
             char command1[1024];
             sprintf(command1, 
-                "(%s -quality %i -resize %f%% -density 300x300 %s %s %s ; rm %s ) &",
+                "(%s -quality %i -resize %f%% -density 300x300 %s \"%s\" \"%s\" ; rm \"%s\" ) &",
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
                   tmpfilename, filename, tmpfilename);
             //cout << command1 << endl;
@@ -829,7 +829,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
             char command1[1024];
             
             sprintf(command1, 
-                "(%s -quality %i -density 300x300 %s %s %s ; rm %s ) &",
+                "(%s -quality %i -density 300x300 %s \"%s\" \"%s\" ; rm \"%s\" ) &",
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, textstring,
                 tmpfilename, filename, tmpfilename);
 
@@ -843,7 +843,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
         {
             char command1[1024];
             sprintf(command1, 
-                "(%s -compose Dst_Over -composite -quality %i -resize %f%% -density 300x300 %s %s %s %s ; rm %s ) &",
+                "(%s -compose Dst_Over -composite -quality %i -resize %f%% -density 300x300 %s \"%s\" \"%s\" \"%s\" ; rm \"%s\" ) &",
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
                  VTK_colmap_filename, tmpfilename, filename, tmpfilename);
             //cout << command1 << endl;
@@ -853,7 +853,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
         {
             char command1[1024];
             sprintf(command1, 
-                "(%s -compose Dst_Over -composite -quality %i %s %s %s %s ; rm %s ) &",
+                "(%s -compose Dst_Over -composite -quality %i %s \"%s\" \"%s\" \"%s\" ; rm \"%s\" ) &",
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, textstring,
                 VTK_colmap_filename, tmpfilename, filename, tmpfilename);
             //cout << command1 << endl;
@@ -953,9 +953,9 @@ void CometVtkVis::saveVRML(const int &framenumber)
     char command1[1024];
 
     if(OptsRenderNucleator)  // only replace rotation/translation if we actually have a nucleator!
-        sprintf(command1 , "( %s | %s > %s%s ; rm %s ) &", command5, COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
+        sprintf(command1 , "( %s | \"%s\" > \"%s%s\" ; rm \"%s\" ) &", command5, COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
     else
-        sprintf(command1 , "( %s | %s > %s%s ; rm %s ) &", "cat", COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
+        sprintf(command1 , "( %s | \"%s\" > \"%s%s\" ; rm \"%s\" ) &", "cat", COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
 
     system(command1);
 }
