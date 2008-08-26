@@ -3469,7 +3469,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     }
     else
     {
-        sprintf(sourceimage, " %s ", temp_BMP_filename );
+        sprintf(sourceimage, "%s", temp_BMP_filename );
     }
 
     if (NO_IMAGE_TEXT)
@@ -3518,6 +3518,8 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
         // only command1 refers to the temp bmp, so we can always safely call the antialias resize command in the background
 
+        
+
         if (!NOBGIMAGEMAGICK)
         {
             if (fgbg == runbg)
@@ -3530,7 +3532,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             sprintf(command3, "%s ; %s", command1, command2);
         }
 
-
+       
     }
 
     //opruninfo << command3 << endl;
