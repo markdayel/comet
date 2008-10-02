@@ -1,0 +1,549 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 44;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4D087FEB0C83867D00533FFA /* libvtkCommon.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FDC0C83867D00533FFA /* libvtkCommon.a */; };
+		4D087FEC0C83867D00533FFA /* libvtkexpat.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FDD0C83867D00533FFA /* libvtkexpat.a */; };
+		4D087FED0C83867D00533FFA /* libvtkFiltering.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FDE0C83867D00533FFA /* libvtkFiltering.a */; };
+		4D087FEE0C83867D00533FFA /* libvtkftgl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FDF0C83867D00533FFA /* libvtkftgl.a */; };
+		4D087FEF0C83867D00533FFA /* libvtkGraphics.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE00C83867D00533FFA /* libvtkGraphics.a */; };
+		4D087FF00C83867D00533FFA /* libvtkHybrid.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE10C83867D00533FFA /* libvtkHybrid.a */; };
+		4D087FF10C83867D00533FFA /* libvtkImaging.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE20C83867D00533FFA /* libvtkImaging.a */; };
+		4D087FF20C83867D00533FFA /* libvtkIO.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE30C83867D00533FFA /* libvtkIO.a */; };
+		4D087FF30C83867D00533FFA /* libvtkjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE40C83867D00533FFA /* libvtkjpeg.a */; };
+		4D087FF40C83867D00533FFA /* libvtkpng.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE50C83867D00533FFA /* libvtkpng.a */; };
+		4D087FF50C83867D00533FFA /* libvtkRendering.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE60C83867D00533FFA /* libvtkRendering.a */; };
+		4D087FF60C83867D00533FFA /* libvtksys.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE70C83867D00533FFA /* libvtksys.a */; };
+		4D087FF70C83867D00533FFA /* libvtktiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE80C83867D00533FFA /* libvtktiff.a */; };
+		4D087FF80C83867D00533FFA /* libvtkVolumeRendering.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FE90C83867D00533FFA /* libvtkVolumeRendering.a */; };
+		4D087FF90C83867D00533FFA /* libvtkzlib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D087FEA0C83867D00533FFA /* libvtkzlib.a */; };
+		4D44C0FC0C431895000264B5 /* comet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C0FB0C431895000264B5 /* comet.cpp */; };
+		4D44C0FE0C4318A7000264B5 /* actin.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C0FD0C4318A7000264B5 /* actin.cpp */; };
+		4D44C1000C4318B5000264B5 /* Colour.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C0FF0C4318B5000264B5 /* Colour.cpp */; };
+		4D44C1020C4318C0000264B5 /* comet_vtk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C1010C4318C0000264B5 /* comet_vtk.cpp */; };
+		4D44C1040C4318E9000264B5 /* kbhit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C1030C4318E9000264B5 /* kbhit.cpp */; };
+		4D44C1060C43190C000264B5 /* links.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C1050C43190C000264B5 /* links.cpp */; };
+		4D44C1080C431917000264B5 /* nodes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C1070C431917000264B5 /* nodes.cpp */; };
+		4D44C10E0C43192D000264B5 /* nucleator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C1090C43192D000264B5 /* nucleator.cpp */; };
+		4D44C10F0C43192D000264B5 /* rotationmatrix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C10A0C43192D000264B5 /* rotationmatrix.cpp */; };
+		4D44C1100C43192D000264B5 /* segments.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C10B0C43192D000264B5 /* segments.cpp */; };
+		4D44C1110C43192D000264B5 /* stdafx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C10C0C43192D000264B5 /* stdafx.cpp */; };
+		4D44C1120C43192D000264B5 /* threadedtaskqueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4D44C10D0C43192D000264B5 /* threadedtaskqueue.cpp */; };
+		4D4B53490C4350DF00AF1DE2 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D4B53480C4350DF00AF1DE2 /* AppKit.framework */; };
+		4D6E665B0C434BB300FFDA1B /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D6E665A0C434BB300FFDA1B /* OpenGL.framework */; };
+		4D8182DD0D734D9900473127 /* libgsl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D8182DC0D734D9900473127 /* libgsl.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8DD76F690486A84900D96B5E /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		4D087FDC0C83867D00533FFA /* libvtkCommon.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkCommon.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkCommon.a; sourceTree = SOURCE_ROOT; };
+		4D087FDD0C83867D00533FFA /* libvtkexpat.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkexpat.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkexpat.a; sourceTree = SOURCE_ROOT; };
+		4D087FDE0C83867D00533FFA /* libvtkFiltering.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkFiltering.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkFiltering.a; sourceTree = SOURCE_ROOT; };
+		4D087FDF0C83867D00533FFA /* libvtkftgl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkftgl.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkftgl.a; sourceTree = SOURCE_ROOT; };
+		4D087FE00C83867D00533FFA /* libvtkGraphics.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkGraphics.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkGraphics.a; sourceTree = SOURCE_ROOT; };
+		4D087FE10C83867D00533FFA /* libvtkHybrid.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkHybrid.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkHybrid.a; sourceTree = SOURCE_ROOT; };
+		4D087FE20C83867D00533FFA /* libvtkImaging.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkImaging.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkImaging.a; sourceTree = SOURCE_ROOT; };
+		4D087FE30C83867D00533FFA /* libvtkIO.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkIO.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkIO.a; sourceTree = SOURCE_ROOT; };
+		4D087FE40C83867D00533FFA /* libvtkjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkjpeg.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkjpeg.a; sourceTree = SOURCE_ROOT; };
+		4D087FE50C83867D00533FFA /* libvtkpng.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkpng.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkpng.a; sourceTree = SOURCE_ROOT; };
+		4D087FE60C83867D00533FFA /* libvtkRendering.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkRendering.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkRendering.a; sourceTree = SOURCE_ROOT; };
+		4D087FE70C83867D00533FFA /* libvtksys.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtksys.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtksys.a; sourceTree = SOURCE_ROOT; };
+		4D087FE80C83867D00533FFA /* libvtktiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtktiff.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtktiff.a; sourceTree = SOURCE_ROOT; };
+		4D087FE90C83867D00533FFA /* libvtkVolumeRendering.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkVolumeRendering.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkVolumeRendering.a; sourceTree = SOURCE_ROOT; };
+		4D087FEA0C83867D00533FFA /* libvtkzlib.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libvtkzlib.a; path = ../VTKcvs/VTKBuild.universal/lib/libvtkzlib.a; sourceTree = SOURCE_ROOT; };
+		4D44C0FB0C431895000264B5 /* comet.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = comet.cpp; sourceTree = "<group>"; };
+		4D44C0FD0C4318A7000264B5 /* actin.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = actin.cpp; sourceTree = "<group>"; };
+		4D44C0FF0C4318B5000264B5 /* Colour.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Colour.cpp; sourceTree = "<group>"; };
+		4D44C1010C4318C0000264B5 /* comet_vtk.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = comet_vtk.cpp; sourceTree = "<group>"; };
+		4D44C1030C4318E9000264B5 /* kbhit.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = kbhit.cpp; sourceTree = "<group>"; };
+		4D44C1050C43190C000264B5 /* links.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = links.cpp; sourceTree = "<group>"; };
+		4D44C1070C431917000264B5 /* nodes.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = nodes.cpp; sourceTree = "<group>"; };
+		4D44C1090C43192D000264B5 /* nucleator.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = nucleator.cpp; sourceTree = "<group>"; };
+		4D44C10A0C43192D000264B5 /* rotationmatrix.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = rotationmatrix.cpp; sourceTree = "<group>"; };
+		4D44C10B0C43192D000264B5 /* segments.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = segments.cpp; sourceTree = "<group>"; };
+		4D44C10C0C43192D000264B5 /* stdafx.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = stdafx.cpp; sourceTree = "<group>"; };
+		4D44C10D0C43192D000264B5 /* threadedtaskqueue.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = threadedtaskqueue.cpp; sourceTree = "<group>"; };
+		4D4B53480C4350DF00AF1DE2 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
+		4D6E665A0C434BB300FFDA1B /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
+		4D8182DC0D734D9900473127 /* libgsl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgsl.a; path = gsl/libgsl.a; sourceTree = SOURCE_ROOT; };
+		8DD76F6C0486A84900D96B5E /* comet */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = comet; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8DD76F660486A84900D96B5E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D6E665B0C434BB300FFDA1B /* OpenGL.framework in Frameworks */,
+				4D4B53490C4350DF00AF1DE2 /* AppKit.framework in Frameworks */,
+				4D087FEB0C83867D00533FFA /* libvtkCommon.a in Frameworks */,
+				4D087FEC0C83867D00533FFA /* libvtkexpat.a in Frameworks */,
+				4D087FED0C83867D00533FFA /* libvtkFiltering.a in Frameworks */,
+				4D087FEE0C83867D00533FFA /* libvtkftgl.a in Frameworks */,
+				4D087FEF0C83867D00533FFA /* libvtkGraphics.a in Frameworks */,
+				4D087FF00C83867D00533FFA /* libvtkHybrid.a in Frameworks */,
+				4D087FF10C83867D00533FFA /* libvtkImaging.a in Frameworks */,
+				4D087FF20C83867D00533FFA /* libvtkIO.a in Frameworks */,
+				4D087FF30C83867D00533FFA /* libvtkjpeg.a in Frameworks */,
+				4D087FF40C83867D00533FFA /* libvtkpng.a in Frameworks */,
+				4D087FF50C83867D00533FFA /* libvtkRendering.a in Frameworks */,
+				4D087FF60C83867D00533FFA /* libvtksys.a in Frameworks */,
+				4D087FF70C83867D00533FFA /* libvtktiff.a in Frameworks */,
+				4D087FF80C83867D00533FFA /* libvtkVolumeRendering.a in Frameworks */,
+				4D087FF90C83867D00533FFA /* libvtkzlib.a in Frameworks */,
+				4D8182DD0D734D9900473127 /* libgsl.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		08FB7794FE84155DC02AAC07 /* comet */ = {
+			isa = PBXGroup;
+			children = (
+				08FB7795FE84155DC02AAC07 /* Source */,
+				4D6E66130C43468800FFDA1B /* Libraries */,
+				4D6E66060C4344F000FFDA1B /* Frameworks */,
+				C6859E8C029090F304C91782 /* Documentation */,
+				1AB674ADFE9D54B511CA2CBB /* Products */,
+			);
+			comments = "\nneed to add -DLINK_VTK to the 'Other C++ Flags' option, but it won't link if I do that for some reason";
+			name = comet;
+			sourceTree = "<group>";
+		};
+		08FB7795FE84155DC02AAC07 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				4D44C1090C43192D000264B5 /* nucleator.cpp */,
+				4D44C10A0C43192D000264B5 /* rotationmatrix.cpp */,
+				4D44C10B0C43192D000264B5 /* segments.cpp */,
+				4D44C10C0C43192D000264B5 /* stdafx.cpp */,
+				4D44C10D0C43192D000264B5 /* threadedtaskqueue.cpp */,
+				4D44C1070C431917000264B5 /* nodes.cpp */,
+				4D44C1050C43190C000264B5 /* links.cpp */,
+				4D44C1030C4318E9000264B5 /* kbhit.cpp */,
+				4D44C1010C4318C0000264B5 /* comet_vtk.cpp */,
+				4D44C0FF0C4318B5000264B5 /* Colour.cpp */,
+				4D44C0FD0C4318A7000264B5 /* actin.cpp */,
+				4D44C0FB0C431895000264B5 /* comet.cpp */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		1AB674ADFE9D54B511CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8DD76F6C0486A84900D96B5E /* comet */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4D6E66060C4344F000FFDA1B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				4D4B53480C4350DF00AF1DE2 /* AppKit.framework */,
+				4D6E665A0C434BB300FFDA1B /* OpenGL.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		4D6E66130C43468800FFDA1B /* Libraries */ = {
+			isa = PBXGroup;
+			children = (
+				4D8182DC0D734D9900473127 /* libgsl.a */,
+				4D087FDC0C83867D00533FFA /* libvtkCommon.a */,
+				4D087FDD0C83867D00533FFA /* libvtkexpat.a */,
+				4D087FDE0C83867D00533FFA /* libvtkFiltering.a */,
+				4D087FDF0C83867D00533FFA /* libvtkftgl.a */,
+				4D087FE00C83867D00533FFA /* libvtkGraphics.a */,
+				4D087FE10C83867D00533FFA /* libvtkHybrid.a */,
+				4D087FE20C83867D00533FFA /* libvtkImaging.a */,
+				4D087FE30C83867D00533FFA /* libvtkIO.a */,
+				4D087FE40C83867D00533FFA /* libvtkjpeg.a */,
+				4D087FE50C83867D00533FFA /* libvtkpng.a */,
+				4D087FE60C83867D00533FFA /* libvtkRendering.a */,
+				4D087FE70C83867D00533FFA /* libvtksys.a */,
+				4D087FE80C83867D00533FFA /* libvtktiff.a */,
+				4D087FE90C83867D00533FFA /* libvtkVolumeRendering.a */,
+				4D087FEA0C83867D00533FFA /* libvtkzlib.a */,
+			);
+			name = Libraries;
+			sourceTree = "<group>";
+		};
+		C6859E8C029090F304C91782 /* Documentation */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Documentation;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8DD76F620486A84900D96B5E /* comet */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DEB923108733DC60010E9CD /* Build configuration list for PBXNativeTarget "comet" */;
+			buildPhases = (
+				8DD76F640486A84900D96B5E /* Sources */,
+				8DD76F660486A84900D96B5E /* Frameworks */,
+				8DD76F690486A84900D96B5E /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = comet;
+			productInstallPath = "$(HOME)/bin";
+			productName = comet;
+			productReference = 8DD76F6C0486A84900D96B5E /* comet */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB923508733DC60010E9CD /* Build configuration list for PBXProject "comet" */;
+			compatibilityVersion = "Xcode 3.0";
+			hasScannedForEncodings = 1;
+			mainGroup = 08FB7794FE84155DC02AAC07 /* comet */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8DD76F620486A84900D96B5E /* comet */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8DD76F640486A84900D96B5E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D44C0FC0C431895000264B5 /* comet.cpp in Sources */,
+				4D44C0FE0C4318A7000264B5 /* actin.cpp in Sources */,
+				4D44C1000C4318B5000264B5 /* Colour.cpp in Sources */,
+				4D44C1020C4318C0000264B5 /* comet_vtk.cpp in Sources */,
+				4D44C1040C4318E9000264B5 /* kbhit.cpp in Sources */,
+				4D44C1060C43190C000264B5 /* links.cpp in Sources */,
+				4D44C1080C431917000264B5 /* nodes.cpp in Sources */,
+				4D44C10E0C43192D000264B5 /* nucleator.cpp in Sources */,
+				4D44C10F0C43192D000264B5 /* rotationmatrix.cpp in Sources */,
+				4D44C1100C43192D000264B5 /* segments.cpp in Sources */,
+				4D44C1110C43192D000264B5 /* stdafx.cpp in Sources */,
+				4D44C1120C43192D000264B5 /* threadedtaskqueue.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB923208733DC60010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = "$(HOME)/bin";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/local/lib,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_3)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_4)",
+					"\"$(SRCROOT)/gsl\"",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/unilibs\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/../VTKcvs/VTKBuild.compat/lib\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_3 = "\"$(SRCROOT)/../VTKcvs/VTKBuild.universal/lib\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_4 = "\"$(SRCROOT)/../VTKcvs/VTKBuild.universal/lib\"";
+				PRODUCT_NAME = comet;
+				ZERO_LINK = YES;
+			};
+			name = Debug;
+		};
+		1DEB923308733DC60010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = (
+					x86_64,
+					i386,
+					ppc,
+					ppc64,
+				);
+				DEPLOYMENT_LOCATION = YES;
+				DEPLOYMENT_POSTPROCESSING = YES;
+				GCC_ENABLE_SUPPLEMENTAL_SSE3_INSTRUCTIONS = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = "$(HOME)/bin";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/gsl\"",
+				);
+				OTHER_CPLUSPLUSFLAGS = "";
+				"OTHER_CPLUSPLUSFLAGS[arch=x86_64]" = (
+					"$(inherited)-march=nocona",
+					"-mtune=nocona",
+					"-mfpmath=sse",
+					"-fast",
+					"-msse2",
+					"-msse3",
+					"-fprefetch-loop-arrays",
+					"-DLINK_VTK",
+					"-DNDEBUG",
+					"-Wno-deprecated",
+					"-Wall",
+				);
+				PER_ARCH_CFLAGS_i386 = "$(inherited)-march=nocona -mtune=nocona -mfpmath=sse -fast -msse2 -msse3 -fprefetch-loop-arrays -DLINK_VTK -DNDEBUG -Wno-deprecated -Wall";
+				PER_ARCH_CFLAGS_ppc = "-faltivec -fprefetch-loop-arrays -DLINK_VTK -DNDEBUG -Wno-deprecated -Wall";
+				PRODUCT_NAME = comet;
+				STRIP_INSTALLED_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		1DEB923608733DC60010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = i386;
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_AUTO_VECTORIZATION = YES;
+				GCC_DYNAMIC_NO_PIC = YES;
+				GCC_ENABLE_SSE3_EXTENSIONS = YES;
+				GCC_FAST_MATH = YES;
+				GCC_MODEL_PPC64 = NO;
+				GCC_MODEL_TUNING = "";
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_STRICT_ALIASING = YES;
+				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_EFFECTIVE_CPLUSPLUS_VIOLATIONS = NO;
+				GCC_WARN_PEDANTIC = NO;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_PROFILING_CODE = NO;
+				HEADER_SEARCH_PATHS = (
+					/opt/local/include/,
+					"$(vtk-include)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"/opt//local/lib/",
+					"$(vtk-lib)",
+					"$(inherited)",
+				);
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(inherited)",
+					"-O3",
+					"-march=nocona",
+					"-mtune=nocona",
+					"-fast",
+					"-mfpmath=sse",
+					"-msse2",
+					"-msse3",
+					"-ftree-vectorize",
+					"-fstrict-aliasing",
+					"-fno-exceptions",
+					"-fasm-blocks",
+					"-DLINK_VTK",
+					"-DNDEBUG",
+					"-Wno-deprecated",
+				);
+				PREBINDING = NO;
+				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.5.sdk";
+				STRIP_INSTALLED_PRODUCT = NO;
+				ZERO_LINK = NO;
+			};
+			name = Debug;
+		};
+		1DEB923708733DC60010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT_PRE_XCODE_3_1)";
+				ARCHS_STANDARD_32_64_BIT_PRE_XCODE_3_1 = "ppc i386 ppc64 x86_64";
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEPLOYMENT_LOCATION = NO;
+				DEPLOYMENT_POSTPROCESSING = NO;
+				DSTROOT = "";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_ALTIVEC_EXTENSIONS = YES;
+				GCC_AUTO_VECTORIZATION = YES;
+				GCC_DEBUGGING_SYMBOLS = full;
+				GCC_DYNAMIC_NO_PIC = YES;
+				GCC_ENABLE_SSE3_EXTENSIONS = YES;
+				GCC_ENABLE_SUPPLEMENTAL_SSE3_INSTRUCTIONS = YES;
+				GCC_FAST_MATH = YES;
+				GCC_FEEDBACK_DIRECTED_OPTIMIZATION = Off;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_MODEL_PPC64 = NO;
+				GCC_MODEL_TUNING = "";
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = 4.2;
+				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_EFFECTIVE_CPLUSPLUS_VIOLATIONS = NO;
+				GCC_WARN_PEDANTIC = NO;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_PROFILING_CODE = NO;
+				HEADER_SEARCH_PATHS = (
+					/opt/local/include/,
+					"$(vtk-include)",
+				);
+				INSTALL_PATH = "";
+				LIBRARY_SEARCH_PATHS = (
+					"$(vtk-lib)",
+					"$(inherited)",
+				);
+				ONLY_ACTIVE_ARCH = NO;
+				ONLY_LINK_ESSENTIAL_SYMBOLS = YES;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(inherited)",
+					"-march=prescott",
+					"-mtune=prescott",
+					"-mfpmath=sse",
+					"-fast",
+					"-msse2",
+					"-msse3",
+					"-fprefetch-loop-arrays",
+					"-ftree-vectorize",
+					"-fstrict-aliasing",
+					"-fno-exceptions",
+					"-mdynamic-no-pic",
+					"-fno-pic",
+					"-DLINK_VTK",
+					"-DNDEBUG",
+					"-Wno-deprecated",
+					"-Wall",
+				);
+				PREBINDING = NO;
+				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.5.sdk";
+				SEPARATE_STRIP = NO;
+				STRIP_INSTALLED_PRODUCT = NO;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		4DB0C2550C77EBF1001EBDF5 /* Release_with_symbols */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = i386;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = "$(HOME)/bin";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/local/lib,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_3)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_4)",
+					"\"$(SRCROOT)/gsl\"",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/unilibs\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/../VTKcvs/VTKBuild.compat/lib\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_3 = "\"$(SRCROOT)/../VTKcvs/VTKBuild.universal/lib\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_4 = "\"$(SRCROOT)/../VTKcvs/VTKBuild.universal/lib\"";
+				PRODUCT_NAME = comet;
+			};
+			name = Release_with_symbols;
+		};
+		4DB0C2560C77EBF1001EBDF5 /* Release_with_symbols */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH)";
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = stabs;
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_AUTO_VECTORIZATION = YES;
+				GCC_DEBUGGING_SYMBOLS = default;
+				GCC_DYNAMIC_NO_PIC = YES;
+				GCC_ENABLE_SSE3_EXTENSIONS = YES;
+				GCC_FAST_MATH = YES;
+				GCC_FEEDBACK_DIRECTED_OPTIMIZATION = Off;
+				GCC_MODEL_PPC64 = NO;
+				GCC_MODEL_TUNING = "";
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_STRICT_ALIASING = YES;
+				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_EFFECTIVE_CPLUSPLUS_VIOLATIONS = NO;
+				GCC_WARN_PEDANTIC = NO;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_PROFILING_CODE = NO;
+				HEADER_SEARCH_PATHS = (
+					/opt/local/include/,
+					"$(vtk-include)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"/opt//local/lib/",
+					"$(vtk-lib)",
+					"$(inherited)",
+				);
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(inherited)-march=nocona",
+					"-mtune=nocona",
+					"-fast",
+					"-msse2",
+					"-msse3",
+					"-fprefetch-loop-arrays",
+					"-DLINK_VTK",
+					"-DNDEBUG",
+					"-Wno-deprecated",
+					"-Wall",
+				);
+				PREBINDING = NO;
+				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.5.sdk";
+				STRIP_INSTALLED_PRODUCT = NO;
+				SYMROOT = build;
+				ZERO_LINK = NO;
+			};
+			name = Release_with_symbols;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB923108733DC60010E9CD /* Build configuration list for PBXNativeTarget "comet" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB923208733DC60010E9CD /* Debug */,
+				1DEB923308733DC60010E9CD /* Release */,
+				4DB0C2550C77EBF1001EBDF5 /* Release_with_symbols */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DEB923508733DC60010E9CD /* Build configuration list for PBXProject "comet" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB923608733DC60010E9CD /* Debug */,
+				1DEB923708733DC60010E9CD /* Release */,
+				4DB0C2560C77EBF1001EBDF5 /* Release_with_symbols */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}
