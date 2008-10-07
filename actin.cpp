@@ -677,7 +677,7 @@ void actin::iterate()  // this is the main iteration loop call
     else
     {
         if (!test_equilibrating)
-        {
+        {   // this is for pushing on the network to test how strong it is
 
             testforces_select_nodes(testsurfaceposn,1);
             // if testing forces apply the force here
@@ -2745,12 +2745,18 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
         for (unsigned int i=0; i != (nodes_to_track.size() / 2)  ; ++i)
         { 
-            if ((unsigned int) highestnodecount <= i)
-                break;
 
+            int firstnode = nodes_to_track[i];
+            int secondnode = nodes_to_track[i + (nodes_to_track.size() / 2) ];
 
-            vect firstpos = ptheactin->node[nodes_to_track[i]];
-            vect secondpos = ptheactin->node[nodes_to_track[i + (nodes_to_track.size() / 2) ]];
+            vect firstpos = node[firstnode];
+            vect secondpos = node[secondnode];
+
+            if ( ( firstnode > highestnodecount ) ||
+                 ( secondnode > highestnodecount ))
+            {   // if nodes don't exist yet, then set to origin
+                firstpos = secondpos = vect(0,0,0);
+            }
 
             nodetrackdist << (iteration_num / InterRecordIterations) << " " 
                 //<< nodes_to_track[i] << " "
@@ -3913,10 +3919,15 @@ void actin::compressfilesdowork(const int & filenum)
 	char command1[1024];
 	// report files
 		
-	sprintf(command1, "(%s \"%s*report*.txt\" 2>/dev/null; mv \"%s*report*%s\" \"%s\" 2>/dev/null) &"
+	//sprintf(command1, "(%s \"%s*report*.txt\" 2>/dev/null; mv \"%s*report*%s\" \"%s\" 2>/dev/null) &"
+	//	,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
+
+    // the 2>/dev/null on the move command is to
+    // supress an odd  "set owner/group (was: 501/0): Operation not permitted"
+    // warning
+	sprintf(command1, "(%s \"%s\"*report*.txt ; mv \"%s\"*report*%s \"%s\" 2>/dev/null) &"
 		,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
-	sprintf(command1, "(%s \"%s*report*.txt\" ; mv \"%s*report*%s\" \"%s\" ) &"
-		,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
+    //cout << command1 << endl;
     system(command1);
 
 	// save data file
