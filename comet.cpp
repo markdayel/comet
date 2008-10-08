@@ -2695,6 +2695,10 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     if (postprocess_iterations.empty())
         return; // skip if nothing to do
 
+
+    if (POST_VTK_VIEW) // if interactive viewing, just do the first one
+        postprocess_iterations.resize(1);
+
     // load the sym break info
 
     int framemaxvelmoved = 1;

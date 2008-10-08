@@ -3934,7 +3934,7 @@ void actin::compressfilesdowork(const int & filenum)
 
     if (COMPRESSDATAFILES)
     {
-	sprintf(command1 , "(%s \"%s*data*.txt\" 2>/dev/null; mv \"%s*data*%s\" \"%s\" 2>/dev/null) &",
+	sprintf(command1 , "(%s \"%s\"*data*.txt ; mv \"%s\"*data*%s \"%s\" 2>/dev/null) &",
 	     COMPRESSCOMMAND, TEMPDIR, TEMPDIR, COMPRESSEDEXTENSION, DATADIR);
 	system(command1);
     }

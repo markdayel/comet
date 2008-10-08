@@ -66,8 +66,6 @@ nucleator::nucleator(void)//, actin *actinptr)
 	}
 	else if (NUCSHAPE==ellipsoid)
 	{
-        // formula for surface area of ellipsoid 
-        // (adapted  from wikipedia)
 
         double a = RADIUS;
         //double b = RADIUS;
