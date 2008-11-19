@@ -1,15 +1,19 @@
 /*
-Copyright (C) 2005 Mark J Dayel
+    comet - a actin-based motility simulator
+    Copyright (C) 2005 Mark J Dayel
 
-You may not distribute, deploy, provide copies of, rent, loan, lease, 
-transfer, or grant any rights in the software or derivative works thereof 
-in any form to any person.  Reproduction, adaptation, or translation of 
-this program without prior written permission from the author is 
-prohibited.  Proofs of infringement of copyright violations include but 
-not limited to similar code style and structures, similar layout and 
-design, similar algorithm design, and containing parts of the original 
-software source code.  Copyright notice must remain intact and cannot be 
-removed without prior written permission from the author.
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
 #ifndef links_H
