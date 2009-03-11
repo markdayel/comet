@@ -4049,7 +4049,6 @@ int actin::save_data(ofstream &ofstrm)
 bool actin::load_data(ifstream &ifstr)
 {
 	
-
     // clear the nodegrid
     clear_nodegrid();
     
@@ -4061,7 +4060,7 @@ bool actin::load_data(ifstream &ifstr)
     // ensure the identifier for the start of the actin
     if(str.compare("actin:") !=0 )
     {
-	    cout << "error in checkpoint file, 'actin:' expected" << endl;
+	    cout << "error in checkpoint file, 'actin:' expected '" << str << "' found" << endl;
 	    return false;
     }
 
@@ -4077,13 +4076,12 @@ bool actin::load_data(ifstream &ifstr)
     nuc_to_world_rot = world_to_nuc_rot.inverse();
 
  
-
+  
         // load nucleator
     ifstr >> str;
     if(str.compare("nucleator:") !=0 )
     {
-	    cout << "error in checkpoint file, 'nucleator:' expected" 
-	         << endl;
+	    cout << "error in checkpoint file, 'nucleator:' expected '" << str << "' found" << endl;
 	    return false;
     }
 
@@ -4095,10 +4093,12 @@ bool actin::load_data(ifstream &ifstr)
     
     if(str.compare("nodes-links:") !=0 )
     {
-	    cout << "error in data file, 'nodes-links:' expected" << endl;
+	    cout << "error in data file, 'nodes-links:' expected '" << str << "' found" << endl;
 	    cout << "'" << str <<"' last read." << endl;
 	    return true;
     }
+
+
 
     // ** Remember the node vector is preallocated to MAXNODES
     for(vector <nodes>::iterator	i_node  = node.begin(); 
