@@ -1,6 +1,6 @@
 /*
 
-    comet - a actin-based motility simulator
+    comet - an actin-based motility simulator
     Copyright (C) 2005 Mark J Dayel
 
     This program is free software: you can redistribute it and/or modify
@@ -3570,9 +3570,9 @@ double actin::getvaluetoplot(nodes & mynode)
     if (BMP_LINKS_BROKEN)
         return mynode.links_broken / COL_INDIVIDUAL_SCALE;
     else if (BMP_TRANSVERSELINKSONLY)
-        return mynode.linkforce_transverse / COL_INDIVIDUAL_SCALE;
+        return (- mynode.linkforce_transverse + mynode.repforce_transverse)/ COL_INDIVIDUAL_SCALE;
     else if (BMP_RADIALLINKSONLY)
-        return mynode.linkforce_radial / COL_INDIVIDUAL_SCALE;
+        return (- mynode.linkforce_radial + mynode.repforce_radial) / COL_INDIVIDUAL_SCALE;
     else  // energy
         return  (mynode.linkforce_radial * mynode.linkforce_radial +
                  mynode.linkforce_transverse * mynode.linkforce_transverse) / COL_INDIVIDUAL_SCALE;

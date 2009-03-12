@@ -1,6 +1,6 @@
 /*
 
-    comet - a actin-based motility simulator
+    comet - an actin-based motility simulator
     Copyright (C) 2005 Mark J Dayel
 
     This program is free software: you can redistribute it and/or modify
