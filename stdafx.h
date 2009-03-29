@@ -563,6 +563,7 @@ extern vector<struct thread_data>  applyforces_thread_data_array;
 
 #ifdef NODE_GRID_USE_ARRAYS
 	extern NG1d* __restrict nodegrid;
+    //extern NG1d* nodegrid;
     // extern nodes** __restrict nodegrid;
 #else
 	//extern Nodes3d nodegrid;
@@ -582,6 +583,8 @@ extern actin *ptheactin;
 //extern consts CONST;
 
 
+// sqrts take a bit of time, so played with approximations.  
+// Turns out this is no faster, but can be turned on if want to try other ways (lookup table?)
 #if defined(USE_SSE_APPROX_SQRT)
 
  inline float SSErsqrt(float x) {

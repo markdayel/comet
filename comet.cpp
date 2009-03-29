@@ -350,6 +350,7 @@ vector<struct thread_data>  applyforces_thread_data_array;
 
 #ifdef NODE_GRID_USE_ARRAYS
 	NG1d* __restrict nodegrid;
+    //NG1d* nodegrid;
 #else
 	//Nodes3d nodegrid;
     NG4d nodegrid;
@@ -2419,8 +2420,8 @@ srand( rand_num_seed );
 	gsl_rng_free (randomnum);
 
 	#endif
-			  
-	
+			 
+
 	exit(EXIT_SUCCESS);
 }
 
@@ -2804,7 +2805,8 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     if (!DONT_RECALC_SYMBREAK_AXIS)
     {
         if (!POST_PROCESSSINGLECPU)
-        {   // prevent race condition when doing the mulit cpu post process---the caller thread does the symmetry breaking save
+        {   // prevent race condition when doing the multi cpu post process---
+            // the caller thread does the symmetry breaking save
             ptheactin->save_sym_break_axes();
         }
     }

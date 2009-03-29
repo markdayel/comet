@@ -91,22 +91,43 @@ actin::actin(void)
 		//node[i].ptheactin=this;
 	}
 
-	cout << "     GridExtent : +/-" << GRIDBOUNDS << " uM" << endl;
+	cout << "     GridExtent : +/-" << GRIDBOUNDS << " uM" << endl << endl;
 	//cout << " GridResolution : " << GRIDRES << " uM" << endl;
 	//cout << "TotalGridpoints : " << (GRIDSIZE*GRIDSIZE*GRIDSIZE) << endl;
 
-	//cout << "Zeroing Grid...";
-	//cout.flush();
+	
     
     	     
     #ifdef NODE_GRID_USE_ARRAYS
 
-	    nodegrid = new NG1d[(GRIDSIZE+1)*(GRIDSIZE+1)*(GRIDSIZE+1)];
+        int NGbytes= sizeof(NG1d) * (GRIDSIZE+1)*(GRIDSIZE+1)*(GRIDSIZE+1);
+        cout << "Allocating memory for nodegrid (" <<  NGbytes / (1024*1024) << "MB)...";
+        cout.flush();
+
+        // we fall back to using malloc/free rather than new/delete for the nodegrid because
+        // new/delete causes os x to hang the system (spinning beachball) for several
+        // minutes when freeing the memory in the destructor
+        // this might be because delete [] follows the pointers all the way down to the nodes
+        // themselves and tries to delete them too?
+
+	    //nodegrid = new NG1d[(GRIDSIZE+1)*(GRIDSIZE+1)*(GRIDSIZE+1)];
+        nodegrid = (NG1d*) malloc( NGbytes );
+
+        cout << "done" << endl;
+        cout.flush();
+
+        cout << "Zeroing Grid...";
+	    cout.flush();
 
 	    clear_nodegrid();
 
+        cout << "done" << endl;
+        cout.flush();
+
     #else
 
+        cout << "Allocating memory for nodegrid...";
+        cout.flush();
         
 
         //#define NODEGRID(i,j,k)	 nodegrid[(i)][(j)][(k)]
@@ -126,8 +147,12 @@ actin::actin(void)
 
         //reserve vectors for area close to nucleator (only for vector type)
 
+    
+
     #ifndef NODEGRIDTYPELIST
 
+        cout << "Reserving grid vectors for volume close to nucleator...";
+	    cout.flush();
 
         for (int i=0; i!=(GRIDSIZE+1); i++)  
 	    {
@@ -152,7 +177,7 @@ actin::actin(void)
 
     #endif
 
-	//cout << "Done" << endl << endl;
+	cout << "done" << endl << endl;
 
 	speckle_array_size = 10000;
 	speckle_array.resize(speckle_array_size);
@@ -382,9 +407,18 @@ actin::~actin(void)
 	outbmpfile_y.close();
 	outbmpfile_z.close();
 
+    cout << "Freeing memory...";
+    cout.flush();
+
 #ifdef NODE_GRID_USE_ARRAYS
-	delete [] nodegrid;
+    // in new versions of os x, this hangs the 
+    // computer (spinning beachball) for a few minutes for some reason
+	//delete [] nodegrid;
+    free (nodegrid);
 #endif
+
+    cout << "done" << endl;
+    cout.flush();
 
 	// delete the temp bitmap files
 
@@ -2632,7 +2666,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
     int bmpcentery = BMP_HEIGHT / 2;
 
     if (BMP_CENTER_ON_LEFT)
-        bmpcenterx = BMP_HEIGHT/3; // note, this is meant to be height
+        bmpcenterx = BMP_HEIGHT/4; // note, this is meant to be height
 
 	// clear the image array
 
@@ -3570,9 +3604,9 @@ double actin::getvaluetoplot(nodes & mynode)
     if (BMP_LINKS_BROKEN)
         return mynode.links_broken / COL_INDIVIDUAL_SCALE;
     else if (BMP_TRANSVERSELINKSONLY)
-        return (- mynode.linkforce_transverse + mynode.repforce_transverse)/ COL_INDIVIDUAL_SCALE;
+        return (2000 + mynode.linkforce_transverse - mynode.repforce_transverse)/ COL_INDIVIDUAL_SCALE;
     else if (BMP_RADIALLINKSONLY)
-        return (- mynode.linkforce_radial + mynode.repforce_radial) / COL_INDIVIDUAL_SCALE;
+        return (2000 + mynode.linkforce_radial - mynode.repforce_radial) / COL_INDIVIDUAL_SCALE;
     else  // energy
         return  (mynode.linkforce_radial * mynode.linkforce_radial +
                  mynode.linkforce_transverse * mynode.linkforce_transverse) / COL_INDIVIDUAL_SCALE;
