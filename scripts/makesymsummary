@@ -1,0 +1,26 @@
+
+if [ `echo ${OSTYPE:0:6 }` == "darwin" ] ; then 
+ # on cluster, these must be 1x10 and 10x1, on OS X they must be 1x and x1
+ # ( the 10 is just a number greater than the max STEPS )
+ #BASEDIR=/Volumes/500GB_Drive/runs/${1}
+ BASEDIR=$HOME/runs/${1}
+else
+ BASEDIR=$HOME/runs/${1}
+fi
+
+rm $BASEDIR/symbreaksummary.txt
+
+# find number of steps
+read -d ' ' STEPS othervariables < $BASEDIR/setparam.txt
+
+echo $STEPS steps
+
+for ((b=1; b <= STEPS ; b++))
+do
+
+(read line1 ; read line2 
+#echo $line1
+#echo $line2
+echo ${b},$line2 >> $BASEDIR/symbreaksummary.txt ) < $BASEDIR/${b}/symbreaktime.txt
+
+done

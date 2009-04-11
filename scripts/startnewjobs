@@ -1,0 +1,99 @@
+#!/bin/bash
+
+
+# hosts lists all the hosts to run on
+# ssh must be set up for password-less login, and
+# directories shared in same path on all machines
+#HOSTS="c0-5 c0-6"
+#HOSTS="c0-0 c0-1 c0-3 c0-4 c0-5 c0-6 c0-7 localhost"
+#HOSTS="c0-0 c0-1 c0-2 c0-3 c0-4 c0-5 c0-6 c0-7"
+#HOSTS="c0-0 c0-1 c0-2 c0-3 c0-4 c0-5 c0-6 c0-7 localhost"
+HOSTS="medusa"
+
+# start new job if 5 min load average is less than THRESHOLD
+#THRESHOLD=0.2
+THRESHOLD=1.0
+
+JOBFILE="$HOME/joblist"
+
+JOBINFOFILE="$HOME/jobinfo.txt"
+
+TOTJOBS=`awk 'END { print NR }' $JOBFILE`
+if [ $TOTJOBS == "0" ]; then
+   echo "Job queue is empty --- exiting"
+   exit 0
+fi
+
+
+LOCK_FILE=${JOBFILE}.lock
+
+(set -C; : > $LOCK_FILE) 2> /dev/null
+if [ $? != "0" ]; then
+   echo "Lock File $LOCK_FILE exists - exiting"
+   exit 1
+fi
+
+date
+
+echo Checking load on machines, threshold is $THRESHOLD
+for MACHINE in $HOSTS
+do
+echo -n $MACHINE :
+REMOTEUPTIME=`ssh -x $MACHINE "uptime"`
+LOAD1MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*: " '{ print $2 }' | cut -d' ' -f1)
+LOAD5MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*: " '{ print $2 }' | cut -d' ' -f2)
+echo -n "$LOAD1MIN $LOAD5MIN "
+
+RESULT=$(echo "($LOAD1MIN < $THRESHOLD ) && ($LOAD5MIN < $THRESHOLD )" | bc -l )
+
+#echo -n "$RESULT "
+
+if [ "$RESULT" == "1" ]
+ then echo " Load Average below threshold---starting new job"
+
+# get job from first line
+JOB=`head -n 1 $JOBFILE`
+
+IDENTIFIER=`echo "$JOB" | cut -d' ' -f1 ` 
+COMMAND=`echo "$JOB" | cut -d' ' -f2- `
+
+# delete this line from job queue
+mv $JOBFILE $JOBFILE.tmp
+tail +2 $JOBFILE.tmp > $JOBFILE
+rm $JOBFILE.tmp
+
+echo "Starting job on $MACHINE: $JOB"
+
+#IDENTIFIER=`date +"%m-%d-%y_$IDNUM"`
+TIME=`date +"%m-%d-%y_$IDNUM"`
+
+echo "$IDENTIFIER started on $MACHINE at $TIME" >>$JOBINFOFILE
+
+#echo $COMMAND
+
+# replace / with - in identifier else screen doesn't like it
+NEWID=${IDENTIFIER//\//-}
+
+#SCREENCOMMAND=` printf "screen -d -m -S %s_%s ssh -x %s \" %s \"" $NEWID $MACHINE $MACHINE "$COMMAND" `
+
+#$SCREENCOMMAND
+#echo $SCREENCOMMAND
+
+screen -d -m -S ${NEWID}_$MACHINE ssh -x $MACHINE " $COMMAND "
+echo screen -d -m -S ${NEWID}_$MACHINE ssh -x $MACHINE " $COMMAND "
+
+
+TOTJOBS=`awk 'END { print NR }' $JOBFILE`
+if [ $TOTJOBS == "0" ]; then
+   echo "Job queue is empty --- exiting"
+   break
+fi
+
+else 
+ echo " Machine busy --- skipping"
+fi
+
+done
+
+trap 'rm $LOCK_FILE' EXIT
+

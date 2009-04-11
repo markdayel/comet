@@ -1,0 +1,13 @@
+JOBFILE="$HOME/joblist"
+
+LOCK_FILE=${JOBFILE}.lock
+
+(set -C; : > $LOCK_FILE) 2> /dev/null
+if [ $? != "0" ]; then
+   echo "Lock File $LOCK_FILE exists - exiting"
+   exit 1
+fi
+
+echo $@ >> $JOBFILE
+
+trap 'rm $LOCK_FILE' EXIT

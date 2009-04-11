@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# syntax: startrun <set> <run>
+
+echo Starting Set $1 run $2
+
+DATE="$(date)"
+DIR="$HOME/runs/${1}/${2}"
+cd "$DIR"
+source $HOME/setheadnode
+#export PATH=$PATH:$HOME/bin
+#export LD_LIBRARY_PATH=/home/matt/lib
+#export MAGICK_CONFIGURE_PATH=/home/matt/IMconfig/
+
+source /etc/profile
+
+comet 4
+#comet post 0:0
+#exit 1
+
+# make bitmaps if didn't break sym
+
+if [ ! -f sym_break_axis.txt ] ; then
+comet post 0:0
+fi
+
+#make the x_proj movie
+
+movhere
+
+# make the velocities graph
+
+ssh $HEADNODE "(cd $DIR; ~/bin/makevelgraph)"
+
+cp velocities.png ../velocities_${2}.png
+
+#mail -s "$HOSTNAME finished (started $DATE)" "markdayel@gmail.com" < ~/done.txt
+#ssh ec3 "(cd $DIR ; ~/bin/comet post 0:0 ; ~/bin/movhere )"
+#ssh ec3 "(cd $DIR ; ; ~/bin/movhere )"
+#mail -s "$HOSTNAME movie written (started $DATE)" "markdayel@gmail.com" < ~/done.txt
+checkdone $1

@@ -1,0 +1,263 @@
+
+# if running on mac, expects to start in the base directory of the run set
+
+if [ `echo ${OSTYPE:0:6 }` == "darwin" ] ; then 
+ # on cluster, these must be 1x10 and 10x1, on OS X they must be 1x and x1
+ # ( the 10 is just a number greater than the max STEPS )
+ VTILE=1x
+ HTILE=x1
+ HEADNODE=localhost
+ #BASEDIR=/Volumes/500GB_Drive/runs/${1}
+ #BASEDIR=`pwd`
+ BASEDIR=$HOME/runs/${1}
+else
+ VTILE=1x20
+ HTILE=20x1
+ source ~/setheadnode
+ BASEDIR=$HOME/runs/${1}
+fi
+
+#BASEDIR=`pwd`
+echo
+
+if [ ! -f $BASEDIR/setparam.txt ]; then
+	
+echo Error: $BASEDIR/1/nodesupdate.txt not found
+echo Is $BASEDIR a valid run set directory?
+echo
+exit
+	
+fi
+
+#TOTFRAMES=500
+# assume that set 1 exists...
+TOTFRAMES=`cat $BASEDIR/1/nodesupdate.txt | wc -l`
+
+#TIMESTEPS=4
+TIMESTEPS=`echo "$TOTFRAMES / 200" | bc`
+
+echo $TOTFRAMES frames, $TIMESTEPS timesteps
+
+# scaling factor for images (percent)
+SIZE=25
+
+BOARDER=1
+BACKGROUND1=grey20
+BACKGROUND2=grey20
+TXTSIZE=70
+TXTHEIGHT=20
+FONT=Helvetica
+IMAGETYPE=jpg
+
+# dimensions from comet program:
+IMAGEX=800
+IMAGEY=800
+
+
+echo "Processing $BASEDIR"
+
+
+
+# find number of steps
+read -d ' ' STEPS othervariables < $BASEDIR/setparam.txt
+
+
+FINALIMAGEX=`echo "$IMAGEX * $SIZE * 0.01" | bc`
+FINALIMAGEY=`echo "$IMAGEY * $SIZE * 0.01" | bc`
+
+# X and Y are reversed here, because the full image is a multiple of little images on their sides
+FULLY=`echo "$FINALIMAGEX * $TIMESTEPS " | bc`
+FULLX=`echo "$FINALIMAGEY * $STEPS " | bc`
+
+
+export PATH=$PATH:$HOME/bin
+export LD_LIBRARY_PATH=$HOME/lib
+export MAGICK_CONFIGURE_PATH=$HOME/IMconfig/
+
+
+cd $BASEDIR
+
+
+LASTLINE=`grep -n "end of main settings" cometparams.ini | awk 'BEGIN { FS = ":" } ; { print $1 }' `
+LASTLINE=`echo "$LASTLINE - 1" | bc`
+
+
+#tempdir=$BASEDIR/temp_${RANDOM}
+tempdir=`mktemp -d /tmp/makematrix.XXXXXX` || exit 1
+#tempdir=`mktemp -d`
+
+echo "Working in $tempdir"
+
+#mkdir $tempdir
+cd $tempdir
+
+# create blank images for spacing, or for later text
+
+convert  -size ${IMAGEX}x${IMAGEY} xc:#FFFFFF blank.jpeg
+convert  -size ${FINALIMAGEX}x${FINALIMAGEY} xc:#FFFFFF blanksmall.jpeg
+convert  -size ${FINALIMAGEY}x${TXTHEIGHT} xc:#FFFFFF -resize 400% blankheader1.jpeg
+convert  -size ${FINALIMAGEX}x${TXTHEIGHT} xc:#FFFFFF -resize 400% blankheader2.jpeg
+convert  -size ${TXTHEIGHT}x${TXTHEIGHT} xc:#FFFFFF blanklheader.png
+convert  -size ${FULLX}x${TXTHEIGHT} xc:#FFFFFF -resize 400% blankfulltitle1.png
+convert  -size ${FULLY}x${TXTHEIGHT} xc:#FFFFFF -resize 400% blankfulltitle2.png
+
+# create blank frame images if missing
+
+FILENAMES=""
+
+for ((a=1; a <= TIMESTEPS ; a++))
+do
+for ((b=1; b <= STEPS ; b++))
+do
+
+((FRAME = TOTFRAMES * a / TIMESTEPS))
+FRAMENUM=`printf "%05d" $FRAME `
+
+((POSN = TIMESTEPS - a ))
+
+FILENAME=$BASEDIR/${b}/bitmaps/x_proj_${FRAMENUM}.jpeg
+
+  if [ ! -f $FILENAME ]; then
+    echo "$FILENAME absent, writing substitute blank image"
+    cp blank.jpeg $FILENAME
+  fi
+
+done
+
+done
+
+
+
+# make main image array
+
+echo Set $1 Making Image Montage
+
+for ((a=1; a <= TIMESTEPS ; a++))
+do
+
+((FRAME = TOTFRAMES * a / TIMESTEPS))
+
+FRAMENUM=`printf "%05d" $FRAME `
+
+FILENAMES=""
+ 
+ for ((b=STEPS; b >= 1 ; b--))
+ do
+
+  FILENAMES=$FILENAMES$BASEDIR/${b}/bitmaps/x_proj_${FRAMENUM}.jpeg
+  FILENAMES=$FILENAMES" "
+
+ done
+
+ #echo $FILENAMES
+
+ montage $FILENAMES -resize ${SIZE}% -tile ${VTILE} \
+ -geometry +0+$BOARDER -background $BACKGROUND1 frame${FRAMENUM}list.png
+
+done
+
+mogrify -rotate 90 frame*list.png
+
+# make headers
+
+echo Set $1 Making headers
+
+# make headers for variables
+
+COLUMN=0
+
+(read -d ' ' STEPS 
+echo "$STEPS steps"
+read -d ' ' variable
+echo "Varying $variable"
+convert  blankfulltitle1.png -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $variable -resize 25% headertitle1.png
+
+while read -d ' ' factor
+do
+
+echo -n " $factor"
+
+((COLUMN = COLUMN + 1))
+
+convert  blankheader1.jpeg   -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $factor  -resize 25% header${COLUMN}.png
+
+lastfactor=$factor
+
+done ) < $BASEDIR/setparam.txt
+
+read STEPS variable firstfactor otherfactors < $BASEDIR/setparam.txt
+
+echo
+
+montage header[0-${STEPS}].png -tile ${HTILE} -geometry +$BOARDER+$BOARDER  heading.png
+
+# make headers for time
+echo "Making time headers"
+
+convert  blankfulltitle2.png -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 Time -resize 25% headertitle2a.png
+
+echo -n "Frame"
+
+for ((a=1; a <= TIMESTEPS ; a++))
+do
+
+((FRAME = TOTFRAMES * a / TIMESTEPS))
+
+((POSN = TIMESTEPS - a ))
+
+echo -n " $FRAME"
+
+convert  blankheader2.jpeg -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $FRAME -resize 25% lheader${POSN}.png
+
+done
+
+echo
+
+montage lheader*.png -mode concatenate -tile ${HTILE} -geometry +$BOARDER+$BOARDER  lheading1.png
+
+# add two empty blocks to top for alignment
+montage lheading1.png blanklheader.png blanklheader.png -mode concatenate -tile ${HTILE} lheading.png
+montage headertitle2a.png blanklheader.png blanklheader.png -mode concatenate -tile ${HTILE} headertitle2.png
+
+mogrify -rotate -90 lheading.png
+mogrify -rotate -90 headertitle2.png
+
+
+# convert top of params file into image
+
+( echo -e '\n\n' Host: ${HEADNODE} '\n' ${1} '\n\n';  head -n $LASTLINE $BASEDIR/cometparams.ini ) > params.txt 
+convert -density 600 -pointsize 8 text:params.txt -trim +repage -bordercolor white  -border 20 -resize 15% paramsimage.png
+
+echo Set $1 Assembling final image
+
+# assemble rows of data
+montage frame*list.png  -tile ${VTILE} -geometry +0+$BOARDER -background $BACKGROUND2 imagearray1.png
+
+# add the variable titles
+montage -mode concatenate -tile ${VTILE} -gravity east headertitle1.png heading.png imagearray1.png imagearray1a.png
+
+# add the time titles
+montage -mode concatenate -tile ${HTILE} headertitle2.png lheading.png imagearray1a.png imagearray1b.png
+
+# add the parameters file pic
+
+montage -mode concatenate -tile ${HTILE} -gravity center paramsimage.png imagearray1b.png imagearray1c.png
+
+convert -quality 95 imagearray1c.png $BASEDIR/${1}_imagearray.${IMAGETYPE}
+convert -quality 95 imagearray1c.png  -channel green -separate $BASEDIR/${1}_imagearraytoprint.${IMAGETYPE}
+
+mv imagearray1c.png $BASEDIR/imagearray.png
+mv frame*list.png $BASEDIR
+
+rm $tempdir/*.png
+rm $tempdir/*.jpeg
+rm $tempdir/*.txt
+cd ..
+
+rmdir $tempdir
+
+
+echo Set $1 Emailing Image
+
+ssh $HEADNODE "(echo -e Varying $variable from $firstfactor to $lastfactor '\n\n' ) | \
+ $HOME/bin/mutt -s \"${HEADNODE} Set ${1} Finished\" -a $HOME/runs/${1}/${1}_imagearray.${IMAGETYPE}  \"markdayel@gmail.com\" "

@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+ARGS=4
+
+if [ $# -ne "$ARGS" ]
+then
+  echo
+  echo "Syntax: varyset <parameter> <startval> <endval> <number of steps>"
+  echo
+  exit 1
+fi
+
+STEPS=$4
+
+read RUNID <~/runid
+
+((RUNID = RUNID + 1))
+
+echo $RUNID >~/runid
+
+IDNUM=`printf "%04d" $RUNID `
+
+#IDENTIFIER=`date +"%m-%d-%y_%H%M_$IDNUM"`
+IDENTIFIER=`date +"%m-%d-%y_$IDNUM"`
+
+((STEPSLESSONE = STEPS - 1))
+
+mkdir -p ~/runs/${IDENTIFIER}
+cp ~/runs/cometparams.ini ~/runs/${IDENTIFIER}
+touch ~/runs/${IDENTIFIER}/"$1 $2 $3"
+
+echo -n "$STEPS $1" > ~/runs/${IDENTIFIER}/setparam.txt
+
+for ((a=1; a <= STEPS ; a++))
+do
+
+((currlessone = a - 1))
+
+mkdir -p ~/runs/${IDENTIFIER}/$a
+
+factor=`echo "scale=3; $2 + ( ($3 - $2) * ${currlessone} ) / ${STEPSLESSONE}" | bc -l`
+
+sed '/'^$1'.*$/s//'$1' '$factor'/' ~/runs/cometparams.ini > \
+    ~/runs/${IDENTIFIER}/${a}/cometparams.ini
+
+touch ~/runs/${IDENTIFIER}/${a}/"$1 $factor"
+
+echo -n " $factor" >> ~/runs/${IDENTIFIER}/setparam.txt
+
+done
+
+echo " ">> ~/runs/${IDENTIFIER}/setparam.txt
+
+echo "Parameter:$1  Min:$2  Max:$3  Steps:$STEPS"
+cat ~/runs/${IDENTIFIER}/setparam.txt
+echo "Set identifier: $IDENTIFIER"
+
+echo
+
+# add jobs to the list:
+sgego ${IDENTIFIER}

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+for DIR in `find ? -depth 0 -type d`
+do
+
+cd $DIR
+makevelgraph
+cd ..
+
+done
+
+velcombine

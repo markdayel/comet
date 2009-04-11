@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+NODESTOREMOVE="6 10 2"
+
+cp nodetracks.txt nodetracks.txt.bak
+
+TOTNODES=`head -n 1 nodetracks.txt`
+HALFNODES=`expr $TOTNODES / 2`
+
+NODENUMBERS="` awk 'NR==2{print;exit}' nodetracks.txt `"
+
+cp nodetracks.txt nodetracksedit.txt
+
+NODESLIST="$NODENUMBERS"
+
+for NODE in $NODESTOREMOVE
+do
+
+FIRST=`echo $NODENUMBERS | cut -d' ' -f$NODE`
+
+LASTPOS=`expr $NODE + $HALFNODES`
+
+LAST=`echo $NODENUMBERS | cut -d' ' -f$LASTPOS`
+#echo cut -d' ' -f$NODE
+
+echo $FIRST $LAST
+
+grep '^$FIRST|^$LAST' -v nodetracksedit.txt > nodetracksedittmp.txt
+ 
+mv nodetracksedittmp.txt nodetracksedit.txt
+
+((TOTNODES = TOTNODES - 2))
+
+# remove the node from the list
+NODESLIST=${NODESLIST//$FIRST/}
+NODESLIST=${NODESLIST//$LAST/}
+
+done
+
+LINES=`wc -l nodetracksedit.txt | xargs | cut -d' ' -f1`
+
+((LINES = LINES - 2))
+
+echo $TOTNODES > nodetracks.txt
+echo $NODESLIST >> nodetracks.txt
+tail -n $LINES nodetracksedit.txt >> nodetracks.txt
+
+
+
+
+ 
