@@ -2176,15 +2176,9 @@ void actin::set_nodes_to_track(const projection & proj)
 
     stationary_node_number = 0;    // node to lock the bitmap to (opposite the sym break direction)
     double furthest_node_posn = 0;
-    double restrictrange = DBL_MAX;
+
 
     
-
-    if (!POST_VTK) // only restrict if not plotting vtk tracks
-    {
-        restrictrange = RADIUS / 2;
-        //MAX_NODES_TO_TRACK = 30;
-    }
                       
 
     // first we find all the nodes within the frame range and put them into temp_nodes_to_track
@@ -2205,7 +2199,7 @@ void actin::set_nodes_to_track(const projection & proj)
         tempposn = node[i] - nucposn;
         projection_rotation.rotate(tempposn);
 
-        if (fabs(tempposn.x) < restrictrange)  // if within range
+        if (fabs(tempposn.x) < NODE_TRACK_SELECT_Z_RANGE)  // if within range
         {
 
             temp_nodes_to_track.push_back(i);
@@ -2354,7 +2348,7 @@ void actin::set_nodes_to_track(const projection & proj)
                 tempposn = node[i] - nucposn;
                 projection_rotation.rotate(tempposn);
 
-                if (fabs(tempposn.x) < restrictrange)  // if within range
+                if (fabs(tempposn.x) < NODE_TRACK_SELECT_Z_RANGE)  // if within range
                 {
 
                     temp_nodes_to_track.push_back(i);                                         

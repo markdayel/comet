@@ -166,6 +166,8 @@ double TRACK_MAX_RANGE2 = 30;
 
 double TRACK_TARGET_DIST = 2.5;
 
+double NODE_TRACK_SELECT_Z_RANGE = DBL_MAX;
+
 bool TRACKS_LENGTHS=true;
 bool SECOND_SHELL=false;
 
@@ -1341,6 +1343,8 @@ int main(int argc, char* argv[])
             else if (tag == "TRACK_TARGET_DIST")   
 			    {ss >> TRACK_TARGET_DIST;}
 
+            else if (tag == "NODE_TRACK_SELECT_Z_RANGE")   
+			    {ss >> NODE_TRACK_SELECT_Z_RANGE;}
 
             else if (tag == "TRACKFRAMESTEP")     
 			    {ss >> TRACKFRAMESTEP;}

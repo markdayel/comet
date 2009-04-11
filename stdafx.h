@@ -503,6 +503,8 @@ extern double TRACK_MAX_RANGE2;
 
 extern double TRACK_TARGET_DIST;
 
+extern double NODE_TRACK_SELECT_Z_RANGE;
+
 extern int TRACKFRAMESTEP;
 
 extern bool BMP_FIX_BEAD_MOVEMENT;
