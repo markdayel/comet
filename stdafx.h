@@ -343,8 +343,6 @@ extern double MAX_POLYMERISATION_PRESSURE;
 extern bool POST_VTK;
 extern bool POST_STATS;
 
-extern bool DRAW_COMPRESSIVE_FORCES;
-
 extern bool VECTOR_NOT_BITMAP;
 
 extern int BMP_WIDTH,BMP_HEIGHT;
@@ -382,6 +380,9 @@ extern bool Y_BMP;
 extern bool Z_BMP;
 
 extern bool PLOTFORCES;
+
+extern bool PLOTFORCES_INCLUDEIMPACTS;
+extern bool PLOTFORCES_INCLUDELINKFORCES;
 
 extern double FOCALDEPTH;
 

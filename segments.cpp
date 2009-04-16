@@ -558,28 +558,34 @@ void segments::addnode(const nodes& node)
     // to only plot link or impact forces, comment out one of the below sections
 
 
-    // add the nucleator link forces
+    if (PLOTFORCES_INCLUDELINKFORCES)
+    {
+        // add the nucleator link forces
 
-	surfacestuckforce[0][xseg][0] += xfactor * (rot_nuc_link_force.y ); 
-	surfacestuckforce[0][xseg][1] += xfactor * (rot_nuc_link_force.z );
+	    surfacestuckforce[0][xseg][0] += xfactor * (rot_nuc_link_force.y ); 
+	    surfacestuckforce[0][xseg][1] += xfactor * (rot_nuc_link_force.z );
 
-	surfacestuckforce[1][yseg][0] += yfactor * (rot_nuc_link_force.x );
-	surfacestuckforce[1][yseg][1] += yfactor * (rot_nuc_link_force.z ); 
+	    surfacestuckforce[1][yseg][0] += yfactor * (rot_nuc_link_force.x );
+	    surfacestuckforce[1][yseg][1] += yfactor * (rot_nuc_link_force.z ); 
 
-	surfacestuckforce[2][zseg][0] += zfactor * (rot_nuc_link_force.x );
-	surfacestuckforce[2][zseg][1] += zfactor * (rot_nuc_link_force.y );
+	    surfacestuckforce[2][zseg][0] += zfactor * (rot_nuc_link_force.x );
+	    surfacestuckforce[2][zseg][1] += zfactor * (rot_nuc_link_force.y );
+    }
 
-    // add the impact forces
 
-    surfacestuckforce[0][xseg][0] += xfactor * ( rot_nuc_impacts.y); 
-	surfacestuckforce[0][xseg][1] += xfactor * ( rot_nuc_impacts.z);
+    if (PLOTFORCES_INCLUDEIMPACTS)
+    {
+        // add the impact forces
 
-	surfacestuckforce[1][yseg][0] += yfactor * ( rot_nuc_impacts.x);
-	surfacestuckforce[1][yseg][1] += yfactor * ( rot_nuc_impacts.z); 
+        surfacestuckforce[0][xseg][0] += xfactor * ( rot_nuc_impacts.y); 
+	    surfacestuckforce[0][xseg][1] += xfactor * ( rot_nuc_impacts.z);
 
-	surfacestuckforce[2][zseg][0] += zfactor * ( rot_nuc_impacts.x);
-	surfacestuckforce[2][zseg][1] += zfactor * ( rot_nuc_impacts.y);
+	    surfacestuckforce[1][yseg][0] += yfactor * ( rot_nuc_impacts.x);
+	    surfacestuckforce[1][yseg][1] += yfactor * ( rot_nuc_impacts.z); 
 
+	    surfacestuckforce[2][zseg][0] += zfactor * ( rot_nuc_impacts.x);
+	    surfacestuckforce[2][zseg][1] += zfactor * ( rot_nuc_impacts.y);
+    }
 
 
 	if (xdist!=-1)

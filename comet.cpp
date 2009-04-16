@@ -291,7 +291,8 @@ char STATSDIR[2048];
 char IMAGEMAGICKCONVERT[1024];
 char IMAGEMAGICKMOGRIFY[1024];
 
-bool DRAW_COMPRESSIVE_FORCES = true;
+bool PLOTFORCES_INCLUDEIMPACTS = true;
+bool PLOTFORCES_INCLUDELINKFORCES = true;
 
 double LINK_POWER_SCALE = 0;
 
@@ -1282,8 +1283,11 @@ int main(int argc, char* argv[])
 		    else if (tag == "ROTATION") 
 			    {ss >> buff2;if(buff2=="TRUE") ROTATION = true; else ROTATION = false;} 
     		
-            else if (tag == "DRAW_COMPRESSIVE_FORCES") 
-			    {ss >> buff2;if(buff2=="TRUE") DRAW_COMPRESSIVE_FORCES = true; else DRAW_COMPRESSIVE_FORCES = false;}
+            else if (tag == "PLOTFORCES_INCLUDEIMPACTS") 
+			    {ss >> buff2;if(buff2=="TRUE") PLOTFORCES_INCLUDEIMPACTS = true; else PLOTFORCES_INCLUDEIMPACTS = false;}
+
+            else if (tag == "PLOTFORCES_INCLUDEIMPACTS") 
+			    {ss >> buff2;if(buff2=="TRUE") PLOTFORCES_INCLUDELINKFORCES = true; else PLOTFORCES_INCLUDELINKFORCES = false;}
 
 		    else if (tag == "MOFI") 
 			    {ss >> MOFI;}
