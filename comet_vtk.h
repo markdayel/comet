@@ -88,7 +88,7 @@ class CometVtkVis {
   bool OptsShadeLinks;
   bool OptsVolumeRenderNodes;
   bool OptsIsoRenderNodes;
-  bool OptsRenderAxes;
+  bool OptsRenderTracks;
   bool OptsRenderText;
   bool OptsNormaliseFrames;
   bool OptsUseNucTextureMap;

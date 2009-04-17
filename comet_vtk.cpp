@@ -176,7 +176,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
     OptsShadeLinks          = false;
     OptsVolumeRenderNodes   = false;
     OptsIsoRenderNodes      = true;
-    OptsRenderAxes          = false;
+    OptsRenderTracks          = false;
     OptsRenderText          = false;
     OptsNormaliseFrames     = false;
     OptsSkipOutOfFocusPoints = true;
@@ -536,7 +536,7 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
 
 
 
-    if(OptsRenderAxes)
+    if(OptsRenderTracks)
     {
         if (TRACKS_LENGTHS)
             addTrackDistances();
@@ -3002,10 +3002,10 @@ void CometVtkVis::setOptions()
 	    OptsIsoRenderNodes = getBoolOpt(value);
 	    continue;
 	}    
-	if(tag == "VIS_AXES") 
+	if(tag == "VIS_TRACKS") 
 	{
 	    ss >> value;
-	    OptsRenderAxes = getBoolOpt(value);
+	    OptsRenderTracks = getBoolOpt(value);
 	    continue;
 	}
 	if(tag == "VIS_TEXT") 
@@ -3123,7 +3123,7 @@ void CometVtkVis::reportOptions()
     cout << "OptsShadeLinks           = " << OptsShadeLinks           << endl;
     cout << "OptsVolumeRenderNodes    = " << OptsVolumeRenderNodes    << endl;
     cout << "OptsIsoRenderNodes       = " << OptsIsoRenderNodes       << endl;
-    cout << "OptsRenderAxes           = " << OptsRenderAxes           << endl;
+    cout << "OptsRenderTracks           = " << OptsRenderTracks           << endl;
     cout << "OptsRenderText           = " << OptsRenderText           << endl;
     cout << "OptsRenderProjection     = " << OptsRenderProjection     << endl;
     cout << "OptsNormaliseFrames      = " << OptsNormaliseFrames      << endl;
