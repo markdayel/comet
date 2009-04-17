@@ -310,7 +310,7 @@ actin::actin(void)
 	sprintf(temp_BMP_filename_z, "%sz_temp_%u_%u.bmp", TEMPDIR, filepidnum, filetidnum);
 
 	outbmpfile_x.open(temp_BMP_filename_x, ios::out | ios::binary | ios::trunc);
-	outbmpfile_y.open(temp_BMP_filename_x, ios::out | ios::binary | ios::trunc);
+	outbmpfile_y.open(temp_BMP_filename_y, ios::out | ios::binary | ios::trunc);
 	outbmpfile_z.open(temp_BMP_filename_z, ios::out | ios::binary | ios::trunc);
 
 	if ((!outbmpfile_x) || (!outbmpfile_y) || (!outbmpfile_z)) 
@@ -618,6 +618,8 @@ int actin::saveinfo()
 
 int actin::savevrml(int filenum)
 {
+    /// Defunct.  Now using VTK vrml export
+
 	char filename[1024];
 	//char time[1024], date[1024];
 
