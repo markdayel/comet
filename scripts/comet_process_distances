@@ -11,6 +11,8 @@ echo Using temp dir: $tmpdir
 
 sort -k 2n -k 1n nodedistances.txt | uniq > $tmpdir/nodedistances1.txt
 
+
+
 cat $tmpdir/nodedistances1.txt | cut -d' ' -f1-3 > $tmpdir/nodedistances2.txt
 
 cat $tmpdir/nodedistances2.txt | cut -d' ' -f1 | sort -k 1n | uniq  >  $tmpdir/framenos.txt
@@ -20,6 +22,7 @@ cat $tmpdir/nodedistances2.txt | cut -d' ' -f2,3  >  $tmpdir/frameanddistances.t
 cat $tmpdir/framenos.txt | tr '\n' ' ' > $tmpdir/distoutput.txt
 echo >> $tmpdir/distoutput.txt
 
+
 cat $tmpdir/nodenos.txt | while read NODENUM
 do
 
@@ -27,6 +30,16 @@ grep ^$NODENUM $tmpdir/frameanddistances.txt | cut -d' ' -f2 | tr '\n' ' ' >> $t
 echo >> $tmpdir/distoutput.txt
 
 done
+
+
+TOTNODES=`cat $tmpdir/nodenos.txt | wc -l`
+
+echo $TOTNODES node pairs processed
+
+
+cp $tmpdir/distoutput.txt distoutput_untransposed.txt
+
+# transpose
 
 awk -F " " '{
 for (f = 1; f <= NF; f++)
@@ -47,3 +60,76 @@ echo -n "Frame," > distoutput.csv
 cat $tmpdir/nodenos.txt | sed "s/^/dist_/" | tr '\n' ',' >> distoutput.csv
 echo >> distoutput.csv
 cat $tmpdir/distoutput2.txt | sed -e 's/1e-19//g' | tr ' ' ',' >> distoutput.csv
+
+# now we normalize each to the first value, then calcualte the mean and SD
+
+FIRSTLINE=
+
+echo "Frame,Mean" > distaverage.csv
+
+
+cat distoutput.csv | (
+read LINE
+echo $LINE > distnormalized.csv
+while read LINE
+do
+FRAME=`echo $LINE | cut -d',' -f1`
+
+REST=`echo $LINE | cut -d',' -f2-`
+
+# remove multiple commas
+NUMBERS=`echo $REST | sed -e 's/,*,/,/g'`
+
+COUNT=`echo $NUMBERS | tr ',' ' ' | wc -w | xargs`
+
+if [ "$COUNT" -ne "$TOTNODES" ] ; then 
+	echo Frame $FRAME incomplete set, skipping
+	continue
+fi
+
+if [ "$FIRSTLINE" == "" ] ; then 
+	echo Setting normalization values
+	FIRSTLINE=$NUMBERS
+	#echo $FIRSTLINE
+fi
+
+# send out to a temp file
+echo $NUMBERS > $tmpdir/numbers.txt
+echo $FIRSTLINE >> $tmpdir/numbers.txt
+
+#cat $tmpdir/numbers.txt
+
+NUMBERS=`awk -F "," '{
+for (f = 1; f <= NF; f++)
+a[NR, f] = $f
+}
+NF > nf { nf = NF }
+END {
+for (f = 1; f <= nf; f++)
+for (r = 1; r <= NR; r++)
+printf a[r, f] (r==NR ? RS : FS)
+}' $tmpdir/numbers.txt | tr ',' '/' | bc -l | tr '\n' ','`
+
+#strip trailing ','
+NUMBERS=${NUMBERS%*,}
+
+echo "$FRAME,$NUMBERS" >> distnormalized.csv
+
+#echo $NUMBERS
+
+SUM=`echo $NUMBERS | tr ',' '+' | bc -l`
+
+MEAN=`echo "$SUM / $COUNT" | bc -l`
+
+SUMOFDEV=`echo "($NUMBERS-$MEAN)^2" | sed "s/,/-$MEAN)\^2+(/g" | bc -l`
+
+
+STDEV=`echo "sqrt($SUMOFDEV/$COUNT)" | bc -l`
+
+#echo $REST
+echo $FRAME $MEAN $STDEV
+
+echo "$FRAME,$MEAN,$STDEV" >> distaverage.csv	
+	
+done
+)
