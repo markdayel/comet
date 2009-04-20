@@ -267,14 +267,14 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
         iren->SetRenderWindow(render_win);
         iren->Initialize();   
     } 
-    else
-    {
-        if(VTK_HIGHQUAL)	 // increase quality for non-interactive
+    //else
+    //{
+        if(VTK_HIGHQUAL)	 // increase quality - this is slow and doesn't improve the quality much
         {
             render_win->SetAAFrames(7);
         }
 
-    }
+    //}
 
     // scale linewidths by aa factor unless rendering to screen
     if (!POST_VTK_VIEW)

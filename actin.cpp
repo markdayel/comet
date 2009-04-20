@@ -2795,7 +2795,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
             }
 
             nodetrackdist << (iteration_num / InterRecordIterations) << " " 
-                //<< nodes_to_track[i] << " "
+                << nodes_to_track[i] << " "
                 << i+1 << " "
                 << (firstpos-secondpos).length() << " "
                 << firstpos << " "
