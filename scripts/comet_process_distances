@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+# data processing script for use with comet 
+# (c) Mark J Dayel 2009
+# 
+# takes the nodedistances.txt output of the program
+# and compiles into csv files:
+# distoutput.csv: measurement length changes over time
+# distnormalized.csv: normalized lengths (normalized to first length)
+# distaverage.csv" average (and SDs) of normalized lengths
+
 tmpdir=`mktemp -d -t process_comet_distances` 
 
 if [ "$tmpdir" == "" ] ; then
@@ -11,16 +20,15 @@ echo Using temp dir: $tmpdir
 
 sort -k 2n -k 1n nodedistances.txt | uniq > $tmpdir/nodedistances1.txt
 
-
-
-cat $tmpdir/nodedistances1.txt | cut -d' ' -f1-3 > $tmpdir/nodedistances2.txt
+cat $tmpdir/nodedistances1.txt | cut -d' ' -f1-4 > $tmpdir/nodedistances2.txt
 
 cat $tmpdir/nodedistances2.txt | cut -d' ' -f1 | sort -k 1n | uniq  >  $tmpdir/framenos.txt
-cat $tmpdir/nodedistances2.txt | cut -d' ' -f2 | sort -k 1n | uniq  >  $tmpdir/nodenos.txt
-cat $tmpdir/nodedistances2.txt | cut -d' ' -f2,3  >  $tmpdir/frameanddistances.txt
+cat $tmpdir/nodedistances2.txt | cut -d' ' -f3 | sort -k 1n | uniq  >  $tmpdir/nodenos.txt
+cat $tmpdir/nodedistances2.txt | cut -d' ' -f3,4  >  $tmpdir/frameanddistances.txt
 
 cat $tmpdir/framenos.txt | tr '\n' ' ' > $tmpdir/distoutput.txt
 echo >> $tmpdir/distoutput.txt
+
 
 
 cat $tmpdir/nodenos.txt | while read NODENUM
@@ -36,21 +44,10 @@ TOTNODES=`cat $tmpdir/nodenos.txt | wc -l`
 
 echo $TOTNODES node pairs processed
 
-
-cp $tmpdir/distoutput.txt distoutput_untransposed.txt
+#cp $tmpdir/distoutput.txt distoutput_untransposed.txt
 
 # transpose
-
-awk -F " " '{
-for (f = 1; f <= NF; f++)
-a[NR, f] = $f
-}
-NF > nf { nf = NF }
-END {
-for (f = 1; f <= nf; f++)
-for (r = 1; r <= NR; r++)
-printf a[r, f] (r==NR ? RS : FS)
-}' $tmpdir/distoutput.txt | sed -e '/^ /d' > $tmpdir/distoutput2.txt
+awk -F " " '{for (f = 1; f <= NF; f++) a[NR, f] = $f } NF > nf { nf = NF } END {for (f = 1; f <= nf; f++) for (r = 1; r <= NR; r++) printf a[r, f] (r==NR ? RS : FS) }' $tmpdir/distoutput.txt | sed -e '/^ /d' > $tmpdir/distoutput2.txt
 
 # the above sed command removes lines beginning with space 
 # (for some reason the transpose includes a full copy of the 
@@ -61,11 +58,11 @@ cat $tmpdir/nodenos.txt | sed "s/^/dist_/" | tr '\n' ',' >> distoutput.csv
 echo >> distoutput.csv
 cat $tmpdir/distoutput2.txt | sed -e 's/1e-19//g' | tr ' ' ',' >> distoutput.csv
 
-# now we normalize each to the first value, then calcualte the mean and SD
+# now we normalize each to the first value, then calculate the mean and SD
 
 FIRSTLINE=
 
-echo "Frame,Mean" > distaverage.csv
+echo "Frame,Mean,SD" > distaverage.csv
 
 
 cat distoutput.csv | (
@@ -83,32 +80,24 @@ NUMBERS=`echo $REST | sed -e 's/,*,/,/g'`
 COUNT=`echo $NUMBERS | tr ',' ' ' | wc -w | xargs`
 
 if [ "$COUNT" -ne "$TOTNODES" ] ; then 
-	echo Frame $FRAME incomplete set, skipping
+	echo $COUNT measurements: frame $FRAME incomplete set, skipping
 	continue
 fi
 
 if [ "$FIRSTLINE" == "" ] ; then 
+	echo First full set found
 	echo Setting normalization values
 	FIRSTLINE=$NUMBERS
 	#echo $FIRSTLINE
 fi
 
-# send out to a temp file
+# send out to a temp file to transpose and do the calculation (is there an easier way?)
 echo $NUMBERS > $tmpdir/numbers.txt
 echo $FIRSTLINE >> $tmpdir/numbers.txt
 
 #cat $tmpdir/numbers.txt
-
-NUMBERS=`awk -F "," '{
-for (f = 1; f <= NF; f++)
-a[NR, f] = $f
-}
-NF > nf { nf = NF }
-END {
-for (f = 1; f <= nf; f++)
-for (r = 1; r <= NR; r++)
-printf a[r, f] (r==NR ? RS : FS)
-}' $tmpdir/numbers.txt | tr ',' '/' | bc -l | tr '\n' ','`
+# traspose and divide
+NUMBERS=`awk -F "," '{for (f = 1; f <= NF; f++) a[NR, f] = $f } NF > nf { nf = NF } END {for (f = 1; f <= nf; f++) for (r = 1; r <= NR; r++) printf a[r, f] (r==NR ? RS : FS) }' $tmpdir/numbers.txt | tr ',' '/' | bc -l | tr '\n' ','`
 
 #strip trailing ','
 NUMBERS=${NUMBERS%*,}
