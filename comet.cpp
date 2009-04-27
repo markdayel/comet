@@ -2679,25 +2679,6 @@ void get_postprocess_iterations(const char *iterdesc, vector<int> &postprocess_i
     } 
 }
 
-// STUB function, doesn't do anything, but fill implementation out here
-// 
-//void post_stats(actin &, const int filenum)
-//{
-//  cout << "  saving statistics for " << filenum << endl;  
-//
-//  char nstats_filename[1024];
-//  sprintf(nstats_filename , "%snodestats_%05i.txt", STATSDIR, filenum);
-//  //ofstream nout;
-//  //nout.open(nstats_filename);
-//
-//  char lstats_filename[1024];
-//  sprintf(lstats_filename , "%slinkstats_%05i.txt", STATSDIR, filenum);
-//  //ofstream lout;
-//  //lout.open(lstats_filename);
-//
-//  // STUB for the function to get out statistics of current interest
-//  // fill in calculations here
-//}
 
 // We may want to have a vtk postprocess as a seperate option?
 // otherwise I've lumped it with the bitmap processing here
@@ -2714,7 +2695,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
     if (POST_VTK_VIEW) // if interactive viewing, just do the first one
         postprocess_iterations.resize(1);
 
-    // load the sym break info
+    // load the sym break info and find the symmetry break frame to load
 
     int framemaxvelmoved = 1;
     vect maxvelmoved;
@@ -2739,12 +2720,16 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
         iter = symframe * InterRecordIterations;
     
-    }                            
+    }    
+
+    // found symmetry break frame
+
     cout << "Sym break at frame " << symframe  << endl;
 
     const int maxframe = (int) nodeposns.size() - 1;
 
-    // calculate camera movement
+    // calculate VTK camera movement.  This is to make the camera follow the bead, but 
+    // not lock-step, else it looks like the bead isn't moving, so we smooth out the acceleration
 
     vector<vect> camerapos(maxframe + 1);
     vector<vect> cameratarget(maxframe + 1);
@@ -2767,6 +2752,9 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         cameravel = meanvel * 1.0 / ( 1.0 + exp( - 6.0 * (  2 * (double)(i - maxaccelframe) / (double)accelwidth) ));
     }
 
+
+    // Load reference frame (for reference nodes etc.)
+
     if (REFERENCEFRAME)
     {
         cout << "Loading frame " << REFERENCEFRAME << " for reference" << endl;
@@ -2782,9 +2770,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         referencenodes.assign(theactin.node.begin(), theactin.node.end());
     }
 
-
-
-    //iter =  180 * InterRecordIterations;
+    // Load the symmetry break frame to find sym break direction etc.
 
     cout << "Loading frame " << (iter/InterRecordIterations) << " for scaling and to set sym break axis" << endl;
 
@@ -2803,10 +2789,14 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
     vect sym_break_direction = nodeposns[framemaxvelmoved] - nodeposns[framemaxvelmoved - 20];
 
+    // if constraining in plane, force the symmetry breaking direction into the plane.
+
     if ((SYM_IN_COVERSLIP_PLANE) && (COVERSLIPGAP > 0))
 	    ptheactin->set_sym_break_axes(true, sym_break_direction);  // constrain to zy plane
     else
         ptheactin->set_sym_break_axes(false,sym_break_direction);
+
+
 
     bool DONT_RECALC_SYMBREAK_AXIS = false;
 
@@ -2823,8 +2813,11 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         ptheactin->load_sym_break_axes();
     }
 
-
+    
     char command1[1024];
+
+
+    // are we forking the worker processes, or are we doing the work?
 
     if (!POST_VTK_VIEW && !POST_PROCESSSINGLECPU && (postprocess_iterations.size() > POST_PROCESS_CPUS) )
 	{   // divide up tasks and spawn worker processes
@@ -2853,7 +2846,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 	    system(command1);
  
 	} else
-    {
+    {   // doing the work
 
 		int filenum;
 
@@ -2867,8 +2860,6 @@ void postprocess(nucleator& nuc_object, actin &theactin,
         theactin.node_tracks[xaxis].resize(0);
         theactin.node_tracks[yaxis].resize(0);
         theactin.node_tracks[zaxis].resize(0);
-
-
 
         theactin.savenodetracks = true;  // save new nodetracks if not exist
 
@@ -3040,217 +3031,3 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 
 }
 
-
-
-//void render_raw(actin &theactin)
-//{   
-//    // bit ugly right now---just read in images from 'raw' dir
-//
-//#define RAWTYPE float
-//
-//    
-//
-//    vector<vector<vector<RAWTYPE> > > raw_data;
-//
-//    int raw_width, 
-//	    raw_height;
-//
-//	double	nm_per_pixel,
-//            nm_per_slice;
-//
-//    int raw_firstframe,
-//        raw_lastframe;
-//
-//    int totframes;
-//
-//    char raw_filepattern[2048], filename[2048], buff[2048];
-//
-//
-//    int filenum;
-//
-//    // read data settings in from raw files instead of previously calculated data
-//
-// 	ifstream raw_info("raw/frameinfo.txt", ios::in);
-//
-//    if (!raw_info) 
-//    { 
-//	    cout << "Unable to open file 'frameinfo.txt' for input" << endl;
-//        exit(EXIT_FAILURE);
-//    }
-//    else
-//    {
-//        string line;
-//        getline(raw_info,line);
-//
-//        //cout << line;
-//
-//	    raw_info    >> raw_width 
-//				    >> raw_height
-//				    >> nm_per_pixel
-//                    >> nm_per_slice
-//                    >> raw_firstframe
-//                    >> raw_lastframe
-//                    >> raw_filepattern;
-//
-//	    raw_info.close();  
-//
-//        cout << setprecision(2);
-//        cout << "File info: "
-//            << "Width:       " << raw_width << endl
-//			<< "Height:      " << raw_height << endl
-//			<< "nm/pixel:    " << nm_per_pixel << endl
-//            << "nm/slice:    " << nm_per_slice << endl
-//            << "First frame: " << raw_firstframe << endl
-//            << "Last Frame:  " << raw_lastframe << endl
-//            << "Filepattern: " << raw_filepattern << endl;
-//
-//        
-//        
-//        if ((( raw_width < 1 ) || (raw_width > 2000)) ||
-//            (( raw_height < 1 ) || (raw_height > 2000)) || 
-//            (( raw_lastframe < 1 ) || (raw_lastframe > 2000)))
-//        {
-//            cout << " Parameters out of range.  Aborting read. " << endl;
-//            exit(EXIT_FAILURE);
-//        }
-//
-//        cout << endl;
-//
-//
-//        totframes = (raw_lastframe - raw_firstframe) + 1;
-//
-//        cout << "Raw type is set to " << sizeof(RAWTYPE) * 8 << " bits per pixel" << endl;
-//
-//        double memreq=sizeof(RAWTYPE) * raw_width * raw_height * raw_lastframe;
-//
-//        cout << "Allocating memory required for image : " <<  ((memreq / 1024) / 1024) << " MB" << endl;
-//
-//        
-//        raw_data.resize(totframes);
-//
-//        for (int z=0; z!=totframes; z++)
-//	    {
-//            raw_data[z].resize(raw_height);
-//
-//            for (int x=0; x!=raw_height; x++)  // allocate data grid
-//            {
-//	            raw_data[z][x].resize(raw_width);
-//    	        
-//                //for (int y=0; y!=raw_height; y++)
-//	            //{
-//		        //    raw_data[z][x][y].resize(raw_lastframe);
-//	            //}
-//            }
-//        }
-//
-//        cout << "Memory allocated" << endl;
-//
-//    }
-//
-//    // read in the raw data
-//
-//    for(filenum = raw_firstframe; filenum <= raw_lastframe ; filenum++ )
-//	{
-//
-//        sprintf(buff, raw_filepattern, filenum);
-//        sprintf(filename, "raw/%s", buff);
-//
-//
-//        cout << "Reading file " << filename << "...";
-//        cout.flush();
-//
-//        ifstream raw_in(filename, ios::in);
-//
-//        // find filesize
-//
-//        raw_in.seekg(0,ios::end);
-//        int file_size=raw_in.tellg();
-//        raw_in.seekg(0);
-//
-//        int z = filenum - raw_firstframe;  // index from zero
-//
-//        if ((z < 0) || (z > raw_lastframe))
-//        {
-//            cout << "Z out of range" << endl;
-//            exit(EXIT_FAILURE);
-//        }
-//
-//
-//        for (int y=0; y!=raw_height; y++)  // allocate data grid
-//        {
-//            //for (int y=0; y!=raw_height; y++)
-//            //{
-//                //for (int z=0; z!=raw_height; z++)
-//                //{
-//                    raw_in.read((char*)(&raw_data[z][y][0]),raw_width*sizeof(RAWTYPE));
-//                //}
-//            //}
-//        }
-//
-//        
-//
-//        int posn = (int)raw_in.tellg();
-//        if (posn == -1)
-//        {
-//            cout << endl << "Warning: End of file reached before data read in!" << endl;
-//        }
-//        else
-//        if  (posn != file_size)
-//        {
-//            cout << endl << "Warning: Finished reading " <<  file_size - posn << " bytes short of end of file " << endl;
-//        }
-//        else
-//        {
-//            cout << "read OK." << endl;
-//        }
-//
-//        cout.flush();
-//
-//        raw_in.close();
-//    }
-//
-//
-//
-//    CometVtkVis vtkvis(false); // should this be false? (i.e. no render window)
-//
-//
-//}
-
-
-
-/*
-
-
-// Newtonian fluid drag
-//
-// F=6*Pi*a*eta*v
-// where a = radius, eta = viscosity, v = velocity
-// let it act on each node for now (acting on each
-// inter-node link may be more appropriate)
-
-// Elasticity of actin network
-//
-// ?? who knows?  Likely nonlinear and asymmetric.
-// Probably very steep for tension, but shallow for compression
-// up to a critical compressibility, then steep again
-// This function will be critical.
-//
-// Start with very simple approximation:  
-// forceonnode = E * ( actualdist - linkdist ) / linkdist
-
-
-// linking:
-//
-// Let the linking be isotropic for now.
-// argument can be made that entanglement will make effective
-// linking largely isotropic even if filaments are aligned.
-// However, alignment strongly implies that 
-// the elasticity of the network will not
-// be isotropic.  
-// Deal with this later, after the first pass.
-
-// Geometry
-//
-// let the bead be spherical for now
-
-*/
