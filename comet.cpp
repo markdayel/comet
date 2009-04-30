@@ -1286,7 +1286,7 @@ int main(int argc, char* argv[])
             else if (tag == "PLOTFORCES_INCLUDEIMPACTS") 
 			    {ss >> buff2;if(buff2=="TRUE") PLOTFORCES_INCLUDEIMPACTS = true; else PLOTFORCES_INCLUDEIMPACTS = false;}
 
-            else if (tag == "PLOTFORCES_INCLUDEIMPACTS") 
+            else if (tag == "PLOTFORCES_INCLUDELINKFORCES") 
 			    {ss >> buff2;if(buff2=="TRUE") PLOTFORCES_INCLUDELINKFORCES = true; else PLOTFORCES_INCLUDELINKFORCES = false;}
 
 		    else if (tag == "MOFI") 
