@@ -2377,8 +2377,8 @@ void actin::set_nodes_to_track(const projection & proj)
 
 
             double closest_dist = DBL_MAX;
-            double best_score = DBL_MAX;
-            double score = 0;
+            double best_angle = DBL_MAX, best_score = DBL_MAX;
+            double angle = 0,score = 0;
             unsigned int best_nodenum = 0;
 
             // go through temp list, looking for best match
@@ -2412,8 +2412,11 @@ void actin::set_nodes_to_track(const projection & proj)
                         + fabs( node[nodes_to_track[i]].dist_from_surface - node[temp_nodes_to_track[j]].dist_from_surface ) * 2 * TRACK_TARGET_DIST // weighting towards const radius
                         + fabs( (curpos-topos).length() - TRACK_TARGET_DIST);  // find min distance from targetdist range
 
+                    angle=2*PI*fabs( acos( (curpos - topos).unitvec().dot(vect(1,0,0)) ));
+
                     if ( score < best_score)
                     {
+                        best_angle = angle;
                         best_score = score;
                         best_nodenum = temp_nodes_to_track[j];
                         closest_dist = (curpos-topos).length();
@@ -2432,7 +2435,7 @@ void actin::set_nodes_to_track(const projection & proj)
 
                 nodes_to_track.push_back(best_nodenum);
 
-                cout << "Initial Length: " << closest_dist << endl;
+                cout << "Initial Length: " << closest_dist << "  Angle from sym plane: " << best_angle << " deg" << endl;
 
             }
 

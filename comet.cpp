@@ -203,7 +203,7 @@ double XLINK_NODE_RANGE =  1.0;		// Limit crosslink to within this range
 double LINK_BREAKAGE_FORCE =  2;	 // breakage force per link
 //bool USE_BREAKAGE_VISCOSITY = false;
 //double BREAKAGE_VISCOSITY_THRESHOLD = 1000;
-double LINK_BREAKAGE_STRAIN = 1.15;
+//double LINK_BREAKAGE_STRAIN = 1.15;
 //double P_LINK_BREAK_IF_OVER =  0.25;  // probablility that force will break link if over the link breakage force
 unsigned int MAX_LINKS_PER_NEW_NODE = 100;
 unsigned int MAX_LINK_ATTEMPTS = 20;
@@ -1050,8 +1050,8 @@ int main(int argc, char* argv[])
 		    else if (tag == "LINK_BREAKAGE_FORCE") 
 			    {ss >> LINK_BREAKAGE_FORCE;}
 
-		    else if (tag == "LINK_BREAKAGE_STRAIN") 
-			    {ss >> LINK_BREAKAGE_STRAIN;}
+		    //else if (tag == "LINK_BREAKAGE_STRAIN") 
+			//    {ss >> LINK_BREAKAGE_STRAIN;}
 
 		    else if (tag == "LINK_POWER_SCALE") 
 			    {ss >> LINK_POWER_SCALE;}
@@ -1871,7 +1871,8 @@ gsl_rng_set(randomnum, rand_num_seed);
 
 	if (!QUIET)
 	{
-		cout << "(Press 'q' to abort run, or 'm' to make quicktime movies of frames so far)" << endl << endl;
+		cout << "(Press 'q' to abort run)" << endl << endl;
+        //cout << "(Press 'q' to abort run, or 'm' to make quicktime movies of frames so far)" << endl << endl;
 	}
 	
 	if (QUIET)

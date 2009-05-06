@@ -335,7 +335,7 @@ extern double LINK_BREAKAGE_FORCE;  // breakage force per link
 extern double LINK_FORCE;
 //extern bool USE_BREAKAGE_VISCOSITY;
 //extern double BREAKAGE_VISCOSITY_THRESHOLD;
-extern double LINK_BREAKAGE_STRAIN;
+//extern double LINK_BREAKAGE_STRAIN;
 extern double P_XLINK;
 extern double P_NUC;
 extern double MAX_POLYMERISATION_PRESSURE;
