@@ -1,4 +1,4 @@
-PROG = ~/bin/comet
+PROG = /cluster/bin/comet
 SRCS = actin.cpp Colour.cpp links.cpp \
        nodes.cpp nucleator.cpp rotationmatrix.cpp \
        segments.cpp kbhit.cpp threadedtaskqueue.cpp \
@@ -21,31 +21,34 @@ ALLOBJS = $(OBJS) $(VTKOBJS)
 
 # libraries to use for vtk link (and also set -DLINK_VTK)
 
-LIBS = -lpthread -lgsl -lgslcblas -framework AppKit -framework OpenGL
-VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.compat/include/vtk-5.1/
-VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.compat/lib/
-VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
-              -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
-              -lvtkHybrid -lvtkVolumeRendering -lvtkjpeg -lvtktiff -lvtksys -lvtkzlib
+#LIBS = -lpthread -lgsl -lgslcblas -framework AppKit -framework OpenGL
+LIBS = -lpthread -lgsl -lgslcblas
+#VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.compat/include/vtk-5.1/
+#VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.compat/lib/
+#VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
+#              -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
+#              -lvtkHybrid -lvtkVolumeRendering -lvtkjpeg -lvtktiff -lvtksys -lvtkzlib#
 
 # libraries to use for non-vtk (and also unset -DLINK_VTK)
 
-#LIBS = -lpthread  -lgsl -lgslcblas 
-#VTKLIBS = 
-#VTKLIBPATH =
-#VTKINCLUDES =
+LIBS = -lpthread  -lgsl -lgslcblas 
+VTKLIBS = 
+VTKLIBPATH =
+VTKINCLUDES =
 
-CXXFLAGS =  -O3 -fast \
-            -march=nocona -mtune=nocona \
+CXXFLAGS =  -O3 \
+            -march=amdfam10 -mtune=amdfam10 \
             -mfpmath=sse -msse2 -msse3 \
             -Wall -Wno-deprecated -Wextra \
             -ftree-vectorize\
-            -fasm-blocks\
             -g \
             -DNDEBUG \
             -fprefetch-loop-arrays \
-	    -mdynamic-no-pic -fno-pic\
             -L/opt/local/lib/ -I/opt/local/include/ 
+
+#	    -mdynamic-no-pic -fno-pic\
+#            -fasm-blocks\
+
 
 #CXXFLAGS =  -march=nocona -mtune=nocona \
 #            -mfpmath=sse -msse2 -msse3 \
@@ -88,6 +91,4 @@ dataclean:
 	rm -f ../bin/*.txt
 	rm -f ../bin/*.wrz
 	rm -f ../bin/*.bmp
-	rm -f ../bin/*.wrl
-
 

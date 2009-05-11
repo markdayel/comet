@@ -165,7 +165,9 @@ const unsigned int MAX_EXPECTED_LINKS = 20;   // reserves this no of links per n
 
 #include <stdio.h>
 #include <assert.h>
-#include <string>
+//#include <string>
+#include <cstring>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <cmath>

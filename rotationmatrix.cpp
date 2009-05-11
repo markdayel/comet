@@ -164,13 +164,13 @@ void rotationmatrix::rotatematrix(const double& x_angle, const double& y_angle, 
 //}
 
 
-void rotationmatrix::rotatematrixrevorder(const double& x_angle, const double& y_angle, const double& z_angle)
-{   // not commutative, so have to reverse the order when calculating inverse
-    // todo: matrix inverse function?
-    rotatematrix(z_angle, zaxis);
-    rotatematrix(y_angle, yaxis);
-    rotatematrix(x_angle, xaxis);
-}
+//void rotationmatrix::rotatematrixrevorder(const double& x_angle, const double& y_angle, const double& z_angle)
+//{   // not commutative, so have to reverse the order when calculating inverse
+//    // todo: matrix inverse function?
+//    rotatematrix(z_angle, zaxis);
+//    rotatematrix(y_angle, yaxis);
+//    rotatematrix(x_angle, xaxis);
+//}
 
 void rotationmatrix::getangles(double& x_angle, double& y_angle, double& z_angle) const 
 {  
