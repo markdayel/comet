@@ -748,8 +748,11 @@ inline void mysystem(const char* command)
 {
 
     int ok = system(command);
-    if (!ok)
-        cout << "Warning - system command failed:" << command << endl;
+    //if (!ok)
+    //    cout << "Warning - system command failed:" << command << endl;
+
+    ok++; // prevent unused variable warning
+
 }
 
 
