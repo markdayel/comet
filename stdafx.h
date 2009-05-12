@@ -747,8 +747,8 @@ inline void endian_swap(unsigned int& x)
 inline void mysystem(const char* command)
 {
 
-    int err = system(command);
-    if (err)
+    int ok = system(command);
+    if (!ok)
         cout << "Warning - system command failed:" << command << endl;
 }
 
