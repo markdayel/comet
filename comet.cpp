@@ -505,7 +505,7 @@ int main(int argc, char* argv[])
 	if(!param) 
 	{
 		cerr << "Cannot open " << COMET_PARAMS_FILE << endl << endl;
-        system("stty sane 2>/dev/null");   // fix for something that messes the terminal up (kbhit?)
+        mysystem("stty sane 2>/dev/null");   // fix for something that messes the terminal up (kbhit?)
 		exit(EXIT_FAILURE);
 	}
 
@@ -674,7 +674,10 @@ int main(int argc, char* argv[])
 
 #ifndef _WIN32
 
-	nice(nicelevel);
+	
+    int err = nice(nicelevel);
+    if (err)
+        cout << "Warning - unable to set process priority" << endl;
 
 #endif
 
@@ -737,9 +740,9 @@ int main(int argc, char* argv[])
 	cout.flush();
 
 #ifndef USEWINDOWSCOMMANDS
-    system("pwd");
+    mysystem("pwd");
 #else
-	system("chdir");
+	mysystem("chdir");
 #endif
 
 	
@@ -751,7 +754,14 @@ int main(int argc, char* argv[])
 
     
     char path[2048];
-    getcwd(path, 2048);
+
+    char* cwd = getcwd(path, 2048);
+    if (!cwd)
+    {
+        cout << "Error - unable to get current working directory (getcwd())" << endl
+             << "Aborting" << endl << endl;
+        abort();
+    }
     
 #ifndef USEWINDOWSCOMMANDS
 
@@ -764,7 +774,15 @@ int main(int argc, char* argv[])
     sprintf(STATSDIR,"%s/statistics/", path);
     
     sprintf(TEMPDIR,"/tmp/comet.XXXXXX");
-    mkdtemp(TEMPDIR);
+
+    char* tmpdir = mkdtemp(TEMPDIR);;
+    if (!tmpdir)
+    {
+        cout << "Error - unable to get temp working directory (mkdtemp())" << endl
+             << "Aborting" << endl << endl;
+        abort();
+    }
+    
     sprintf(TEMPDIR,"%s/",TEMPDIR);
 
     cout << "Temp dir: " << TEMPDIR << endl;
@@ -787,35 +805,35 @@ int main(int argc, char* argv[])
 #ifndef USEWINDOWSCOMMANDS
 	
 	sprintf(command1, "mkdir %s 2>/dev/null", VRMLDIR  );
-	system(command1);	
+	mysystem(command1);	
 	sprintf(command1, "mkdir %s 2>/dev/null", DATADIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", REPORTDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", BITMAPDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", TEMPDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", VTKDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir %s 2>/dev/null", STATSDIR  );
-	system(command1);
+	mysystem(command1);
 #else
 	
 	sprintf(command1, "mkdir \"%s\" 2>NULL", VRMLDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir \"%s\" 2>NULL", DATADIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir \"%s\" 2>NULL", REPORTDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir \"%s\" 2>NULL", BITMAPDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir \"%s\" 2>NULL", TEMPDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir \"%s\" 2>NULL", VTKDIR  );
-	system(command1);
+	mysystem(command1);
 	sprintf(command1, "mkdir \"%s\" 2>NULL", STATSDIR  );
-	system(command1);
+	mysystem(command1);
 #endif
 
     bool ABORT = false;
@@ -1414,7 +1432,7 @@ int main(int argc, char* argv[])
 			{
 				cout << "n - Run aborted" << endl;
 				cout.flush();
-				system("stty sane");
+				mysystem("stty sane");
 				exit(1);
 			}
 			else
@@ -1458,7 +1476,7 @@ int main(int argc, char* argv[])
     {
         sprintf(BITMAPDIR,"%s/bitmaps_links/", path);
     	sprintf(command1, "mkdir \"%s\" 2>/dev/null", BITMAPDIR  );
-	    system(command1);
+	    mysystem(command1);
     }
 
 
@@ -1596,10 +1614,10 @@ int main(int argc, char* argv[])
 		// so this is a new calculation and no other process is using temp bmp files
 		// and can clear them and the velocities file
 		sprintf(command1, "rm -f %s*.bmp 2>/dev/null", TEMPDIR);
-		system(command1);
+		mysystem(command1);
 
         sprintf(command1, "rm -f %s 2>/dev/null", VELOCITIESFILE);
-		system(command1);
+		mysystem(command1);
 	}
 
 
@@ -1630,7 +1648,7 @@ int main(int argc, char* argv[])
 			{
 				cout << "n - Run aborted" << endl;
 				cout.flush();
-				system("stty sane");
+				mysystem("stty sane");
 				exit(1);
 			}
 			else
@@ -1647,38 +1665,38 @@ int main(int argc, char* argv[])
 #ifndef USEWINDOWSCOMMANDS
 
 		sprintf(command1, "rm -f %s*_0*.%s 2>/dev/null", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "rm -f %s*.wrz 2>/dev/null", VRMLDIR );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "rm -f %s*%s 2>/dev/null", REPORTDIR, COMPRESSEDEXTENSION);
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "rm -f %s*%s 2>/dev/null", DATADIR, COMPRESSEDEXTENSION );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "rm -f %s*.wrl %s*.txt 2>/dev/null", TEMPDIR, TEMPDIR );
-		system(command1);
+		mysystem(command1);
         sprintf(command1, "rm -f %s 2>/dev/null", SYM_BREAK_FILE );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "rm -f %s*.* 2>/dev/null", VTKDIR );
-		system(command1);        
+		mysystem(command1);        
 		sprintf(command1, "rm -f %s*.* 2>/dev/null", STATSDIR );
-		system(command1);        
+		mysystem(command1);        
 #else
 		sprintf(command1, "del /q %s*_0*.%s 2>NULL", BITMAPDIR, BMP_OUTPUT_FILETYPE.c_str() );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "del /q %s*.wrz 2>NULL", VRMLDIR );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "del /q %s*%s 2>NULL", REPORTDIR, COMPRESSEDEXTENSION );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "del /q %s*%s 2>NULL", DATADIR, COMPRESSEDEXTENSION );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "del /q %s*.wrl %s*.txt 2>NULL", TEMPDIR, TEMPDIR );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "del /q %s 2>NULL", SYM_BREAK_FILE );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "del /q %s*.* 2>NULL", VTKDIR );
-		system(command1);
+		mysystem(command1);
 		sprintf(command1, "del /q %s*.* 2>NULL", STATSDIR );
-		system(command1);
+		mysystem(command1);
 #endif
 
         cout << "done." << endl;
@@ -1966,16 +1984,16 @@ gsl_rng_set(randomnum, rand_num_seed);
 							cout.flush();
 
 	#ifndef USEWINDOWSCOMMANDS
-							system("pwd");
+							mysystem("pwd");
 	#else
-							system("chdir");
+							mysystem("chdir");
 	#endif
 							cout << endl << "Making movie of frames so far..." << endl;
 							cout.flush();
 							cout << endl;
 					        
                             sprintf(command1, "movhere"); // call movie writing script
-                            system(command1);
+                            mysystem(command1);
 							
 							cout << endl;
 						}
@@ -2175,7 +2193,7 @@ srand( rand_num_seed );
 
                 // post-process one bitmap to set the symmetry breaking direction                                                   
                 sprintf(command1, "%s post %d:%d 1>postsetsymbreak.txt 2>postsetsymbreak.err", argv[0], framemaxvelmoved , framemaxvelmoved  );
-				system(command1);
+				mysystem(command1);
 
                 ptheactin->load_sym_break_axes();
 
@@ -2231,12 +2249,12 @@ srand( rand_num_seed );
 					// if we have already written draft bitmaps, need to delete the last one
 					// so we know when it's re-written
 					sprintf(command1, "rm %s 1>/dev/null 2>/dev/null", last_symbreak_bmp_filename);
-					system(command1);
+					mysystem(command1);
 				}
 
 				// call self with 'sym' argument to re-write the bitmaps                                                       
                 sprintf(command1, "%s sym 1:%d 1>rewritesymbreak.txt 2>rewritesymbreak.err &", argv[0], filenum-1);
-				system(command1);
+				mysystem(command1);
 
 			}  
 
@@ -2473,7 +2491,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 	    char command1[1024];
         sprintf(command1, "%s -c \"%s%s\" > \"%s\"", DECOMPRESSCOMMAND, filename.c_str(), COMPRESSEDEXTENSION, tmpdatafile);
         //cout << command1 << endl;
-        system(command1);
+        mysystem(command1);
 
         ifstrm.open( tmpdatafile );
         usingtmpdatafile = true;
@@ -2532,7 +2550,7 @@ bool load_data(actin &theactin, int iteration, const bool &loadscale)
 #ifndef _WIN32
         char command1[1024];
         sprintf(command1, "rm  %s",tmpdatafile);           
-        system(command1);
+        mysystem(command1);
 #endif    
     }
 
@@ -2832,7 +2850,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 		        sprintf(command1, "%s psingleb %i:%i:%i &", argv[0], firstframe + i, POST_PROCESS_CPUS, lastframe);
             else
                 sprintf(command1, "%s psinglev %i:%i:%i &", argv[0], firstframe + i, POST_PROCESS_CPUS, lastframe);
-		    system(command1);
+		    mysystem(command1);
 		    //cout << command1 << endl;
 	    }
 
@@ -2844,7 +2862,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
             sprintf(command1, "%s psinglev %i:%i:%i", argv[0], firstframe , POST_PROCESS_CPUS, lastframe);
 
         
-	    system(command1);
+	    mysystem(command1);
  
 	} else
     {   // doing the work
@@ -3027,7 +3045,7 @@ void postprocess(nucleator& nuc_object, actin &theactin,
 		char command5[1024];
 		sprintf(command5, "(%s \"%s*report*.txt\" 2>/dev/null; mv \"%s*report*%s\" \"%s\" 2>/dev/null) &"
 			,COMPRESSCOMMAND, TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
-		system(command5);
+		mysystem(command5);
 	}
 
 }

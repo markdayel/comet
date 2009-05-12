@@ -427,9 +427,9 @@ actin::~actin(void)
     // start a background process to clear the temp directory after a delay
     // (delay required because background imagemagick processes may still be accessing the bitmaps)
 	sprintf(command1, "(sleep 120 ; rm %s*.bmp %s*.png %s*.txt 2>/dev/null ; rmdir %s ) &", TEMPDIR,TEMPDIR,TEMPDIR,TEMPDIR);  
-	(void)system(command1);
+	mysystem(command1);
 
-    (void)system("stty sane 2>/dev/null");   // fix for something that messes the terminal up (kbhit?)  pipe error to /dev/null in case running in background
+    mysystem("stty sane 2>/dev/null");   // fix for something that messes the terminal up (kbhit?)  pipe error to /dev/null in case running in background
 }
 
 
@@ -3586,7 +3586,7 @@ void actin::savebmp(const int &filenum, const projection & proj, const processfg
 
     //cout << command3 << endl;
 
-	(void)system(command3);
+	mysystem(command3);
 
 	if (!QUIET)
 	{
@@ -3967,7 +3967,7 @@ void actin::compressfilesdowork(const int & filenum)
 	sprintf(command1, "(%s \"%s\"*report*.txt ; mv \"%s\"*report*%s \"%s\" 2>/dev/null) &"
 		,COMPRESSCOMMAND,TEMPDIR,TEMPDIR, COMPRESSEDEXTENSION, REPORTDIR);
     //cout << command1 << endl;
-    (void)system(command1);
+    mysystem(command1);
 
 	// save data file
 
@@ -3975,7 +3975,7 @@ void actin::compressfilesdowork(const int & filenum)
     {
 	sprintf(command1 , "(%s \"%s\"*data*.txt ; mv \"%s\"*data*%s \"%s\" 2>/dev/null) &",
 	     COMPRESSCOMMAND, TEMPDIR, TEMPDIR, COMPRESSEDEXTENSION, DATADIR);
-	(void)system(command1);
+	mysystem(command1);
     }
 
                                        
@@ -3983,7 +3983,7 @@ void actin::compressfilesdowork(const int & filenum)
 
 	//sprintf(command1 , "(gzip -9 -f -c \"%snodes%05i.wrl\" > \"%snodes%05i.wrz\" 2>/dev/null) &",
 	//					TEMPDIR, filenum,  VRMLDIR,filenum);
-	//system(command1);
+	//mysystem(command1);
 
 #else
 
@@ -3991,24 +3991,24 @@ void actin::compressfilesdowork(const int & filenum)
 
 	//sprintf(command1, "%s \"%s*report*.txt\"",COMPRESSCOMMAND, TEMPDIR);
 	sprintf(command2, "move \"%s*report%05i.txt\" \"%s\"",TEMPDIR,filenum,REPORTDIR);
-	//system(command1);
-	(void)system(command2);
+	//mysystem(command1);
+	mysystem(command2);
 
 	// save data file
 
 	//sprintf(command1, "%s \"%s*data*.txt\"",COMPRESSCOMMAND, TEMPDIR2);
 	//sprintf(command2, "move \"%s*data*%s\" \"%s\" >NUL",TEMPDIR,COMPRESSEDEXTENSION, DATADIR);
 	sprintf(command2, "move \"%s*data*.txt\" \"%s\" >NUL",TEMPDIR,DATADIR);
-	//system(command1);
-	(void)system(command2);
+	//mysystem(command1);
+	mysystem(command2);
 	//cout << command1 << endl << command2 << endl;
 
 	// wrl file
 
 	//sprintf(command1, "%s %snodes%05i.wrl",COMPRESSCOMMAND, TEMPDIR);
 	//sprintf(command2, "move %snodes%05i.wrl%s %snodes%05i.wrz",TEMPDIR, COMPRESSEDEXTENSION, VRMLDIR);
-	//system(command1);
-	//system(command2);
+	//mysystem(command1);
+	//mysystem(command2);
 
 
 #endif

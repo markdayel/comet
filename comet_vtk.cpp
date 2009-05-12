@@ -340,11 +340,11 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
             sprintf(command1, 
                 "%s -transparent black \"%s\" \"%s\"",
                 IMAGEMAGICKCONVERT, tmpfilename, VTK_colmap_filename);
-            system(command1);
+            mysystem(command1);
 
             // remove the temp bitmap
             sprintf(command1, "rm \"%s\"", tmpfilename);
-            system(command1);
+            mysystem(command1);
         }
 
     }
@@ -432,7 +432,7 @@ CometVtkVis::~CometVtkVis()
 
     //char command1[1024];
     //sprintf(command1, "rm %s", VTK_colmap_filename);
-    //system(command1);
+    //mysystem(command1);
 
 }
 
@@ -728,7 +728,7 @@ void CometVtkVis::saveImageRotationSet(const int &framenumber)
     char filename[1024], command[1024];
     //sprintf(tmpfilename , "%s%s_%05i.bmp", TEMPDIR, file_prefix.c_str(), framenumber );
     sprintf(command    , "mkdir -p %s%s_%05i", VTKDIR, file_prefix.c_str(), framenumber);
-    system(command);
+    mysystem(command);
 
 
 	for (int frame   = 1; frame <= steps ; ++frame)
@@ -826,7 +826,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
                   tmpfilename, filename, tmpfilename);
             //cout << command1 << endl;
-            system(command1);
+            mysystem(command1);
         }
         else
         {
@@ -838,7 +838,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
                 tmpfilename, filename, tmpfilename);
 
             //cout << command1 << endl;
-            system(command1);
+            mysystem(command1);
         }
     }
     else
@@ -851,7 +851,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, 100/(double)VTK_AA_FACTOR, textstring,  
                  VTK_colmap_filename, tmpfilename, filename, tmpfilename);
             //cout << command1 << endl;
-            system(command1);
+            mysystem(command1);
         }
         else
         {
@@ -861,7 +861,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
                 IMAGEMAGICKCONVERT, BMP_COMPRESSION, textstring,
                 VTK_colmap_filename, tmpfilename, filename, tmpfilename);
             //cout << command1 << endl;
-            system(command1);
+            mysystem(command1);
         }
     }
 
@@ -940,7 +940,7 @@ void CometVtkVis::saveVRML(const int &framenumber)
             //,vrmlfilename);
 
     //cout << command5;
-	//system(command5);
+	//mysystem(command5);
 
    // capsule ends
    // need to replace second and third positions with these:
@@ -961,7 +961,7 @@ void CometVtkVis::saveVRML(const int &framenumber)
     else
         sprintf(command1 , "( %s | \"%s\" > \"%s%s\" ; rm \"%s\" ) &", "cat", COMPRESSCOMMAND, vrmlfilename, COMPRESSEDEXTENSION, vrmltmpfilename );
 
-    system(command1);
+    mysystem(command1);
 }
 
 

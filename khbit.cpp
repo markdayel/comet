@@ -49,7 +49,9 @@ char ch;
     {
         ch = peek_character;
         peek_character = -1;
-    } else read(0,&ch,1);
+    } 
+    else 
+        ssize_t size = read(0,&ch,1);
 
     return ch;
 }

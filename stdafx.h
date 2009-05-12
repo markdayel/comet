@@ -744,6 +744,15 @@ inline void endian_swap(unsigned int& x)
 	    (x<<24);
 }
 
+inline void mysystem(const char* command)
+{
+
+    int err = system(command);
+    if (err)
+        cout << "Warning - system command failed:" << command << endl;
+}
+
+
 #ifdef USE_GSL_RANDOM
 
 inline bool prob_to_bool(const double & prob)
