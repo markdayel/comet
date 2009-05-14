@@ -2,19 +2,26 @@
 
 # syntax: startrun <set> <run>
 
+export SCRIPTDIR=`dirname $0`
+source $SCRIPTDIR/comet_script_settings
+
+
 echo Starting Set $1 run $2
 
 DATE="$(date)"
-DIR="$HOME/runs/${1}/${2}"
+#BASEDIR="/cluster/runs"
+
+DIR="$BASEDIR/${1}/${2}"
 cd "$DIR"
-source $HOME/setheadnode
+#source $HOME/setheadnode
 #export PATH=$PATH:$HOME/bin
 #export LD_LIBRARY_PATH=/home/matt/lib
 #export MAGICK_CONFIGURE_PATH=/home/matt/IMconfig/
 
 source /etc/profile
+source $HOME/.profile
 
-comet 4
+comet 4 Q
 #comet post 0:0
 #exit 1
 
@@ -30,7 +37,9 @@ movhere
 
 # make the velocities graph
 
-ssh $HEADNODE "(cd $DIR; ~/bin/makevelgraph)"
+#ssh $HEADNODE "(cd $DIR; ~/bin/makevelgraph)"
+(cd $DIR; makevelgraph)
+
 
 cp velocities.png ../velocities_${2}.png
 

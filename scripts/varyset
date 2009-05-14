@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+#BASEDIR="/cluster/runs"
+
+source comet_script_settings
 ARGS=4
 
 if [ $# -ne "$ARGS" ]
@@ -25,34 +28,34 @@ IDENTIFIER=`date +"%m-%d-%y_$IDNUM"`
 
 ((STEPSLESSONE = STEPS - 1))
 
-mkdir -p ~/runs/${IDENTIFIER}
-cp ~/runs/cometparams.ini ~/runs/${IDENTIFIER}
-touch ~/runs/${IDENTIFIER}/"$1 $2 $3"
+mkdir -p $BASEDIR/${IDENTIFIER}
+cp $BASEDIR/cometparams.ini $BASEDIR/${IDENTIFIER}
+touch $BASEDIR/${IDENTIFIER}/"$1 $2 $3"
 
-echo -n "$STEPS $1" > ~/runs/${IDENTIFIER}/setparam.txt
+echo -n "$STEPS $1" > $BASEDIR/${IDENTIFIER}/setparam.txt
 
 for ((a=1; a <= STEPS ; a++))
 do
 
 ((currlessone = a - 1))
 
-mkdir -p ~/runs/${IDENTIFIER}/$a
+mkdir -p $BASEDIR/${IDENTIFIER}/$a
 
 factor=`echo "scale=3; $2 + ( ($3 - $2) * ${currlessone} ) / ${STEPSLESSONE}" | bc -l`
 
-sed '/'^$1'.*$/s//'$1' '$factor'/' ~/runs/cometparams.ini > \
-    ~/runs/${IDENTIFIER}/${a}/cometparams.ini
+sed '/'^$1'.*$/s//'$1' '$factor'/' $BASEDIR//cometparams.ini > \
+    $BASEDIR//${IDENTIFIER}/${a}/cometparams.ini
 
-touch ~/runs/${IDENTIFIER}/${a}/"$1 $factor"
+touch $BASEDIR/${IDENTIFIER}/${a}/"$1 $factor"
 
-echo -n " $factor" >> ~/runs/${IDENTIFIER}/setparam.txt
+echo -n " $factor" >> $BASEDIR/${IDENTIFIER}/setparam.txt
 
 done
 
-echo " ">> ~/runs/${IDENTIFIER}/setparam.txt
+echo " ">> $BASEDIR/${IDENTIFIER}/setparam.txt
 
 echo "Parameter:$1  Min:$2  Max:$3  Steps:$STEPS"
-cat ~/runs/${IDENTIFIER}/setparam.txt
+cat $BASEDIR/${IDENTIFIER}/setparam.txt
 echo "Set identifier: $IDENTIFIER"
 
 echo

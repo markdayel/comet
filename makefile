@@ -22,12 +22,15 @@ ALLOBJS = $(OBJS) $(VTKOBJS)
 # libraries to use for vtk link (and also set -DLINK_VTK)
 
 #LIBS = -lpthread -lgsl -lgslcblas -framework AppKit -framework OpenGL
-LIBS = -lpthread -lgsl -lgslcblas
+#VTKLIBPATH = /usr/lib
 #VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.compat/include/vtk-5.1/
 #VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.compat/lib/
+
+#LIBS = -lpthread -lgsl -lgslcblas
+#VTKINCLUDES = -I/usr/include/vtk-5.0/
 #VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
-#              -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
-#              -lvtkHybrid -lvtkVolumeRendering -lvtkjpeg -lvtktiff -lvtksys -lvtkzlib#
+              -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
+              -lvtkHybrid -lvtkVolumeRendering -lvtkjpeg -lvtktiff -lvtksys -lvtkzlib#
 
 # libraries to use for non-vtk (and also unset -DLINK_VTK)
 
@@ -38,13 +41,15 @@ VTKINCLUDES =
 
 CXXFLAGS =  -O3 \
             -march=amdfam10 -mtune=amdfam10 \
-            -mfpmath=sse -msse2 -msse3 \
             -Wall -Wno-deprecated -Wextra \
             -ftree-vectorize\
             -g \
-            -DNDEBUG \
-            -fprefetch-loop-arrays \
-            -L/opt/local/lib/ -I/opt/local/include/ 
+            -DNDEBUG\
+            -fprefetch-loop-arrays 
+
+#            -mfpmath=sse -msse2 -msse3 \
+#\
+#            -L/opt/local/lib/ -I/opt/local/include/ 
 
 #	    -mdynamic-no-pic -fno-pic\
 #            -fasm-blocks\

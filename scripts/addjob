@@ -1,4 +1,8 @@
-JOBFILE="$HOME/joblist"
+#BASEDIR="/cluster/runs"
+
+source comet_script_settings
+
+JOBFILE="$BASEDIR/joblist"
 
 LOCK_FILE=${JOBFILE}.lock
 

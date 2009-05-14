@@ -1,5 +1,8 @@
 
-gnuplot ~/bin/gplotvel2.sc
+source comet_script_settings
+
+
+gnuplot $SCRIPTDIR/gplotvel2.sc
 
 TEMPFILE=`mktemp -t epsconvert.XXXXXX`.eps
 
