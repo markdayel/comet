@@ -39,12 +39,13 @@ VTKLIBS =
 VTKLIBPATH =
 VTKINCLUDES =
 
-CXXFLAGS =  -O3 -march=amdfam10 -mtune=amdfam10 \
-            -ffast-math\
+CXXFLAGS =  -O3 \
+            -ffast-math -mfpmath=387 -mfpmath=sse \
             -Wall -Wno-deprecated -Wextra \
             -g \
             -DNDEBUG
 
+#-march=amdfam10 -mtune=amdfam10 \
 #CXXFLAGS =  -O3 \
 #            -march=amdfam10 -mtune=amdfam10 \
 #            -Wall -Wno-deprecated -Wextra \

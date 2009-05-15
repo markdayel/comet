@@ -1,4 +1,7 @@
 
+export SCRIPTDIR=`dirname $0`
+source $SCRIPTDIR/comet_script_settings
+
 # if running on mac, expects to start in the base directory of the run set
 
 if [ `echo ${OSTYPE:0:6 }` == "darwin" ] ; then 
@@ -9,21 +12,20 @@ if [ `echo ${OSTYPE:0:6 }` == "darwin" ] ; then
  HEADNODE=localhost
  #BASEDIR=/Volumes/500GB_Drive/runs/${1}
  #BASEDIR=`pwd`
- BASEDIR=$HOME/runs/${1}
 else
  VTILE=1x20
  HTILE=20x1
- source ~/setheadnode
- BASEDIR=$HOME/runs/${1}
 fi
+
+RUNDIR=$BASEDIR/$1
 
 #BASEDIR=`pwd`
 echo
 
-if [ ! -f $BASEDIR/setparam.txt ]; then
+if [ ! -f $RUNDIR/setparam.txt ]; then
 	
-echo Error: $BASEDIR/1/nodesupdate.txt not found
-echo Is $BASEDIR a valid run set directory?
+echo Error: $RUNDIR/1/nodesupdate.txt not found
+echo Is $RUNDIR a valid run set directory?
 echo
 exit
 	
@@ -31,7 +33,7 @@ fi
 
 #TOTFRAMES=500
 # assume that set 1 exists...
-TOTFRAMES=`cat $BASEDIR/1/nodesupdate.txt | wc -l`
+TOTFRAMES=`cat $RUNDIR/1/nodesupdate.txt | wc -l`
 
 #TIMESTEPS=4
 TIMESTEPS=`echo "$TOTFRAMES / 200" | bc`
@@ -59,7 +61,7 @@ echo "Processing $BASEDIR"
 
 
 # find number of steps
-read -d ' ' STEPS othervariables < $BASEDIR/setparam.txt
+read -d ' ' STEPS othervariables < $RUNDIR/setparam.txt
 
 
 FINALIMAGEX=`echo "$IMAGEX * $SIZE * 0.01" | bc`
@@ -70,25 +72,25 @@ FULLY=`echo "$FINALIMAGEX * $TIMESTEPS " | bc`
 FULLX=`echo "$FINALIMAGEY * $STEPS " | bc`
 
 
-export PATH=$PATH:$HOME/bin
-export LD_LIBRARY_PATH=$HOME/lib
-export MAGICK_CONFIGURE_PATH=$HOME/IMconfig/
+#export PATH=$PATH:$HOME/bin
+#export LD_LIBRARY_PATH=$HOME/lib
+#export MAGICK_CONFIGURE_PATH=$HOME/IMconfig/
 
 
-cd $BASEDIR
+cd $RUNDIR
 
 
 LASTLINE=`grep -n "end of main settings" cometparams.ini | awk 'BEGIN { FS = ":" } ; { print $1 }' `
 LASTLINE=`echo "$LASTLINE - 1" | bc`
 
 
-#tempdir=$BASEDIR/temp_${RANDOM}
-tempdir=`mktemp -d /tmp/makematrix.XXXXXX` || exit 1
+tempdir=$BASEDIR/temp_${RANDOM}
+#tempdir=`mktemp -d /tmp/makematrix.XXXXXX` || exit 1
 #tempdir=`mktemp -d`
 
 echo "Working in $tempdir"
 
-#mkdir $tempdir
+mkdir $tempdir
 cd $tempdir
 
 # create blank images for spacing, or for later text
@@ -115,7 +117,7 @@ FRAMENUM=`printf "%05d" $FRAME `
 
 ((POSN = TIMESTEPS - a ))
 
-FILENAME=$BASEDIR/${b}/bitmaps/x_proj_${FRAMENUM}.jpeg
+FILENAME=$RUNDIR/${b}/bitmaps/x_proj_${FRAMENUM}.jpeg
 
   if [ ! -f $FILENAME ]; then
     echo "$FILENAME absent, writing substitute blank image"
@@ -144,7 +146,7 @@ FILENAMES=""
  for ((b=STEPS; b >= 1 ; b--))
  do
 
-  FILENAMES=$FILENAMES$BASEDIR/${b}/bitmaps/x_proj_${FRAMENUM}.jpeg
+  FILENAMES=$FILENAMES$RUNDIR/${b}/bitmaps/x_proj_${FRAMENUM}.jpeg
   FILENAMES=$FILENAMES" "
 
  done
@@ -183,9 +185,9 @@ convert  blankheader1.jpeg   -pointsize ${TXTSIZE} -font ${FONT} -background whi
 
 lastfactor=$factor
 
-done ) < $BASEDIR/setparam.txt
+done ) < $RUNDIR/setparam.txt
 
-read STEPS variable firstfactor otherfactors < $BASEDIR/setparam.txt
+read STEPS variable firstfactor otherfactors < $RUNDIR/setparam.txt
 
 echo
 
@@ -225,7 +227,7 @@ mogrify -rotate -90 headertitle2.png
 
 # convert top of params file into image
 
-( echo -e '\n\n' Host: ${HEADNODE} '\n' ${1} '\n\n';  head -n $LASTLINE $BASEDIR/cometparams.ini ) > params.txt 
+( echo -e '\n\n' Host: ${HEADNODE} '\n' ${1} '\n\n';  head -n $LASTLINE $RUNDIR/cometparams.ini ) > params.txt 
 convert -density 600 -pointsize 8 text:params.txt -trim +repage -bordercolor white  -border 20 -resize 15% paramsimage.png
 
 echo Set $1 Assembling final image
@@ -243,21 +245,22 @@ montage -mode concatenate -tile ${HTILE} headertitle2.png lheading.png imagearra
 
 montage -mode concatenate -tile ${HTILE} -gravity center paramsimage.png imagearray1b.png imagearray1c.png
 
-convert -quality 95 imagearray1c.png $BASEDIR/${1}_imagearray.${IMAGETYPE}
-convert -quality 95 imagearray1c.png  -channel green -separate $BASEDIR/${1}_imagearraytoprint.${IMAGETYPE}
+convert -quality 95 imagearray1c.png $RUNDIR/${1}_imagearray.${IMAGETYPE}
+convert -quality 95 imagearray1c.png  -channel green -separate $RUNDIR/${1}_imagearraytoprint.${IMAGETYPE}
 
-mv imagearray1c.png $BASEDIR/imagearray.png
-mv frame*list.png $BASEDIR
+mv imagearray1c.png $RUNDIR/imagearray.png
+mv frame*list.png $RUNDIR
 
-rm $tempdir/*.png
-rm $tempdir/*.jpeg
-rm $tempdir/*.txt
-cd ..
+#rm $tempdir/*.png
+#rm $tempdir/*.jpeg
+#rm $tempdir/*.txt
+#cd ..
 
-rmdir $tempdir
+#rmdir $tempdir
 
 
 echo Set $1 Emailing Image
 
-ssh $HEADNODE "(echo -e Varying $variable from $firstfactor to $lastfactor '\n\n' ) | \
- $HOME/bin/mutt -s \"${HEADNODE} Set ${1} Finished\" -a $HOME/runs/${1}/${1}_imagearray.${IMAGETYPE}  \"markdayel@gmail.com\" "
+#ssh $HEADNODE "
+(echo -e Varying $variable from $firstfactor to $lastfactor '\n\n' ) | \
+ mutt -s \"`hostname` Set ${1} Finished\" -a $RUNDIR/${1}_imagearray.${IMAGETYPE}  \"markdayel@gmail.com\" 

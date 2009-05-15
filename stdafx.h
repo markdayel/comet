@@ -29,7 +29,7 @@
 // note: also need to set VISCOSIY variable to true in cometparams.ini
 
 // this doesn't seem to affect speed at all
-#define NODE_GRID_USE_ARRAYS 1
+// #define NODE_GRID_USE_ARRAYS 1
 
 //#define NOKBHIT 1
 #define VTK_USE_ANSI_STDLIB

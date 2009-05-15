@@ -126,7 +126,7 @@ actin::actin(void)
 
     #else
 
-        cout << "Allocating memory for nodegrid...";
+        cout << "Allocating memory for nodegrid..." << endl;
         cout.flush();
         
 
@@ -172,8 +172,8 @@ actin::actin(void)
                         NODEGRID(i,j,k).reserve(64);
                     }
                 }
-		    }
-	    }
+	     }
+	}
 
     #endif
 
