@@ -12,6 +12,7 @@
 #HOSTS="b1 b2 b3 b4"
 #BASEDIR="/cluster/runs"
 
+source $HOME/.profile
 source comet_script_settings
 
 # start new job if 5 min load average is less than THRESHOLD
@@ -91,7 +92,7 @@ NEWID=${IDENTIFIER//\//-}
 #screen -dmS ${NEWID}_$MACHINE ssh -x $MACHINE " $COMMAND "
 #screen -S ${NEWID}_$MACHINE -X ssh -x $MACHINE " $COMMAND "
 screen.real -dmS ${NEWID}_$MACHINE /usr/bin/ssh -x $MACHINE $COMMAND
-echo screen.real -dmS ${NEWID}_$MACHINE /usr/bin/ssh -x $MACHINE $COMMAND
+#echo screen.real -dmS ${NEWID}_$MACHINE /usr/bin/ssh -x $MACHINE $COMMAND
 #echo screen -d -m -S ${NEWID}_$MACHINE ssh -x $MACHINE " $COMMAND "
 echo
 

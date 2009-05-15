@@ -39,13 +39,19 @@ VTKLIBS =
 VTKLIBPATH =
 VTKINCLUDES =
 
-CXXFLAGS =  -O3 \
-            -march=amdfam10 -mtune=amdfam10 \
+CXXFLAGS =  -O3 -march=amdfam10 -mtune=amdfam10 \
+            -ffast-math\
             -Wall -Wno-deprecated -Wextra \
-            -ftree-vectorize\
             -g \
-            -DNDEBUG\
-            -fprefetch-loop-arrays 
+            -DNDEBUG
+
+#CXXFLAGS =  -O3 \
+#            -march=amdfam10 -mtune=amdfam10 \
+#            -Wall -Wno-deprecated -Wextra \
+#            -ftree-vectorize\
+#            -g \
+#            -DNDEBUG\
+#            -fprefetch-loop-arrays 
 
 #            -mfpmath=sse -msse2 -msse3 \
 #\

@@ -1,0 +1,3 @@
+
+nice ffmpeg -me full -qscale 1 -y -i $1 -vcodec mpeg4 -strict 100 $2
+

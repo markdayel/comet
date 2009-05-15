@@ -1,0 +1,80 @@
+
+#BASEDIR="/cluster/runs"
+#HOSTS="b1 b2 b3 b4"
+
+echo
+
+date
+source comet_script_settings
+
+#SCREENS=`screen -list | sort +1`
+
+FREENODES=0
+
+echo "   Machine  1mld  5mld       ID      R             Frame"
+
+(for MACHINE in $HOSTS
+do
+REMOTEUPTIME=`ssh -x $MACHINE "uptime"`
+LOAD1MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*:" '{ print $2 }' | cut -d, -f1)
+LOAD5MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*:" '{ print $2 }' | cut -d, -f2)
+SCREEN=`screen -list | grep $MACHINE | cut -d. -f2`
+
+MACHINE=`printf "% 10s" $MACHINE`
+
+IDENTIFIER=${SCREEN%_?_*}
+
+
+# we had to replace / with - for the sym runs to get screen to work, so replace back here
+IDENTIFIER=${IDENTIFIER//sym-sym/sym/sym}
+
+#IDENTIFIER=`echo $SCREEN | cut -c 1-13 `
+
+#echo $IDFULL
+
+IDFULL=${SCREEN%_*}
+RUN=${IDFULL#*_*_}
+
+#RUN=`echo $SCREEN | cut -c 15-15 `
+
+INFOFILE="$BASEDIR/${IDENTIFIER}/${RUN}/comet_run_info.txt"
+SYMBREAKFILE="$BASEDIR/${IDENTIFIER}/${RUN}/sym_break_axis.txt"
+#echo $INFOFILE
+
+FRAME=""
+
+if [ -f $INFOFILE ] ; then
+FRAME=`tail -1 $INFOFILE | cut -c45-80 `
+fi
+
+# add a '*' if not broken sym
+
+if [ ! -f $SYMBREAKFILE ] ; then
+FRAME="$FRAME *"
+fi
+
+
+echo "$MACHINE $LOAD1MIN $LOAD5MIN $IDENTIFIER $RUN $FRAME"
+done) | sort -k1
+
+
+#count free nodes:
+
+#for MACHINE in $HOSTS
+#do
+#SCREEN=`screen -list | grep $MACHINE`
+
+#if [ `screen -list | grep -q $MACHINE` ] ; then 
+#(( FREENODES = FREENODES + 1))
+#fi
+
+
+#done
+echo
+
+echo $FREENODES nodes free
+
+WAITINGJOBS=`wc -l $BASEDIR/joblist | cut -d ' ' -f1 `
+
+echo $WAITINGJOBS jobs waiting
+echo

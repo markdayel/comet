@@ -1,0 +1,24 @@
+source comet_script_settings
+
+echo Killing comet processes:
+for MACHINE in $HOSTS
+do
+echo Host: $MACHINE
+ssh $MACHINE killall comet
+done
+
+echo
+sleep 1
+echo Checking for processes still running:
+for MACHINE in $HOSTS
+do
+echo Host: $MACHINE
+ssh b1 ps -AF | grep comet | grep -v grep
+done
+
+echo
+
+echo Waiting 5 seconds...
+sleep 5
+
+jobstat

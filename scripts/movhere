@@ -1,0 +1,25 @@
+EXTENSION=jpeg
+
+if [ -f bitmaps/x_proj_00001.$EXTENSION ]; then
+ mkmov  bitmaps/x_proj_%05d.$EXTENSION  x_proj.mov
+fi
+
+if [ -f bitmaps/y_proj_00001.$EXTENSION ]; then
+ mkmov  bitmaps/y_proj_%05d.$EXTENSION  y_proj.mov
+fi
+
+if [ -f bitmaps/z_proj_00001.$EXTENSION ]; then
+ mkmov  bitmaps/z_proj_%05d.$EXTENSION  z_proj.mov
+fi
+
+if [ -f bitmaps_links/x_proj_00001.$EXTENSION ]; then
+ mkmov  bitmaps_links/x_proj_%05d.$EXTENSION  x_proj_links.mov
+fi
+
+if [ -f bitmaps_links/y_proj_00001.$EXTENSION ]; then
+ mkmov  bitmaps_links/y_proj_%05d.$EXTENSION  y_proj_links.mov
+fi
+
+if [ -f bitmaps_links/z_proj_00001.$EXTENSION ]; then
+ mkmov  bitmaps_links/z_proj_%05d.$EXTENSION  z_proj_links.mov
+fi
