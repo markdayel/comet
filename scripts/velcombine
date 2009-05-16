@@ -1,0 +1,22 @@
+
+GAP=50
+
+EPSFCOMMAND=
+POS=0
+
+DIRS=`ls -d */`
+
+for RUN in $DIRS
+do
+
+EPSFCOMMAND="$EPSFCOMMAND $RUN/velocities.eps 0 $POS 1 0 "
+
+((POS=POS+GAP))
+
+done
+
+epsfcompose $EPSFCOMMAND > velocities_all.eps
+
+convert -density 300 velocities_all.eps -background white -flatten velocities_all.png
+
+#ps2png velocities_all.eps velocities_all.png

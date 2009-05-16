@@ -1,6 +1,7 @@
 
-source comet_script_settings
 
+export SCRIPTDIR=`dirname $0`
+source $SCRIPTDIR/comet_script_settings
 
 gnuplot $SCRIPTDIR/gplotvel2.sc
 
@@ -20,7 +21,10 @@ sed   /'PL \[4 dl 2 dl\] 0 1 0 DL'/s//'PL \[\] 1.0 0.7 0.2 DL'/  | \
 sed   /'PL \[2 dl 3 dl\] 0 0 1 DL'/s//'PL \[\] 0.15 0.15 1.0 DL'/  | \
 sed /'PL \[1 dl 1.5 dl\] 1 0 1 DL'/s//'PL \[\] 0.43 0.63 1.0 DL'/  > velocities.eps
 
-ps2png velocities.eps velocities.png
+#gs -dUseCIEColor -dFirstPage=1 -dLastPage=1 -dUseCropBox -dSAFER -dBATCH -dNOPAUSE -r300x300 -dNOPLATFONTS -sDEVICE=pngalpha  -dBackgroundColor=16#ffffff -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=velocities.png velocities.eps
+#ps2png velocities.eps velocities.png
+
+convert -density 300 velocities.eps velocities.png
 
 rm temp.eps
 rm ${TEMPFILE}

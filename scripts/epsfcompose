@@ -1,0 +1,226 @@
+#!/usr/bin/env perl
+
+# simple tool to combine epsfiles
+
+$usage = "\
+NAME\
+	epsfcompose - generate composite eps files\
+\
+SYNOPSIS\
+	epsfcompose [-hp] [-m mx my ] [-a] epsf1 x1 y1 s1 r1 [epsf2 x2 y2 s2 r2 ....] \
+\
+DESCRIPTION\
+	'epsfcompose' reads 1 or more eps files epsf1, epsf2,... and generates\
+	a composite in which the origin of epsf_i is shifted by (x_i,y_i)\
+	and each sub-image is scaled so its size is s_i times its original\
+	size and is rotated anticlockwise by an angle r_i degrees.\
+\
+	You can use this to overlay eps files (or rotate/scale individual\
+	eps files) or to generate a composite eps file containing sub-plots\
+	on a grid say.\
+\
+	Note that the spatial origin about which the image will scale, rotate is where the\
+	lower-left corner of the page would be if the eps fle were printed by\
+	itself.  This most likely does not coincide with the origin
+	of physical or user coordinates. This can be confusing. Note also\
+	that it is possible to generate eps images where the lower-left\
+	corner has one or both coordinates negative, so the image would\
+	necessarily be cropped if printed.  With the -m optional of the\
+	images will be subject ot an additional shift of coordinates\
+	so that the final lower-left corner lies at (mx,my).\
+\
+	Note that ghostview displays the whole interior of the bounding box\
+	of an image, and gives cursor location readout.\
+\
+	'epsfcompose' first looks for the bounding boxes of the input epsf\
+	files and computes outputs a header for an epsf file whose bounding\
+	box just contains the shifted, scaled and rotated corners of the\
+	input bounding boxes (with extra shift to get lower-left point wrt\
+	the lower left page corner with -m option). For each input image it\
+	saves the state; does miminalistic set up of fg/bg and default\
+	line type, outputs postscript commands to implement the shift, scaling\
+	and rotation followed by the non-comment lines of the input eps file\
+	bracketed by BeginDocument, EndDocument comments.\
+\
+	With the -a option, the x,y origin shifts are multiplied by\
+	the width and height of the scaled bounding box of the first eps\
+	file to facilitate laying out sets of images on a grid (you\
+	can set the spacing to be convenient multiples of the 1st plot size).\
+\
+	Use -hp option if printing on the big HP printer to include the\
+	'setpagesize' directive.\
+\
+	Note that options must be given in order shown in synopsis.\
+\
+AUTHOR\
+	Nick Kaiser - kaiser\@hawaii.edu\
+\n";
+
+$nargs = $#ARGV + 1;
+
+die $usage if ($nargs < 5);
+
+# defaults
+$mflag = 0;
+$m[0] = $m[1] = 50.0;
+$autoscale = 0;
+$autoscalefac[0] = $autoscalefac[1] = 1.0;
+$megaprinter = 0;
+
+
+# check for the -hp option
+if ($ARGV[0] =~ /^-hp/) {
+	shift(@ARGV);
+	$megaprinter = 1;
+}
+# check for the -m option
+if ($ARGV[0] =~ /^-m/) {
+	shift(@ARGV);
+	$m[0] = shift(@ARGV);
+	$m[1] = shift(@ARGV);
+	$mflag = 1;
+}
+# check for the -a option
+if ($ARGV[0] =~ /^-a/) {
+	shift(@ARGV);
+	$autoscale = 1;
+}
+
+$f = 0;
+
+getfilearg();
+getfilearg() while ($#ARGV >= 2);
+$nf = $f;
+
+
+warn "# epsfcompose: $nf files\n";
+for ($f = 0; $f < $nf; $f++) {
+	warn "# file $f:\t\t$filename[$f]\n# offset:\t\t$x[$f] $y[$f] lt: $t{$f,0,0} $t{$f,0,1} $t{$f,1,0} $t{$f,1,1} \n";
+}
+
+# get the bounding boxes
+for ($f = 0; $f < $nf; $f++) {
+	open(EPSF, $filename[$f]);
+	$gotbox = 0;
+	while (<EPSF>) {
+		if (/^%%BoundingBox:/) {
+			@line = split(" ");
+			if ($#line == 4 && !$gotbox) {
+				$gotbox = 1;
+				($junk, $llx[$f], $lly[$f], $urx[$f], $ury[$f]) = @line;
+				# and get coords of 4 corners
+				 $x{$f,1,0} = $llx[$f];
+				 $x{$f,1,1} = $lly[$f];
+				 $x{$f,2,0} = $llx[$f];
+				 $x{$f,2,1} = $ury[$f];
+				 $x{$f,3,0} = $urx[$f];
+				 $x{$f,3,1} = $ury[$f];
+				 $x{$f,4,0} = $urx[$f];
+				 $x{$f,4,1} = $lly[$f];
+				if ($autoscale && !$f) {
+					$autoscalefac[0] = ($urx[$f] - $llx[$f]) * $scale[$f];
+					$autoscalefac[1] = ($ury[$f] - $lly[$f]) * $scale[$f];
+				}
+			} 
+		}
+	}
+	close(EPSF);
+	die "epsfcompose: failed to find bounding box\n" unless ($gotbox);
+	warn "# BBOX: $x{$f,1,0} $x{$f,1,1} $x{$f,3,0} $x{$f,3,1}\n";
+	# apply scaling and rotation to corners of b-boxes
+	for ($c = 1; $c <= 4; $c++) {
+		foreach $i (0,1) {
+			$x[$i] = $t{$f,$i,0} * $x{$f,$c,0} + $t{$f,$i,1} * $x{$f,$c,1};
+		}
+		foreach $i (0,1) {
+			$x{$f,$c,$i} = $x[$i];
+		}		
+	}
+	# apply shifts (scaled if necc.)  to each of bbox corners
+	foreach $i (0,1) {
+		$dx{$f,$i} = $autoscalefac[$i] * $xo{$f,$i};
+		for ($c = 1; $c <= 4; $c++) {
+			$x{$f,$c,$i} += $dx{$f,$i};
+		}
+	}
+#	warn "# shift: $dx{$f,0} $dx{$f,1}\n";
+}
+
+# figure the final bbox
+foreach $i (0,1) {
+	$xmin[$i] = $xmax[$i] = $x{0,1,$i};
+	for ($f = 0; $f < $nf; $f++) {
+		for ($c = 1; $c <= 4; $c++) {
+			$xmin[$i] = $x{$f,$c,$i} if ($x{$f,$c,$i} < $xmin[$i]);
+			$xmax[$i] = $x{$f,$c,$i} if ($x{$f,$c,$i} > $xmax[$i]);
+		}
+	}
+}
+
+# make final bounding box (get ll at ($m[0],$m[1]) with mflag option)
+foreach $i (0,1) {
+	$ll[$i] = $xmin[$i];
+	$ur[$i] = $xmax[$i];
+	if ($mflag) {
+		$ll[$i] += $m[$i] - $xmin[$i];
+		$ur[$i] += $m[$i] - $xmin[$i];
+	}
+}
+
+# print the 1st two lines
+print "%!PS-Adobe-3.0 EPSF-3.0\n";
+print "%%BoundingBox: $ll[0] $ll[1] $ur[0] $ur[1]\n";
+print "%%EndComments\n";
+if ($megaprinter) {
+	$w = $ur[0] + $m[0];
+	$h = $ur[1] + $m[1];
+	print "<</PageSize [$w $h] >> setpagedevice\n";
+}
+for ($f = 0; $f < $nf; $f++) {
+	print "/nksave save def\n";
+	print "/showpage {} def\n";
+	print "0 setgray 0 setlinecap\n";
+	print "1 setlinewidth 0 setlinejoin\n";
+	print "10 setmiterlimit [] 0 setdash newpath\n";
+	print "%%BeginDocument: $filename[$f]\n";
+	if ($mflag) {
+		foreach $i (0,1) {
+			$dx{$f,$i} += $m[$i] - $xmin[$i];
+		}
+	}
+	print "$dx{$f,0} $dx{$f,1} translate\n";
+	print "$scale[$f] $scale[$f] scale\n";
+	print "$rot[$f] rotate\n";
+	open(EPSF, $filename[$f]);
+	$inheader = 1;
+	while(<EPSF>) {
+		print $_ unless ($inheader);
+		$inheader = 0 if (/^%%EndComments/);
+	}
+	close(EPSF);	
+	print "%%EndDocument\n";
+	print "nksave restore\n";
+}
+print "showpage\n";
+
+
+
+
+sub getfilearg {
+	$filename[$f] 	= shift(@ARGV) || die $usage;
+	die "epsfcompose: cannot find file $filename[$f]\n" unless (-f $filename[$f]);
+	$xo{$f,0} 	= shift(@ARGV);
+	die $usage unless ($xo{$f,0} =~ /^\d/);
+	$xo{$f,1} 	= shift(@ARGV);
+	die $usage unless ($xo{$f,1} =~ /^\d/);
+	$scale[$f] 	= shift(@ARGV);
+	die $usage unless ($scale[$f] =~ /^\d/);
+	$rot[$f] 	= shift(@ARGV);
+	die $usage unless ($rot[$f] =~ /^\d/);
+	$c = cos(3.14159 * $rot[$f] / 180.0);
+	$s = sin(3.14159 * $rot[$f] / 180.0);
+	$t{$f,0,0} = $t{$f,1,1} = $scale[$f] * $c;
+	$t{$f,0,1} = -$scale[$f] * $s;
+	$t{$f,1,0} = $scale[$f] * $s;
+	$f++;
+}
