@@ -3,6 +3,10 @@
 export SCRIPTDIR=`dirname $0`
 source $SCRIPTDIR/comet_script_settings
 
+if [ ! -f velocities.txt ] ; then
+	touch velocities.txt
+fi
+
 gnuplot $SCRIPTDIR/gplotvel2.sc
 
 TEMPFILE=`mktemp -t epsconvert.XXXXXX`.eps

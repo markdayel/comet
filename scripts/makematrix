@@ -135,6 +135,7 @@ do
 
 		  if [ ! -f $FILENAME ]; then
 		    echo "$FILENAME absent, writing substitute blank image"
+			mkdir -p $RUNDIR/${b}/bitmaps/
 		    cp blank.jpeg $FILENAME
 		  fi
 
@@ -260,7 +261,7 @@ convert $MONITOR -density 600 -font Courier  -pointsize 10 text:params.txt[0] -t
 echo Assembling rows of data
 
 # assemble rows of data
-montage $MONITOR frame*list.png -tile ${HTILE} -geometry +0+$BOARDER -background $BACKGROUND2 imagearray1.png
+montage $MONITOR frame*list.png -tile ${HTILE} -geometry +$BOARDER+$BOARDER -background $BACKGROUND2 imagearray1.png
 montage $MONITOR -mode concatenate -gravity east imagearray1.png  $RUNDIR/velocities_all.png -tile ${HTILE} -background $BACKGROUND2 imagearray1v.png
 mv imagearray1v.png imagearray1.png
 
