@@ -1,10 +1,12 @@
+#!/usr/bin/env bash
+
 source comet_script_settings
 
 echo Killing comet processes:
 for MACHINE in $HOSTS
 do
 echo Host: $MACHINE
-ssh $MACHINE killall comet
+ssh -oConnectTimeout=1 -x $MACHINE killall comet
 done
 
 echo
@@ -13,7 +15,7 @@ echo Checking for processes still running:
 for MACHINE in $HOSTS
 do
 echo Host: $MACHINE
-ssh b1 ps -AF | grep comet | grep -v grep
+ssh -oConnectTimeout=1 -x $MACHINE ps -A | grep comet | grep -v grep
 done
 
 echo

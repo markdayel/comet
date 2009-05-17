@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 ARGS=1
 
 #BASEDIR="/cluster/runs"
@@ -42,7 +44,7 @@ echo "Set ${1} Finished"
 
 makematrix ${1}
 
-makesymsummary ${1}
+# makesymsummary ${1}
 
 #echo Set $1 Emailing Image
 #IMAGETYPE=jpg

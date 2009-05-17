@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 
 # syntax: startrun <set> <run>
 
@@ -39,7 +40,6 @@ movhere
 
 #ssh $HEADNODE "(cd $DIR; ~/bin/makevelgraph)"
 (cd $DIR; makevelgraph)
-
 
 cp velocities.png ../velocities_${2}.png
 

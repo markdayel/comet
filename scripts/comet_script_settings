@@ -1,4 +1,4 @@
 
-export HOSTS="b1 b2 b3 b4"
+export HOSTS="b1 b2 b3 b4 b5"
 export BASEDIR="/cluster/runs"
 #export SCRIPTDIR="/cluster/comet/scripts"

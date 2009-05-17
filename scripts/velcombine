@@ -15,8 +15,8 @@ EPSFCOMMAND="$EPSFCOMMAND $RUN/velocities.eps 0 $POS 1 0 "
 
 done
 
-epsfcompose $EPSFCOMMAND > velocities_all.eps
+epsfcompose $EPSFCOMMAND > velocities_all.eps 2>/dev/null
 
-convert -density 300 velocities_all.eps -background white -flatten velocities_all.png
+convert -density 291 velocities_all.eps -background white -flatten velocities_all.png
 
 #ps2png velocities_all.eps velocities_all.png

@@ -1,12 +1,10 @@
-#!/usr/bin/env bash
 
 export SCRIPTDIR=`dirname $0`
 source $SCRIPTDIR/comet_script_settings
 
 echo
-IDENTIFIER=$1
-IDENTIFIER=${IDENTIFIER%%/}
-RUNDIR=$BASEDIR/$IDENTIFIER
+
+RUNDIR=$BASEDIR/$1
 
 if [ ! -f $RUNDIR/setparam.txt ]; then
 	
@@ -68,7 +66,7 @@ IMAGEX=800
 IMAGEY=800
 
 
-echo "Processing $RUNDIR"
+echo "Processing $BASEDIR"
 
 
 
@@ -91,13 +89,12 @@ FULLX=`echo "$FINALIMAGEY * $STEPS " | bc`
 
 cd $RUNDIR
 
-makevelmulti
 
 LASTLINE=`grep -n "nd of main settings" cometparams.ini | awk 'BEGIN { FS = ":" } ; { print $1 }' `
 LASTLINE=`echo "$LASTLINE - 1" | bc`
 
 
-#tempdir=$RUNDIR/makematrix_tmp_${RANDOM}
+#tempdir=$BASEDIR/temp_${RANDOM}
 tempdir=`mktemp -d /tmp/makematrix.XXXXXX` || exit 1
 #tempdir=`mktemp -d`
 
@@ -113,7 +110,7 @@ convert $MONITOR  -size ${IMAGEX}x${IMAGEY} xc:#FFFFFF blank.jpeg
 convert $MONITOR  -size ${FINALIMAGEX}x${FINALIMAGEY} xc:#FFFFFF blanksmall.jpeg
 convert $MONITOR  -size ${FINALIMAGEY}x${TXTHEIGHT} xc:#FFFFFF -resize 400% blankheader1.jpeg
 convert $MONITOR  -size ${FINALIMAGEX}x${TXTHEIGHT} xc:#FFFFFF -resize 400% blankheader2.jpeg
-convert $MONITOR  -size ${TXTHEIGHT}x${TXTHEIGHT} xc:#FFFFFF blanktimeheader.png
+convert $MONITOR  -size ${TXTHEIGHT}x${TXTHEIGHT} xc:#FFFFFF blanklheader.png
 convert $MONITOR  -size ${FULLX}x${TXTHEIGHT} xc:#FFFFFF -resize 400% blankfulltitle1.png
 convert $MONITOR  -size ${FULLY}x${TXTHEIGHT} xc:#FFFFFF -resize 400% blankfulltitle2.png
 
@@ -146,7 +143,7 @@ done
 
 # make main image array
 
-echo Set $IDENTIFIER Making Image montage $MONITOR
+echo Set $1 Making Image montage $MONITOR
 
 for ((a=1; a <= TIMESTEPS ; a++))
 do
@@ -172,24 +169,22 @@ do
 
 done
 
-#mogrify -rotate 90 frame*list.png
+mogrify -rotate 90 frame*list.png
 
 # make headers
 
-echo Set $IDENTIFIER Making headers
+echo Set $1 Making headers
 
 # make headers for variables
 
 COLUMN=0
 
-echo Making parameter headers
-
 (read -d ' ' STEPS 
+echo "$STEPS steps"
 read -d ' ' variable
-echo "Varying $variable in $STEPS steps"
-convert $MONITOR  blankfulltitle1.png -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $variable -resize 25% paramheadertitle1.png
+echo "Varying $variable"
+convert $MONITOR  blankfulltitle1.png -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $variable -resize 25% headertitle1.png
 
-echo -n Values: 
 while read -d ' ' factor
 do
 
@@ -197,7 +192,7 @@ do
 
 	((COLUMN = COLUMN + 1))
 
-	convert $MONITOR  blankheader1.jpeg   -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $factor  -resize 25% paramheader${COLUMN}.png
+	convert $MONITOR  blankheader1.jpeg   -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $factor  -resize 25% header${COLUMN}.png
 
 	lastfactor=$factor
 
@@ -207,14 +202,14 @@ read STEPS variable firstfactor otherfactors < $RUNDIR/setparam.txt
 
 echo
 
-montage $MONITOR paramheader[0-${STEPS}].png -tile ${HTILE} -geometry +$BOARDER+$BOARDER  paramsheading.png
+montage $MONITOR header[0-${STEPS}].png -tile ${HTILE} -geometry +$BOARDER+$BOARDER  heading.png
 
 # make headers for time
 echo "Making time headers"
 
-convert $MONITOR  blankfulltitle2.png -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 Time -resize 25% timetimeheadertitle.png
+convert $MONITOR  blankfulltitle2.png -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 Time -resize 25% headertitle2a.png
 
-echo -n "Times:"
+echo -n "Time"
 
 for ((a=1; a <= TIMESTEPS ; a++))
 do
@@ -227,75 +222,63 @@ do
 	FRAMETIME=${FRAMETIME%%.*}
 	echo -n " $FRAMETIME"
 
-	convert $MONITOR  blankheader2.jpeg -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $FRAMETIME -resize 25% timeheader${POSN}.png
+	convert $MONITOR  blankheader2.jpeg -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $FRAMETIME -resize 25% lheader${POSN}.png
 
 done
 
-mogrify -rotate -90 paramsheading.png
-mogrify -rotate -90 paramheadertitle1.png
-mogrify -rotate -90 timeheader*.png
-
 echo
 
-montage $MONITOR timeheader*.png -mode concatenate -tile ${VTILE} -geometry +$BOARDER+$BOARDER  timeheading1.png
+montage $MONITOR lheader*.png -mode concatenate -tile ${HTILE} -geometry +$BOARDER+$BOARDER  lheading1.png
 
 # add two empty blocks to top for alignment
-montage $MONITOR timeheading1.png blanktimeheader.png blanktimeheader.png -mode concatenate -tile ${VTILE} timeheading.png
-#montage $MONITOR timetimeheadertitle.png blanktimeheader.png blanktimeheader.png -mode concatenate -tile ${VTILE} timeheadertitle2.png
+montage $MONITOR lheading1.png blanklheader.png blanklheader.png -mode concatenate -tile ${HTILE} lheading.png
+montage $MONITOR headertitle2a.png blanklheader.png blanklheader.png -mode concatenate -tile ${HTILE} headertitle2.png
 
-mogrify -rotate +90 timeheading.png
-#mogrify -rotate -90 timeheadertitle2.png
+mogrify -rotate -90 lheading.png
+mogrify -rotate -90 headertitle2.png
 
 
 # convert $MONITOR top of params file into image
 
-head -n $LASTLINE $RUNDIR/cometparams.ini | sed -e 's/#.*//' -e 's/[ ^I]*$//' -e '/^$/ d' | awk '
-BEGIN{FS=" "}
-{printf("%-25s%s\n",$1,$2)}
-END{}' > params0.txt
-
-( echo -e '\n\n' Host: `hostname` '\n' ID: ${IDENTIFIER} '\n\n';  cat params0.txt) > params.txt 
-convert $MONITOR -density 600 -font Courier  -pointsize 10 text:params.txt[0] -trim +repage -bordercolor white  -border 20 -resize 15% paramsimage.png
+( echo -e '\n\n' Host: ${HEADNODE} '\n' ${1} '\n\n';  head -n $LASTLINE $RUNDIR/cometparams.ini | sed -e 's/#.*//' -e 's/[ ^I]*$//' -e '/^$/ d'
+ ) > params.txt 
+convert $MONITOR -density 600 -pointsize 8 text:params.txt[0] -trim +repage -bordercolor white  -border 20 -resize 15% paramsimage.png
 
 echo Assembling rows of data
 
 # assemble rows of data
-montage $MONITOR frame*list.png -tile ${HTILE} -geometry +0+$BOARDER -background $BACKGROUND2 imagearray1.png
-montage $MONITOR -mode concatenate -gravity east imagearray1.png  $RUNDIR/velocities_all.png -tile ${HTILE} -background $BACKGROUND2 imagearray1v.png
-mv imagearray1v.png imagearray1.png
+montage $MONITOR frame*list.png  -tile ${VTILE} -geometry +0+$BOARDER -background $BACKGROUND2 imagearray1.png
 
 echo  Assembling variable titles
 # add the variable titles
-montage $MONITOR -mode concatenate -tile ${HTILE} -gravity east paramheadertitle1.png paramsheading.png imagearray1.png imagearray1a.png
+montage $MONITOR -mode concatenate -tile ${VTILE} -gravity east headertitle1.png heading.png imagearray1.png imagearray1a.png
 
 echo Assembling time titles
 # add the time titles
-montage $MONITOR -mode concatenate -tile ${VTILE} timetimeheadertitle.png timeheading.png  imagearray1a.png imagearray1b.png
+montage $MONITOR -mode concatenate -tile ${HTILE} headertitle2.png lheading.png imagearray1a.png imagearray1b.png
 
 # add the parameters file pic
 echo Adding parameters
-montage $MONITOR -mode concatenate -tile ${HTILE} -gravity center  paramsimage.png imagearray1b.png  imagearray1c.png
+montage $MONITOR -mode concatenate -tile ${HTILE} -gravity center paramsimage.png imagearray1b.png imagearray1c.png
 
-convert imagearray1c.png -background white -flatten imagearray1d.png
-
-echo Making greyscale copy
-convert $MONITOR -quality 95 imagearray1d.png $RUNDIR/${IDENTIFIER}_imagearray.${IMAGETYPE}
-convert $MONITOR -quality 95 imagearray1d.png  -channel green -separate $RUNDIR/${IDENTIFIER}_imagearraytoprint.${IMAGETYPE}
+echo Making b/w copy
+convert $MONITOR -quality 95 imagearray1c.png $RUNDIR/${1}_imagearray.${IMAGETYPE}
+convert $MONITOR -quality 95 imagearray1c.png  -channel green -separate $RUNDIR/${1}_imagearraytoprint.${IMAGETYPE}
 
 mv imagearray1c.png $RUNDIR/imagearray.png
 mv frame*list.png $RUNDIR
 
-rm $tempdir/*.png
-rm $tempdir/*.jpeg
-rm $tempdir/*.txt
-cd ..
+#rm $tempdir/*.png
+#rm $tempdir/*.jpeg
+#rm $tempdir/*.txt
+#cd ..
 
-rmdir $tempdir
+#rmdir $tempdir
 
-FINALSIZE=`du -h $RUNDIR/${IDENTIFIER}_imagearray.${IMAGETYPE} | cut -f1`
+FINALSIZE=`du -h $RUNDIR/${1}_imagearray.${IMAGETYPE} | cut -f1`
 
-echo "Set $IDENTIFIER Emailing Image ($FINALSIZE ${IMAGETYPE}) to $EMAIL"
+echo "Set $1 Emailing Image ($FINALSIZE ${IMAGETYPE}) to $EMAIL"
 
 #ssh $HEADNODE "
-(echo -e Varying $variable from $firstfactor to $lastfactor '\n\n' ) | \
- mutt -s "`hostname` Set ${IDENTIFIER} Finished" -a $RUNDIR/${IDENTIFIER}_imagearray.${IMAGETYPE}  "$EMAIL" 
+#(echo -e Varying $variable from $firstfactor to $lastfactor '\n\n' ) | \
+# mutt -s "`hostname` Set ${1} Finished" -a $RUNDIR/${1}_imagearray.${IMAGETYPE}  "$EMAIL" 

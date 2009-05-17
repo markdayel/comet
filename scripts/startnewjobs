@@ -1,16 +1,8 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 
 # hosts lists all the hosts to run on
-# ssh must be set up for password-less login, and
+# ssh must be set up for passwordless login, and
 # directories shared in same path on all machines
-#HOSTS="c0-5 c0-6"
-#HOSTS="c0-0 c0-1 c0-3 c0-4 c0-5 c0-6 c0-7 localhost"
-#HOSTS="c0-0 c0-1 c0-2 c0-3 c0-4 c0-5 c0-6 c0-7"
-#HOSTS="c0-0 c0-1 c0-2 c0-3 c0-4 c0-5 c0-6 c0-7 localhost"
-
-#HOSTS="b1 b2 b3 b4"
-#BASEDIR="/cluster/runs"
 
 source $HOME/.profile
 source comet_script_settings
@@ -41,70 +33,62 @@ fi
 date
 
 echo Checking load on machines, threshold is $THRESHOLD
+
 for MACHINE in $HOSTS
 do
-echo -n $MACHINE :
-REMOTEUPTIME=`ssh -x $MACHINE "uptime"`
-#LOAD1MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*: " '{ print $2 }' | cut -d' ' -f1)
-#LOAD5MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*: " '{ print $2 }' | cut -d' ' -f2)
-LOAD1MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*:" '{ print $2 }' | cut -d, -f1)
-LOAD5MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*:" '{ print $2 }' | cut -d, -f2)
-echo -n "$LOAD1MIN $LOAD5MIN "
 
-RESULT=$(echo "($LOAD1MIN < $THRESHOLD ) && ($LOAD5MIN < $THRESHOLD )" | bc -l )
+	echo -n $MACHINE :
+	REMOTEUPTIME=`ssh -oConnectTimeout=1 -x $MACHINE "uptime"`
+	if [ "$?" -eq 255 ] ; then
+		echo
+		echo HOST $MACHINE IS DOWN, skipping
+		echo
+		continue
+	fi
+	#LOAD1MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*: " '{ print $2 }' | cut -d' ' -f1)
+	#LOAD5MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*: " '{ print $2 }' | cut -d' ' -f2)
+	LOAD1MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*:" '{ print $2 }' | cut -d, -f1)
+	LOAD5MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*:" '{ print $2 }' | cut -d, -f2)
+	echo -n "$LOAD1MIN $LOAD5MIN "
 
-#echo -n "$RESULT "
+	RESULT=$(echo "($LOAD1MIN < $THRESHOLD ) && ($LOAD5MIN < $THRESHOLD )" | bc -l )
 
-if [ "$RESULT" == "1" ]
- then echo " Load Average below threshold---starting new job"
+	#echo -n "$RESULT "
 
-# get job from first line
-JOB=`head -n 1 $JOBFILE`
+	if [ "$RESULT" == "1" ] ; then 
+		echo " Load Average below threshold---starting new job"
 
-IDENTIFIER=`echo "$JOB" | cut -d' ' -f1 ` 
-COMMAND=`echo "$JOB" | cut -d' ' -f2- `
+		# get job from first line
+		JOB=`head -n 1 $JOBFILE`
 
-# delete this line from job queue
-mv $JOBFILE $JOBFILE.tmp
-tail -n+2 $JOBFILE.tmp > $JOBFILE
-rm $JOBFILE.tmp
+		IDENTIFIER=`echo "$JOB" | cut -d' ' -f1 ` 
+		COMMAND=`echo "$JOB" | cut -d' ' -f2- `
 
-echo "Starting job on $MACHINE: $JOB"
+		# delete this line from job queue
+		mv $JOBFILE $JOBFILE.tmp
+		tail -n+2 $JOBFILE.tmp > $JOBFILE
+		rm $JOBFILE.tmp
 
-#IDENTIFIER=`date +"%m-%d-%y_$IDNUM"`
-TIME=`date +"%m-%d-%y_$IDNUM"`
+		echo "Starting job on $MACHINE: $JOB"
 
-echo "$IDENTIFIER started on $MACHINE at $TIME" >>$JOBINFOFILE
+		#IDENTIFIER=`date +"%m-%d-%y_$IDNUM"`
+		TIME=`date +"%m-%d-%y_$IDNUM"`
 
-#echo $COMMAND
+		echo "$IDENTIFIER started on $MACHINE at $TIME" >>$JOBINFOFILE
 
-# replace / with - in identifier else screen doesn't like it
-NEWID=${IDENTIFIER//\//-}
+		screen.real -dmS ${IDENTIFIER}_$MACHINE /usr/bin/ssh -x $MACHINE $COMMAND
 
-#SCREENCOMMAND=` printf "screen -d -m -S %s_%s ssh -x %s \" %s \"" $NEWID $MACHINE $MACHINE "$COMMAND" `
+		echo
 
-#$SCREENCOMMAND
-#echo $SCREENCOMMAND
+		TOTJOBS=`awk 'END { print NR }' $JOBFILE`
+		if [ $TOTJOBS == "0" ]; then
+		   echo "Job queue is empty --- exiting"
+		   break
+		fi
 
-#screen -dmS ${NEWID}_$MACHINE /bin/bash -c "/usr/bin/ssh -x $MACHINE \" $COMMAND \" "
-#screen -dmS ${NEWID}_$MACHINE ssh -x $MACHINE \" $COMMAND \"
-#screen -dmS ${NEWID}_$MACHINE /bin/bash -c "ssh -x $MACHINE \" $COMMAND \""
-#screen -dmS ${NEWID}_$MACHINE ssh -x $MACHINE " $COMMAND "
-#screen -S ${NEWID}_$MACHINE -X ssh -x $MACHINE " $COMMAND "
-screen.real -dmS ${NEWID}_$MACHINE /usr/bin/ssh -x $MACHINE $COMMAND
-#echo screen.real -dmS ${NEWID}_$MACHINE /usr/bin/ssh -x $MACHINE $COMMAND
-#echo screen -d -m -S ${NEWID}_$MACHINE ssh -x $MACHINE " $COMMAND "
-echo
-
-TOTJOBS=`awk 'END { print NR }' $JOBFILE`
-if [ $TOTJOBS == "0" ]; then
-   echo "Job queue is empty --- exiting"
-   break
-fi
-
-else 
- echo " Machine busy --- skipping"
-fi
+	else 
+		echo " Machine busy --- skipping"
+	fi
 
 done
 
