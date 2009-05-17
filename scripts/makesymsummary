@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 if [ `echo ${OSTYPE:0:6 }` == "darwin" ] ; then 
  # on cluster, these must be 1x10 and 10x1, on OS X they must be 1x and x1

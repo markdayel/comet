@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 #BASEDIR="/cluster/runs"
 
 source comet_script_settings

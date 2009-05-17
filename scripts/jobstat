@@ -30,6 +30,7 @@ do
 	if [ "$?" -eq 255 ] ; then
 		echo -n "HOST $MACHINE IS DOWN (" >> $tempdir/errors.txt
 		echo -n ")" | cat $tempdir/errors2.txt - | tr -d '\n' | tr -d '\r'  >> $tempdir/errors.txt
+		echo >> $tempdir/errors.txt
 		rm $tempdir/errors2.txt
 		touch  $tempdir/errors2.txt
 		((NODESDOWN=NODESDOWN+1))
@@ -78,7 +79,8 @@ do
 else
 
 	IDENTIFIER="(no job running)"
-
+	RUN=
+	FRAME=
 fi
 
 	RUN=`printf %2s $RUN`
@@ -87,7 +89,6 @@ done
 echo
 cat $tempdir/errors.txt
 
-echo
 echo
 echo "   Machine  1mld  5mld       ID       R       T     Frame"
 

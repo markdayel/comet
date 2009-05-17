@@ -71,8 +71,7 @@ do
 
 		echo "Starting job on $MACHINE: $JOB"
 
-		#IDENTIFIER=`date +"%m-%d-%y_$IDNUM"`
-		TIME=`date +"%m-%d-%y_$IDNUM"`
+		TIME=`date +"%m-%d-%y_%H%M"`
 
 		echo "$IDENTIFIER started on $MACHINE at $TIME" >>$JOBINFOFILE
 

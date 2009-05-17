@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 EXTENSION=jpeg
 
 if [ -f bitmaps/x_proj_00001.$EXTENSION ]; then

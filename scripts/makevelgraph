@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 
 export SCRIPTDIR=`dirname $0`
@@ -9,27 +10,28 @@ fi
 
 gnuplot $SCRIPTDIR/gplotvel2.sc
 
-TEMPFILE=`mktemp -t epsconvert.XXXXXX`.eps
+#tempdir=`mktemp -d /tmp/makevelgraph.XXXXXX` || exit 1
+
 
 #TOTAL_SIMULATION_TIME=`grep ^TOTAL_SIMULATION_TIME cometparams.ini | tr -s " " | cut -d ' ' -f 2`
 
 #echo Using tempfile: $TEMPFILE
 
 # set the title
-sed '/'titletitletitle'/s//Nucleator Velocity/' temp.eps > ${TEMPFILE}
-
 # set the lines to solid and change colors
-sed /'PL \[2 dl 2 dl 2 dl 4 dl\] 0 0 0 DL'/s//'PL \[\] 0.6 0.6 0.6 DL'/ ${TEMPFILE} | \
+sed '/'titletitletitle'/s//Nucleator Velocity/' temp.eps | \
+sed /'PL \[2 dl 2 dl 2 dl 4 dl\] 0 0 0 DL'/s//'PL \[\] 0.6 0.6 0.6 DL'/  | \
 sed            /'PL \[\] 1 0 0 DL'/s//'PL \[\] 1.0 0.15 0.2 DL'/  | \
 sed   /'PL \[4 dl 2 dl\] 0 1 0 DL'/s//'PL \[\] 1.0 0.7 0.2 DL'/  | \
 sed   /'PL \[2 dl 3 dl\] 0 0 1 DL'/s//'PL \[\] 0.15 0.15 1.0 DL'/  | \
 sed /'PL \[1 dl 1.5 dl\] 1 0 1 DL'/s//'PL \[\] 0.43 0.63 1.0 DL'/  > velocities.eps
 
+ # > ${tempdir}/tempfile.eps ${tempdir}/tempfile.eps
 #gs -dUseCIEColor -dFirstPage=1 -dLastPage=1 -dUseCropBox -dSAFER -dBATCH -dNOPAUSE -r300x300 -dNOPLATFONTS -sDEVICE=pngalpha  -dBackgroundColor=16#ffffff -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=velocities.png velocities.eps
 #ps2png velocities.eps velocities.png
 
 convert -density 300 velocities.eps velocities.png
 
 rm temp.eps
-rm ${TEMPFILE}
+#rm ${tempdir}/tempfile.eps
 

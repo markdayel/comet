@@ -41,7 +41,8 @@ do
 
 mkdir -p $BASEDIR/${IDENTIFIER}/$a
 
-factor=`echo "scale=3; $2 + ( ($3 - $2) * ${currlessone} ) / ${STEPSLESSONE}" | bc -l`
+factor=`echo "$2 + ( ($3 - $2) * ${currlessone} ) / ${STEPSLESSONE}" | bc -l`
+factor=`printf "%01.3f" $factor`
 
 sed '/'^$1'.*$/s//'$1' '$factor'/' $BASEDIR//cometparams.ini > \
     $BASEDIR//${IDENTIFIER}/${a}/cometparams.ini
