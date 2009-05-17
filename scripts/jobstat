@@ -54,19 +54,19 @@ do
 
 		INFOFILE="$BASEDIR/${IDENTIFIER}/${RUN}/comet_run_info.txt"
 		SYMBREAKFILE="$BASEDIR/${IDENTIFIER}/${RUN}/sym_break_axis.txt"
-		#echo $INFOFILE >&2
+		#echo $INFOFILE
 
 		# find frame number from end of info file
 
 		FRAME=""
 
-		if [ -f $INFOFILE ] ; then
+		if [ -f "$INFOFILE" ] ; then
 			FRAME=`tail -1 $INFOFILE | cut -c45-80 `
 		fi
 
 		# add a '*' if not broken sym
 
-		if [ ! -f $SYMBREAKFILE ] ; then
+		if [ ! -f "$SYMBREAKFILE" ] ; then
 			FRAME="$FRAME *"
 		fi
 		

@@ -9,6 +9,8 @@ OBJS = $(SRCS:.cpp=.o)
 VTKOBJS = $(VTKSRCS:.cpp=.o)
 ALLOBJS = $(OBJS) $(VTKOBJS) 
 
+# note: '-framework AppKit -framework OpenGL' are required for vtk on os x
+
 # LIBS = -lm -I/usr/local/include/stlport -L/usr/local/lib/stlport
 #LIBS = -lm -lpthread -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -framework AppKit -framework OpenGL -lGL -lGLU
 
@@ -19,13 +21,14 @@ ALLOBJS = $(OBJS) $(VTKOBJS)
 #VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild/include/vtk-5.1/
 #VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild/lib/
 
-# libraries to use for vtk link (and also set -DLINK_VTK)
-
+# libraries to use for vtk link (also set -DLINK_VTK in CXXFLAGS)
+# assumes vtk libraries etc built with cmake and in /Users/mark/VTKcvs/VTKBuild.compat/
 #LIBS = -lpthread -lgsl -lgslcblas -framework AppKit -framework OpenGL
 #VTKLIBPATH = /usr/lib
 #VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.compat/include/vtk-5.1/
 #VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.compat/lib/
 
+# vtk with ubuntu (this doesn't work---default vtk package install is missing libraries---need to use cmake)
 #LIBS = -lpthread -lgsl -lgslcblas
 #VTKINCLUDES = -I/usr/include/vtk-5.0/
 #VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
@@ -39,45 +42,18 @@ VTKLIBS =
 VTKLIBPATH =
 VTKINCLUDES =
 
-CXXFLAGS =  -O3 \
-            -ffast-math -mfpmath=387 -mfpmath=sse \
-            -Wall -Wno-deprecated -Wextra \
-            -g \
-            -DNDEBUG
+CXXFLAGS =  -O3 -march=native -mtune=native\
+            -ffast-math \
+            -Wall -Wextra \
+            -DNDEBUG -g
 
-#-march=amdfam10 -mtune=amdfam10 \
-#CXXFLAGS =  -O3 \
-#            -march=amdfam10 -mtune=amdfam10 \
-#            -Wall -Wno-deprecated -Wextra \
-#            -ftree-vectorize\
-#            -g \
-#            -DNDEBUG\
-#            -fprefetch-loop-arrays 
-
-#            -mfpmath=sse -msse2 -msse3 \
-#\
-#            -L/opt/local/lib/ -I/opt/local/include/ 
-
-#	    -mdynamic-no-pic -fno-pic\
-#            -fasm-blocks\
-
-
-#CXXFLAGS =  -march=nocona -mtune=nocona \
-#            -mfpmath=sse -msse2 -msse3 \
-#            -Wall -Wno-deprecated -Wextra \
-#            -g \
+# N.B use -DLINK_VTK if comiling with VTK
 #	    -DLINK_VTK \ 
-#            -arch x86_64 \
-
-
-#            -m64
 
 # -arch x86_64 is probably the way to go with 64 bit once it's supported in os x
 # -m64 makes things ~20% faster, but can't complie  vtk in 64 bit 
 # on Tiger because Tiger libraries are 32 bit
 
-# -fomit-frame-pointer
-# -g
 
 CXX = c++
 
