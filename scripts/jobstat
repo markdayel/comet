@@ -3,10 +3,15 @@
 #BASEDIR="/cluster/runs"
 #HOSTS="b1 b2 b3 b4 b5"
 
+# note: expects 'sensors' to be installed to be able to return the node cpu temp
+
 echo
 
 #date
 source comet_script_settings
+
+bold=`tput smso` 
+offbold=`tput sgr0`
 
 FREENODES=0
 NODESDOWN=0
@@ -26,7 +31,7 @@ do
 	#echo -n " Host $MACHINE: " >&2
 	echo -n .
 
-	REMOTEUPTIME=`ssh -oConnectTimeout=1 -x $MACHINE "uptime" 2>>$tempdir/errors2.txt`
+	REMOTEUPTIME=`ssh -oConnectTimeout=1 -x $MACHINE "uptime ; sensors | grep temp3 | tr -s ' ' ' ' | cut -d' ' -f2 " 2>>$tempdir/errors2.txt`
 	if [ "$?" -eq 255 ] ; then
 		echo -n "HOST $MACHINE IS DOWN (" >> $tempdir/errors.txt
 		echo -n ")" | cat $tempdir/errors2.txt - | tr -d '\n' | tr -d '\r'  >> $tempdir/errors.txt
@@ -36,6 +41,8 @@ do
 		((NODESDOWN=NODESDOWN+1))
 		continue
 	fi
+	#echo $REMOTEUPTIME
+	TEMP=`echo $REMOTEUPTIME | cut -d'+' -f2`
 	LOAD1MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*:" '{ print $2 }' | cut -d, -f1)
 	LOAD5MIN=$(echo $REMOTEUPTIME | awk -F "load avera.*:" '{ print $2 }' | cut -d, -f2)
 	SCREEN=`grep $MACHINE $tempdir/screenlist.txt | cut -d. -f2`
@@ -84,13 +91,14 @@ else
 fi
 
 	RUN=`printf %2s $RUN`
-	echo "$MACHINE $LOAD1MIN $LOAD5MIN $IDENTIFIER $RUN $FRAME" >> $tempdir/unsorted.txt
+	echo "$MACHINE $LOAD1MIN $LOAD5MIN $IDENTIFIER $RUN $FRAME $TEMP" >> $tempdir/unsorted.txt
 done
-echo
+echo done
 cat $tempdir/errors.txt
 
-echo
-echo "   Machine  1mld  5mld       ID       R       T     Frame"
+
+echo $bold
+echo "   Machine  1mld  5mld       ID       R       T     Frame   Temp $offbold"
 
 cat $tempdir/unsorted.txt | sort -k1
 
@@ -107,11 +115,11 @@ if [ -f $BASEDIR/joblist ]; then
 	WAITINGJOBS=`wc -l $BASEDIR/joblist | cut -d ' ' -f1 `
 	echo $WAITINGJOBS jobs waiting
 else
-	echo "No joblist file found ($BASEDIR/joblist)"
+	echo "$boldNo joblist file found ($BASEDIR/joblist)$offbold"
 fi
 
 if [ "$NODESDOWN" -ne "0" ]; then
-	echo "$NODESDOWN nodes down!"
+	echo "$bold$NODESDOWN nodes down!$offbold"
 fi
 
 echo

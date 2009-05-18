@@ -197,8 +197,9 @@ do
 	echo -n " $factor"
 
 	((COLUMN = COLUMN + 1))
+	COLUMNPAD=`printf "%03d" $COLUMN`
 
-	convert $MONITOR  blankheader1.jpeg   -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $factor  -resize 25% paramheader${COLUMN}.png
+	convert $MONITOR  blankheader1.jpeg   -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $factor  -resize 25% paramheader${COLUMNPAD}.png
 
 	lastfactor=$factor
 
@@ -208,7 +209,7 @@ read STEPS variable firstfactor otherfactors < $RUNDIR/setparam.txt
 
 echo
 
-montage $MONITOR paramheader[0-${STEPS}].png -tile ${HTILE} -geometry +$BOARDER+$BOARDER  paramsheading.png
+montage $MONITOR paramheader0*.png -tile ${HTILE} -geometry +$BOARDER+$BOARDER  paramsheading.png
 
 # make headers for time
 echo "Making time headers"
@@ -223,12 +224,12 @@ do
 	((FRAME = TOTFRAMES * a / TIMESTEPS))
 
 	((POSN = TIMESTEPS - a ))
-
+    POSNPAD=`printf "%03d" $POSN`
 	FRAMETIME=`echo "$FRAME * $TOTALTIME / $TOTFRAMES" | bc -l`
 	FRAMETIME=${FRAMETIME%%.*}
 	echo -n " $FRAMETIME"
 
-	convert $MONITOR  blankheader2.jpeg -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $FRAMETIME -resize 25% timeheader${POSN}.png
+	convert $MONITOR  blankheader2.jpeg -pointsize ${TXTSIZE} -font ${FONT} -background white -gravity center -annotate 0 $FRAMETIME -resize 25% timeheader${POSNPAD}.png
 
 done
 
@@ -238,7 +239,7 @@ mogrify -rotate -90 timeheader*.png
 
 echo
 
-montage $MONITOR timeheader*.png -mode concatenate -tile ${VTILE} -geometry +$BOARDER+$BOARDER  timeheading1.png
+montage $MONITOR timeheader0*.png -mode concatenate -tile ${VTILE} -geometry +$BOARDER+$BOARDER  timeheading1.png
 
 # add two empty blocks to top for alignment
 montage $MONITOR timeheading1.png blanktimeheader.png blanktimeheader.png -mode concatenate -tile ${VTILE} timeheading.png
@@ -290,7 +291,6 @@ rm $tempdir/*.png
 rm $tempdir/*.jpeg
 rm $tempdir/*.txt
 cd ..
-
 rmdir $tempdir
 
 FINALSIZE=`du -h $RUNDIR/${IDENTIFIER}_imagearray.${IMAGETYPE} | cut -f1`

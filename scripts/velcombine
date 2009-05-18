@@ -5,7 +5,7 @@ GAP=50
 EPSFCOMMAND=
 POS=0
 
-DIRS=`ls -d */`
+DIRS=`ls -1 -d */ | sort -n`
 
 for RUN in $DIRS
 do
