@@ -256,7 +256,7 @@ BEGIN{FS=" "}
 {printf("%-25s%s\n",$1,$2)}
 END{}' > params0.txt
 
-( echo -e '\n\n' Host: `hostname` '\n' ID: ${IDENTIFIER} '\n\n';  cat params0.txt) > params.txt 
+( echo -e '\n\n' Host: `hostname` '\n' RUN_ID: ${IDENTIFIER} '\n\n';  cat params0.txt) > params.txt 
 convert $MONITOR -density 600 -font Courier  -pointsize 10 text:params.txt[0] -trim +repage -bordercolor white  -border 20 -resize 15% paramsimage.png
 
 echo Assembling rows of data

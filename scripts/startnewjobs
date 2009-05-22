@@ -14,6 +14,7 @@ THRESHOLD=0.2
 JOBFILE="$BASEDIR/joblist"
 
 JOBINFOFILE="$BASEDIR/jobinfo.txt"
+COMPLETEDJOBSFILE="$BASEDIR/jobsstarted.txt"
 
 TOTJOBS=`awk 'END { print NR }' $JOBFILE`
 if [ $TOTJOBS == "0" ]; then
@@ -60,6 +61,8 @@ do
 
 		# get job from first line
 		JOB=`head -n 1 $JOBFILE`
+		touch $COMPLETEDJOBSFILE
+		echo $JOB >> $COMPLETEDJOBSFILE
 
 		IDENTIFIER=`echo "$JOB" | cut -d' ' -f1 ` 
 		COMMAND=`echo "$JOB" | cut -d' ' -f2- `
