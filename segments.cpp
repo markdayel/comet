@@ -626,7 +626,7 @@ void segments::addnode(const nodes& node)
 	if ((dist < num_radial_bins) && (dist >= 0))
     {
 	    radial_numnodes[dist]++;
-	    radial_rep_radial[dist] += node.repforce_radial; 
+        radial_rep_radial[dist] += node.repforce_radial + (NODE_DIST_TO_FORCE * node.nucleator_impacts.length()) ; 
 	    radial_rep_transverse[dist] += node.repforce_transverse; 
 	    radial_link_radial[dist] += node.linkforce_radial;
 	    radial_link_transverse[dist] += node.linkforce_transverse;
