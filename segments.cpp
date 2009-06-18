@@ -628,8 +628,8 @@ void segments::addnode(const nodes& node)
 	    radial_numnodes[dist]++;
         radial_rep_radial[dist] += node.repforce_radial + (NODE_DIST_TO_FORCE * node.nucleator_impacts.length()) ; 
 	    radial_rep_transverse[dist] += node.repforce_transverse; 
-	    radial_link_radial[dist] += node.linkforce_radial;
-	    radial_link_transverse[dist] += node.linkforce_transverse;
+        radial_link_radial[dist] += node.linkforce_radial + node.nucleator_link_force.dot(node.unitvec());
+        radial_link_transverse[dist] += node.linkforce_transverse + node.nucleator_link_force.cross(node.unitvec()).length();
 	    radial_links_broken[dist] += node.links_broken;
 
 //        radial_linkenergy_transverse[dist] += node.linkenergy_transverse;
