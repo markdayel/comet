@@ -94,13 +94,13 @@ fi
 	echo "$MACHINE $LOAD1MIN $LOAD5MIN $IDENTIFIER $RUN $FRAME $TEMP" >> $tempdir/unsorted.txt
 done
 echo done
-cat $tempdir/errors.txt
 
+cat $tempdir/errors.txt
 
 echo $bold
 echo "   Machine  1mld  5mld       ID       R       T     Frame   Temp $offbold"
 
-cat $tempdir/unsorted.txt | sort -k1
+cat $tempdir/unsorted.txt | sort -k4,5
 
 
 rm $tempdir/screenlist.txt $tempdir/unsorted.txt $tempdir/errors.txt $tempdir/errors2.txt
