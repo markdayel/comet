@@ -67,6 +67,7 @@ int BMP_AA_FACTOR = 1;
 int VTK_WIDTH  = 1024;
 int VTK_HEIGHT = 768;
 int VTK_AA_FACTOR = 1;
+int VTK_IMAGE_MULTIPLIER = 1;
 
 bool VTK_RAND_NODE_COL = false;
 
@@ -947,6 +948,9 @@ int main(int argc, char* argv[])
 
 		else if (tag == "VTK_AA_FACTOR")	  
 			{ss >> VTK_AA_FACTOR;}
+
+        else if (tag == "VTK_IMAGE_MULTIPLIER")	  
+			{ss >> VTK_IMAGE_MULTIPLIER;}
 
         else if (tag == "VTK_RIP_Z_ANGLE")	  
 			{ss >> VTK_RIP_Z_ANGLE;}

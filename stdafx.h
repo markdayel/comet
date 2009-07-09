@@ -351,6 +351,7 @@ extern int BMP_WIDTH,BMP_HEIGHT;
 extern int VTK_WIDTH;
 extern int VTK_HEIGHT;
 extern int VTK_AA_FACTOR;
+extern int VTK_IMAGE_MULTIPLIER;
 extern int BMP_AA_FACTOR;
 
 extern double ELLIPSOID_STRETCHFACTOR;

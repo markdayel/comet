@@ -523,11 +523,11 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
         if(OptsIsoRenderNodes)
         {
 
-            addStructuredPointIsoRender(spoints, 240.0, Colour( 0.3, 0.6, 0.3), 0.3 ); // was 1.0
+            addStructuredPointIsoRender(spoints, 150.0, Colour( 0.3, 0.6, 0.3), 0.3 ); // was 1.0
 	        //addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
             //addStructuredPointIsoRender(spoints, 150.0, Colour( 0.6, 0.3, 0.2), 0.5 );
             //addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
-            addStructuredPointIsoRender(spoints, 240.0 / 2.5, Colour(0.3, 0.3, 0.3), 0.3);
+            addStructuredPointIsoRender(spoints, 150.0 / 2.5, Colour(0.3, 0.3, 0.3), 0.3);
         }
         
         spoints->Delete();
@@ -782,7 +782,7 @@ void CometVtkVis::saveImage(const int &framenumber, char* filename)
 
     vtkRenderLargeImage *renderLarge = vtkRenderLargeImage::New();
     renderLarge->SetInput(renderer);
-    renderLarge->SetMagnification(VTK_AA_FACTOR);
+    renderLarge->SetMagnification(VTK_AA_FACTOR*VTK_IMAGE_MULTIPLIER);
 
 
     // vtkBMPWriter seems a bit faster than vtkPNGWriter, and we're compressing with IM to png anyway later
