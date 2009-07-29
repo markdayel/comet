@@ -677,7 +677,7 @@ int main(int argc, char* argv[])
 
 	
     int err = nice(nicelevel);
-    if (err)
+    if (err==-1)
         cout << "Warning - unable to set process priority" << endl;
 
 #endif
