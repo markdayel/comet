@@ -1,7 +1,7 @@
 /*
 
     comet - an actin-based motility simulator
-    Copyright (C) 2005 Mark J Dayel
+    Copyright (C) 2009 Mark J Dayel
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,9 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>
+
+    When using the code in academic work please cite Dayel et al. 2009 
+    and include any modifications to the source code with the published work.
 
 */
 
@@ -472,7 +475,9 @@ int main(int argc, char* argv[])
 
     cout << endl; 
 
-    cout << "               comet --- a bead motility simulator" << endl << endl;
+    cout << "               comet --- a bead motility simulator" << endl 
+         << "                Dayel et al. 2009 (PLoS Biology)" << endl << endl;
+
 
     //char BOLD[255];
     //sprintf(BOLD,"%c%c%c",27,'[', 'A'
@@ -603,9 +608,7 @@ int main(int argc, char* argv[])
 #endif
 
     // is the machine part of a rocks cluster?  (if so, we'll set output to quiet etc. later on)
-    if (    (strcmp( hostname, "ec3.ucsf.edu")       == 0) ||
-            (strcmp( hostname, "sc1.ucsf.edu")       == 0) ||
-            (strcmp( hostname, "compute-0-0.local")  == 0) ||
+    if (    (strcmp( hostname, "compute-0-0.local")  == 0) ||
             (strcmp( hostname, "compute-0-1.local")  == 0) ||
             (strcmp( hostname, "compute-0-2.local")  == 0) ||
             (strcmp( hostname, "compute-0-3.local")  == 0) ||
@@ -626,8 +629,7 @@ int main(int argc, char* argv[])
         POST_PROCESS_CPUS = 2;  // the cluster machines have 2 cpus
     }
 
-    if (    (strcmp( hostname, "medusa.local")       == 0) ||
-            (strcmp( hostname, "medusa.kinglab")     == 0) )
+    if (    (strcmp( hostname, "medusa.local")       == 0) )
     {
         if (POST_VTK)  
             POST_PROCESS_CPUS = 4;
@@ -643,8 +645,6 @@ int main(int argc, char* argv[])
             POST_PROCESS_CPUS = 2;
     }
 
-
-    
 
 	if (!POST_PROCESS && !REWRITESYMBREAK)                                                             
 	{	// don't drop priority if re-writing bitmaps

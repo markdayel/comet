@@ -10,59 +10,80 @@ VTKOBJS = $(VTKSRCS:.cpp=.o)
 ALLOBJS = $(OBJS) $(VTKOBJS) 
 
 # LIBS = -lm -I/usr/local/include/stlport -L/usr/local/lib/stlport
-LIBS = -lm -lpthread -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -framework AppKit -framework OpenGL -lGL -lGLU
+#LIBS = -lm -lpthread -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -framework AppKit -framework OpenGL -lGL -lGLU
 
 # vtk 
 #VTKINCLUDES = -I/opt/local/include/vtk/
 #VTKLIBPATH  = -L/opt/local/lib/vtk/
-VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild/include/vtk-5.1/
-VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild/lib/
+
+#VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild/include/vtk-5.1/
+#VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild/lib/
+
+# libraries to use for vtk link (and also set -DLINK_VTK)
+
+#LIBS = -lpthread -lgsl -lgslcblas -framework AppKit -framework OpenGL
+#LIBS = -lpthread -L/Users/mark/comet/gsl/libgsl.a -framework AppKit -framework OpenGL
+LIBS = -lpthread -L"/Users/mark/comet/gsl/" -lgsl2 -framework AppKit -framework OpenGL
+
+#VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.compat/include/vtk-5.1/
+#VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.compat/lib/
+
+VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.x86_64/include/vtk-5.1/
+VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.x86_64/lib/
+
 VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
               -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
               -lvtkHybrid -lvtkVolumeRendering -lvtkjpeg -lvtktiff -lvtksys -lvtkzlib
-#normal:
-#CXXFLAGS = -O3 -ffast-math -DLINK_VTK
-#           -Wall -pthread -Wno-deprecated 
+
+# libraries to use for non-vtk (and also unset -DLINK_VTK)
+
+#LIBS = -lpthread  -lgsl -lgslcblas 
+#VTKLIBS = 
+#VTKLIBPATH =
+#VTKINCLUDES =
+
+CXXFLAGS =  -O3 -fast \
+            -Wall -Wno-deprecated -Wextra \
+            -ftree-vectorize\
+            -fasm-blocks\
+            -g \
+            -DNDEBUG \
+            -fprefetch-loop-arrays -fstrict-aliasing -fno-exceptions \
+	    -mdynamic-no-pic -fno-pic\
+            -L/opt/local/lib/ -I/opt/local/include/ \
+	    -DLINK_VTK -arch x86_64 -arch i386 -arch ppc -arch ppc64
+
+#            -march=nocona -mtune=nocona \
+#            -mfpmath=sse -msse2 -msse3 \
+
+#CXXFLAGS =  -march=nocona -mtune=nocona \
+#            -mfpmath=sse -msse2 -msse3 \
+#            -Wall -Wno-deprecated -Wextra \
+#            -g \
+#	    -DLINK_VTK \ 
+#            -arch x86_64 \
 
 
-#debug:
-#CXXFLAGS = -O3 -DLINK_VTK \
-#           -g -Wall  -Wno-deprecated 
+#            -m64
 
-#safe:
-#CXXFLAGS = -DLINK_VTK \
-#           -Wall -Wno-deprecated 
+# -arch x86_64 is probably the way to go with 64 bit once it's supported in os x
+# -m64 makes things ~20% faster, but can't complie  vtk in 64 bit 
+# on Tiger because Tiger libraries are 32 bit
 
-# -fast-math and -Wno-depreciated not working now...
-#fast:
-CXXFLAGS =  -O3 -fast -march=nocona -mtune=nocona \
-            -DLINK_VTK  \
-            -mfpmath=sse -msse2 \
- 	    -fomit-frame-pointer -fprefetch-loop-arrays \
-            -Wall -Wno-deprecated -DNDEBUG \
-            -ftree-vectorize \
-            -DLINK_VTK -Wno-non-virtual-dtor -fasm-blocks 
-
-#\
-#           -fno-exceptions -fno-rtti
-#           -ftree-vectorizer-verbose=3 
-# ,387 -msse -mmmx\
+# -fomit-frame-pointer
+# -g
 
 CXX = c++
 
 $(PROG):$(ALLOBJS)
-	$(CXX) $(CXXFLAGS) $(VTKLIBPATH) \
-	-o $(PROG) $(ALLOBJS) $(LIBS) \
-	$(VTKLIBS)
+	$(CXX) $(CXXFLAGS) $(VTKLIBPATH) -o $(PROG) $(ALLOBJS) $(LIBS) $(VTKLIBS)
 
 
 comet.o:comet.cpp
-	$(CXX) $(FRAMEWORK) $(CXXFLAGS) $(VTKINCLUDES) \
-	-c -o $@ $< 
+	$(CXX) $(FRAMEWORK) $(CXXFLAGS) $(VTKINCLUDES) -c -o $@ $< 
 
 comet_vtk.o:comet_vtk.cpp
-	$(CXX) $(FRAMEWORK) $(CXXFLAGS) $(VTKINCLUDES) \
-	-c -o $@ $< 
+	$(CXX) $(FRAMEWORK) $(CXXFLAGS) $(VTKINCLUDES) -c -o $@ $< 
 
 clean:
 	rm -f $(ALLOBJS)
