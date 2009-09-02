@@ -16,7 +16,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-    When using the code in academic work please cite Dayel et al. 2009 
+    When using the code in academic work please cite:
+
+      Dayel MJ, Akin O, Landeryou M, Risca V, Mogilner A, et al. (2009) 
+      In Silico Reconstitution of Actin-Based Symmetry Breaking and Motility. 
+      PLoS Biol 7(9):e1000201. doi:10.1371/journal.pbio.1000201
+
     and include any modifications to the source code with the published work.
 
 */
@@ -476,7 +481,10 @@ int main(int argc, char* argv[])
     cout << endl; 
 
     cout << "               comet --- a bead motility simulator" << endl 
-         << "                Dayel et al. 2009 (PLoS Biology)" << endl << endl;
+         << endl
+         << "      Dayel MJ, Akin O, Landeryou M, Risca V, Mogilner A, et al. (2009)" << endl 
+         << "      In Silico Reconstitution of Actin-Based Symmetry Breaking and Motility." << endl 
+         << "      PLoS Biol 7(9):e1000201. doi:10.1371/journal.pbio.1000201" << endl << endl;
 
 
     //char BOLD[255];
@@ -1606,7 +1614,7 @@ int main(int argc, char* argv[])
 
     if (POST_PROCESS || REWRITESYMBREAK)
     {
-        cout << "Postprocessing iterations: ";
+        cout << "Postprocessing iterations..." << endl;
         if (argc > 2)
 	        get_postprocess_iterations(argv[2], postprocess_iterations, lastframedone);
         else

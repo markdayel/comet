@@ -16,7 +16,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-    When using the code in academic work please cite Dayel et al. 2009 
+    When using the code in academic work please cite:
+
+      Dayel MJ, Akin O, Landeryou M, Risca V, Mogilner A, et al. (2009) 
+      In Silico Reconstitution of Actin-Based Symmetry Breaking and Motility. 
+      PLoS Biol 7(9):e1000201. doi:10.1371/journal.pbio.1000201
+
     and include any modifications to the source code with the published work.
 
 */
@@ -168,7 +173,7 @@ CometVtkVis::CometVtkVis(bool VIEW_VTK, bool dummy_vtk) // this parameter *shoul
     voxel_scale = 4.0;
     p_scale = 100;
     nuc_opacity = 0.4;
-    vx_intensity_scale = 1.0;
+    vx_intensity_scale = 100.0;
     file_prefix = "vtk";
 
 
@@ -528,11 +533,13 @@ void CometVtkVis::buildVTK(const int &framenumber, vect & cameraposition, vect &
         if(OptsIsoRenderNodes)
         {
 
-            addStructuredPointIsoRender(spoints, 150.0, Colour( 0.3, 0.6, 0.3), 0.3 ); // was 1.0
+            double threshold = 250.0;
+
+            addStructuredPointIsoRender(spoints, threshold, Colour( 0.3, 0.6, 0.3), 0.3 ); // was 1.0
 	        //addStructuredPointIsoRender(spoints, 250.0, Colour( 0.3, 0.6, 0.3), 1.0 );
             //addStructuredPointIsoRender(spoints, 150.0, Colour( 0.6, 0.3, 0.2), 0.5 );
             //addStructuredPointIsoRender(spoints, 100.0, Colour( 0.2, 0.3, 0.6), 0.5 );
-            addStructuredPointIsoRender(spoints, 150.0 / 2.5, Colour(0.3, 0.3, 0.3), 0.3);
+            addStructuredPointIsoRender(spoints, threshold / 2.5, Colour(0.3, 0.3, 0.3), 0.3);
         }
         
         spoints->Delete();

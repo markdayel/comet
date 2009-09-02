@@ -1,4 +1,4 @@
-// copied from http://sxs.thexdershome.com/programming/kbhit.html
+// from http://sxs.thexdershome.com/programming/kbhit.html
 
 #include "kbhit.h"
 #include <unistd.h> // read()
