@@ -1,3 +1,6 @@
+
+![comet](http://www.dayel.com/wp-content/uploads/2009/07/highres3-300x300.png)
+
 # Actin-based Bead Motility Simulator
 
 This code accompanies the paper: 
