@@ -23,13 +23,16 @@ ALLOBJS = $(OBJS) $(VTKOBJS)
 
 #LIBS = -lpthread -lgsl -lgslcblas -framework AppKit -framework OpenGL
 #LIBS = -lpthread -L/Users/mark/comet/gsl/libgsl.a -framework AppKit -framework OpenGL
-LIBS = -lpthread -L"/Users/mark/comet/gsl/" -lgsl2 -framework AppKit -framework OpenGL
+LIBS = -lpthread -L"/opt/local/lib/" -lgsl -framework AppKit -framework OpenGL
 
 #VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.compat/include/vtk-5.1/
 #VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.compat/lib/
 
-VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.x86_64/include/vtk-5.1/
-VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.x86_64/lib/
+#VTKINCLUDES = -I/Users/mark/VTKcvs/VTKBuild.x86_64/include/vtk-5.1/
+#VTKLIBPATH  = -L/Users/mark/VTKcvs/VTKBuild.x86_64/lib/
+
+VTKINCLUDES = -I/opt/local/include/vtk-5.10/
+VTKLIBPATH  = -L/opt/local/lib/vtk-5.10/
 
 VTKLIBS     = -lvtkRendering -lvtkImaging -lvtkCommon -lvtkGraphics \
               -lvtkpng -lvtkIO -lvtkexpat -lvtkFiltering -lvtkftgl \
@@ -51,7 +54,8 @@ CXXFLAGS =  -O3 -fast \
             -fprefetch-loop-arrays -fstrict-aliasing -fno-exceptions \
 	    -mdynamic-no-pic -fno-pic\
             -L/opt/local/lib/ -I/opt/local/include/ \
-	    -DLINK_VTK -arch x86_64 -arch i386 -arch ppc -arch ppc64
+	    -DLINK_VTK -arch x86_64
+#	    -DLINK_VTK -arch x86_64 -arch i386 -arch ppc -arch ppc64
 
 #            -march=nocona -mtune=nocona \
 #            -mfpmath=sse -msse2 -msse3 \
